@@ -1,0 +1,18 @@
+[package]
+name = "oxilean-build"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-build"
+description = "OxiLean build system - Project compilation and dependency management"
+readme = "README.md"
+keywords = ["lean", "build", "compiler", "project", "dependencies"]
+categories = ["development-tools"]
+
+[dependencies]
+oxilean-kernel = { workspace = true }
+oxilean-parse = { workspace = true }

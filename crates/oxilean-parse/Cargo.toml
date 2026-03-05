@@ -1,0 +1,26 @@
+[package]
+name = "oxilean-parse"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-parse"
+description = "OxiLean parser - Concrete syntax to abstract syntax"
+readme = "README.md"
+keywords = ["parser", "lean", "type-theory", "syntax", "ast"]
+categories = ["parsing", "development-tools"]
+
+[lib]
+name = "oxilean_parse"
+path = "src/lib.rs"
+
+[dependencies]
+oxilean-kernel = { workspace = true }
+
+[dev-dependencies]
+
+[features]
+default = []

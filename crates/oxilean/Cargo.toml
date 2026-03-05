@@ -1,0 +1,46 @@
+[package]
+name = "oxilean"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean"
+description = "OxiLean - A Pure Rust theorem prover and dependent type checker inspired by Lean 4"
+readme = "README.md"
+keywords = ["theorem-prover", "lean", "dependent-types", "type-theory", "proof-assistant"]
+categories = ["science", "development-tools", "mathematics"]
+
+[lib]
+name = "oxilean"
+path = "src/lib.rs"
+
+[dependencies]
+oxilean-kernel = { workspace = true, optional = true }
+oxilean-meta = { workspace = true, optional = true }
+oxilean-parse = { workspace = true, optional = true }
+oxilean-elab = { workspace = true, optional = true }
+oxilean-codegen = { workspace = true, optional = true }
+oxilean-runtime = { workspace = true, optional = true }
+oxilean-std = { workspace = true, optional = true }
+oxilean-lint = { workspace = true, optional = true }
+oxilean-build = { workspace = true, optional = true }
+oxilean-wasm = { workspace = true, optional = true }
+
+[dev-dependencies]
+
+[features]
+default = ["kernel", "parse", "elab", "meta"]
+full = ["kernel", "parse", "elab", "meta", "codegen", "runtime", "std-lib", "lint", "build-sys"]
+kernel = ["dep:oxilean-kernel"]
+meta = ["dep:oxilean-meta"]
+parse = ["dep:oxilean-parse"]
+elab = ["dep:oxilean-elab"]
+codegen = ["dep:oxilean-codegen"]
+runtime = ["dep:oxilean-runtime"]
+std-lib = ["dep:oxilean-std"]
+lint = ["dep:oxilean-lint"]
+build-sys = ["dep:oxilean-build"]
+wasm = ["dep:oxilean-wasm"]

@@ -1,0 +1,27 @@
+[package]
+name = "oxilean-lint"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-lint"
+description = "OxiLean linter - Static analysis and lint rules"
+readme = "README.md"
+keywords = ["lean", "lint", "static-analysis", "type-theory", "diagnostics"]
+categories = ["development-tools"]
+
+[lib]
+name = "oxilean_lint"
+path = "src/lib.rs"
+
+[dependencies]
+oxilean-kernel = { workspace = true }
+oxilean-parse = { workspace = true }
+
+[dev-dependencies]
+
+[features]
+default = []

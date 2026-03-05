@@ -1,0 +1,50 @@
+//! Auto-generated module structure
+
+pub mod clusterconfig_traits;
+pub mod distributedbuildconfig_traits;
+pub mod distributedbuildplan_traits;
+pub mod distributedcacheconfig_traits;
+pub mod distributedcoordinator_traits;
+pub mod distributedtask_traits;
+pub mod distributedtasklog_traits;
+pub mod distributedtaskstate_traits;
+pub mod faulttolerance_traits;
+pub mod functions;
+pub mod jobschedulerkind_traits;
+pub mod leastloadedstrategy_traits;
+pub mod networkbandwidthestimator_traits;
+pub mod nodehealthreport_traits;
+pub mod randomstrategy_traits;
+pub mod speculativeexecutor_traits;
+pub mod taskpriorityqueue_traits;
+pub mod taskstatesnapshot_traits;
+pub mod types;
+pub mod workercapacitymatrix_traits;
+pub mod workerpool_traits;
+pub mod workerregistry_traits;
+pub mod workstealingqueue_traits;
+
+// Re-export all types
+pub use clusterconfig_traits::*;
+pub use distributedbuildconfig_traits::*;
+pub use distributedbuildplan_traits::*;
+pub use distributedcacheconfig_traits::*;
+pub use distributedcoordinator_traits::*;
+pub use distributedtask_traits::*;
+pub use distributedtasklog_traits::*;
+pub use distributedtaskstate_traits::*;
+pub use faulttolerance_traits::*;
+pub use functions::*;
+pub use jobschedulerkind_traits::*;
+pub use leastloadedstrategy_traits::*;
+pub use networkbandwidthestimator_traits::*;
+pub use nodehealthreport_traits::*;
+pub use randomstrategy_traits::*;
+pub use speculativeexecutor_traits::*;
+pub use taskpriorityqueue_traits::*;
+pub use taskstatesnapshot_traits::*;
+pub use types::*;
+pub use workercapacitymatrix_traits::*;
+pub use workerpool_traits::*;
+pub use workerregistry_traits::*;
+pub use workstealingqueue_traits::*;

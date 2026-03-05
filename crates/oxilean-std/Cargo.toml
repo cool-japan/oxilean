@@ -1,0 +1,26 @@
+[package]
+name = "oxilean-std"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-std"
+description = "OxiLean standard library"
+readme = "README.md"
+keywords = ["lean", "standard-library", "type-theory", "mathematics", "proof"]
+categories = ["science", "mathematics"]
+
+[lib]
+name = "oxilean_std"
+path = "src/lib.rs"
+
+[dependencies]
+oxilean-kernel = { workspace = true }
+
+[dev-dependencies]
+
+[features]
+default = []

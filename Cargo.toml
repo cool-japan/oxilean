@@ -1,0 +1,76 @@
+[workspace]
+members = [
+    "crates/oxilean",
+    "crates/oxilean-kernel",
+    "crates/oxilean-meta",
+    "crates/oxilean-parse",
+    "crates/oxilean-elab",
+    "crates/oxilean-cli",
+    "crates/oxilean-std",
+    "crates/oxilean-codegen",
+    "crates/oxilean-runtime",
+    "crates/oxilean-build",
+    "crates/oxilean-lint",
+    "crates/oxilean-wasm",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["COOLJAPAN OU (Team Kitasan)"]
+license = "Apache-2.0"
+repository = "https://github.com/cool-japan/oxilean"
+homepage = "https://github.com/cool-japan/oxilean"
+documentation = "https://docs.rs/oxilean"
+rust-version = "1.70"
+
+[workspace.dependencies]
+# Internal dependencies
+oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.0" }
+oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.0" }
+oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.0" }
+oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.0" }
+oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.0" }
+oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.0" }
+oxilean-std = { path = "crates/oxilean-std", version = "0.1.0" }
+oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.0" }
+oxilean-build = { path = "crates/oxilean-build", version = "0.1.0" }
+oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.0" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+strip = true
+
+# Root package for workspace-level tests
+[package]
+name = "oxilean-workspace"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish = false
+
+[[test]]
+name = "integration_test"
+path = "tests/integration_test.rs"
+
+[[test]]
+name = "mathlib_compat_test"
+path = "tests/mathlib_compat_test/mod.rs"
+
+[[test]]
+name = "mathlib_theorems_test"
+path = "tests/mathlib_theorems_test/mod.rs"
+
+[[test]]
+name = "std_library_test"
+path = "tests/std_library_test/mod.rs"
+
+[dev-dependencies]
+oxilean-kernel = { path = "crates/oxilean-kernel" }
+oxilean-meta = { path = "crates/oxilean-meta" }
+oxilean-parse = { path = "crates/oxilean-parse" }
+oxilean-elab = { path = "crates/oxilean-elab" }

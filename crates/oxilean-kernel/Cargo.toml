@@ -1,0 +1,27 @@
+[package]
+name = "oxilean-kernel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-kernel"
+description = "OxiLean kernel - The trusted computing base for type checking"
+readme = "README.md"
+keywords = ["theorem-prover", "lean", "type-theory", "kernel", "dependent-types"]
+categories = ["science", "development-tools"]
+
+[lib]
+name = "oxilean_kernel"
+path = "src/lib.rs"
+
+[dependencies]
+# ZERO external dependencies - this is the TCB (Trusted Computing Base)
+
+[dev-dependencies]
+# Test-only dependencies are allowed
+
+[features]
+default = []

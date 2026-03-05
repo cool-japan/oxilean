@@ -1,0 +1,56 @@
+//! Auto-generated module structure
+
+pub mod addsemicolonfix_traits;
+pub mod asciionlyfix_traits;
+pub mod autofixregistry_traits;
+pub mod batchfixapplicator_traits;
+pub mod commentoutfix_traits;
+pub mod duplicateimportfix_traits;
+pub mod fixconfidence_traits;
+pub mod fixhistory_traits;
+pub mod fixpipeline_traits;
+pub mod functions;
+pub mod indentfix_traits;
+pub mod insertlineafterfix_traits;
+pub mod insertlinebeforefix_traits;
+pub mod missingdocfix_traits;
+pub mod namingconventionfix_traits;
+pub mod removedeadcodefix_traits;
+pub mod renameidentifierfix_traits;
+pub mod sortimportsfix_traits;
+pub mod spellingfix_traits;
+pub mod syntaxrewriter_traits;
+pub mod typeannotationfix_traits;
+pub mod types;
+pub mod uncommentfix_traits;
+pub mod unicodefix_traits;
+pub mod unusedimportfix_traits;
+pub mod whitespacefix_traits;
+
+// Re-export all types
+pub use addsemicolonfix_traits::*;
+pub use asciionlyfix_traits::*;
+pub use autofixregistry_traits::*;
+pub use batchfixapplicator_traits::*;
+pub use commentoutfix_traits::*;
+pub use duplicateimportfix_traits::*;
+pub use fixconfidence_traits::*;
+pub use fixhistory_traits::*;
+pub use fixpipeline_traits::*;
+pub use functions::*;
+pub use indentfix_traits::*;
+pub use insertlineafterfix_traits::*;
+pub use insertlinebeforefix_traits::*;
+pub use missingdocfix_traits::*;
+pub use namingconventionfix_traits::*;
+pub use removedeadcodefix_traits::*;
+pub use renameidentifierfix_traits::*;
+pub use sortimportsfix_traits::*;
+pub use spellingfix_traits::*;
+pub use syntaxrewriter_traits::*;
+pub use typeannotationfix_traits::*;
+pub use types::*;
+pub use uncommentfix_traits::*;
+pub use unicodefix_traits::*;
+pub use unusedimportfix_traits::*;
+pub use whitespacefix_traits::*;

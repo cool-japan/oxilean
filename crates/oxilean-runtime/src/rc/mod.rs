@@ -1,0 +1,52 @@
+//! Auto-generated module structure
+
+pub mod arcweak_traits;
+pub mod atomicrefcounter_traits;
+pub mod borrowflag_traits;
+pub mod cowbox_traits;
+pub mod functions;
+pub mod gctracer_traits;
+pub mod ownershiplog_traits;
+pub mod rc_traits;
+pub mod rcbitmask_traits;
+pub mod rcelisionanalysis_traits;
+pub mod rcelisionhint_traits;
+pub mod rcgraph_traits;
+pub mod rcmanager_traits;
+pub mod rcobserver_traits;
+pub mod rcpolicy_traits;
+pub mod rcpool_traits;
+pub mod rcstats_traits;
+pub mod refcountedmap_traits;
+pub mod retainrelease_traits;
+pub mod rtarc_traits;
+pub mod stickyrc_traits;
+pub mod types;
+pub mod weak_traits;
+pub mod weaktable_traits;
+
+// Re-export all types
+pub use arcweak_traits::*;
+pub use atomicrefcounter_traits::*;
+pub use borrowflag_traits::*;
+pub use cowbox_traits::*;
+pub use functions::*;
+pub use gctracer_traits::*;
+pub use ownershiplog_traits::*;
+pub use rc_traits::*;
+pub use rcbitmask_traits::*;
+pub use rcelisionanalysis_traits::*;
+pub use rcelisionhint_traits::*;
+pub use rcgraph_traits::*;
+pub use rcmanager_traits::*;
+pub use rcobserver_traits::*;
+pub use rcpolicy_traits::*;
+pub use rcpool_traits::*;
+pub use rcstats_traits::*;
+pub use refcountedmap_traits::*;
+pub use retainrelease_traits::*;
+pub use rtarc_traits::*;
+pub use stickyrc_traits::*;
+pub use types::*;
+pub use weak_traits::*;
+pub use weaktable_traits::*;

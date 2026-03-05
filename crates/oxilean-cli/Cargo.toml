@@ -1,0 +1,28 @@
+[package]
+name = "oxilean-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-cli"
+description = "OxiLean command-line interface"
+readme = "README.md"
+keywords = ["lean", "theorem-prover", "cli", "type-theory", "proof"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "oxilean"
+path = "src/main.rs"
+
+[dependencies]
+oxilean-kernel = { workspace = true }
+oxilean-parse = { workspace = true }
+oxilean-elab = { workspace = true }
+
+[dev-dependencies]
+
+[features]
+default = []

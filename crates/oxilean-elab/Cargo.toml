@@ -1,0 +1,28 @@
+[package]
+name = "oxilean-elab"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-elab"
+description = "OxiLean elaborator - Surface syntax to kernel terms"
+readme = "README.md"
+keywords = ["elaborator", "lean", "type-theory", "type-checking", "syntax"]
+categories = ["science", "development-tools"]
+
+[lib]
+name = "oxilean_elab"
+path = "src/lib.rs"
+
+[dependencies]
+oxilean-kernel = { workspace = true }
+oxilean-parse = { workspace = true }
+lazy_static = "1.5"
+
+[dev-dependencies]
+
+[features]
+default = []

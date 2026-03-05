@@ -1,0 +1,17 @@
+//! # RingNormalizer - Trait Implementations
+//!
+//! This module contains trait implementations for `RingNormalizer`.
+//!
+//! ## Implemented Traits
+//!
+//! - `Default`
+//!
+//! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
+
+use super::types::RingNormalizer;
+
+impl Default for RingNormalizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -1,0 +1,26 @@
+[package]
+name = "oxilean-meta"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/oxilean-meta"
+description = "OxiLean meta layer - Metavar-aware WHNF, unification, type class synthesis, and tactics"
+readme = "README.md"
+keywords = ["type-theory", "metavariables", "unification", "tactic", "lean"]
+categories = ["science", "development-tools"]
+
+[lib]
+name = "oxilean_meta"
+path = "src/lib.rs"
+
+[dependencies]
+oxilean-kernel = { workspace = true }
+
+[dev-dependencies]
+
+[features]
+default = []

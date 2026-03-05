@@ -1,0 +1,54 @@
+//! Auto-generated module structure
+
+pub mod artifacttracker_traits;
+pub mod buildcycle_traits;
+pub mod buildschedulehint_traits;
+pub mod changebatch_traits;
+pub mod concurrentinvalidationset_traits;
+pub mod dependencygraphbuilder_traits;
+pub mod dirtyset_traits;
+pub mod fingerprintstore_traits;
+pub mod fullincrementalcache_traits;
+pub mod functions;
+pub mod incrartifactkind_traits;
+pub mod incrementalbuildstate_traits;
+pub mod incrementalcompilationconfig_traits;
+pub mod incrementalengine_traits;
+pub mod incrementalfingerprinter_traits;
+pub mod incrementalgraph_traits;
+pub mod incrementalscheduler_traits;
+pub mod interfacehash_traits;
+pub mod invalidationcause_traits;
+pub mod invalidationlog_traits;
+pub mod modulecache_traits;
+pub mod rebuildqueue_traits;
+pub mod sourceroottracker_traits;
+pub mod types;
+pub mod watchevent_traits;
+
+// Re-export all types
+pub use artifacttracker_traits::*;
+pub use buildcycle_traits::*;
+pub use buildschedulehint_traits::*;
+pub use changebatch_traits::*;
+pub use concurrentinvalidationset_traits::*;
+pub use dependencygraphbuilder_traits::*;
+pub use dirtyset_traits::*;
+pub use fingerprintstore_traits::*;
+pub use fullincrementalcache_traits::*;
+pub use functions::*;
+pub use incrartifactkind_traits::*;
+pub use incrementalbuildstate_traits::*;
+pub use incrementalcompilationconfig_traits::*;
+pub use incrementalengine_traits::*;
+pub use incrementalfingerprinter_traits::*;
+pub use incrementalgraph_traits::*;
+pub use incrementalscheduler_traits::*;
+pub use interfacehash_traits::*;
+pub use invalidationcause_traits::*;
+pub use invalidationlog_traits::*;
+pub use modulecache_traits::*;
+pub use rebuildqueue_traits::*;
+pub use sourceroottracker_traits::*;
+pub use types::*;
+pub use watchevent_traits::*;
