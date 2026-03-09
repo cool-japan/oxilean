@@ -28,6 +28,10 @@ Cargo.lock
 .#*
 \#*\#
 
+# Environment files
+.env
+.env.*
+
 # OS
 .DS_Store
 Thumbs.db

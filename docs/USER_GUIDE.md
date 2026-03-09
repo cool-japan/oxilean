@@ -88,7 +88,7 @@ Example `.oxilean.toml`:
 ```toml
 [project]
 name = "my_proofs"
-version = "0.1.0"
+version = "0.1.1"
 
 [kernel]
 universe_polymorphism = true
@@ -1279,7 +1279,7 @@ Shows version information:
 oxilean version
 
 Output:
-OxiLean version 0.1.0
+OxiLean version 0.1.1
 Kernel SLOC: ~113,179
 11 crates, 1.2M+ total SLOC
 Zero external dependencies in kernel
@@ -1350,7 +1350,7 @@ oxilean repl
 You'll see:
 
 ```
-OxiLean interactive theorem prover v0.1.0
+OxiLean interactive theorem prover v0.1.1
 Type :help for help, :quit to exit
 >
 ```

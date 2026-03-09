@@ -552,7 +552,7 @@ mod tests {
 /// Return the server module version.
 #[allow(dead_code)]
 pub fn server_module_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 /// Return the list of LSP capabilities supported.
 #[allow(dead_code)]

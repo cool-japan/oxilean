@@ -1,11 +1,11 @@
 # oxilean-runtime — TODO
 
 > Task list for the runtime system crate.
-> Last updated: 2026-03-05
+> Last updated: 2026-03-09
 
 ## ✅ Completed
 
-**Status**: COMPLETE — ~31,115 SLOC implemented across 7 source files
+**Status**: COMPLETE — ~31,676 SLOC implemented across 253 source files
 
 ### Runtime System Features
 - [x] Runtime primitives

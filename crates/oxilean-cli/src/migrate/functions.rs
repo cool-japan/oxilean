@@ -1213,9 +1213,9 @@ mod expanded_tests {
         let v = Version {
             major: 0,
             minor: 1,
-            patch: 0,
+            patch: 1,
         };
-        assert_eq!(v.to_string(), "0.1.0");
+        assert_eq!(v.to_string(), "0.1.1");
     }
     #[test]
     fn test_version_parse_invalid() {
@@ -1224,7 +1224,7 @@ mod expanded_tests {
     }
     #[test]
     fn test_version_migration_chain() {
-        let from = Version::parse("0.1.0").expect("parsing should succeed");
+        let from = Version::parse("0.1.1").expect("parsing should succeed");
         let to = Version::parse("0.2.0").expect("parsing should succeed");
         let set = oxilean_v0_1_to_v0_2_rewrites();
         let step = VersionMigrationStep::new(from, to, set);
@@ -1232,12 +1232,12 @@ mod expanded_tests {
         chain.add_step(step);
         assert_eq!(chain.len(), 1);
         let summary = chain.summary();
-        assert!(summary.contains("0.1.0"));
+        assert!(summary.contains("0.1.1"));
         assert!(summary.contains("0.2.0"));
     }
     #[test]
     fn test_version_migration_chain_apply() {
-        let from = Version::parse("0.1.0").expect("parsing should succeed");
+        let from = Version::parse("0.1.1").expect("parsing should succeed");
         let to = Version::parse("0.2.0").expect("parsing should succeed");
         let mut set = ApiRewriteSet::new("test");
         set.add(ApiRewrite::new("old_api", "new_api"));

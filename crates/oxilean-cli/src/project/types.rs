@@ -201,13 +201,13 @@ impl ProjectConfig {
     pub fn default_for(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            version: "0.1.0".to_string(),
+            version: "0.1.1".to_string(),
             authors: Vec::new(),
             description: String::new(),
             dependencies: Vec::new(),
             source_dirs: vec![PathBuf::from("src")],
             output_dir: PathBuf::from("build"),
-            lean_version: "0.1.0".to_string(),
+            lean_version: "0.1.1".to_string(),
             extra_args: Vec::new(),
         }
     }
@@ -736,7 +736,7 @@ impl ProjectInitOptions {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            version: "0.1.0".to_string(),
+            version: "0.1.1".to_string(),
             authors: Vec::new(),
             description: None,
             with_git: true,

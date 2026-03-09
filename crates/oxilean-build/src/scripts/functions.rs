@@ -109,9 +109,9 @@ mod tests {
     fn test_script_variables_expand() {
         let mut vars = ScriptVariables::new();
         vars.set("NAME", "oxilean");
-        vars.set("VERSION", "0.1.0");
+        vars.set("VERSION", "0.1.1");
         let expanded = vars.expand("Package: ${NAME} v${VERSION}");
-        assert_eq!(expanded, "Package: oxilean v0.1.0");
+        assert_eq!(expanded, "Package: oxilean v0.1.1");
     }
     #[test]
     fn test_script_variables_build_info() {

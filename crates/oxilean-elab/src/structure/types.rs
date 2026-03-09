@@ -347,15 +347,13 @@ impl<'env> StructureElaborator<'env> {
                 });
             }
             Ok(inherited)
+        } else if self.env.get(parent_name).is_some() {
+            Ok(Vec::new())
         } else {
-            if self.env.get(parent_name).is_some() {
-                Ok(Vec::new())
-            } else {
-                Err(StructElabError::ParentNotFound(format!(
-                    "parent structure '{}' not found",
-                    parent_name
-                )))
-            }
+            Err(StructElabError::ParentNotFound(format!(
+                "parent structure '{}' not found",
+                parent_name
+            )))
         }
     }
     /// Generate projection functions for all fields of a structure.

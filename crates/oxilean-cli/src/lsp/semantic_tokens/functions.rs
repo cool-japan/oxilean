@@ -465,7 +465,7 @@ pub fn decode_semantic_tokens(data: &[u32]) -> Vec<RawSemanticToken> {
 /// Return the semantic_tokens module version.
 #[allow(dead_code)]
 pub fn semantic_tokens_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod semantic_extra_tests {

@@ -7,7 +7,7 @@
 
 The CLI provides the user-facing entry point for checking proofs, running the REPL, and managing OxiLean projects.
 
-64,163 SLOC -- fully implemented CLI with argument parsing, subcommand dispatch, file checking, and interactive REPL.
+64,848 SLOC -- fully implemented CLI with argument parsing, subcommand dispatch, file checking, and interactive REPL (256 source files, 1,903 tests passing).
 
 ## Usage
 

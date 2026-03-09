@@ -200,8 +200,8 @@ mod tests {
     pub(super) fn test_backend_wit_package() {
         let mut backend = WasmComponentBackend::new("math-lib");
         backend.add_interface(build_math_interface());
-        let pkg = backend.emit_wit_package("oxilean:math", Some("0.1.0"));
-        assert!(pkg.contains("package oxilean:math@0.1.0"));
+        let pkg = backend.emit_wit_package("oxilean:math", Some("0.1.1"));
+        assert!(pkg.contains("package oxilean:math@0.1.1"));
         assert!(pkg.contains("interface arithmetic {"));
         assert!(pkg.contains("type num = f64"));
     }

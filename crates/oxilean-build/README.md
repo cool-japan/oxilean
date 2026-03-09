@@ -9,7 +9,7 @@
 
 The design is intentionally analogous to Cargo: OxiLean projects declare their dependencies in a manifest file, and `oxilean-build` resolves, fetches, and compiles them in the correct order.
 
-25,194 SLOC -- fully implemented build system.
+26,070 SLOC -- fully implemented build system (199 source files, 632 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -69,10 +69,10 @@ The resolver takes a set of version constraints from manifests and finds a consi
 
 ```text
 my-project:
-  depends: oxilean-std >= 0.1.0, < 0.2.0
+  depends: oxilean-std >= 0.1.1, < 0.2.0
            my-lib      >= 1.2.3
 
-Resolution -> oxilean-std@0.1.0, my-lib@1.5.0
+Resolution -> oxilean-std@0.1.1, my-lib@1.5.0
 ```
 
 ## Usage
@@ -81,7 +81,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-build = "0.1.0"
+oxilean-build = "0.1.1"
 ```
 
 ### Running a Build
@@ -100,7 +100,7 @@ executor.build("path/to/project")?;
 use oxilean_build::resolver::Resolver;
 
 let mut resolver = Resolver::new();
-resolver.add_constraint("oxilean-std", ">=0.1.0, <0.2.0");
+resolver.add_constraint("oxilean-std", ">=0.1.1, <0.2.0");
 let solution = resolver.solve()?;
 ```
 

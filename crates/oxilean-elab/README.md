@@ -7,7 +7,7 @@
 
 The elaborator translates surface syntax (from the parser) into kernel-checked terms. It handles type inference, implicit argument insertion, unification, pattern match compilation, and tactic execution. This crate is **untrusted** -- the kernel independently verifies all produced terms.
 
-91,008 SLOC -- fully implemented elaboration pipeline.
+92,415 SLOC -- fully implemented elaboration pipeline (466 source files, 3,165 tests passing).
 
 ## Architecture
 

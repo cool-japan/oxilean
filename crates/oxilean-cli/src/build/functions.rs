@@ -637,7 +637,7 @@ mod build_extended_tests {
     #[test]
     fn test_build_lockfile() {
         let mut lock = BuildLockfile::new();
-        lock.add_dep("std", "0.1.0", "abc123");
+        lock.add_dep("std", "0.1.1", "abc123");
         assert!(lock.find("std").is_some());
         let toml = lock.to_toml();
         assert!(toml.contains("std"));
@@ -680,7 +680,7 @@ pub fn num_cpus_estimate() -> usize {
 /// Return the build module version.
 #[allow(dead_code)]
 pub fn build_module_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod build_extra_tests {

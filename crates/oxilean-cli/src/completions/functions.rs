@@ -224,7 +224,7 @@ pub fn parse_shell_kind(s: &str) -> Option<ShellKind> {
 /// Return the completions module version string.
 #[allow(dead_code)]
 pub fn completions_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod rich_tests {

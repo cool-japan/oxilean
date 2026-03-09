@@ -11,7 +11,8 @@ The kernel is the core responsible for type checking in the Calculus of Inductiv
 
 - **Zero external dependencies** -- only `std` is used
 - **No `unsafe` code** -- enforced by `#![forbid(unsafe_code)]`
-- **113,179 SLOC** -- comprehensive implementation
+- **115,444 SLOC** -- comprehensive implementation (904 source files)
+- **3,095 tests passing** -- comprehensive coverage
 - **WASM-compatible** -- no system calls
 
 ## Module Overview

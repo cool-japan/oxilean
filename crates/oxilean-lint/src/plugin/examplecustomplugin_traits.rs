@@ -27,7 +27,7 @@ impl LintPlugin for ExampleCustomPlugin {
         "example_custom"
     }
     fn version(&self) -> &str {
-        "0.1.0"
+        "0.1.1"
     }
     fn rules(&self) -> Vec<Box<dyn LintRule>> {
         vec![Box::new(NoSorryRule), Box::new(PreferOmegaRule)]

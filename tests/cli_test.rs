@@ -156,7 +156,7 @@ fn create_test_project(path: &Path, name: &str) -> std::io::Result<()> {
     let config_content = format!(
         r#"[project]
 name = "{}"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Test Author"]
 description = "Test Project"
 

@@ -67,8 +67,7 @@ impl WasmOxiLean {
     /// Get REPL history
     #[wasm_bindgen]
     pub fn history(&self) -> Result<JsValue, JsError> {
-        serde_wasm_bindgen::to_value(self.inner.history())
-            .map_err(|e| JsError::new(&e.to_string()))
+        serde_wasm_bindgen::to_value(self.inner.history()).map_err(|e| JsError::new(&e.to_string()))
     }
 
     /// Clear REPL history

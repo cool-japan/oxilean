@@ -9,7 +9,7 @@
 
 Unlike the kernel -- which is the Trusted Computing Base (TCB) and must be auditable -- the runtime is **untrusted**: bugs here can cause incorrect evaluation results or crashes but never logical unsoundness (all terms are checked before reaching the runtime).
 
-31,115 SLOC -- fully implemented runtime system.
+31,676 SLOC -- fully implemented runtime system (253 source files, 969 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -56,7 +56,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-runtime = "0.1.0"
+oxilean-runtime = "0.1.1"
 ```
 
 ### Arena Allocation

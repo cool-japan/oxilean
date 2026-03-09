@@ -1,7 +1,8 @@
-//! Auto-generated module structure
-
-mod functions;
-mod functions_2;
-mod functions_3;
-mod functions_4;
+mod normalize;
+mod normalize_2;
+mod normalize_3;
+mod test_infra;
+mod tests_basic;
+mod tests_categories;
+mod tests_summary;
 mod types;

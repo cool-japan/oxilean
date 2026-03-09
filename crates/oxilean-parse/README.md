@@ -7,7 +7,7 @@
 
 Converts OxiLean source text (`.oxilean` files) into an abstract syntax tree (AST). This crate is **untrusted** -- bugs here can cause parse failures but never soundness issues, because the kernel independently type-checks all elaborated terms.
 
-61,225 SLOC -- fully implemented parser with lexer, AST, and error recovery.
+62,293 SLOC -- fully implemented parser with lexer, AST, and error recovery (335 source files, 2,153 tests passing).
 
 ## Architecture
 

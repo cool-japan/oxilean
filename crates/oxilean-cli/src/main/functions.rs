@@ -839,7 +839,7 @@ mod main_new_tests {
     }
     #[test]
     fn test_check_for_update_stub() {
-        assert!(check_for_update("0.1.0").is_none());
+        assert!(check_for_update("0.1.1").is_none());
     }
     #[test]
     fn test_telemetry_default_disabled() {

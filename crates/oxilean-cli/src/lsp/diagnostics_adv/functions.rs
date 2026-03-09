@@ -153,7 +153,7 @@ pub trait DiagnosticFilter: Send + Sync {
 /// Return the diagnostics_adv module version.
 #[allow(dead_code)]
 pub fn diagnostics_adv_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod adv_extra_tests {
@@ -386,7 +386,7 @@ mod adv_dedup_tests {
 /// Return the version string for this module.
 #[allow(dead_code)]
 pub fn diagnostics_adv_ext_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod rate_limiter_tests {

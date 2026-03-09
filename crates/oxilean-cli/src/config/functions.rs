@@ -965,11 +965,11 @@ mod config_ext2_tests {
         let ann = ConfigAnnotation::new("build.jobs")
             .tag("build")
             .example("4")
-            .since("0.1.0");
+            .since("0.1.1");
         let doc = ann.to_doc_string();
         assert!(doc.contains("build.jobs"));
         assert!(doc.contains("build"));
-        assert!(doc.contains("0.1.0"));
+        assert!(doc.contains("0.1.1"));
     }
     #[test]
     fn test_generate_config_docs() {

@@ -1950,7 +1950,7 @@ impl LspServer {
         let result = InitializeResult {
             capabilities: ServerCapabilities::oxilean_defaults(),
             server_name: "oxilean-lsp".to_string(),
-            server_version: "0.1.0".to_string(),
+            server_version: "0.1.1".to_string(),
         };
         result.to_json()
     }

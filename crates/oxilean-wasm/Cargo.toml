@@ -20,11 +20,11 @@ wasm-opt = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = { version = "0.2.114", optional = true }
+wasm-bindgen = { version = "0.2.105", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 serde-wasm-bindgen = { version = "0.6.5", optional = true }
-js-sys = { version = "0.3.83", optional = true }
+js-sys = { version = "0.3.82", optional = true }
 
 [features]
 default = []

@@ -641,7 +641,7 @@ pub trait WatcherSubscriber: Send + Sync {
 /// Return the watcher module version.
 #[allow(dead_code)]
 pub fn watcher_module_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod watcher_extra_tests {

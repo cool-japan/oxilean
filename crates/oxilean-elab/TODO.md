@@ -1,11 +1,11 @@
 # oxilean-elab — TODO
 
 > Task list for the elaborator crate.
-> Last updated: 2026-03-05
+> Last updated: 2026-03-09
 
 ## ✅ Completed
 
-- [x] Module structure (33 files, ~91,008 SLOC total)
+- [x] Module structure (466 files, ~92,415 SLOC total)
 - [x] `MetaVarId` type (u64 wrapper with derive traits)
 - [x] Re-exports in `lib.rs`
 
@@ -222,7 +222,7 @@
 
 ## 🐛 Known Issues
 
-None. All previously tracked issues have been resolved as of 2026-03-05.
+None. All previously tracked issues have been resolved as of 2026-03-09.
 
 ---
 

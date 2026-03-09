@@ -366,7 +366,7 @@ mod tests_compat_ext2 {
         assert!(!lib.optional);
         let desc = lib.describe();
         assert!(desc.contains("core"));
-        let opt = LibraryManifest::optional("tracing", "0.1.0");
+        let opt = LibraryManifest::optional("tracing", "0.1.1");
         assert!(opt.optional);
     }
     #[test]

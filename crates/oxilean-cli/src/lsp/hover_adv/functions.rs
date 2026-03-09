@@ -349,7 +349,7 @@ pub trait HoverInfoProvider: Send + Sync {
 /// Return the hover_adv module version.
 #[allow(dead_code)]
 pub fn hover_adv_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod hover_adv_extra_tests {

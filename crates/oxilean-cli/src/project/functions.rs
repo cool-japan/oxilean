@@ -522,7 +522,7 @@ pub fn init_project(path: &Path, options: ProjectInitOptions) -> Result<Project,
         dependencies: Vec::new(),
         source_dirs: vec![PathBuf::from("src"), PathBuf::from("lib")],
         output_dir: PathBuf::from("build"),
-        lean_version: "0.1.0".to_string(),
+        lean_version: "0.1.1".to_string(),
         extra_args: Vec::new(),
     };
     let config_path = path.join("oxilean.toml");
@@ -728,7 +728,7 @@ name = "my-project"
 version = "0.2.0"
 description = "A sample project"
 authors = ["Alice", "Bob"]
-lean_version = "0.1.0"
+lean_version = "0.1.1"
 
 [[dependencies]]
 name = "mathlib"
@@ -744,7 +744,7 @@ rev = "abc123"
         assert_eq!(config.version, "0.2.0");
         assert_eq!(config.description, "A sample project");
         assert_eq!(config.authors, vec!["Alice", "Bob"]);
-        assert_eq!(config.lean_version, "0.1.0");
+        assert_eq!(config.lean_version, "0.1.1");
     }
     #[test]
     fn test_load_dependencies() {
@@ -766,12 +766,12 @@ rev = "abc123"
         let toml = r#"
 [package]
 name = "test"
-version = "0.1.0"
-lean_version = "0.1.0"
+version = "0.1.1"
+lean_version = "0.1.1"
 
 [[dependencies]]
 name = "local-lib"
-version = "0.1.0"
+version = "0.1.1"
 path = "../local-lib"
 "#;
         let config = ProjectConfig::load(toml).expect("config operation should succeed");
@@ -795,7 +795,7 @@ path = "../local-lib"
     fn test_default_for() {
         let config = ProjectConfig::default_for("hello");
         assert_eq!(config.name, "hello");
-        assert_eq!(config.version, "0.1.0");
+        assert_eq!(config.version, "0.1.1");
         assert_eq!(config.source_dirs, vec![PathBuf::from("src")]);
         assert_eq!(config.output_dir, PathBuf::from("build"));
     }
@@ -1080,7 +1080,7 @@ path = "../local-lib"
                 },
                 LockEntry {
                     name: "std".into(),
-                    version: "0.1.0".into(),
+                    version: "0.1.1".into(),
                     source: "path+./std".into(),
                     checksum: None,
                 },
@@ -1149,7 +1149,7 @@ path = "../local-lib"
     }
     #[test]
     fn test_semver_validation() {
-        assert!(is_valid_semver("0.1.0"));
+        assert!(is_valid_semver("0.1.1"));
         assert!(is_valid_semver("1.2.3"));
         assert!(is_valid_semver("*"));
         assert!(!is_valid_semver("abc"));
@@ -1468,13 +1468,13 @@ path = "../local-lib"
     fn test_project_init_options_new() {
         let opts = ProjectInitOptions::new("test-proj".to_string());
         assert_eq!(opts.name, "test-proj");
-        assert_eq!(opts.version, "0.1.0");
+        assert_eq!(opts.version, "0.1.1");
         assert!(opts.with_git);
     }
     #[test]
     fn test_project_init_options_defaults() {
         let opts = ProjectInitOptions::new("proj".to_string());
-        assert_eq!(opts.version, "0.1.0");
+        assert_eq!(opts.version, "0.1.1");
         assert!(opts.authors.is_empty());
         assert!(opts.description.is_none());
         assert!(!opts.with_examples);
@@ -1537,7 +1537,7 @@ path = "../local-lib"
     }
     #[test]
     fn test_config_empty_sources() {
-        let toml = "[package]\nname = \"test\"\nversion = \"0.1.0\"\nsource_dirs = []\n";
+        let toml = "[package]\nname = \"test\"\nversion = \"0.1.1\"\nsource_dirs = []\n";
         let config = ProjectConfig::load(toml).expect("config operation should succeed");
         assert!(config.source_dirs.is_empty());
         assert!(config.validate().is_err());
@@ -1547,7 +1547,7 @@ path = "../local-lib"
         let toml = r#"
 [package]
 name = "test"
-version = "0.1.0"
+version = "0.1.1"
 source_dirs = ["src", "lib", "examples"]
 "#;
         let config = ProjectConfig::load(toml).expect("config operation should succeed");
@@ -1558,7 +1558,7 @@ source_dirs = ["src", "lib", "examples"]
         let toml = r#"
 [package]
 name = "test"
-version = "0.1.0"
+version = "0.1.1"
 output_dir = "target/olean"
 "#;
         let config = ProjectConfig::load(toml).expect("config operation should succeed");
@@ -1792,7 +1792,7 @@ output_dir = "target/olean"
         let config = ProjectConfig::default_for("test");
         let saved = config.save();
         assert!(saved.contains("test"));
-        assert!(saved.contains("0.1.0"));
+        assert!(saved.contains("0.1.1"));
     }
     #[test]
     fn test_config_serialization_preserves_structure() {
@@ -1811,7 +1811,7 @@ rev = "main"
 
 [[dependencies]]
 name = "local"
-version = "0.1.0"
+version = "0.1.1"
 path = "../local"
 "#;
         let config = ProjectConfig::load(toml).expect("config operation should succeed");

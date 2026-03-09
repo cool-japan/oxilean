@@ -1753,9 +1753,9 @@ mod lib_extra_tests {
     // ── PackageId ──
     #[test]
     fn package_id_slug() {
-        let id = PackageId::new("oxilean-core", "0.1.0");
-        assert_eq!(id.to_slug(), "oxilean-core@0.1.0");
-        assert_eq!(format!("{}", id), "oxilean-core@0.1.0");
+        let id = PackageId::new("oxilean-core", "0.1.1");
+        assert_eq!(id.to_slug(), "oxilean-core@0.1.1");
+        assert_eq!(format!("{}", id), "oxilean-core@0.1.1");
     }
 
     // ── BuildGraphNode ──
@@ -2251,8 +2251,8 @@ mod plugin_tests {
 
     #[test]
     fn oxilean_version_display() {
-        let v = OxileanVersion::new(0, 1, 0);
-        assert_eq!(format!("{}", v), "0.1.0");
+        let v = OxileanVersion::new(0, 1, 1);
+        assert_eq!(format!("{}", v), "0.1.1");
     }
 
     #[test]
@@ -2290,7 +2290,7 @@ mod plugin_tests {
 
 /// Returns the current build system API version.
 pub fn build_system_api_version() -> OxileanVersion {
-    OxileanVersion::new(0, 1, 0)
+    OxileanVersion::new(0, 1, 1)
 }
 
 #[cfg(test)]

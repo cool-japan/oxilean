@@ -372,7 +372,7 @@ pub use tokens::{Span, StringPart, Token, TokenKind};
 ///
 /// This follows semantic versioning: MAJOR.MINOR.PATCH.
 #[allow(missing_docs)]
-pub const PARSER_VERSION: &str = "0.1.0";
+pub const PARSER_VERSION: &str = "0.1.1";
 
 /// Configuration options for the parser.
 ///

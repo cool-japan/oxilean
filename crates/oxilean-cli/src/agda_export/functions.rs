@@ -860,7 +860,7 @@ mod tests {
 /// Return the agda_export module version.
 #[allow(dead_code)]
 pub fn agda_export_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod agda_extra_tests {

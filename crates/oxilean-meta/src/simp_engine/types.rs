@@ -390,12 +390,10 @@ impl SimpEngine {
                     self.stats.record_rewrite();
                     return Some(result);
                 }
-            } else {
-                if let Some(result) = self.try_unconditional_rewrite(ctx, expr, &entry) {
-                    ctx.record_rewrite();
-                    self.stats.record_rewrite();
-                    return Some(result);
-                }
+            } else if let Some(result) = self.try_unconditional_rewrite(ctx, expr, &entry) {
+                ctx.record_rewrite();
+                self.stats.record_rewrite();
+                return Some(result);
             }
         }
         None

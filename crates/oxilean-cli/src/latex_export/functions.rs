@@ -474,7 +474,7 @@ mod latex_extra_tests {
 /// Return the latex_export module version.
 #[allow(dead_code)]
 pub fn latex_export_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod latex_extra2_tests {

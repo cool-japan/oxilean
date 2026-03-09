@@ -17,7 +17,7 @@ impl Default for IncrementalConfig {
         Self {
             use_metadata_check: true,
             verify_cached: false,
-            compiler_version: "0.1.0".to_string(),
+            compiler_version: "0.1.1".to_string(),
             build_flags: Vec::new(),
             cache_dir: PathBuf::from(".oxilean-cache"),
             max_cache_bytes: 1024 * 1024 * 1024,

@@ -905,7 +905,7 @@ pub fn format_diagnostic_output(diag: &Diagnostic, format: DiagnosticOutputForma
 /// Return the diagnostics module version.
 #[allow(dead_code)]
 pub fn diagnostics_module_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 /// Return feature list for diagnostics module.
 #[allow(dead_code)]

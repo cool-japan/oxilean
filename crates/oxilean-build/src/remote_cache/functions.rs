@@ -326,10 +326,10 @@ mod extended_tests {
     }
     #[test]
     fn cache_key_namespace_key_for() {
-        let ns = CacheKeyNamespace::new("oxilean", "v0.1.0");
+        let ns = CacheKeyNamespace::new("oxilean", "v0.1.1");
         let key = ns.key_for("Mathlib.Data.Nat", "abc");
         assert!(key.module_name.contains("oxilean"));
-        assert!(key.module_name.contains("v0.1.0"));
+        assert!(key.module_name.contains("v0.1.1"));
     }
     #[test]
     fn lru_candidates_ordering() {
@@ -512,7 +512,7 @@ mod extra2_tests {
     }
     #[test]
     fn cache_segment_record_add_remove() {
-        let mut seg = CacheSegment::new("v0.1.0-x86_64");
+        let mut seg = CacheSegment::new("v0.1.1-x86_64");
         seg.record_add(1024);
         seg.record_add(2048);
         assert_eq!(seg.entry_count, 2);

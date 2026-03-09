@@ -1004,7 +1004,7 @@ mod tests {
 /// Return the commands module version.
 #[allow(dead_code)]
 pub fn commands_module_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod commands_extra_tests {

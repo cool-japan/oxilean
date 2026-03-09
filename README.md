@@ -14,7 +14,8 @@
 OxiLean is a **memory-safe, high-performance Interactive Theorem Prover (ITP)** written entirely in Rust with zero C/Fortran dependencies. Inspired by Lean 4, it brings formal verification to the Rust ecosystem with:
 
 - **Zero-dependency kernel** -- Trusted Computing Base with zero external crate dependencies
-- **1.2M+ lines of Rust** across 5,380 source files and 11 crates
+- **1.2M+ lines of Rust** across 5,367 source files and 11 crates
+- **29,831 tests passing** -- comprehensive test suite with zero warnings
 - **WASM support** -- Runs in the browser with no server required
 - **Full tactic framework** -- intro, apply, simp, ring, omega, and more
 - **Interactive REPL** -- Theorem proving from the command line
@@ -64,20 +65,20 @@ OxiLean is a **memory-safe, high-performance Interactive Theorem Prover (ITP)** 
 
 ## Workspace Crates
 
-| Crate | SLOC | Description |
-|-------|-----:|-------------|
-| `oxilean-kernel` | 113,179 | Trusted Computing Base -- type checking core (zero external deps) |
-| `oxilean-meta` | 150,298 | Metavar-aware WHNF, unification, type class synthesis, tactics |
-| `oxilean-parse` | 61,225 | Concrete syntax to abstract syntax parser |
-| `oxilean-elab` | 91,008 | Surface syntax to kernel terms elaborator |
-| `oxilean-cli` | 64,163 | Command-line interface with REPL |
-| `oxilean-std` | 413,202 | Standard library (mathematics, logic, data structures) |
-| `oxilean-codegen` | 240,840 | LCNF-based compilation and optimization code generator |
-| `oxilean-runtime` | 31,115 | Memory management, closures, I/O, task scheduling |
-| `oxilean-build` | 25,194 | Project compilation and dependency management |
-| `oxilean-lint` | 17,061 | Static analysis and lint rules |
-| `oxilean-wasm` | 381 | WebAssembly bindings (browser support) |
-| **Total** | **1,221,710** | **11 crates, 5,380 Rust files** |
+| Crate | SLOC | Tests | Description |
+|-------|-----:|------:|-------------|
+| `oxilean-kernel` | 115,444 | 3,095 | Trusted Computing Base -- type checking core (zero external deps) |
+| `oxilean-meta` | 152,716 | 5,184 | Metavar-aware WHNF, unification, type class synthesis, tactics |
+| `oxilean-parse` | 62,293 | 2,153 | Concrete syntax to abstract syntax parser |
+| `oxilean-elab` | 92,415 | 3,165 | Surface syntax to kernel terms elaborator |
+| `oxilean-cli` | 64,848 | 1,903 | Command-line interface with REPL |
+| `oxilean-std` | 416,133 | 6,929 | Standard library (mathematics, logic, data structures) |
+| `oxilean-codegen` | 243,915 | 4,570 | LCNF-based compilation and optimization code generator |
+| `oxilean-runtime` | 31,676 | 969 | Memory management, closures, I/O, task scheduling |
+| `oxilean-build` | 26,070 | 632 | Project compilation and dependency management |
+| `oxilean-lint` | 17,600 | 315 | Static analysis and lint rules |
+| `oxilean-wasm` | 510 | 11 | WebAssembly bindings (browser support) |
+| **Total** | **1,223,657** | **29,831** | **11 crates, 5,367 Rust files** |
 
 > Fun fact: The COCOMO cost estimate for this codebase is **$47M+**.
 
@@ -100,6 +101,31 @@ OxiLean is a **memory-safe, high-performance Interactive Theorem Prover (ITP)** 
 - **REPL mode**: interactive theorem proving shell
 - **File checking**: `oxilean check <file>` for `.oxilean` and `.lean` files
 - **REPL commands**: `:type`, `:check`, `:env`, `:clear`, `:help`, `:quit`
+
+### Mathlib4 Compatibility
+
+OxiLean includes a **syntax compatibility test suite** that parses real Lean 4 / Mathlib4 declarations after applying automated normalization. This measures how much of Mathlib4's surface syntax OxiLean can handle.
+
+- **7,759 Mathlib4 source files** parsed across 280+ categories
+- **181,890 declarations** tested -- **99.7% parse compatibility** (181,326 parsed OK)
+- Categories span all 28+ top-level Mathlib directories: Algebra, Analysis, CategoryTheory, Combinatorics, Data, FieldTheory, Geometry, GroupTheory, LinearAlgebra, Logic, MeasureTheory, NumberTheory, Order, Probability, RingTheory, SetTheory, Topology, and more
+
+**Track 1** (parser compat): Reads `.lean` files from a local Mathlib4 checkout, normalizes syntax (`=>` to `->`, Unicode shorthand, head binders to `forall`, 280+ Unicode operators, etc.), and parses with OxiLean. The normalization pipeline handles quantifier binders, set-builder notation, subscript indexing, proof replacement, and more.
+
+**Track 2** (curated theorems): 320 hand-adapted Mathlib4 theorems verified through parse + elaboration + tactic execution.
+
+To run these tests locally, create `.env.mathlib` in the project root:
+
+```bash
+# .env.mathlib
+MATHLIB4_ROOT=/path/to/mathlib4/Mathlib
+```
+
+```bash
+# Run mathlib compat tests (ignored by default in normal test runs)
+cargo test --test mathlib_compat_test -- --ignored --nocapture
+cargo test --test mathlib_theorems_test
+```
 
 ### WASM / npm
 
@@ -153,8 +179,11 @@ cargo test --workspace
 ### Running Tests
 
 ```bash
-# All tests
+# All tests (29,831 tests, ~78s)
 cargo test --workspace
+
+# With cargo-nextest (recommended)
+cargo nextest run --no-fail-fast
 
 # Kernel tests only
 cargo test -p oxilean-kernel
@@ -188,6 +217,21 @@ Contributions are welcome! This project follows:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
+## Sponsorship
+
+OxiLean is developed and maintained by **COOLJAPAN OU (Team Kitasan)**.
+
+If you find OxiLean useful, please consider sponsoring the project to support continued development of the Pure Rust ecosystem.
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-red?logo=github)](https://github.com/sponsors/cool-japan)
+
+**[https://github.com/sponsors/cool-japan](https://github.com/sponsors/cool-japan)**
+
+Your sponsorship helps us:
+- Maintain and improve the COOLJAPAN ecosystem
+- Keep the entire ecosystem (OxiBLAS, OxiFFT, SciRS2, etc.) 100% Pure Rust
+- Provide long-term support and security updates
+
 ## License
 
 Copyright (c) COOLJAPAN OU (Team Kitasan). Licensed under [Apache-2.0](LICENSE).
@@ -207,4 +251,4 @@ Copyright (c) COOLJAPAN OU (Team Kitasan). Licensed under [Apache-2.0](LICENSE).
 
 ---
 
-**v0.1.0** | Under active development
+**v0.1.1** | Under active development

@@ -1,11 +1,11 @@
 # oxilean-codegen — TODO
 
 > Task list for the code generation crate.
-> Last updated: 2026-03-05
+> Last updated: 2026-03-09
 
 ## ✅ Completed
 
-**Status**: COMPLETE — ~240,840 SLOC implemented across 13 source files
+**Status**: COMPLETE — ~243,915 SLOC implemented across 1,074 source files
 
 ### Code Generation Backends
 - [x] Rust code generation

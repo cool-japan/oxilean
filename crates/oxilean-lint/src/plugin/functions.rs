@@ -75,7 +75,7 @@ mod tests {
     fn test_custom_plugin_rules() {
         let plugin = ExampleCustomPlugin::new();
         assert_eq!(plugin.name(), "example_custom");
-        assert_eq!(plugin.version(), "0.1.0");
+        assert_eq!(plugin.version(), "0.1.1");
         let rules = plugin.rules();
         assert_eq!(rules.len(), 2);
         let names: Vec<&str> = rules.iter().map(|r| r.name()).collect();
@@ -89,16 +89,16 @@ mod tests {
     fn test_plugin_manifest() {
         let manifest = PluginManifest::new(
             "example_custom",
-            "0.1.0",
+            "0.1.1",
             "Example plugin",
             vec!["no_sorry".to_string(), "prefer_omega".to_string()],
         );
         assert_eq!(manifest.name, "example_custom");
-        assert_eq!(manifest.version, "0.1.0");
+        assert_eq!(manifest.version, "0.1.1");
         assert_eq!(manifest.rules.len(), 2);
         let text = manifest.to_text();
         assert!(text.contains("example_custom"));
-        assert!(text.contains("0.1.0"));
+        assert!(text.contains("0.1.1"));
         assert!(text.contains("no_sorry"));
         let loaded = load_plugin_from_manifest(&manifest);
         assert_eq!(loaded.name(), "example_custom");

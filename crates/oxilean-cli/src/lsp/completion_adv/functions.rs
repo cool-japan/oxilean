@@ -509,7 +509,7 @@ pub trait CompletionProvider: Send + Sync {
 /// Return the completion_adv module version.
 #[allow(dead_code)]
 pub fn completion_adv_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 #[cfg(test)]
 mod adv_completion_tests {

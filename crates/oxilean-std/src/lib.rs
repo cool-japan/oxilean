@@ -1006,7 +1006,7 @@ pub fn dependents_of(module: &str) -> Vec<&'static str> {
 
 /// OxiLean standard library version string.
 #[allow(dead_code)]
-pub const STD_VERSION: &str = "0.1.0";
+pub const STD_VERSION: &str = "0.1.1";
 
 /// Feature flags for optional standard library components.
 #[allow(dead_code)]

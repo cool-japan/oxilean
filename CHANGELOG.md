@@ -19,6 +19,49 @@ Copyright (c) COOLJAPAN OU (Team Kitasan)
 
 ---
 
+## [0.1.1] — 2026-03-09
+
+Mathlib4 compatibility leap: from 4,530 to 181,890 declarations tested, achieving 99.7% parse compatibility across the entire Mathlib4 codebase.
+
+### Added
+
+#### Mathlib4 Compatibility Test Suite
+- Expanded from 566 files / 47 categories to **7,759 files / 280+ categories**
+- Expanded from 4,530 declarations to **181,890 declarations** (99.7% parse rate)
+- Multi-line declaration extraction: joins indented continuation lines, strips line comments
+- Summary test scanning 31 top-level recursive directories + Archive + Counterexamples
+- Diagnostic test infrastructure for categorizing remaining parse failures
+- 769 tests total (19 basic + 750 category/summary tests), zero warnings
+
+#### Normalization Pipeline (normalize.rs, ~6,000 lines)
+- 280+ Unicode operator replacements (category theory, analysis, algebra, set theory, etc.)
+- `normalize_head_binders`: moves theorem head binders into `forall` type
+- `normalize_exists_quantifier`: desugars multi-binder `exists` into nested `Exists(fun ...)`
+- `normalize_psigma_binder`: wraps `PSigma x : T, body` into `PSigma (fun (x : T) -> body)`
+- `normalize_bounded_quantifiers`: `ISup k < n, body` into `ISup (fun k -> body)`
+- `normalize_big_prod_sum`: `BigProd` / `BigSum` with set membership
+- `normalize_set_literals`, `normalize_set_builder_notation`, `normalize_singleton_sets`
+- `normalize_subtype_sets`: `{ x : T // P }` into `Subtype T (fun x -> P)`
+- `normalize_exists_unique`: `exists! x, P` into `ExistsUnique (fun x -> P)`
+- `normalize_if_then_else_in_type`, `normalize_match_in_type`
+- `normalize_dot_anonymous_fn`: `(. < .)` into `(fun x y -> x < y)`
+- `normalize_star_type_suffix`: `beta*` into `beta_Star`
+- `normalize_finsum_finprod`: handles `finprod`/`finsum` with `U+1DA0` marker
+- `strip_universe_annotations`, `strip_attributes`, `strip_where_block`
+- `replace_proof_with_sorry`: `by <tactics>` into `sorry`
+- `parenthesize_dot_exprs`: `ident.field` into `(ident.field)`
+- `parenthesize_bare_forall_binders`: `forall h:` into `forall (h:)`
+- `strip_quantifier_binder_groups`, `strip_prop_condition_binders`
+- `fix_trailing_operator_before_sorry`, `fix_forall_no_body_before_assign`
+- `strip_orphan_close_brackets`, `strip_orphan_close_parens`
+- `balance_parens_before_sorry`, `fix_truncated_decl`
+- `^*` (fixed-points/pullback/dual) normalization
+
+### Changed
+- Test file structure reorganized: `normalize.rs`, `normalize_2.rs`, `normalize_3.rs`, `test_infra.rs`, `tests_basic.rs`, `tests_categories.rs`, `tests_summary.rs`, `types.rs`
+
+---
+
 ## [0.1.0] — 2026-03-05
 
 First release of OxiLean: a Lean4-inspired proof assistant kernel and toolchain
@@ -134,5 +177,6 @@ implemented in pure Rust. 1,221,710 SLOC across 11 crates and 5,380 files.
 
 ---
 
-[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/cool-japan/oxilean/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cool-japan/oxilean/releases/tag/v0.1.0

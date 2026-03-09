@@ -1248,7 +1248,7 @@ impl DeprecatedApiRule {
             DeprecatedEntry {
                 replacement: Some("[]".to_string()),
                 message: "use list literal syntax instead".to_string(),
-                since: Some("0.1.0".to_string()),
+                since: Some("0.1.1".to_string()),
             },
         );
         deprecated.insert(

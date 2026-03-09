@@ -2135,7 +2135,7 @@ impl LintRuleMetadata {
             description: String::new(),
             rationale: String::new(),
             examples: Vec::new(),
-            since_version: "0.1.0".to_string(),
+            since_version: "0.1.1".to_string(),
             deprecated: false,
         }
     }

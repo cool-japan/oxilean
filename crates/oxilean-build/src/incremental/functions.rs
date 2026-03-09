@@ -131,7 +131,7 @@ mod tests {
             source_fingerprint: fp,
             artifact_fingerprint: Fingerprint::zero(),
             dep_fingerprints: BTreeMap::new(),
-            compiler_version: "0.1.0".to_string(),
+            compiler_version: "0.1.1".to_string(),
             build_time: None,
             build_flags: Vec::new(),
         };
@@ -141,7 +141,7 @@ mod tests {
             &ArtifactKind::Object,
             &fp,
             &BTreeMap::new(),
-            "0.1.0",
+            "0.1.1",
         );
         assert!(found.is_some());
     }
@@ -332,13 +332,13 @@ open Nat
             source_fingerprint: fp,
             artifact_fingerprint: Fingerprint::zero(),
             dep_fingerprints: BTreeMap::new(),
-            compiler_version: "0.1.0".to_string(),
+            compiler_version: "0.1.1".to_string(),
             build_time: None,
             build_flags: Vec::new(),
         };
-        assert!(artifact.is_valid(&fp, &BTreeMap::new(), "0.1.0"));
+        assert!(artifact.is_valid(&fp, &BTreeMap::new(), "0.1.1"));
         let new_fp = Fingerprint::from_bytes(b"world");
-        assert!(!artifact.is_valid(&new_fp, &BTreeMap::new(), "0.1.0"));
+        assert!(!artifact.is_valid(&new_fp, &BTreeMap::new(), "0.1.1"));
         assert!(!artifact.is_valid(&fp, &BTreeMap::new(), "0.2.0"));
     }
     #[test]

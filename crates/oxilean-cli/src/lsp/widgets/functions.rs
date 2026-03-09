@@ -310,7 +310,7 @@ pub fn goal_viewer_to_json(state: &GoalViewerState) -> JsonValue {
 /// Return the version for the widgets module.
 #[allow(dead_code)]
 pub fn widgets_version() -> &'static str {
-    "0.1.0"
+    "0.1.1"
 }
 /// Return the set of supported widget kinds.
 #[allow(dead_code)]

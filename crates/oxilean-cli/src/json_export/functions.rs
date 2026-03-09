@@ -96,7 +96,7 @@ mod tests {
         let mut snap = EnvironmentSnapshot::new();
         snap.add_definition("Nat.double", "Nat -> Nat", Some("fun n => n + n"), &[]);
         snap.add_theorem("Nat.double_zero", "Nat.double 0 = 0", None);
-        snap.set_metadata("version", "0.1.0");
+        snap.set_metadata("version", "0.1.1");
         let json = snap.to_json();
         assert!(json.is_object());
         assert!(json.get("definitions").is_some());
@@ -769,7 +769,7 @@ mod json_export_extended_tests {
     }
     #[test]
     fn test_catalog_builder() {
-        let mut builder = CatalogBuilder::new("MyLib", "0.1.0");
+        let mut builder = CatalogBuilder::new("MyLib", "0.1.1");
         builder.add(ExportRecord {
             name: "bar".to_string(),
             kind: "lemma".to_string(),
