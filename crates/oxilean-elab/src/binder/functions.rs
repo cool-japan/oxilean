@@ -147,10 +147,8 @@ fn collect_unbound_vars_from_expr(ctx: &ElabContext, expr: &Expr) -> Vec<String>
 }
 fn collect_unbound_helper(ctx: &ElabContext, expr: &Expr, unbound: &mut Vec<String>) {
     match expr {
-        Expr::FVar(fvar) => {
-            if ctx.lookup_fvar(*fvar).is_none() {
-                unbound.push(format!("_fvar_{}", fvar.0));
-            }
+        Expr::FVar(fvar) if ctx.lookup_fvar(*fvar).is_none() => {
+            unbound.push(format!("_fvar_{}", fvar.0));
         }
         Expr::App(f, a) => {
             collect_unbound_helper(ctx, f, unbound);

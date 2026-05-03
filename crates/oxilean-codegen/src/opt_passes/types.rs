@@ -593,20 +593,8 @@ impl ConstantFoldingPass {
             "add" => Some(lhs.wrapping_add(rhs)),
             "sub" => Some(lhs.saturating_sub(rhs)),
             "mul" => Some(lhs.wrapping_mul(rhs)),
-            "div" => {
-                if rhs == 0 {
-                    None
-                } else {
-                    Some(lhs / rhs)
-                }
-            }
-            "mod" => {
-                if rhs == 0 {
-                    None
-                } else {
-                    Some(lhs % rhs)
-                }
-            }
+            "div" => lhs.checked_div(rhs),
+            "mod" => lhs.checked_rem(rhs),
             "min" => Some(lhs.min(rhs)),
             "max" => Some(lhs.max(rhs)),
             "pow" => Some(lhs.wrapping_pow(rhs as u32)),

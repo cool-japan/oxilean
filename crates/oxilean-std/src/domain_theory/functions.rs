@@ -154,7 +154,7 @@ pub fn denotation_ty() -> Expr {
 pub fn environment_model_ty() -> Expr {
     prop()
 }
-/// OperationalEquivalence: e₁ ≡ e₂ iff ∀C: C[e₁]↓ ↔ C[e₂]↓.
+/// OperationalEquivalence: e₁ ≡ e₂ iff ∀C: C\[e₁\]↓ ↔ C\[e₂\]↓.
 pub fn operational_equivalence_ty() -> Expr {
     prop()
 }
@@ -302,7 +302,7 @@ pub fn lifted_domain_ty() -> Expr {
 pub fn product_domain_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
 }
-/// FunctionSpaceDomain: [D → E] — the domain of Scott-continuous functions.
+/// FunctionSpaceDomain: \[D → E\] — the domain of Scott-continuous functions.
 pub fn function_space_domain_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
 }
@@ -478,7 +478,7 @@ pub fn well_bracketed_strategy_ty() -> Expr {
 pub fn pcf_type_ty() -> Expr {
     arrow(nat_ty(), prop())
 }
-/// PCFDenotation: semantic interpretation [[e]] of a PCF term.
+/// PCFDenotation: semantic interpretation [\[e\]] of a PCF term.
 pub fn pcf_denotation_ty() -> Expr {
     prop()
 }

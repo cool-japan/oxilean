@@ -17,7 +17,7 @@ pub struct StaggeredGrid1D {
     pub n: usize,
 }
 impl StaggeredGrid1D {
-    /// Create a uniform staggered grid on [0,1] with n cells.
+    /// Create a uniform staggered grid on \[0,1\] with n cells.
     pub fn uniform(n: usize) -> Self {
         let h = 1.0 / n as f64;
         let p_nodes = (0..n).map(|i| (i as f64 + 0.5) * h).collect();
@@ -63,7 +63,7 @@ pub struct DGMesh1D {
     pub n: usize,
 }
 impl DGMesh1D {
-    /// Create a uniform DG mesh on [a, b] with n cells.
+    /// Create a uniform DG mesh on \[a, b\] with n cells.
     pub fn uniform(a: f64, b: f64, n: usize) -> Self {
         let h = (b - a) / n as f64;
         let centers = (0..n).map(|i| a + (i as f64 + 0.5) * h).collect();
@@ -102,8 +102,8 @@ impl DGMesh1D {
 }
 /// Solver for mixed FEM saddle-point systems:
 ///
-///   [ A   B^T ] [ u ]   [ f ]
-///   [ B   0   ] [ p ] = [ g ]
+///   \[ A   B^T \] \[ u \]   \[ f \]
+///   \[ B   0   \] \[ p \] = \[ g \]
 ///
 /// using the preconditioned Uzawa iteration:
 ///   u_{k+1} = u_k - A⁻¹ (A u_k + B^T p_k - f)
@@ -181,8 +181,8 @@ impl MixedFEMSolver {
 ///
 /// Assembles the SIPG bilinear form:
 ///   a_{IP}(u,v) = Σ_K ∫_K ∇u·∇v dx
-///               - Σ_e ∫_e ({∇u}·n [v] + {∇v}·n [u]) ds
-///               + Σ_e (σ/h_e) ∫_e [u][v] ds
+///               - Σ_e ∫_e ({∇u}·n \[v\] + {∇v}·n \[u\]) ds
+///               + Σ_e (σ/h_e) ∫_e \[u\]\[v\] ds
 ///
 /// Implemented as a dense global matrix for small meshes.
 pub struct DGMethodStiffness {
@@ -398,7 +398,7 @@ impl AffineTriangleMap {
             [-self.b1[0] * inv_det, self.b0[0] * inv_det],
         ]
     }
-    /// Transform reference gradient [gxi, geta] to physical gradient [gx, gy].
+    /// Transform reference gradient \[gxi, geta\] to physical gradient \[gx, gy\].
     pub fn transform_grad(&self, g_ref: [f64; 2]) -> [f64; 2] {
         let bt_inv = self.inv_bt();
         [
@@ -582,15 +582,15 @@ impl DenseMatrix {
 /// A 2D triangular mesh with vertices and triangular elements.
 #[derive(Debug, Clone)]
 pub struct TriangularMesh2D {
-    /// Vertex coordinates: vertices[i] = (x, y).
+    /// Vertex coordinates: vertices\[i\] = (x, y).
     pub vertices: Vec<[f64; 2]>,
-    /// Triangular elements: triangles[k] = [i, j, l] (vertex indices, CCW).
+    /// Triangular elements: triangles\[k\] = \[i, j, l\] (vertex indices, CCW).
     pub triangles: Vec<[usize; 3]>,
     /// Boundary node flags.
     pub is_boundary: Vec<bool>,
 }
 impl TriangularMesh2D {
-    /// Create a structured triangular mesh on [0,1]² with n subdivisions per side.
+    /// Create a structured triangular mesh on \[0,1\]² with n subdivisions per side.
     pub fn unit_square(n: usize) -> Self {
         let h = 1.0 / n as f64;
         let mut vertices = Vec::new();
@@ -679,12 +679,12 @@ impl GaussQuadrature {
             degree_of_exactness: degree,
         }
     }
-    /// Gauss-Legendre 2-point rule on [-1, 1].
+    /// Gauss-Legendre 2-point rule on \[-1, 1\].
     pub fn gauss_legendre_2() -> Self {
         let p = 1.0 / (3.0f64).sqrt();
         GaussQuadrature::new(vec![-p, p], vec![1.0, 1.0], 3)
     }
-    /// Gauss-Legendre 3-point rule on [-1, 1].
+    /// Gauss-Legendre 3-point rule on \[-1, 1\].
     pub fn gauss_legendre_3() -> Self {
         GaussQuadrature::new(
             vec![-0.7745967, 0.0, 0.7745967],

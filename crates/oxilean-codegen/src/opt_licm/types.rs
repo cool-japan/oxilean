@@ -1631,3 +1631,96 @@ pub fn topo_sort_candidates(candidates: &[HoistCandidate]) -> Vec<HoistCandidate
     }
     result
 }
+
+// ── CFG-based LICM types ─────────────────────────────────────────────────────
+
+/// Information about a natural loop identified in a CFG.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LoopInfo {
+    /// Block index of the loop header (dominator of all blocks in the loop).
+    pub header: usize,
+    /// All block indices that make up the loop body (including the header).
+    pub body: Vec<usize>,
+    /// Optional preheader block index inserted before the loop header.
+    pub preheader: Option<usize>,
+    /// Back-edges `(from, to)` where `to` is the header.
+    pub back_edges: Vec<(usize, usize)>,
+}
+
+/// A single instruction within a CFG block, used for LICM analysis.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LicmInstruction {
+    /// Unique instruction identifier.
+    pub id: usize,
+    /// Human-readable expression string.
+    pub expr: String,
+    /// Identifiers of values this instruction uses as operands.
+    pub uses: Vec<usize>,
+    /// Identifiers defined (written) by this instruction.
+    pub defs: Vec<usize>,
+    /// Whether this instruction has been determined to be loop-invariant.
+    pub is_invariant: bool,
+}
+
+/// A basic block in the CFG used by the LICM analysis.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LicmBlock {
+    /// Block identifier.
+    pub id: usize,
+    /// Ordered list of instructions in this block.
+    pub instructions: Vec<LicmInstruction>,
+    /// Successor block ids.
+    pub successors: Vec<usize>,
+    /// Predecessor block ids.
+    pub predecessors: Vec<usize>,
+}
+
+/// A control-flow graph composed of `LicmBlock`s.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LicmCfg {
+    /// All blocks, indexed by `LicmBlock::id`.
+    pub blocks: Vec<LicmBlock>,
+    /// Entry block id.
+    pub entry: usize,
+}
+
+/// A candidate instruction identified as safe to hoist out of a loop.
+/// (CFG-based variant; see also the LCNF-based `HoistCandidate`.)
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct CfgHoistCandidate {
+    /// Id of the instruction to hoist.
+    pub instr_id: usize,
+    /// Id of the loop (index into the `LoopInfo` vec returned by `identify_loops`).
+    pub loop_id: usize,
+    /// Human-readable reason this instruction was selected.
+    pub reason: String,
+}
+
+/// Result produced by `run_licm`.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct LicmResult {
+    /// All hoisted candidates.
+    pub hoisted: Vec<CfgHoistCandidate>,
+    /// The (possibly mutated) CFG after hoisting.
+    pub cfg: LicmCfg,
+    /// Pass statistics.
+    pub stats: LicmStats,
+}
+
+/// Statistics collected during a single LICM pass run.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Default)]
+pub struct LicmStats {
+    /// Number of loops analysed.
+    pub loops_analyzed: usize,
+    /// Total instructions hoisted across all loops.
+    pub instructions_hoisted: usize,
+    /// Number of blocks whose instruction lists were modified.
+    pub blocks_modified: usize,
+}

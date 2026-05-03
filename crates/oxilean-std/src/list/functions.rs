@@ -1621,7 +1621,7 @@ pub fn list_range(n: Expr) -> Expr {
 }
 /// Build a list expression from a Rust Vec of element expressions.
 ///
-/// `mk_list_from_vec(elem_ty, vec![a, b, c])` produces
+/// `mk_list_from_vec(elem_ty, vec!\[a, b, c\])` produces
 /// `List.cons a (List.cons b (List.cons c (List.nil elem_ty)))`.
 #[allow(dead_code)]
 pub fn mk_list_from_vec(elem_ty: Expr, elems: Vec<Expr>) -> Expr {

@@ -137,7 +137,7 @@ impl SuccinctBitVector {
             n,
         }
     }
-    /// rank1(i): number of 1-bits in positions [0, i].
+    /// rank1(i): number of 1-bits in positions \[0, i\].
     pub fn rank1(&self, i: usize) -> usize {
         if i >= self.n {
             return self.popcount_total();
@@ -168,7 +168,7 @@ impl SuccinctBitVector {
         };
         sb_count + blk_count + word_bits
     }
-    /// rank0(i): number of 0-bits in positions [0, i].
+    /// rank0(i): number of 0-bits in positions \[0, i\].
     pub fn rank0(&self, i: usize) -> usize {
         i + 1 - self.rank1(i)
     }
@@ -304,7 +304,7 @@ pub struct WaveletTree {
     /// The alphabet range [lo, hi).
     lo: u64,
     hi: u64,
-    /// Per-level bit vectors: bits[level][i] = true if element goes right.
+    /// Per-level bit vectors: bits[level]\[i\] = true if element goes right.
     bits: Vec<Vec<bool>>,
     /// The sequence length.
     n: usize,
@@ -342,7 +342,7 @@ impl WaveletTree {
         self.build(data, lo, mid, level + 1, &mut left);
         self.build(data, mid, hi, level + 1, &mut right);
     }
-    /// Count occurrences of value `v` in range [l, r].
+    /// Count occurrences of value `v` in range \[l, r\].
     pub fn range_freq(&self, data: &[u64], l: usize, r: usize, v: u64) -> usize {
         if l > r || r >= self.n || v < self.lo || v >= self.hi {
             return 0;
@@ -820,7 +820,7 @@ impl Trie {
 /// This implementation uses a Vec-of-Vecs structure (no unsafe pointers).
 /// Each element is stored in the base level; higher levels hold express lanes.
 pub struct SkipList<T: Ord + Clone> {
-    /// Levels of sorted vectors; `levels[0]` is the base (all elements).
+    /// Levels of sorted vectors; `levels\[0\]` is the base (all elements).
     levels: Vec<Vec<T>>,
     max_levels: usize,
     /// Simple deterministic "random" source for level generation.

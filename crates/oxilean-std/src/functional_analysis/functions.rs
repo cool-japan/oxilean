@@ -577,7 +577,7 @@ pub fn spectral_radius(a: &BoundedOp, iterations: usize) -> f64 {
     }
     radius
 }
-/// Approximate the H^1 Sobolev norm of f on [a,b]:
+/// Approximate the H^1 Sobolev norm of f on \[a,b\]:
 /// ||f||_{H^1}^2 = ||f||_{L^2}^2 + ||f'||_{L^2}^2
 pub fn h1_norm_approx(f: &dyn Fn(f64) -> f64, a: f64, b: f64, n: usize) -> f64 {
     let l2_sq = l2_norm_approx(f, a, b, n).powi(2);
@@ -624,7 +624,7 @@ pub fn simpson_integrate(f: &dyn Fn(f64) -> f64, a: f64, b: f64, n: usize) -> f6
     }
     sum * h / 3.0
 }
-/// Gauss-Legendre 3-point quadrature on [a,b].
+/// Gauss-Legendre 3-point quadrature on \[a,b\].
 pub fn gauss_legendre_3(f: &dyn Fn(f64) -> f64, a: f64, b: f64) -> f64 {
     let mid = (a + b) / 2.0;
     let half = (b - a) / 2.0;
@@ -670,7 +670,7 @@ pub fn matrix_exponential(a: &BoundedOp, terms: usize) -> BoundedOp {
     }
     result
 }
-/// Commutator [A, B] = AB - BA.
+/// Commutator \[A, B\] = AB - BA.
 pub fn commutator(a: &BoundedOp, b: &BoundedOp) -> Option<BoundedOp> {
     let ab = a.compose(b)?;
     let ba = b.compose(a)?;
@@ -762,7 +762,7 @@ pub fn gauss_seidel_iteration(a: &BoundedOp, b: &RnVector, max_iter: usize, tol:
     }
     RnVector::new(x)
 }
-/// Compute Fourier sine coefficients on [0, L].
+/// Compute Fourier sine coefficients on \[0, L\].
 pub fn fourier_sine_coefficients(
     f: &dyn Fn(f64) -> f64,
     period: f64,
@@ -806,7 +806,7 @@ pub fn chebyshev_t(n: usize, x: f64) -> f64 {
     }
     t1
 }
-/// Chebyshev nodes on [a,b].
+/// Chebyshev nodes on \[a,b\].
 pub fn chebyshev_nodes(n: usize, a: f64, b: f64) -> Vec<f64> {
     (0..n)
         .map(|k| {
@@ -815,7 +815,7 @@ pub fn chebyshev_nodes(n: usize, a: f64, b: f64) -> Vec<f64> {
         })
         .collect()
 }
-/// Chebyshev interpolation coefficients for f on [a,b] at n nodes.
+/// Chebyshev interpolation coefficients for f on \[a,b\] at n nodes.
 pub fn chebyshev_coefficients(f: &dyn Fn(f64) -> f64, n: usize, a: f64, b: f64) -> Vec<f64> {
     let nodes = chebyshev_nodes(n, a, b);
     let values: Vec<f64> = nodes.iter().map(|&x| f(x)).collect();
@@ -835,7 +835,7 @@ pub fn chebyshev_coefficients(f: &dyn Fn(f64) -> f64, n: usize, a: f64, b: f64) 
     }
     coeffs
 }
-/// Evaluate Chebyshev series at point x on [a,b].
+/// Evaluate Chebyshev series at point x on \[a,b\].
 pub fn eval_chebyshev(coeffs: &[f64], a: f64, b: f64, x: f64) -> f64 {
     let t = 2.0 * (x - a) / (b - a) - 1.0;
     coeffs

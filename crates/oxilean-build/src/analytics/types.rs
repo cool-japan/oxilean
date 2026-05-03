@@ -186,7 +186,7 @@ impl BuildAnalytics {
             }
         }
         let mut sorted: Vec<(String, u64)> = file_durations.into_iter().collect();
-        sorted.sort_by(|a, b| b.1.cmp(&a.1));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.1));
         sorted.truncate(n);
         sorted
     }
@@ -1207,7 +1207,7 @@ impl CompilerFlagAnalytics {
             .iter()
             .map(|(k, &v)| (k.as_str(), v))
             .collect();
-        v.sort_by(|a, b| b.1.cmp(&a.1));
+        v.sort_by_key(|b| std::cmp::Reverse(b.1));
         v.truncate(n);
         v
     }

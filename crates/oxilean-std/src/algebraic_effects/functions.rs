@@ -317,7 +317,7 @@ pub fn effect_var_ty() -> Expr {
     type0()
 }
 /// `EffectScheme : EffectVar → Type → Type`
-/// An effect-polymorphic type scheme: ∀ ε, A[ε].
+/// An effect-polymorphic type scheme: ∀ ε, A\[ε\].
 pub fn effect_scheme_ty() -> Expr {
     arrow(cst("EffectVar"), arrow(type0(), type0()))
 }

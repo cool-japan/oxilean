@@ -78,7 +78,7 @@ impl RiskSensitiveCost {
         }
         tail.iter().sum::<f64>() / tail.len() as f64
     }
-    /// Entropic risk measure: ρ_θ(X) = (1/θ) log E[exp(θ X)].
+    /// Entropic risk measure: ρ_θ(X) = (1/θ) log E\[exp(θ X)\].
     pub fn entropic_risk(&self, samples: &[f64]) -> f64 {
         if samples.is_empty() {
             return 0.0;
@@ -138,10 +138,10 @@ pub struct MeanFieldGameSolver {
     pub num_states: usize,
     /// Number of actions.
     pub num_actions: usize,
-    /// Transition kernel (state-dependent on population): T[s][a][s'].
+    /// Transition kernel (state-dependent on population): T\[s\]\[a\][s'].
     pub transitions: Vec<Vec<Vec<f64>>>,
     /// Reward (depends on state, action, mean population weight).
-    /// reward[s][a] — simplified to not depend on μ for tractability.
+    /// reward\[s\]\[a\] — simplified to not depend on μ for tractability.
     pub rewards: Vec<Vec<f64>>,
     /// Discount factor.
     pub discount: f64,
@@ -272,15 +272,15 @@ impl SDGame {
 }
 /// Zero-sum stochastic differential game.
 ///
-/// Two players minimise/maximise J = E[∫ L(x,u,v) dt + g(x_T)].
+/// Two players minimise/maximise J = E\[∫ L(x,u,v) dt + g(x_T)\].
 /// Here we represent the saddle value and equilibrium strategies as numeric tables.
 #[derive(Debug, Clone)]
 pub struct ZeroSumSDG {
-    /// Value function table: `value[s]` = saddle value from state s.
+    /// Value function table: `value\[s\]` = saddle value from state s.
     pub value: Vec<f64>,
-    /// Minimising player strategy: `min_strategy[s]` = optimal action index.
+    /// Minimising player strategy: `min_strategy\[s\]` = optimal action index.
     pub min_strategy: Vec<usize>,
-    /// Maximising player strategy: `max_strategy[s]` = optimal action index.
+    /// Maximising player strategy: `max_strategy\[s\]` = optimal action index.
     pub max_strategy: Vec<usize>,
 }
 impl ZeroSumSDG {
@@ -329,9 +329,9 @@ pub struct ValueIteration {
     pub num_states: usize,
     /// Number of actions.
     pub num_actions: usize,
-    /// Transition probabilities T[s][a][s'].
+    /// Transition probabilities T\[s\]\[a\][s'].
     pub transitions: Vec<Vec<Vec<f64>>>,
-    /// Reward R[s][a].
+    /// Reward R\[s\]\[a\].
     pub rewards: Vec<Vec<f64>>,
     /// Discount factor γ.
     pub discount: f64,
@@ -399,7 +399,7 @@ impl ValueIteration {
 /// State-action value function Q^π(s,a).
 #[derive(Debug, Clone)]
 pub struct ActionValueFunction {
-    /// `q[s][a]` = Q(s, a).
+    /// `q\[s\]\[a\]` = Q(s, a).
     pub q: Vec<Vec<f64>>,
 }
 impl ActionValueFunction {
@@ -429,8 +429,8 @@ impl ActionValueFunction {
 ///
 /// - `num_states`: |S|
 /// - `num_actions`: |A|
-/// - `transitions[s][a][s']`: P(s' | s, a)
-/// - `rewards[s][a]`: R(s, a)
+/// - `transitions\[s\]\[a\][s']`: P(s' | s, a)
+/// - `rewards\[s\]\[a\]`: R(s, a)
 /// - `discount`: γ ∈ [0,1)
 #[derive(Debug, Clone)]
 pub struct MDP {
@@ -438,9 +438,9 @@ pub struct MDP {
     pub num_states: usize,
     /// Number of actions.
     pub num_actions: usize,
-    /// Transition probabilities: `transitions[s][a]` is a probability vector over next states.
+    /// Transition probabilities: `transitions\[s\]\[a\]` is a probability vector over next states.
     pub transitions: Vec<Vec<Vec<f64>>>,
-    /// Expected reward: `rewards[s][a]`.
+    /// Expected reward: `rewards\[s\]\[a\]`.
     pub rewards: Vec<Vec<f64>>,
     /// Discount factor γ ∈ [0,1).
     pub discount: f64,
@@ -548,7 +548,7 @@ impl MDP {
 /// Off-policy TD control: Q(s,a) ← Q(s,a) + α(r + γ max_a' Q(s',a') − Q(s,a)).
 #[derive(Debug, Clone)]
 pub struct QLearning {
-    /// Q-value table: `q[s][a]`.
+    /// Q-value table: `q\[s\]\[a\]`.
     pub q: Vec<Vec<f64>>,
     /// Learning rate α ∈ (0,1].
     pub alpha: f64,
@@ -704,9 +704,9 @@ pub struct BeliefMDP {
     pub num_actions: usize,
     /// Number of observations.
     pub num_obs: usize,
-    /// Transition probabilities T[s][a][s'].
+    /// Transition probabilities T\[s\]\[a\][s'].
     pub transitions: Vec<Vec<Vec<f64>>>,
-    /// Observation probabilities Z[s'][a][o].
+    /// Observation probabilities Z[s']\[a\]\[o\].
     pub observations: Vec<Vec<Vec<f64>>>,
 }
 impl BeliefMDP {
@@ -1015,11 +1015,11 @@ pub enum MFGType {
 }
 /// Policy gradient agent (softmax parameterisation).
 ///
-/// Policy: π_θ(a|s) = exp(θ[s][a]) / Σ exp(θ[s][a'])
-/// Update: θ[s][a] += α · ∇_θ log π_θ(a|s) · G where G is the return.
+/// Policy: π_θ(a|s) = exp(θ\[s\]\[a\]) / Σ exp(θ\[s\][a'])
+/// Update: θ\[s\]\[a\] += α · ∇_θ log π_θ(a|s) · G where G is the return.
 #[derive(Debug, Clone)]
 pub struct PolicyGradient {
-    /// Policy parameter table θ[s][a].
+    /// Policy parameter table θ\[s\]\[a\].
     pub theta: Vec<Vec<f64>>,
     /// Learning rate α.
     pub alpha: f64,
@@ -1053,7 +1053,7 @@ impl PolicyGradient {
             self.theta[s][b] += self.alpha * grad_log * g;
         }
     }
-    /// Expected return from state `s` as E_π[Q(s,a)].
+    /// Expected return from state `s` as E_π\[Q(s,a)\].
     pub fn expected_return(&self, s: usize, q: &ActionValueFunction) -> f64 {
         let pi = self.softmax(s);
         pi.iter().enumerate().map(|(a, &p)| p * q.get(s, a)).sum()
@@ -1084,7 +1084,7 @@ impl PolicyGradient {
 /// Q-learning solver with epsilon-greedy exploration and decaying step size.
 #[derive(Debug, Clone)]
 pub struct QLearningSolver {
-    /// Q-value table Q[s][a].
+    /// Q-value table Q\[s\]\[a\].
     pub q: Vec<Vec<f64>>,
     /// Learning rate α.
     pub alpha: f64,
@@ -1260,7 +1260,7 @@ impl AlmostSureStability {
 /// Deterministic policy π: S → A.
 #[derive(Debug, Clone)]
 pub struct Policy {
-    /// `table[s]` = action chosen in state s.
+    /// `table\[s\]` = action chosen in state s.
     pub table: Vec<usize>,
 }
 impl Policy {

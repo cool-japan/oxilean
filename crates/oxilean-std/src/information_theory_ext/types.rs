@@ -321,7 +321,7 @@ impl RenyiEntropy {
 /// Rate-distortion theory: finding the minimum rate required to encode a
 /// source with a given average distortion constraint.
 ///
-/// `source_dist[i]` = P(X = i) for a discrete memoryless source.
+/// `source_dist\[i\]` = P(X = i) for a discrete memoryless source.
 /// `distortion_limit` = D, the maximum allowable expected distortion.
 pub struct RateDistortion {
     pub source_dist: Vec<f64>,
@@ -465,7 +465,7 @@ impl ChernoffInformation {
         }
         -s.log2()
     }
-    /// Compute the Chernoff information C(P, Q) = max_{λ ∈ [0,1]} e(λ)
+    /// Compute the Chernoff information C(P, Q) = max_{λ ∈ \[0,1\]} e(λ)
     /// via golden-section search.
     pub fn chernoff_information(&self) -> f64 {
         let phi = (5.0f64.sqrt() - 1.0) / 2.0;
@@ -769,9 +769,9 @@ impl QuantumEntropyEstimator {
     }
 }
 /// Simulates common single-qubit quantum channels acting on a qubit density
-/// matrix represented as a 2×2 real matrix [a, b; c, d] stored as [a, b, c, d].
+/// matrix represented as a 2×2 real matrix \[a, b; c, d\] stored as \[a, b, c, d\].
 pub struct QuantumChannelSimulator {
-    /// Noise parameter p ∈ [0, 1].
+    /// Noise parameter p ∈ \[0, 1\].
     pub p: f64,
 }
 impl QuantumChannelSimulator {
@@ -783,7 +783,7 @@ impl QuantumChannelSimulator {
     /// Apply the depolarizing channel N_dep(ρ) = (1-p)ρ + (p/3)(XρX + YρY + ZρZ)
     ///        = (1 - 4p/3) ρ + (4p/3) * I/2.
     ///
-    /// For a 2×2 density matrix [ρ₀₀, ρ₀₁; ρ₁₀, ρ₁₁] stored as [ρ₀₀, ρ₀₁, ρ₁₀, ρ₁₁].
+    /// For a 2×2 density matrix \[ρ₀₀, ρ₀₁; ρ₁₀, ρ₁₁\] stored as \[ρ₀₀, ρ₀₁, ρ₁₀, ρ₁₁\].
     pub fn depolarizing(&self, rho: &[f64]) -> Vec<f64> {
         assert_eq!(
             rho.len(),
@@ -801,7 +801,7 @@ impl QuantumChannelSimulator {
     }
     /// Apply the amplitude-damping channel with decay parameter γ = p.
     ///
-    /// Kraus operators: K₀ = [[1, 0], [0, √(1-γ)]], K₁ = [[0, √γ], [0, 0]].
+    /// Kraus operators: K₀ = [\[1, 0\], \[0, √(1-γ)\]], K₁ = [\[0, √γ\], \[0, 0\]].
     pub fn amplitude_damping(&self, rho: &[f64]) -> Vec<f64> {
         assert_eq!(
             rho.len(),

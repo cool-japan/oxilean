@@ -156,11 +156,9 @@ impl DeclValidator {
             self.errors.push(ValidationError::EmptyName);
         }
         match decl {
-            PendingDecl::Theorem { name, proof, .. } => {
-                if expr_contains_sorry(proof) {
-                    self.warnings
-                        .push(ValidationWarning::SorryProof(name.clone()));
-                }
+            PendingDecl::Theorem { name, proof, .. } if expr_contains_sorry(proof) => {
+                self.warnings
+                    .push(ValidationWarning::SorryProof(name.clone()));
             }
             PendingDecl::Inductive { name, ctors, .. } => {
                 if ctors.is_empty() {

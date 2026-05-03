@@ -238,17 +238,17 @@ pub enum CtlFormula {
     EG(Box<CtlFormula>),
     /// AG φ — all paths have G φ
     AG(Box<CtlFormula>),
-    /// EU: E[φ U ψ]
+    /// EU: E\[φ U ψ\]
     EU(Box<CtlFormula>, Box<CtlFormula>),
-    /// AU: A[φ U ψ]
+    /// AU: A\[φ U ψ\]
     AU(Box<CtlFormula>, Box<CtlFormula>),
 }
 impl CtlFormula {
-    /// EF φ = E[⊤ U φ]
+    /// EF φ = E\[⊤ U φ\]
     pub fn ef(phi: CtlFormula) -> Self {
         CtlFormula::EF(Box::new(phi))
     }
-    /// AF φ = A[⊤ U φ]
+    /// AF φ = A\[⊤ U φ\]
     pub fn af(phi: CtlFormula) -> Self {
         CtlFormula::AF(Box::new(phi))
     }
@@ -260,7 +260,7 @@ impl CtlFormula {
     pub fn eg(phi: CtlFormula) -> Self {
         CtlFormula::EG(Box::new(phi))
     }
-    /// EU[φ ψ]
+    /// EU\[φ ψ\]
     pub fn eu(a: CtlFormula, b: CtlFormula) -> Self {
         CtlFormula::EU(Box::new(a), Box::new(b))
     }
@@ -771,7 +771,7 @@ impl<'a> CtlChecker<'a> {
         }
         current
     }
-    /// E[φ U ψ] = lfp X. ψ ∨ (φ ∧ EX X)
+    /// E\[φ U ψ\] = lfp X. ψ ∨ (φ ∧ EX X)
     fn sat_eu(&self, sat_phi: &HashSet<usize>, sat_psi: &HashSet<usize>) -> HashSet<usize> {
         let mut current = sat_psi.clone();
         loop {
@@ -785,7 +785,7 @@ impl<'a> CtlChecker<'a> {
         }
         current
     }
-    /// A[φ U ψ] = lfp X. ψ ∨ (φ ∧ AX X)
+    /// A\[φ U ψ\] = lfp X. ψ ∨ (φ ∧ AX X)
     fn sat_au(&self, sat_phi: &HashSet<usize>, sat_psi: &HashSet<usize>) -> HashSet<usize> {
         let mut current = sat_psi.clone();
         loop {
@@ -821,7 +821,7 @@ pub struct ConcurrentGame {
     pub n_states: usize,
     /// Number of agents.
     pub n_agents: usize,
-    /// Actions available to agent i at state s: actions[s][i] = count.
+    /// Actions available to agent i at state s: actions\[s\]\[i\] = count.
     pub actions: HashMap<usize, Vec<usize>>,
     /// Transition: (state, joint_action) → next_state.
     pub delta: HashMap<(usize, Vec<usize>), usize>,
@@ -1084,7 +1084,7 @@ pub enum MuFormula {
     Or(Box<MuFormula>, Box<MuFormula>),
     /// ⟨a⟩φ (diamond modality)
     Diamond(Box<MuFormula>),
-    /// [a]φ (box modality)
+    /// \[a\]φ (box modality)
     Box(Box<MuFormula>),
     /// μX.φ (least fixpoint)
     Mu(MuVar, Box<MuFormula>),
@@ -1102,7 +1102,7 @@ impl MuFormula {
             )),
         )
     }
-    /// AG φ = νX. φ ∧ [a]X
+    /// AG φ = νX. φ ∧ \[a\]X
     pub fn ag(phi: MuFormula) -> Self {
         MuFormula::Nu(
             "X".into(),

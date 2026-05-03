@@ -314,7 +314,7 @@ fn test_diag_error_categories() {
     );
     println!("\nTotal: {total}, OK: {ok}, Fail: {}", total - ok);
     let mut sorted: Vec<_> = error_counts.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted.sort_by_key(|a| std::cmp::Reverse(a.1));
     for (msg, count) in &sorted {
         println!("\n{count:>5} | {msg}");
         if let Some(exs) = error_examples.get(msg) {

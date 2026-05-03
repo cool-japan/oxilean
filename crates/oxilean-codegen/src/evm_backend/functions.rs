@@ -86,6 +86,51 @@ mod tests {
         assert_ne!(sel, sel3);
     }
     #[test]
+    pub(super) fn test_compute_selector_canonical_ethereum_values() {
+        // These are the canonical Ethereum ABI selectors per the specification.
+        // Verify: first 4 bytes of keccak256(canonical_signature).
+        assert_eq!(
+            EvmBackend::compute_selector("transfer(address,uint256)"),
+            [0xa9, 0x05, 0x9c, 0xbb],
+            "transfer(address,uint256) selector mismatch"
+        );
+        assert_eq!(
+            EvmBackend::compute_selector("balanceOf(address)"),
+            [0x70, 0xa0, 0x82, 0x31],
+            "balanceOf(address) selector mismatch"
+        );
+        assert_eq!(
+            EvmBackend::compute_selector("approve(address,uint256)"),
+            [0x09, 0x5e, 0xa7, 0xb3],
+            "approve(address,uint256) selector mismatch"
+        );
+        assert_eq!(
+            EvmBackend::compute_selector("allowance(address,address)"),
+            [0xdd, 0x62, 0xed, 0x3e],
+            "allowance(address,address) selector mismatch"
+        );
+        assert_eq!(
+            EvmBackend::compute_selector("totalSupply()"),
+            [0x18, 0x16, 0x0d, 0xdd],
+            "totalSupply() selector mismatch"
+        );
+        // Additional well-known selector: ERC-721 ownerOf(uint256) → 0x6352211e
+        assert_eq!(
+            EvmBackend::compute_selector("ownerOf(uint256)"),
+            [0x63, 0x52, 0x21, 0x1e],
+            "ownerOf(uint256) selector mismatch"
+        );
+    }
+    #[test]
+    pub(super) fn test_evm_keccak256_known_value() {
+        // keccak256("") = c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
+        let hash = super::evm_keccak256(b"");
+        assert_eq!(hash[0], 0xc5);
+        assert_eq!(hash[1], 0xd2);
+        assert_eq!(hash[2], 0x46);
+        assert_eq!(hash[3], 0x01);
+    }
+    #[test]
     pub(super) fn test_build_arithmetic_function() {
         let sel = EvmBackend::compute_selector("add(uint256,uint256)");
         let func = EvmBackend::build_arithmetic_function(
@@ -532,13 +577,15 @@ pub fn evm_mangle_identifier(name: &str) -> String {
         })
         .collect()
 }
-/// EVM keccak mock (for selector computation placeholder)
+/// Compute the full 32-byte keccak256 hash of the given input bytes.
+/// Used internally for ABI selector computation and other EVM-level hashing.
 #[allow(dead_code)]
-pub fn evm_keccak_placeholder(input: &[u8]) -> [u8; 32] {
+pub fn evm_keccak256(input: &[u8]) -> [u8; 32] {
+    use tiny_keccak::{Hasher, Keccak};
+    let mut keccak = Keccak::v256();
     let mut out = [0u8; 32];
-    for (i, &b) in input.iter().take(32).enumerate() {
-        out[i] = b;
-    }
+    keccak.update(input);
+    keccak.finalize(&mut out);
     out
 }
 /// EVM is valid selector

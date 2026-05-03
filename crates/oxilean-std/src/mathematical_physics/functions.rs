@@ -302,7 +302,7 @@ pub fn schrodinger_equation_ty() -> Expr {
     )
 }
 /// Uncertainty principle (Robertson-Heisenberg):
-/// ΔA · ΔB ≥ ½|⟨[A,B]⟩|.
+/// ΔA · ΔB ≥ ½|⟨\[A,B\]⟩|.
 /// UncertaintyPrinciple : ∀ (H : HilbertSpace) (A B : Observable H),
 ///   UncertaintyBound A B
 pub fn uncertainty_principle_ty() -> Expr {
@@ -367,7 +367,7 @@ pub fn born_rule_ty() -> Expr {
         ),
     )
 }
-/// Path integral formulation: ⟨xf|xi⟩ = ∫ Dq exp(iS[q]/ħ).
+/// Path integral formulation: ⟨xf|xi⟩ = ∫ Dq exp(iS\[q\]/ħ).
 /// PathIntegral : (M : Type) → (L : Lagrangian M) → (xi xf : M) → Complex
 pub fn path_integral_ty() -> Expr {
     pi(
@@ -382,7 +382,7 @@ pub fn path_integral_ty() -> Expr {
         ),
     )
 }
-/// Free scalar field action: S[φ] = ∫ (½(∂φ)² − ½m²φ²) d⁴x.
+/// Free scalar field action: S\[φ\] = ∫ (½(∂φ)² − ½m²φ²) d⁴x.
 /// FreeScalarFieldAction : (m : Real) → (phi : ScalarField Spacetime) → Real
 pub fn free_scalar_field_action_ty() -> Expr {
     arrow(
@@ -415,7 +415,7 @@ pub fn annihilation_operator_ty() -> Expr {
         app(cst("Operator"), app(cst("FockSpace"), cst("H1"))),
     )
 }
-/// Canonical commutation relations: [a, a†] = 1.
+/// Canonical commutation relations: \[a, a†\] = 1.
 /// CanonicalCommutationRelation : ∀ H1, CommutatorEq (AnnihilationOp H1) (CreationOp H1) Identity
 pub fn canonical_commutation_relation_ty() -> Expr {
     pi(
@@ -461,7 +461,7 @@ pub fn wicks_theorem_ty() -> Expr {
         ),
     )
 }
-/// Yang-Mills action: S[A] = −¼ ∫ tr(F ∧ ★F).
+/// Yang-Mills action: S\[A\] = −¼ ∫ tr(F ∧ ★F).
 /// YangMillsAction : (G : LieGroup) → (A : Connection G Spacetime) → Real
 pub fn yang_mills_action_ty() -> Expr {
     pi(
@@ -484,7 +484,7 @@ pub fn yang_mills_equations_ty() -> Expr {
         arrow(app2(cst("Connection"), cst("G"), cst("Spacetime")), prop()),
     )
 }
-/// Chern-Simons action: S[A] = (k/4π) ∫ tr(A ∧ dA + ⅔ A ∧ A ∧ A).
+/// Chern-Simons action: S\[A\] = (k/4π) ∫ tr(A ∧ dA + ⅔ A ∧ A ∧ A).
 /// ChernSimonsAction : (G : LieGroup) (M : 3Manifold) (k : Int) → (A : Connection G M) → Real
 pub fn chern_simons_action_ty() -> Expr {
     pi(
@@ -535,7 +535,7 @@ pub fn hawking_radiation_ty() -> Expr {
 pub fn polyakov_action_ty() -> Expr {
     arrow(real_ty(), arrow(cst("WorldsheetMap"), real_ty()))
 }
-/// Virasoro algebra: central extension of the Witt algebra; [L_m, L_n] = (m−n)L_{m+n} + c/12(m³−m)δ.
+/// Virasoro algebra: central extension of the Witt algebra; \[L_m, L_n\] = (m−n)L_{m+n} + c/12(m³−m)δ.
 /// VirasoroAlgebra : (c : Real) → LieAlgebra
 pub fn virasoro_algebra_ty() -> Expr {
     arrow(real_ty(), cst("LieAlgebra"))
@@ -576,7 +576,7 @@ pub fn wzw_action_ty() -> Expr {
         ),
     )
 }
-/// Lax pair representation: isospectral deformation dL/dt = [M, L].
+/// Lax pair representation: isospectral deformation dL/dt = \[M, L\].
 /// LaxPair : (L M : MatrixField) → Prop
 pub fn lax_pair_ty() -> Expr {
     arrow(cst("MatrixField"), arrow(cst("MatrixField"), prop()))
@@ -957,7 +957,7 @@ pub fn mp_ext_voa_vacuum_ty() -> Expr {
 pub fn mp_ext_voa_translation_ty() -> Expr {
     arrow(cst("VOA"), app(cst("Endomorphism"), cst("VOA")))
 }
-/// VOAStateFieldCorrespondence: the state-field map Y : V → End(V)[[z, z⁻¹]].
+/// VOAStateFieldCorrespondence: the state-field map Y : V → End(V)[\[z, z⁻¹\]].
 /// VOAStateField : (V : VOA) → StateFieldMap V
 pub fn mp_ext_voa_state_field_ty() -> Expr {
     arrow(cst("VOA"), app(cst("StateFieldMap"), cst("VOA")))

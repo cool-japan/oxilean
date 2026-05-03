@@ -82,11 +82,7 @@ pub fn color_blue(text: &str, mode: ColorMode) -> String {
 ///
 /// Returns a string like `"========--------"`.
 pub fn render_bar(current: usize, total: usize, width: usize, fill: char, empty: char) -> String {
-    let filled = if total == 0 {
-        width
-    } else {
-        (current * width) / total
-    };
+    let filled = (current * width).checked_div(total).unwrap_or(width);
     let empty_count = width.saturating_sub(filled);
     format!(
         "{}{}",

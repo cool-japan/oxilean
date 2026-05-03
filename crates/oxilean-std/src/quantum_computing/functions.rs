@@ -244,12 +244,12 @@ pub fn qaoa_approximation_ty() -> Expr {
     pi(BinderInfo::Default, "p", nat_ty(), prop())
 }
 /// `StabilizerCode : Nat → Nat → Type`
-/// An [[n, k]] stabilizer code encodes k logical qubits into n physical qubits.
+/// An [\[n, k\]] stabilizer code encodes k logical qubits into n physical qubits.
 pub fn stabilizer_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
 /// `StabilizerCodeCorrectsErrors : ∀ (n k d : Nat), Prop`
-/// An [[n, k, d]] stabilizer code can correct ⌊(d−1)/2⌋ arbitrary qubit errors.
+/// An [\[n, k, d\]] stabilizer code can correct ⌊(d−1)/2⌋ arbitrary qubit errors.
 pub fn stabilizer_code_corrects_errors_ty() -> Expr {
     pi(
         BinderInfo::Default,

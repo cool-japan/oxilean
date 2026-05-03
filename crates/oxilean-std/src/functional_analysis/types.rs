@@ -168,7 +168,7 @@ pub struct InterpolationData {
     pub space0: String,
     /// Space X_1 description.
     pub space1: String,
-    /// Interpolation parameter θ ∈ [0,1].
+    /// Interpolation parameter θ ∈ \[0,1\].
     pub theta: f64,
     /// Interpolation method.
     pub method: InterpolationMethod,
@@ -189,7 +189,7 @@ impl InterpolationData {
         (1.0 - self.theta) / p0 + self.theta / p1
     }
     /// Riesz-Thorin theorem: if T: X0→Y0 has norm M0 and T: X1→Y1 has norm M1,
-    /// then T: [X0,X1]_θ → [Y0,Y1]_θ has norm <= M0^{1-θ} M1^θ.
+    /// then T: \[X0,X1\]_θ → \[Y0,Y1\]_θ has norm <= M0^{1-θ} M1^θ.
     pub fn riesz_thorin_bound(&self, m0: f64, m1: f64) -> f64 {
         m0.powf(1.0 - self.theta) * m1.powf(self.theta)
     }

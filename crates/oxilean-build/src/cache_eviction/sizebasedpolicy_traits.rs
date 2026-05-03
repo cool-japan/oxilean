@@ -14,7 +14,7 @@ use super::types::{CacheEntry, SizeBasedPolicy};
 impl EvictionPolicy for SizeBasedPolicy {
     fn select_evictions(&self, entries: &[&CacheEntry], bytes_needed: u64) -> Vec<String> {
         let mut sorted: Vec<&CacheEntry> = entries.to_vec();
-        sorted.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.size_bytes));
         let mut freed: u64 = 0;
         let mut evicted = Vec::new();
         for entry in sorted {

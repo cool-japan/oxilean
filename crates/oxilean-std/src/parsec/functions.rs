@@ -1528,7 +1528,7 @@ pub fn prs_ext_llk_grammar_ty() -> Expr {
         arrow(Expr::Const(Name::str("ContextFreeGrammar"), vec![]), prop()),
     )
 }
-/// LlkParsingTable: the LL(k) parsing table M[A, w] → production
+/// LlkParsingTable: the LL(k) parsing table M\[A, w\] → production
 #[allow(dead_code)]
 pub fn prs_ext_llk_table_ty() -> Expr {
     arrow(

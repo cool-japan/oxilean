@@ -482,7 +482,7 @@ pub fn holonomic_d_module_ty() -> Expr {
 pub fn riemann_hilbert_ty() -> Expr {
     arrow(type0(), arrow(type0(), prop()))
 }
-/// `BernsteinSato : ∀ f : polynomial, ∃ b(s) ∈ ℤ[s], b(s) f^s = P(s) f^{s+1}`
+/// `BernsteinSato : ∀ f : polynomial, ∃ b(s) ∈ ℤ\[s\], b(s) f^s = P(s) f^{s+1}`
 ///
 /// The Bernstein-Sato polynomial (b-function): for any polynomial f,
 /// there exists a non-zero polynomial b(s) and a differential operator P(s)
@@ -776,7 +776,7 @@ pub fn condensed_abelian_group_ty() -> Expr {
 /// `SolidAbelianGroup : CondensedAbelianGroup → Prop`
 ///
 /// A solid abelian group: a condensed abelian group M such that
-/// Ext^i(ℤ[S], M) = 0 for all profinite sets S and i > 0.
+/// Ext^i(ℤ\[S\], M) = 0 for all profinite sets S and i > 0.
 pub fn solid_abelian_group_ty() -> Expr {
     arrow(type0(), prop())
 }
@@ -992,7 +992,7 @@ pub fn intersection_euler_characteristic(betti_numbers: &[usize]) -> i64 {
 }
 /// Check Poincaré duality for intersection cohomology: IH^k ≅ IH^{2n-k}.
 ///
-/// Returns true if the Betti numbers are symmetric: betti[k] = betti[2n-k].
+/// Returns true if the Betti numbers are symmetric: betti\[k\] = betti[2n-k].
 pub fn check_poincare_duality_ic(betti_numbers: &[usize]) -> bool {
     let total = betti_numbers.len();
     for k in 0..total {

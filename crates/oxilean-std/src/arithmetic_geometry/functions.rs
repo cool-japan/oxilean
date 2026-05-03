@@ -161,7 +161,7 @@ pub fn isogeny_ty() -> Expr {
     )
 }
 /// `TorsionPoint : EllipticCurveObj → Nat → Type`
-/// E[n] = {P ∈ E : nP = O}, the n-torsion subgroup.
+/// E\[n\] = {P ∈ E : nP = O}, the n-torsion subgroup.
 pub fn torsion_point_ty() -> Expr {
     arrow(cst("EllipticCurveObj"), arrow(nat_ty(), type0()))
 }
@@ -192,7 +192,7 @@ pub fn mordell_weil_ty() -> Expr {
         ),
     )
 }
-/// Torsion structure: E[n] ≅ (ℤ/nℤ)² over an algebraically closed field of characteristic 0.
+/// Torsion structure: E\[n\] ≅ (ℤ/nℤ)² over an algebraically closed field of characteristic 0.
 ///
 /// `∀ (E : EllipticCurveObj) (n : Nat), IsAlgClosedChar0 k →
 ///    Iso (TorsionPoint E n) (DirectSum (ZMod n) (ZMod n))`
@@ -220,7 +220,7 @@ pub fn torsion_structure_ty() -> Expr {
         ),
     )
 }
-/// Weil pairing: E[n] × E^[n] → μ_n (alternating, non-degenerate).
+/// Weil pairing: E\[n\] × E^\[n\] → μ_n (alternating, non-degenerate).
 ///
 /// `∀ (E : EllipticCurveObj) (n : Nat), WeilPairing E n : TorsionPoint E n × TorsionPoint E^ n → RootsUnity n`
 pub fn weil_pairing_ty() -> Expr {
@@ -382,7 +382,7 @@ pub fn global_langlands_ty() -> Expr {
     )
 }
 /// Sato-Tate conjecture: for a non-CM elliptic curve E/ℚ, the distribution of
-/// a_p / 2√p is equidistributed with respect to the Sato-Tate measure on [-1, 1].
+/// a_p / 2√p is equidistributed with respect to the Sato-Tate measure on \[-1, 1\].
 ///
 /// `∀ (E : EllipticCurveObj), IsNonCM E → SatoTateEquidistributed E`
 pub fn sato_tate_ty() -> Expr {

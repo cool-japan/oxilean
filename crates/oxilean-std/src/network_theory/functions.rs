@@ -771,7 +771,7 @@ pub fn targeted_attack_resilience(g: &Graph) -> Vec<(f64, f64)> {
     let mut result = Vec::new();
     let mut current = g.clone();
     let mut removal_order: Vec<usize> = (0..n).collect();
-    removal_order.sort_by(|&a, &b| g.degree(b).cmp(&g.degree(a)));
+    removal_order.sort_by_key(|&b| std::cmp::Reverse(g.degree(b)));
     for (step, &node) in removal_order.iter().enumerate() {
         let frac_removed = step as f64 / n as f64;
         let gc = current.largest_component_size() as f64 / n as f64;
@@ -824,7 +824,7 @@ pub fn independent_cascade(g: &DiGraph, seeds: &[usize], p: f64, seed_rng: u64) 
 }
 /// Compute the triadic closure rate: fraction of open triangles that are closed.
 ///
-/// Returns a value in [0,1]; 1 means every path of length 2 is also connected.
+/// Returns a value in \[0,1\]; 1 means every path of length 2 is also connected.
 pub fn triadic_closure_rate(g: &Graph) -> f64 {
     let mut closed = 0usize;
     let mut open = 0usize;

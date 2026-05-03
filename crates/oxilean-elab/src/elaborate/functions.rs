@@ -970,7 +970,7 @@ fn elaborate_by_tactic(
     let mut state = crate::tactic::TacticState::new();
     state.add_goal(goal);
     let tactic_strs: Vec<String> = tactics.iter().map(|t| t.value.clone()).collect();
-    match crate::tactic::eval_tactic_block(&state, &tactic_strs) {
+    match crate::tactic::eval_tactic_block(&state, &tactic_strs, ctx.env()) {
         Ok(final_state) if final_state.is_complete() => {
             let sorry_term = Expr::Const(Name::str("sorry"), vec![]);
             ctx.assign_meta(proof_id, sorry_term);

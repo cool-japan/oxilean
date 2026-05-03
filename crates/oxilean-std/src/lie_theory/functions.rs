@@ -49,7 +49,7 @@ pub fn int_ty() -> Expr {
 pub fn lie_algebra_ty() -> Expr {
     type0()
 }
-/// Lie bracket type: [X, Y] — antisymmetric bilinear map
+/// Lie bracket type: \[X, Y\] — antisymmetric bilinear map
 pub fn lie_bracket_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
 }
@@ -61,7 +61,7 @@ pub fn lie_algebra_element_ty() -> Expr {
 pub fn cartan_subalgebra_ty() -> Expr {
     arrow(type0(), type0())
 }
-/// Structure constants type: f^k_{ij} for [e_i, e_j] = f^k_{ij} e_k
+/// Structure constants type: f^k_{ij} for \[e_i, e_j\] = f^k_{ij} e_k
 pub fn structure_constants_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
@@ -109,7 +109,7 @@ pub fn weyl_character_formula_ty() -> Expr {
 pub fn killing_form_ty() -> Expr {
     arrow(type0(), type0())
 }
-/// Jacobi identity: [X,[Y,Z]] + [Y,[Z,X]] + [Z,[X,Y]] = 0
+/// Jacobi identity: [X,\[Y,Z\]] + [Y,\[Z,X\]] + [Z,\[X,Y\]] = 0
 pub fn jacobi_identity_ty() -> Expr {
     let g = type0();
     arrow(
@@ -141,7 +141,7 @@ pub fn weyl_theorem_ty() -> Expr {
 pub fn weyl_character_formula_ty_theorem() -> Expr {
     arrow(type0(), arrow(type0(), real_ty()))
 }
-/// Baker-Campbell-Hausdorff formula: log(exp(X)exp(Y)) = X + Y + [X,Y]/2 + ...
+/// Baker-Campbell-Hausdorff formula: log(exp(X)exp(Y)) = X + Y + \[X,Y\]/2 + ...
 pub fn bch_formula_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
 }
@@ -154,7 +154,7 @@ pub fn killing_form_signature_ty() -> Expr {
 pub fn complete_reducibility_ty() -> Expr {
     arrow(type0(), arrow(type0(), prop()))
 }
-/// Character of a representation: ch : Rep(g) → Z[P]
+/// Character of a representation: ch : Rep(g) → Z\[P\]
 pub fn character_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
 }
@@ -174,7 +174,7 @@ pub fn bgg_category_o_ty() -> Expr {
 pub fn bgg_resolution_ty() -> Expr {
     arrow(type0(), arrow(nat_ty(), type0()))
 }
-/// Kazhdan-Lusztig polynomial P_{x,y}(q) ∈ ℤ[q] for x ≤ y in Weyl group W.
+/// Kazhdan-Lusztig polynomial P_{x,y}(q) ∈ ℤ\[q\] for x ≤ y in Weyl group W.
 pub fn kl_polynomial_ty() -> Expr {
     arrow(type0(), arrow(type0(), arrow(nat_ty(), int_ty())))
 }
@@ -227,7 +227,7 @@ pub fn affine_level_ty() -> Expr {
 pub fn integrable_hwm_ty() -> Expr {
     arrow(type0(), arrow(nat_ty(), type0()))
 }
-/// Virasoro algebra: central extension of the Witt algebra (derivations of ℂ[t,t⁻¹]).
+/// Virasoro algebra: central extension of the Witt algebra (derivations of ℂ\[t,t⁻¹\]).
 pub fn virasoro_algebra_ty() -> Expr {
     type0()
 }
@@ -497,7 +497,7 @@ pub fn build_lie_theory_env(env: &mut Environment) {
 }
 /// SU(2) generators: iσ_k / 2 where σ_k are Pauli matrices.
 ///
-/// The generators satisfy [T_i, T_j] = ε_{ijk} T_k.
+/// The generators satisfy \[T_i, T_j\] = ε_{ijk} T_k.
 pub fn su2_generators() -> [Vec<Vec<f64>>; 3] {
     let half = 0.5_f64;
     let t1 = vec![vec![0.0, half], vec![-half, 0.0]];
@@ -507,7 +507,7 @@ pub fn su2_generators() -> [Vec<Vec<f64>>; 3] {
 }
 /// SO(3) generators: (L_k)_{ij} = -ε_{kij}.
 ///
-/// The generators satisfy [L_i, L_j] = ε_{ijk} L_k.
+/// The generators satisfy \[L_i, L_j\] = ε_{ijk} L_k.
 pub fn so3_generators() -> [Vec<Vec<f64>>; 3] {
     let l1 = vec![
         vec![0.0, 0.0, 0.0],
@@ -532,7 +532,7 @@ pub fn weyl_character_formula_statement() -> &'static str {
      where ρ = (1/2) Σ_{α>0} α is the Weyl vector."
 }
 /// First N terms of the Baker-Campbell-Hausdorff series:
-///   log(exp(X) exp(Y)) = X + Y + [X,Y]/2 + [X,[X,Y]]/12 - [Y,[X,Y]]/12 + ...
+///   log(exp(X) exp(Y)) = X + Y + \[X,Y\]/2 + [X,\[X,Y\]]/12 - [Y,\[X,Y\]]/12 + ...
 pub fn baker_campbell_hausdorff_series(terms: usize) -> Vec<String> {
     let all_terms = vec![
         "X".to_string(),
@@ -550,7 +550,7 @@ pub fn baker_campbell_hausdorff_series(terms: usize) -> Vec<String> {
 }
 /// Structure constants for su(2) in the basis {T₁, T₂, T₃}.
 ///
-/// [T_i, T_j] = ε_{ijk} T_k  (Levi-Civita symbol).
+/// \[T_i, T_j\] = ε_{ijk} T_k  (Levi-Civita symbol).
 pub fn su2_structure_constants() -> StructureConstants {
     let mut sc = StructureConstants::new(3);
     sc.algebra = "su(2)".to_string();
@@ -564,7 +564,7 @@ pub fn su2_structure_constants() -> StructureConstants {
 }
 /// Structure constants for su(3) (Gell-Mann basis): f^{abc}.
 ///
-/// The 8 generators λ_a satisfy [λ_a/2, λ_b/2] = i f^{abc} λ_c/2.
+/// The 8 generators λ_a satisfy \[λ_a/2, λ_b/2\] = i f^{abc} λ_c/2.
 /// Non-zero independent values (others by antisymmetry):
 pub fn su3_structure_constants() -> StructureConstants {
     let mut sc = StructureConstants::new(8);

@@ -176,7 +176,7 @@ pub fn cb_derivative_ty() -> Expr {
     )
 }
 /// CantorBendixsonTheorem: every closed set = perfect ∪ countable scattered.
-/// CBTheorem : (X : Type) → [PolishSpace X] → ∀ (F : Set X), ClosedSet F →
+/// CBTheorem : (X : Type) → \[PolishSpace X\] → ∀ (F : Set X), ClosedSet F →
 ///             ∃ P C, PerfectSet P ∧ ScatteredSet C ∧ F = P ∪ C
 pub fn cb_theorem_ty() -> Expr {
     impl_pi(
@@ -215,7 +215,7 @@ pub fn cantor_space_ty() -> Expr {
     type0()
 }
 /// PolishEmbedding: every Polish space embeds into Baire space.
-/// PolishEmbedding : (X : Type) → [PolishSpace X] → X → BaireSpace → Prop
+/// PolishEmbedding : (X : Type) → \[PolishSpace X\] → X → BaireSpace → Prop
 pub fn polish_embedding_ty() -> Expr {
     impl_pi(
         "X",
@@ -233,7 +233,7 @@ pub fn zero_dimensional_ty() -> Expr {
 }
 /// LuzinSeparation: disjoint analytic sets are separated by a Borel set.
 /// LuzinSeparation :
-///   (X : Type) → [PolishSpace X] →
+///   (X : Type) → \[PolishSpace X\] →
 ///   ∀ (A B : Set X), AnalyticSet A → AnalyticSet B → Disjoint A B →
 ///   ∃ C : Set X, BorelSet C ∧ A ⊆ C ∧ B ⊆ Cᶜ
 pub fn luzin_separation_ty() -> Expr {
@@ -262,7 +262,7 @@ pub fn luzin_separation_ty() -> Expr {
     )
 }
 /// SuslinTheorem: Δ¹_1 = Borel in a Polish space.
-/// SuslinTheorem : (X : Type) → [PolishSpace X] →
+/// SuslinTheorem : (X : Type) → \[PolishSpace X\] →
 ///   ∀ (A : Set X), Delta11Set A ↔ BorelSet A
 pub fn suslin_theorem_ty() -> Expr {
     impl_pi(
@@ -282,7 +282,7 @@ pub fn suslin_theorem_ty() -> Expr {
     )
 }
 /// SuslinRepresentation: every analytic set has a Suslin representation.
-/// SuslinRepresentation : (X : Type) → [PolishSpace X] →
+/// SuslinRepresentation : (X : Type) → \[PolishSpace X\] →
 ///   ∀ (A : Set X), AnalyticSet A → ∃ s : SuslinScheme X, SuslinOperation s = A
 pub fn suslin_representation_ty() -> Expr {
     impl_pi(
@@ -582,7 +582,7 @@ pub fn nowhere_dense_set_ty() -> Expr {
     impl_pi("X", type0(), arrow(app(cst("Set"), bvar(0)), prop()))
 }
 /// KuratowskiUlam: the Kuratowski–Ulam theorem (Fubini for category).
-/// KuratowskiUlam : (X Y : Type) → [PolishSpace X] → [PolishSpace Y] →
+/// KuratowskiUlam : (X Y : Type) → \[PolishSpace X\] → \[PolishSpace Y\] →
 ///   ∀ (A : Set (X × Y)), MeagerSet A ↔ ...
 pub fn kuratowski_ulam_ty() -> Expr {
     impl_pi(
@@ -602,7 +602,7 @@ pub fn kuratowski_ulam_ty() -> Expr {
     )
 }
 /// BaireCategoryTheorem: a completely metrizable space is not meager in itself.
-/// BaireCategoryTheorem : (X : Type) → [CompleteMetricSpace X] → Prop
+/// BaireCategoryTheorem : (X : Type) → \[CompleteMetricSpace X\] → Prop
 pub fn baire_category_theorem_ty() -> Expr {
     impl_pi(
         "X",
@@ -673,7 +673,7 @@ pub fn choquet_complete_ty() -> Expr {
     arrow(type0(), prop())
 }
 /// ChoquetCompleteImpliesPolish: a second-countable Choquet-complete space is Polish.
-/// ChoquetCompleteImpliesPolish : (X : Type) → [Choquet_Complete X] → PolishSpace X
+/// ChoquetCompleteImpliesPolish : (X : Type) → \[Choquet_Complete X\] → PolishSpace X
 pub fn choquet_complete_implies_polish_ty() -> Expr {
     impl_pi(
         "X",

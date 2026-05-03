@@ -159,7 +159,7 @@ impl ComplexOfSheaves {
             self.cohomology_degrees.sort();
         }
     }
-    /// Returns amplitude: [min_degree, max_degree].
+    /// Returns amplitude: \[min_degree, max_degree\].
     pub fn amplitude(&self) -> Option<(i32, i32)> {
         if self.cohomology_degrees.is_empty() {
             return None;
@@ -365,7 +365,7 @@ impl LeraySpectralSequence {
 #[derive(Debug, Clone)]
 pub struct FormalComplex {
     /// The cohomology groups H^k, indexed from `min_degree` upward.
-    /// `cohomology[i]` = dim H^{min_degree + i}.
+    /// `cohomology\[i\]` = dim H^{min_degree + i}.
     pub cohomology: Vec<usize>,
     /// Minimum degree.
     pub min_degree: i32,
@@ -378,7 +378,7 @@ impl FormalComplex {
             min_degree,
         }
     }
-    /// The shift [n]: (F[n])^k = F^{k+n}.
+    /// The shift \[n\]: (F\[n\])^k = F^{k+n}.
     pub fn shift(&self, n: i32) -> Self {
         FormalComplex {
             cohomology: self.cohomology.clone(),
@@ -421,9 +421,9 @@ impl FormalComplex {
 pub struct SheafOnSite {
     /// The underlying site.
     pub site: FiniteSite,
-    /// Dimension of sections at each object: `section_dims[U]` = rank of F(U).
+    /// Dimension of sections at each object: `section_dims\[U\]` = rank of F(U).
     pub section_dims: Vec<usize>,
-    /// Restriction maps: `restrictions[(from, to)]` = matrix sending F(from) → F(to).
+    /// Restriction maps: `restrictions\[(from, to)\]` = matrix sending F(from) → F(to).
     pub restrictions: std::collections::HashMap<(usize, usize), Vec<Vec<i64>>>,
 }
 impl SheafOnSite {
@@ -456,7 +456,7 @@ impl SheafOnSite {
     }
     /// Check the sheaf gluing condition for a covering sieve of object `u`.
     ///
-    /// Given a section assignment `sections[v]` for each `v` in the sieve,
+    /// Given a section assignment `sections\[v\]` for each `v` in the sieve,
     /// check that all pairwise restrictions agree where both restrictions are defined.
     /// For each pair (vi, vj) in the sieve, check that any common refinement
     /// (any site object vk with morphisms vi→vk and vj→vk) yields the same section.
@@ -518,7 +518,7 @@ impl Germ {
 /// by taking compatible families of sections over covers.  Two applications yield
 /// the sheafification aP = P⁺⁺.
 ///
-/// This implementation works over free abelian group sections (Vec<i64>).
+/// This implementation works over free abelian group sections (`Vec<i64>`).
 #[derive(Debug, Clone)]
 pub struct PresheafSheafification {
     /// The original presheaf as a FinitePresheaf.
@@ -566,16 +566,16 @@ impl PresheafSheafification {
 /// A finite Grothendieck site: a small category (represented as a DAG of objects)
 /// together with covering families for each object.
 ///
-/// Objects are indexed 0..n_objects.  For each object U, `covers[U]` is a list
+/// Objects are indexed 0..n_objects.  For each object U, `covers\[U\]` is a list
 /// of covering sieves (each sieve is a list of objects that together cover U).
 #[derive(Debug, Clone)]
 pub struct FiniteSite {
     /// Number of objects.
     pub n_objects: usize,
-    /// Covering sieves: `covers[U]` = list of covering sieves for U,
+    /// Covering sieves: `covers\[U\]` = list of covering sieves for U,
     /// each sieve is a sorted list of object indices.
     pub covers: Vec<Vec<Vec<usize>>>,
-    /// Morphisms: `morphisms[(i,j)]` = true if there is a morphism i → j.
+    /// Morphisms: `morphisms\[(i,j)\]` = true if there is a morphism i → j.
     pub morphisms: std::collections::HashSet<(usize, usize)>,
 }
 impl FiniteSite {
@@ -736,10 +736,10 @@ impl GlobalSectionsComputation {
 pub struct FinitePresheaf {
     /// The open sets (nodes of the poset).
     pub nodes: Vec<OpenNode>,
-    /// Sections: `sections[i]` is a basis for F(Uᵢ) given as a vector dimension.
+    /// Sections: `sections\[i\]` is a basis for F(Uᵢ) given as a vector dimension.
     pub section_dims: Vec<usize>,
-    /// Restriction matrices: `restrictions[(i, j)]` is the matrix ρ_{ij} : F(Uᵢ) → F(Uⱼ)
-    /// as a `section_dims[j] × section_dims[i]` integer matrix.
+    /// Restriction matrices: `restrictions\[(i, j)\]` is the matrix ρ_{ij} : F(Uᵢ) → F(Uⱼ)
+    /// as a `section_dims\[j\] × section_dims\[i\]` integer matrix.
     pub restrictions: std::collections::HashMap<(usize, usize), Vec<Vec<i64>>>,
 }
 impl FinitePresheaf {

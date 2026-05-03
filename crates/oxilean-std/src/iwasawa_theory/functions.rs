@@ -47,7 +47,7 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
         Box::new(b),
     )
 }
-/// `IwasawaAlgebraTy : Nat → Type` — Λ = ℤ_p[[Γ]] for a given prime p.
+/// `IwasawaAlgebraTy : Nat → Type` — Λ = ℤ_p[\[Γ\]] for a given prime p.
 pub fn iwasawa_algebra_ty() -> Expr {
     arrow(nat_ty(), type0())
 }

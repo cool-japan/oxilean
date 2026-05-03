@@ -71,7 +71,7 @@ impl WaveSolver1D {
     }
 }
 /// Computes the effective (homogenized) coefficient A_hom for the 1D equation
-/// -d/dy (A(y) d/dy χ) = d/dy A(y) on the periodic cell [0, 1], giving
+/// -d/dy (A(y) d/dy χ) = d/dy A(y) on the periodic cell \[0, 1\], giving
 /// A_hom = (∫_0^1 1/A(y) dy)^{-1}.
 #[derive(Debug, Clone)]
 pub struct HomogenizationApprox {
@@ -95,7 +95,7 @@ impl HomogenizationApprox {
             .sum();
         1.0 / integral
     }
-    /// For a two-phase laminate with coefficient a1 in [0, theta] and a2 in (theta, 1),
+    /// For a two-phase laminate with coefficient a1 in \[0, theta\] and a2 in (theta, 1),
     /// the exact harmonic mean is A_hom = 1 / (theta/a1 + (1-theta)/a2).
     pub fn two_phase_exact(a1: f64, a2: f64, theta: f64) -> f64 {
         1.0 / (theta / a1 + (1.0 - theta) / a2)
@@ -349,7 +349,7 @@ impl MinimalSurface {
 }
 /// P1 finite element stiffness matrix on a 1D uniform mesh.
 ///
-/// For the bilinear form a(u, v) = ∫ u'v' dx on H¹₀([a,b]),
+/// For the bilinear form a(u, v) = ∫ u'v' dx on H¹₀(\[a,b\]),
 /// the element stiffness contributions give the tridiagonal system (1/h)(2,-1,-1,2,...).
 #[derive(Debug, Clone)]
 pub struct StiffnessMatrix1D {
@@ -693,7 +693,7 @@ impl KPZEquation {
         self.nonlinearity_strength.abs() > 0.0
     }
 }
-/// A uniform 1D mesh on [a, b] with N subintervals.
+/// A uniform 1D mesh on \[a, b\] with N subintervals.
 #[derive(Debug, Clone)]
 pub struct Mesh1D {
     /// Left endpoint of the interval.
@@ -706,7 +706,7 @@ pub struct Mesh1D {
     pub nodes: Vec<f64>,
 }
 impl Mesh1D {
-    /// Create a uniform mesh on [a, b] with n subintervals.
+    /// Create a uniform mesh on \[a, b\] with n subintervals.
     pub fn uniform(a: f64, b: f64, n: usize) -> Self {
         let h = (b - a) / n as f64;
         let nodes = (0..=n).map(|i| a + i as f64 * h).collect();

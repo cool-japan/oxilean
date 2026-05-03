@@ -69,7 +69,7 @@ pub fn vec_type() -> Expr {
         pi(BinderInfo::Default, "α", type0(), type0()),
     )
 }
-/// vec_zero : ∀ (n : Nat) (α : Type) [Zero α], Vec n α
+/// vec_zero : ∀ (n : Nat) (α : Type) \[Zero α\], Vec n α
 /// The zero vector
 pub fn vec_zero_ty() -> Expr {
     impl_pi(
@@ -85,7 +85,7 @@ pub fn vec_zero_ty() -> Expr {
         ),
     )
 }
-/// vec_add : ∀ (n : Nat) (α : Type) [Add α], Vec n α → Vec n α → Vec n α
+/// vec_add : ∀ (n : Nat) (α : Type) \[Add α\], Vec n α → Vec n α → Vec n α
 pub fn vec_add_ty() -> Expr {
     impl_pi(
         "n",
@@ -106,7 +106,7 @@ pub fn vec_add_ty() -> Expr {
         ),
     )
 }
-/// vec_smul : ∀ (n : Nat) (α : Type) [Mul α], α → Vec n α → Vec n α
+/// vec_smul : ∀ (n : Nat) (α : Type) \[Mul α\], α → Vec n α → Vec n α
 pub fn vec_smul_ty() -> Expr {
     impl_pi(
         "n",
@@ -127,7 +127,7 @@ pub fn vec_smul_ty() -> Expr {
         ),
     )
 }
-/// vec_dot : ∀ (n : Nat) (α : Type) [Add α] [Mul α] [Zero α], Vec n α → Vec n α → α
+/// vec_dot : ∀ (n : Nat) (α : Type) \[Add α\] \[Mul α\] \[Zero α\], Vec n α → Vec n α → α
 pub fn vec_dot_ty() -> Expr {
     impl_pi(
         "n",
@@ -142,7 +142,7 @@ pub fn vec_dot_ty() -> Expr {
         ),
     )
 }
-/// vec_norm_sq : ∀ (n : Nat) (α : Type) [Add α] [Mul α] [Zero α], Vec n α → α
+/// vec_norm_sq : ∀ (n : Nat) (α : Type) \[Add α\] \[Mul α\] \[Zero α\], Vec n α → α
 pub fn vec_norm_sq_ty() -> Expr {
     impl_pi(
         "n",
@@ -168,7 +168,7 @@ pub fn matrix_type() -> Expr {
         ),
     )
 }
-/// matrix_zero : ∀ (m n : Nat) (α : Type) [Zero α], Matrix m n α
+/// matrix_zero : ∀ (m n : Nat) (α : Type) \[Zero α\], Matrix m n α
 pub fn matrix_zero_ty() -> Expr {
     impl_pi(
         "m",
@@ -187,7 +187,7 @@ pub fn matrix_zero_ty() -> Expr {
         ),
     )
 }
-/// matrix_add : ∀ (m n : Nat) (α : Type) [Add α], Matrix m n α → Matrix m n α → Matrix m n α
+/// matrix_add : ∀ (m n : Nat) (α : Type) \[Add α\], Matrix m n α → Matrix m n α → Matrix m n α
 pub fn matrix_add_ty() -> Expr {
     impl_pi(
         "m",
@@ -212,7 +212,7 @@ pub fn matrix_add_ty() -> Expr {
         ),
     )
 }
-/// matrix_mul : ∀ (m n k : Nat) (α : Type) [Add α] [Mul α] [Zero α],
+/// matrix_mul : ∀ (m n k : Nat) (α : Type) \[Add α\] \[Mul α\] \[Zero α\],
 ///              Matrix m n α → Matrix n k α → Matrix m k α
 pub fn matrix_mul_ty() -> Expr {
     impl_pi(
@@ -258,7 +258,7 @@ pub fn matrix_transpose_ty() -> Expr {
         ),
     )
 }
-/// matrix_identity : ∀ (n : Nat) (α : Type) [Zero α] [One α], Matrix n n α
+/// matrix_identity : ∀ (n : Nat) (α : Type) \[Zero α\] \[One α\], Matrix n n α
 pub fn matrix_identity_ty() -> Expr {
     impl_pi(
         "n",
@@ -276,7 +276,7 @@ pub fn matrix_identity_ty() -> Expr {
         ),
     )
 }
-/// matrix_det : ∀ (n : Nat) (α : Type) [CommRing α], Matrix n n α → α
+/// matrix_det : ∀ (n : Nat) (α : Type) \[CommRing α\], Matrix n n α → α
 pub fn matrix_det_ty() -> Expr {
     impl_pi(
         "n",
@@ -291,7 +291,7 @@ pub fn matrix_det_ty() -> Expr {
         ),
     )
 }
-/// matrix_trace : ∀ (n : Nat) (α : Type) [Add α] [Zero α], Matrix n n α → α
+/// matrix_trace : ∀ (n : Nat) (α : Type) \[Add α\] \[Zero α\], Matrix n n α → α
 pub fn matrix_trace_ty() -> Expr {
     impl_pi(
         "n",
@@ -303,7 +303,7 @@ pub fn matrix_trace_ty() -> Expr {
         ),
     )
 }
-/// matrix_rank : ∀ (m n : Nat) (α : Type) [Field α], Matrix m n α → Nat
+/// matrix_rank : ∀ (m n : Nat) (α : Type) \[Field α\], Matrix m n α → Nat
 pub fn matrix_rank_ty() -> Expr {
     impl_pi(
         "m",
@@ -323,7 +323,7 @@ pub fn matrix_rank_ty() -> Expr {
     )
 }
 /// LinearMap R M N = (M → N) satisfying linearity
-/// LinearMap.mk : ∀ (R M N : Type) [Module R M] [Module R N],
+/// LinearMap.mk : ∀ (R M N : Type) \[Module R M\] \[Module R N\],
 ///               (M → N) → (∀ (r : R) (m : M), f (r • m) = r • f m) →
 ///               (∀ (m₁ m₂ : M), f (m₁ + m₂) = f m₁ + f m₂) → LinearMap R M N
 pub fn linear_map_ty() -> Expr {
@@ -385,7 +385,7 @@ pub fn linear_map_comp_ty() -> Expr {
     )
 }
 /// Kernel of a linear map: Submodule M
-/// linear_map_ker : ∀ (R M N : Type) [Module R M] [Module R N], LinearMap R M N → Submodule R M
+/// linear_map_ker : ∀ (R M N : Type) \[Module R M\] \[Module R N\], LinearMap R M N → Submodule R M
 pub fn linear_map_ker_ty() -> Expr {
     impl_pi(
         "R",
@@ -405,7 +405,7 @@ pub fn linear_map_ker_ty() -> Expr {
     )
 }
 /// Image of a linear map: Submodule N
-/// linear_map_range : ∀ (R M N : Type) [Module R M] [Module R N], LinearMap R M N → Submodule R N
+/// linear_map_range : ∀ (R M N : Type) \[Module R M\] \[Module R N\], LinearMap R M N → Submodule R N
 pub fn linear_map_range_ty() -> Expr {
     impl_pi(
         "R",
@@ -424,7 +424,7 @@ pub fn linear_map_range_ty() -> Expr {
         ),
     )
 }
-/// inner : ∀ (E : Type) [InnerProductSpace ℝ E], E → E → ℝ
+/// inner : ∀ (E : Type) \[InnerProductSpace ℝ E\], E → E → ℝ
 pub fn inner_product_ty() -> Expr {
     impl_pi(
         "E",
@@ -435,7 +435,7 @@ pub fn inner_product_ty() -> Expr {
         ),
     )
 }
-/// norm : ∀ (E : Type) [NormedAddCommGroup E], E → ℝ
+/// norm : ∀ (E : Type) \[NormedAddCommGroup E\], E → ℝ
 pub fn norm_ty() -> Expr {
     impl_pi(
         "E",
@@ -446,7 +446,7 @@ pub fn norm_ty() -> Expr {
         ),
     )
 }
-/// dist : ∀ (E : Type) [MetricSpace E], E → E → ℝ
+/// dist : ∀ (E : Type) \[MetricSpace E\], E → E → ℝ
 pub fn dist_ty() -> Expr {
     impl_pi(
         "E",
@@ -457,7 +457,7 @@ pub fn dist_ty() -> Expr {
         ),
     )
 }
-/// IsEigenvalue : ∀ (n : Nat) (α : Type) [CommRing α], Matrix n n α → α → Prop
+/// IsEigenvalue : ∀ (n : Nat) (α : Type) \[CommRing α\], Matrix n n α → α → Prop
 /// f(v) = λ·v for some nonzero v
 pub fn is_eigenvalue_ty() -> Expr {
     impl_pi(
@@ -476,7 +476,7 @@ pub fn is_eigenvalue_ty() -> Expr {
         ),
     )
 }
-/// IsEigenvector : ∀ (n : Nat) (α : Type) [CommRing α], Matrix n n α → α → Vec n α → Prop
+/// IsEigenvector : ∀ (n : Nat) (α : Type) \[CommRing α\], Matrix n n α → α → Vec n α → Prop
 pub fn is_eigenvector_ty() -> Expr {
     impl_pi(
         "n",
@@ -494,7 +494,7 @@ pub fn is_eigenvector_ty() -> Expr {
         ),
     )
 }
-/// CharacteristicPolynomial : ∀ (n : Nat) (α : Type) [CommRing α],
+/// CharacteristicPolynomial : ∀ (n : Nat) (α : Type) \[CommRing α\],
 ///   Matrix n n α → Polynomial α
 pub fn characteristic_polynomial_ty() -> Expr {
     impl_pi(
@@ -544,7 +544,7 @@ pub fn rank_nullity_thm_ty() -> Expr {
     )
 }
 /// Cayley-Hamilton: A satisfies its own characteristic polynomial
-/// ∀ (n : Nat) (α : Type) [CommRing α] (A : Matrix n n α),
+/// ∀ (n : Nat) (α : Type) \[CommRing α\] (A : Matrix n n α),
 ///   charPoly A evaluated at A = 0
 pub fn cayley_hamilton_ty() -> Expr {
     impl_pi(
@@ -893,7 +893,7 @@ pub fn tensor_mk_ty() -> Expr {
         ),
     )
 }
-/// tensor_universal : ∀ (R M N P : Type) [Module R M] [Module R N] [Module R P],
+/// tensor_universal : ∀ (R M N P : Type) \[Module R M\] \[Module R N\] \[Module R P\],
 ///   BilinearMap R M N P → LinearMap R (TensorProduct R M N) P
 pub fn tensor_universal_ty() -> Expr {
     impl_pi(
@@ -1126,7 +1126,7 @@ pub fn free_module_basis_ty() -> Expr {
         ),
     )
 }
-/// IsProjective : ∀ (R M : Type) [Module R M], Prop
+/// IsProjective : ∀ (R M : Type) \[Module R M\], Prop
 pub fn is_projective_ty() -> Expr {
     impl_pi(
         "R",
@@ -1138,7 +1138,7 @@ pub fn is_projective_ty() -> Expr {
         ),
     )
 }
-/// IsInjective : ∀ (R M : Type) [Module R M], Prop
+/// IsInjective : ∀ (R M : Type) \[Module R M\], Prop
 pub fn is_injective_ty() -> Expr {
     impl_pi(
         "R",
@@ -1150,7 +1150,7 @@ pub fn is_injective_ty() -> Expr {
         ),
     )
 }
-/// nakayama_lemma : ∀ (R M : Type) [CommRing R] [Module R M]
+/// nakayama_lemma : ∀ (R M : Type) \[CommRing R\] \[Module R M\]
 ///   (I : Ideal R), IsMaximal I → (I • M = M) → M = 0
 pub fn nakayama_lemma_ty() -> Expr {
     impl_pi(
@@ -1184,7 +1184,7 @@ pub fn nakayama_lemma_ty() -> Expr {
         ),
     )
 }
-/// IsNormalOperator : ∀ (H : Type) [HilbertSpace H], (H → H) → Prop
+/// IsNormalOperator : ∀ (H : Type) \[HilbertSpace H\], (H → H) → Prop
 ///   T is normal if T* ∘ T = T ∘ T*
 pub fn is_normal_operator_ty() -> Expr {
     impl_pi(
@@ -1196,7 +1196,7 @@ pub fn is_normal_operator_ty() -> Expr {
         ),
     )
 }
-/// spectral_decomposition : ∀ (H : Type) [HilbertSpace H] (T : H → H),
+/// spectral_decomposition : ∀ (H : Type) \[HilbertSpace H\] (T : H → H),
 ///   IsNormalOperator H T → SpectralMeasure H T
 pub fn spectral_decomposition_ty() -> Expr {
     impl_pi(
@@ -1216,7 +1216,7 @@ pub fn spectral_decomposition_ty() -> Expr {
         ),
     )
 }
-/// functional_calculus : ∀ (H : Type) [HilbertSpace H] (T : H → H),
+/// functional_calculus : ∀ (H : Type) \[HilbertSpace H\] (T : H → H),
 ///   IsNormalOperator H T → (Real → Real) → (H → H)
 pub fn functional_calculus_ty() -> Expr {
     impl_pi(
@@ -1236,7 +1236,7 @@ pub fn functional_calculus_ty() -> Expr {
         ),
     )
 }
-/// spectrum : ∀ (E : Type) [BanachAlgebra E] (x : E), Set Real
+/// spectrum : ∀ (E : Type) \[BanachAlgebra E\] (x : E), Set Real
 pub fn spectrum_ty() -> Expr {
     impl_pi(
         "E",
@@ -1247,7 +1247,7 @@ pub fn spectrum_ty() -> Expr {
         ),
     )
 }
-/// spectral_radius : ∀ (E : Type) [BanachAlgebra E] (x : E), Real
+/// spectral_radius : ∀ (E : Type) \[BanachAlgebra E\] (x : E), Real
 pub fn spectral_radius_ty() -> Expr {
     impl_pi(
         "E",
@@ -1266,7 +1266,7 @@ pub fn cstar_algebra_pred_ty() -> Expr {
 pub fn von_neumann_algebra_pred_ty() -> Expr {
     arrow(type0(), prop())
 }
-/// double_commutant : ∀ (A H : Type) [VonNeumannAlgebra H],
+/// double_commutant : ∀ (A H : Type) \[VonNeumannAlgebra H\],
 ///   Subalgebra A H → Subalgebra A H
 pub fn double_commutant_ty() -> Expr {
     impl_pi(
@@ -1285,7 +1285,7 @@ pub fn double_commutant_ty() -> Expr {
         ),
     )
 }
-/// IsComplete : ∀ (E : Type) [MetricSpace E], Prop
+/// IsComplete : ∀ (E : Type) \[MetricSpace E\], Prop
 pub fn is_complete_ty() -> Expr {
     impl_pi(
         "E",
@@ -1301,7 +1301,7 @@ pub fn banach_space_pred_ty() -> Expr {
 pub fn hilbert_space_pred_ty() -> Expr {
     arrow(type0(), prop())
 }
-/// open_mapping : ∀ (E F : Type) [BanachSpace E] [BanachSpace F]
+/// open_mapping : ∀ (E F : Type) \[BanachSpace E\] \[BanachSpace F\]
 ///   (T : LinearMap Real E F), IsSurjective T → IsOpenMap T
 pub fn open_mapping_ty() -> Expr {
     impl_pi(
@@ -1328,7 +1328,7 @@ pub fn open_mapping_ty() -> Expr {
         ),
     )
 }
-/// closed_graph : ∀ (E F : Type) [BanachSpace E] [BanachSpace F]
+/// closed_graph : ∀ (E F : Type) \[BanachSpace E\] \[BanachSpace F\]
 ///   (T : LinearMap Real E F), IsClosedGraph T → IsContinuous T
 pub fn closed_graph_ty() -> Expr {
     impl_pi(
@@ -1355,7 +1355,7 @@ pub fn closed_graph_ty() -> Expr {
         ),
     )
 }
-/// riesz_representation : ∀ (H : Type) [HilbertSpace H]
+/// riesz_representation : ∀ (H : Type) \[HilbertSpace H\]
 ///   (φ : H →L Real), ∃ v : H, φ = ⟨v, ·⟩
 pub fn riesz_representation_ty() -> Expr {
     impl_pi(
@@ -1460,7 +1460,7 @@ pub fn finite_field_order_ty() -> Expr {
         ),
     )
 }
-/// vector_space_fin_field_dim : ∀ (p : Nat) (V : Type) [VectorSpace (FiniteField p) V] (n : Nat),
+/// vector_space_fin_field_dim : ∀ (p : Nat) (V : Type) \[VectorSpace (FiniteField p) V\] (n : Nat),
 ///   FiniteDimensional.finrank (FiniteField p) V = n →
 ///   Fintype.card V = p ^ n
 pub fn vector_space_fin_field_dim_ty() -> Expr {
@@ -1576,7 +1576,7 @@ pub fn grassmann_is_homogeneous_ty() -> Expr {
         ),
     )
 }
-/// FredholdOperator : ∀ (E F : Type) [BanachSpace E] [BanachSpace F], (E → F) → Prop
+/// FredholdOperator : ∀ (E F : Type) \[BanachSpace E\] \[BanachSpace F\], (E → F) → Prop
 pub fn fredholm_operator_ty() -> Expr {
     impl_pi(
         "E",
@@ -1614,7 +1614,7 @@ pub fn fredholm_index_ty() -> Expr {
         ),
     )
 }
-/// TraceClass : ∀ (H : Type) [HilbertSpace H], (H → H) → Prop
+/// TraceClass : ∀ (H : Type) \[HilbertSpace H\], (H → H) → Prop
 pub fn trace_class_ty() -> Expr {
     impl_pi(
         "H",
@@ -1625,7 +1625,7 @@ pub fn trace_class_ty() -> Expr {
         ),
     )
 }
-/// operator_trace : ∀ (H : Type) [HilbertSpace H] (T : H → H),
+/// operator_trace : ∀ (H : Type) \[HilbertSpace H\] (T : H → H),
 ///   TraceClass H T → Real
 pub fn operator_trace_ty() -> Expr {
     impl_pi(
@@ -1657,7 +1657,7 @@ pub fn linear_recurrence_solution_ty() -> Expr {
         ),
     )
 }
-/// companion_matrix : ∀ (d : Nat) (α : Type) [CommRing α],
+/// companion_matrix : ∀ (d : Nat) (α : Type) \[CommRing α\],
 ///   Vec d α → Matrix d d α   (companion matrix of monic polynomial)
 pub fn companion_matrix_ty() -> Expr {
     impl_pi(
@@ -1676,7 +1676,7 @@ pub fn companion_matrix_ty() -> Expr {
         ),
     )
 }
-/// cayley_hamilton_minimal_poly : ∀ (n : Nat) (α : Type) [CommRing α] (A : Matrix n n α),
+/// cayley_hamilton_minimal_poly : ∀ (n : Nat) (α : Type) \[CommRing α\] (A : Matrix n n α),
 ///   minimal_poly A ∣ char_poly A
 pub fn cayley_hamilton_minimal_poly_ty() -> Expr {
     impl_pi(
@@ -1778,7 +1778,7 @@ pub fn matrix_pencil_ty() -> Expr {
         pi(BinderInfo::Default, "α", type0(), type0()),
     )
 }
-/// pencil_eigenvalue : ∀ (n : Nat) (α : Type) [Field α],
+/// pencil_eigenvalue : ∀ (n : Nat) (α : Type) \[Field α\],
 ///   MatrixPencil n α → α → Prop
 pub fn pencil_eigenvalue_ty() -> Expr {
     impl_pi(

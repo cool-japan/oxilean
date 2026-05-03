@@ -283,7 +283,7 @@ pub fn coe_ty() -> Expr {
 ///
 /// Homogeneous composition fills an open box.
 /// Given a type A, a face formula φ, a tube `u : I → Partial φ A`,
-/// and a base `a : A` with `a = u i0 [φ]`, produces an element of A.
+/// and a base `a : A` with `a = u i0 \[φ\]`, produces an element of A.
 ///
 /// This is the core of the Kan condition in CCHM cubical type theory.
 #[allow(clippy::too_many_arguments)]

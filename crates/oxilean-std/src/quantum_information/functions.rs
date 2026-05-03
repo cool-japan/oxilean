@@ -77,7 +77,7 @@ pub fn von_neumann_entropy_ty() -> Expr {
     arrow(app(cst("DensityMatrix"), nat_ty()), real_ty())
 }
 /// `Purity : DensityMatrix d → Real`
-/// γ(ρ) = Tr(ρ²) ∈ [1/d, 1]; equal to 1 iff ρ is pure.
+/// γ(ρ) = Tr(ρ²) ∈ \[1/d, 1\]; equal to 1 iff ρ is pure.
 pub fn purity_ty() -> Expr {
     arrow(app(cst("DensityMatrix"), nat_ty()), real_ty())
 }
@@ -105,7 +105,7 @@ pub fn choi_matrix_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
 /// `DepolarizingChannel : Nat → Real → QuantumChannel`
-/// ε_p(ρ) = (1−p)ρ + p I/d for p ∈ [0,1].
+/// ε_p(ρ) = (1−p)ρ + p I/d for p ∈ \[0,1\].
 pub fn depolarizing_channel_ty() -> Expr {
     arrow(
         nat_ty(),
@@ -174,7 +174,7 @@ pub fn ppt_sufficient_low_dim_ty() -> Expr {
     prop()
 }
 /// `StabilizerCode : Nat → Nat → Nat → Type`
-/// [[n, k, d]] stabilizer code with n physical, k logical qubits and distance d.
+/// [\[n, k, d\]] stabilizer code with n physical, k logical qubits and distance d.
 pub fn stabilizer_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -184,12 +184,12 @@ pub fn css_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
 /// `SurfaceCode : Nat → Type`
-/// Topological surface code on an L×L lattice with [[L²+(L-1)², 1, L]] parameters.
+/// Topological surface code on an L×L lattice with [\[L²+(L-1)², 1, L\]] parameters.
 pub fn surface_code_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
 /// `SyndromeDecoder : Nat → Nat → Nat → Type`
-/// Minimum-weight matching decoder for an [[n,k,d]] stabilizer code.
+/// Minimum-weight matching decoder for an [\[n,k,d\]] stabilizer code.
 pub fn syndrome_decoder_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -198,7 +198,7 @@ pub fn syndrome_decoder_ty() -> Expr {
 pub fn stabilizer_distance_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), nat_ty())))
 }
-/// Quantum Singleton bound: [[n, k, d]] code requires n − k ≥ 2(d − 1).
+/// Quantum Singleton bound: [\[n, k, d\]] code requires n − k ≥ 2(d − 1).
 pub fn quantum_singleton_bound_ty() -> Expr {
     prop()
 }
@@ -563,5 +563,424 @@ mod holographic_qec_tests {
         assert!(hc.encoding_rate() > 0.0);
         assert!(hc.is_isometric());
         assert!(!hc.ryu_takayanagi_formula().is_empty());
+    }
+}
+
+// ── New Quantum Information Functions ─────────────────────────────────────────
+
+use super::types::{
+    BellState, Fidelity, QuantumMeasurement, QuantumState, Qubit, VonNeumannEntropy,
+};
+
+const QI_EPS: f64 = 1e-12;
+const LN_2_QI: f64 = std::f64::consts::LN_2;
+
+/// Compute Tr(ρ) for a `DensityMatrix`.
+pub fn trace(rho: &DensityMatrix) -> Complex {
+    rho.trace()
+}
+
+/// Partial trace over subsystem indexed by `subsystem` (0 = trace over A, 1 = trace over B).
+///
+/// Assumes a 2-qubit (4×4) density matrix.  Returns a 2×2 reduced density matrix.
+pub fn partial_trace(rho: &DensityMatrix, subsystem: usize) -> DensityMatrix {
+    assert_eq!(
+        rho.dim, 4,
+        "partial_trace requires a 4×4 two-qubit density matrix"
+    );
+    if subsystem == 0 {
+        // Trace over A → reduced state of B.
+        rho.partial_trace_b(2, 2)
+    } else {
+        // Trace over B → reduced state of A.
+        // Swap A and B via rearrangement, then trace.
+        let da = 2usize;
+        let db = 2usize;
+        let mut result = DensityMatrix {
+            dim: db,
+            data: vec![Complex::zero(); db * db],
+        };
+        for ib in 0..db {
+            for jb in 0..db {
+                let mut s = Complex::zero();
+                for ia in 0..da {
+                    s = s.add(rho.get(ia * db + ib, ia * db + jb));
+                }
+                result.set(ib, jb, s);
+            }
+        }
+        result
+    }
+}
+
+/// Von Neumann entropy S(ρ) = −Tr(ρ log ρ) in nats.
+pub fn von_neumann_entropy(rho: &DensityMatrix) -> VonNeumannEntropy {
+    let evs = rho.eigenvalues_approx();
+    let s: f64 = evs
+        .iter()
+        .filter(|&&x| x > QI_EPS)
+        .map(|&x| -x * x.ln())
+        .sum();
+    VonNeumannEntropy::new(s)
+}
+
+/// Fidelity F(ρ, σ) between two density matrices.
+///
+/// For pure states |ψ⟩,|φ⟩: F = |⟨ψ|φ⟩|².
+/// For mixed states: F = Tr(√(√ρ σ √ρ))².
+/// Here we use the simplified approximation Tr(ρ σ) which is exact for pure states.
+pub fn fidelity(rho: &DensityMatrix, sigma: &DensityMatrix) -> Fidelity {
+    let rho_sigma = rho.mul_mat(sigma);
+    let f = rho_sigma.trace().re.clamp(0.0, 1.0);
+    Fidelity::new(f)
+}
+
+/// Check whether a two-qubit state is entangled by examining the purity of its reduced state.
+///
+/// A pure product state has Tr(ρ_A²) = 1.  If Tr(ρ_A²) < 1 − ε the state is entangled.
+pub fn is_entangled(two_qubit: &DensityMatrix) -> bool {
+    assert_eq!(
+        two_qubit.dim, 4,
+        "is_entangled requires a 4×4 density matrix"
+    );
+    let rho_a = partial_trace(two_qubit, 1);
+    let purity = rho_a.purity();
+    purity < 1.0 - 1e-6
+}
+
+/// Compute the 4×4 density matrix of a Bell state.
+pub fn bell_state(kind: &BellState) -> DensityMatrix {
+    let amps = kind.amplitudes();
+    let mut data = vec![Complex::zero(); 16];
+    for i in 0..4 {
+        for j in 0..4 {
+            data[i * 4 + j] = Complex::new(
+                amps[i].0 * amps[j].0 + amps[i].1 * amps[j].1,
+                amps[i].1 * amps[j].0 - amps[i].0 * amps[j].1,
+            );
+        }
+    }
+    DensityMatrix { dim: 4, data }
+}
+
+/// Apply a quantum channel to a density matrix: ε(ρ) = ∑_i K_i ρ K_i†.
+///
+/// `channel.kraus_ops` stores each operator as a `dim×dim` matrix of `(re, im)` pairs.
+pub fn apply_channel(rho: &DensityMatrix, channel: &QuantumChannel) -> DensityMatrix {
+    let d = channel.dim;
+    assert_eq!(rho.dim, d, "apply_channel: dimension mismatch");
+    let rho_raw: Vec<Vec<(f64, f64)>> = (0..d)
+        .map(|i| {
+            (0..d)
+                .map(|j| (rho.get(i, j).re, rho.get(i, j).im))
+                .collect()
+        })
+        .collect();
+    let out_raw = channel.apply(&rho_raw);
+    let data: Vec<Complex> = out_raw
+        .iter()
+        .flat_map(|row| row.iter().map(|&(re, im)| Complex::new(re, im)))
+        .collect();
+    DensityMatrix { dim: d, data }
+}
+
+/// Quantum mutual information I(A:B) = S(A) + S(B) − S(AB) for a bipartite state.
+pub fn quantum_mutual_information(rho_ab: &DensityMatrix) -> f64 {
+    assert_eq!(
+        rho_ab.dim, 4,
+        "quantum_mutual_information requires a 4×4 density matrix"
+    );
+    let s_ab = von_neumann_entropy(rho_ab).0;
+    let rho_a = partial_trace(rho_ab, 1);
+    let rho_b = partial_trace(rho_ab, 0);
+    let s_a = von_neumann_entropy(&rho_a).0;
+    let s_b = von_neumann_entropy(&rho_b).0;
+    (s_a + s_b - s_ab).max(0.0)
+}
+
+// ── Qubit helpers ─────────────────────────────────────────────────────────────
+
+/// Convert a `Qubit` to its 2×2 density matrix |ψ⟩⟨ψ|.
+pub fn qubit_to_density(q: &Qubit) -> DensityMatrix {
+    let (ar, ai) = q.alpha;
+    let (br, bi) = q.beta;
+    DensityMatrix::new(
+        2,
+        vec![
+            Complex::new(ar * ar + ai * ai, 0.0),
+            Complex::new(ar * br + ai * bi, ai * br - ar * bi),
+            Complex::new(ar * br + ai * bi, ar * bi - ai * br),
+            Complex::new(br * br + bi * bi, 0.0),
+        ],
+    )
+}
+
+/// Probabilistic Z-basis measurement of a qubit using an LCG `seed`.
+///
+/// Returns `(outcome, post_measurement_state)`: outcome = true for |0⟩.
+pub fn measure_qubit(q: &Qubit, seed: u64) -> (bool, Qubit) {
+    let p0 = q.alpha.0.powi(2) + q.alpha.1.powi(2);
+    // LCG for reproducible pseudo-random measurement.
+    let state = seed
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
+    let u = (state >> 33) as f64 / (u32::MAX as f64 + 1.0);
+    if u < p0 {
+        (true, Qubit::zero())
+    } else {
+        (false, Qubit::one())
+    }
+}
+
+#[cfg(test)]
+mod qi_adv_tests {
+    use super::*;
+
+    #[test]
+    fn test_trace_pure_state() {
+        let rho = DensityMatrix::from_pure_state(&PureState::zero_state());
+        let t = trace(&rho);
+        assert!((t.re - 1.0).abs() < QI_EPS, "trace = {}", t.re);
+        assert!(t.im.abs() < QI_EPS);
+    }
+
+    #[test]
+    fn test_trace_mixed_state() {
+        let rho = DensityMatrix::maximally_mixed(2);
+        let t = trace(&rho);
+        assert!((t.re - 1.0).abs() < QI_EPS);
+    }
+
+    #[test]
+    fn test_von_neumann_entropy_pure() {
+        let rho = DensityMatrix::from_pure_state(&PureState::zero_state());
+        let s = von_neumann_entropy(&rho);
+        assert!(s.is_pure_state(), "S = {}", s.0);
+    }
+
+    #[test]
+    fn test_von_neumann_entropy_max_mixed() {
+        let rho = DensityMatrix::maximally_mixed(2);
+        let s = von_neumann_entropy(&rho);
+        // S = ln(2) for maximally mixed 2-level system.
+        assert!((s.0 - LN_2_QI).abs() < 1e-9, "S = {}", s.0);
+        assert!((s.in_bits() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_fidelity_identical() {
+        let rho = DensityMatrix::from_pure_state(&PureState::zero_state());
+        let f = fidelity(&rho, &rho);
+        assert!(f.is_perfect(), "F = {}", f.0);
+    }
+
+    #[test]
+    fn test_fidelity_orthogonal() {
+        let rho0 = DensityMatrix::from_pure_state(&PureState::zero_state());
+        let rho1 = DensityMatrix::from_pure_state(&PureState::one_state());
+        let f = fidelity(&rho0, &rho1);
+        assert!(f.is_zero(), "F = {}", f.0);
+    }
+
+    #[test]
+    fn test_bell_state_trace_one() {
+        for kind in &[
+            BellState::PhiPlus,
+            BellState::PhiMinus,
+            BellState::PsiPlus,
+            BellState::PsiMinus,
+        ] {
+            let rho = bell_state(kind);
+            let t = trace(&rho);
+            assert!((t.re - 1.0).abs() < 1e-9, "{}: Tr = {}", kind.name(), t.re);
+        }
+    }
+
+    #[test]
+    fn test_bell_state_is_entangled() {
+        for kind in &[
+            BellState::PhiPlus,
+            BellState::PhiMinus,
+            BellState::PsiPlus,
+            BellState::PsiMinus,
+        ] {
+            let rho = bell_state(kind);
+            assert!(is_entangled(&rho), "{} should be entangled", kind.name());
+        }
+    }
+
+    #[test]
+    fn test_product_state_not_entangled() {
+        let psi_a = PureState::zero_state();
+        let psi_b = PureState::zero_state();
+        // Build |00⟩⟨00|.
+        let rho_a = DensityMatrix::from_pure_state(&psi_a);
+        let rho_b = DensityMatrix::from_pure_state(&psi_b);
+        let mut data = vec![Complex::zero(); 16];
+        for i in 0..2 {
+            for j in 0..2 {
+                for k in 0..2 {
+                    for l in 0..2 {
+                        data[(i * 2 + k) * 4 + (j * 2 + l)] = rho_a.get(i, j).mul(rho_b.get(k, l));
+                    }
+                }
+            }
+        }
+        let prod = DensityMatrix { dim: 4, data };
+        assert!(
+            !is_entangled(&prod),
+            "product state should not be entangled"
+        );
+    }
+
+    #[test]
+    fn test_partial_trace_pure_state() {
+        let rho_ab = bell_state(&BellState::PhiPlus);
+        let rho_a = partial_trace(&rho_ab, 1);
+        assert_eq!(rho_a.dim, 2);
+        // Reduced state of a Bell state = I/2.
+        assert!((rho_a.get(0, 0).re - 0.5).abs() < 1e-9);
+        assert!((rho_a.get(1, 1).re - 0.5).abs() < 1e-9);
+        assert!(rho_a.get(0, 1).re.abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_partial_trace_b() {
+        let rho_ab = bell_state(&BellState::PhiPlus);
+        let rho_b = partial_trace(&rho_ab, 0);
+        assert_eq!(rho_b.dim, 2);
+        assert!((rho_b.get(0, 0).re - 0.5).abs() < 1e-9);
+        assert!((rho_b.get(1, 1).re - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_quantum_mutual_information_bell() {
+        let rho_ab = bell_state(&BellState::PhiPlus);
+        let mi = quantum_mutual_information(&rho_ab);
+        // Bell states: S(A) = S(B) = ln(2), S(AB) = 0 (pure state).
+        // MI = S(A) + S(B) - S(AB) ≥ ln(2) ≈ 0.693.
+        assert!(mi > 0.5, "MI = {mi}");
+    }
+
+    #[test]
+    fn test_quantum_mutual_information_product() {
+        let psi = PureState::zero_state();
+        let rho_a = DensityMatrix::from_pure_state(&psi);
+        let rho_b = DensityMatrix::from_pure_state(&psi);
+        let mut data = vec![Complex::zero(); 16];
+        for i in 0..2 {
+            for j in 0..2 {
+                for k in 0..2 {
+                    for l in 0..2 {
+                        data[(i * 2 + k) * 4 + (j * 2 + l)] = rho_a.get(i, j).mul(rho_b.get(k, l));
+                    }
+                }
+            }
+        }
+        let prod = DensityMatrix { dim: 4, data };
+        let mi = quantum_mutual_information(&prod);
+        assert!(mi < 1e-6, "MI for product state should be ≈0, got {mi}");
+    }
+
+    #[test]
+    fn test_apply_channel_identity() {
+        let ch = QuantumChannel::identity(2);
+        let rho = DensityMatrix::from_pure_state(&PureState::zero_state());
+        let out = apply_channel(&rho, &ch);
+        assert!((out.get(0, 0).re - 1.0).abs() < 1e-9);
+        assert!(out.get(1, 1).re.abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_qubit_to_density_zero() {
+        let q = Qubit::zero();
+        let rho = qubit_to_density(&q);
+        assert!((rho.get(0, 0).re - 1.0).abs() < 1e-9);
+        assert!(rho.get(1, 1).re.abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_qubit_to_density_plus() {
+        let q = Qubit::plus();
+        let rho = qubit_to_density(&q);
+        assert!((rho.get(0, 0).re - 0.5).abs() < 1e-9);
+        assert!((rho.get(0, 1).re - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_measure_qubit_zero_state() {
+        let q = Qubit::zero();
+        let (outcome, post) = measure_qubit(&q, 42);
+        assert!(outcome, "should collapse to |0⟩");
+        assert!(post.is_normalized());
+    }
+
+    #[test]
+    fn test_measure_qubit_one_state() {
+        let q = Qubit::one();
+        let (outcome, _post) = measure_qubit(&q, 42);
+        assert!(!outcome, "should collapse to |1⟩");
+    }
+
+    #[test]
+    fn test_quantum_state_dimension() {
+        let qs_pure = QuantumState::Pure(Qubit::zero());
+        assert_eq!(qs_pure.dimension(), 2);
+        let qs_bell = QuantumState::Bell(BellState::PhiPlus);
+        assert_eq!(qs_bell.dimension(), 4);
+        let qs_mixed = QuantumState::Mixed(DensityMatrix::maximally_mixed(2));
+        assert_eq!(qs_mixed.dimension(), 2);
+    }
+
+    #[test]
+    fn test_bell_state_maximally_entangled() {
+        for b in &[
+            BellState::PhiPlus,
+            BellState::PhiMinus,
+            BellState::PsiPlus,
+            BellState::PsiMinus,
+        ] {
+            assert!(b.is_maximally_entangled());
+        }
+    }
+
+    #[test]
+    fn test_von_neumann_entropy_value() {
+        let vne = VonNeumannEntropy::new(LN_2_QI);
+        assert!(!vne.is_pure_state());
+        assert!((vne.in_bits() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_fidelity_range() {
+        let f = Fidelity::new(0.5);
+        assert!(f.0 >= 0.0 && f.0 <= 1.0);
+        assert!(!f.is_perfect() && !f.is_zero());
+    }
+
+    #[test]
+    fn test_measurement_z_basis() {
+        let m = QuantumMeasurement::z_basis();
+        assert_eq!(m.num_outcomes(), 2);
+        assert_eq!(m.outcomes[0], "|0⟩");
+        assert_eq!(m.outcomes[1], "|1⟩");
+    }
+
+    #[test]
+    fn test_measurement_x_basis() {
+        let m = QuantumMeasurement::x_basis();
+        assert_eq!(m.num_outcomes(), 2);
+    }
+
+    #[test]
+    fn test_quantum_channel_trace_preserving() {
+        let ch = QuantumChannel::identity(2);
+        assert!(ch.is_trace_preserving());
+    }
+
+    #[test]
+    fn test_quantum_channel_completely_positive() {
+        let ch = QuantumChannel::identity(2);
+        assert!(ch.is_completely_positive());
     }
 }

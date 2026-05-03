@@ -274,7 +274,7 @@ pub fn quasitriangular_hopf_algebra_ty() -> Expr {
 ///
 /// The Hall algebra of an abelian category A (e.g., modules over a finite field):
 /// a free abelian group on iso-classes of objects with multiplication
-/// counting extensions [M] ∗ [N] = Σ c^P_{M,N} [P].
+/// counting extensions \[M\] ∗ \[N\] = Σ c^P_{M,N} \[P\].
 pub fn hall_algebra_ty() -> Expr {
     arrow(type0(), type0())
 }
@@ -338,14 +338,14 @@ pub fn schur_weyl_duality_ty() -> Expr {
 /// `LieSuperalgebra : Type → Prop`
 ///
 /// A Lie superalgebra: a ℤ/2-graded vector space g = g₀ ⊕ g₁ with a
-/// graded bracket [·,·] satisfying graded antisymmetry and the graded Jacobi identity.
+/// graded bracket \[·,·\] satisfying graded antisymmetry and the graded Jacobi identity.
 pub fn lie_superalgebra_ty() -> Expr {
     arrow(type0(), prop())
 }
 /// `LieSuperalgebraUEA : ∀ (g : Type), LieSuperalgebra g → Type`
 ///
 /// Universal enveloping algebra of a Lie superalgebra:
-/// U(g) = T(g) / ⟨xy − (−1)^{|x||y|}yx − [x,y]⟩.
+/// U(g) = T(g) / ⟨xy − (−1)^{|x||y|}yx − \[x,y\]⟩.
 pub fn lie_superalgebra_uea_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -385,7 +385,7 @@ pub fn lie_supermodule_ty() -> Expr {
 /// `StarProduct : Type → Prop`
 ///
 /// A star product on a Poisson manifold (M, {·,·}):
-/// an associative ℝ[[ℏ]]-bilinear deformation of C^∞(M) with
+/// an associative ℝ[\[ℏ\]]-bilinear deformation of C^∞(M) with
 /// f ⋆ g = fg + (iℏ/2){f,g} + O(ℏ²).
 pub fn star_product_ty() -> Expr {
     arrow(type0(), prop())
@@ -405,8 +405,8 @@ pub fn kontsevich_formality_ty() -> Expr {
 /// `DeformationQuantization : ∀ (A : Type), PoissonAlgebra A → Type`
 ///
 /// A deformation quantization of a Poisson algebra (A, {·,·}):
-/// a flat ℝ[[ℏ]]-algebra deforming A with the semi-classical limit
-/// (A ⊗ ℝ[[ℏ]]/ℏ, {f,g} = (fg − gf)/ℏ mod ℏ).
+/// a flat ℝ[\[ℏ\]]-algebra deforming A with the semi-classical limit
+/// (A ⊗ ℝ[\[ℏ\]]/ℏ, {f,g} = (fg − gf)/ℏ mod ℏ).
 pub fn deformation_quantization_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -417,7 +417,7 @@ pub fn deformation_quantization_ty() -> Expr {
 }
 /// `FormalGroupLaw : Type → Prop`
 ///
-/// A formal group law over a ring R: a formal power series F(X, Y) ∈ R[[X,Y]]
+/// A formal group law over a ring R: a formal power series F(X, Y) ∈ R[\[X,Y\]]
 /// satisfying F(X,0) = X, F(0,Y) = Y (unit), F(X, F(Y,Z)) = F(F(X,Y), Z) (associativity).
 pub fn formal_group_law_ty() -> Expr {
     arrow(type0(), prop())
@@ -439,7 +439,7 @@ pub fn formal_group_law_multiplicative_ty() -> Expr {
 /// `FormalGroupLawHeight : ∀ (F : Type), FormalGroupLaw F → Nat`
 ///
 /// The height of a formal group law over a field of characteristic p:
-/// the unique n such that [p](X) = u·X^{p^n} + (higher terms), u ≠ 0.
+/// the unique n such that \[p\](X) = u·X^{p^n} + (higher terms), u ≠ 0.
 /// Height 1 = ordinary, height n = supersingular (for elliptic curves).
 pub fn formal_group_law_height_ty() -> Expr {
     pi(
@@ -479,9 +479,9 @@ pub fn hecke_algebra_ty() -> Expr {
 }
 /// `IwahoriHeckeAlgebra : ∀ (W : Type) (q : Type), CoxeterGroup W → Type`
 ///
-/// The Iwahori-Hecke algebra H(W, q): a deformation of the group algebra k[W]
+/// The Iwahori-Hecke algebra H(W, q): a deformation of the group algebra k\[W\]
 /// of a Coxeter group W parameterised by q ∈ k.
-/// At q = 1: recovers k[W]. At q = 0: the nil-Hecke algebra.
+/// At q = 1: recovers k\[W\]. At q = 0: the nil-Hecke algebra.
 pub fn iwahori_hecke_algebra_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -497,7 +497,7 @@ pub fn iwahori_hecke_algebra_ty() -> Expr {
 }
 /// `KazhdanLusztigPolynomial : ∀ (W : Type) (x y : W), Polynomial (W)`
 ///
-/// The Kazhdan-Lusztig polynomials P_{x,y}(q) ∈ ℤ[q] for a Coxeter group W:
+/// The Kazhdan-Lusztig polynomials P_{x,y}(q) ∈ ℤ\[q\] for a Coxeter group W:
 /// encode representation-theoretic data of Hecke algebras.
 pub fn kazhdan_lusztig_polynomial_ty() -> Expr {
     pi(
@@ -614,7 +614,7 @@ pub fn shapiro_lemma_ty() -> Expr {
 }
 /// `IwasawaAlgebra : ∀ (G : Type), ProfiniteGroup G → Type`
 ///
-/// The Iwasawa algebra Λ(G) = ℤ_p[[G]] = lim← ℤ_p[G/U]
+/// The Iwasawa algebra Λ(G) = ℤ_p[\[G\]] = lim← ℤ_p[G/U]
 /// for a pro-p group G. Central to Iwasawa theory in algebraic number theory.
 pub fn iwasawa_algebra_ty() -> Expr {
     pi(
@@ -1492,7 +1492,7 @@ pub fn hilbert_series_ty() -> Expr {
 }
 /// `HilbertSyzygy : ∀ (R M : Type), GradedRing R → GradedModule R M → Prop`
 ///
-/// Hilbert's syzygy theorem: every finitely generated module over k[x₁,…,xₙ]
+/// Hilbert's syzygy theorem: every finitely generated module over k\[x₁,…,xₙ\]
 /// has a finite free resolution of length at most n.
 pub fn hilbert_syzygy_ty() -> Expr {
     pi(
@@ -1662,7 +1662,7 @@ pub fn primary_decomposition_ty() -> Expr {
 /// `KrullDimension : Type → Nat`
 ///
 /// The Krull dimension of a ring R: the supremum of lengths of chains
-/// p₀ ⊊ p₁ ⊊ … ⊊ pₙ of prime ideals. dim(k[x₁,…,xₙ]) = n.
+/// p₀ ⊊ p₁ ⊊ … ⊊ pₙ of prime ideals. dim(k\[x₁,…,xₙ\]) = n.
 pub fn krull_dimension_ty() -> Expr {
     arrow(type0(), nat_ty())
 }
@@ -1872,7 +1872,7 @@ pub fn adams_operation_ty() -> Expr {
 /// `GrothendieckGroup : Type → Type`
 ///
 /// The Grothendieck group K₀(C) of an exact category C: the abelian group
-/// freely generated by isomorphism classes [M] with [M] = [M'] + [M'']
+/// freely generated by isomorphism classes \[M\] with \[M\] = [M'] + [M'']
 /// for every short exact sequence 0 → M' → M → M'' → 0.
 pub fn grothendieck_group_ty() -> Expr {
     arrow(type0(), type0())

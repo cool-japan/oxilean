@@ -42,7 +42,7 @@ fn res_ext2_build_any_ok(env: &mut Environment) -> std::result::Result<(), Strin
 fn res_ext2_build_any_err(env: &mut Environment) -> std::result::Result<(), String> {
     res_ext_forall2_axiom("Result.any_err", env)
 }
-/// `Result.iter_ok : iter (ok v) = [v]`
+/// `Result.iter_ok : iter (ok v) = \[v\]`
 fn res_ext2_build_iter_ok(env: &mut Environment) -> std::result::Result<(), String> {
     res_ext_forall_type_axiom("Result.iter_ok", env)
 }
@@ -58,17 +58,17 @@ fn res_ext2_build_expect_ok(env: &mut Environment) -> std::result::Result<(), St
 fn res_ext2_build_filter_ok_true(env: &mut Environment) -> std::result::Result<(), String> {
     res_ext_forall2_axiom("Result.filter_ok_true", env)
 }
-/// `Result.partition_results_split : partitionResults [ok a, err b, ok c] = ([a,c], [b])`
+/// `Result.partition_results_split : partitionResults \[ok a, err b, ok c\] = (\[a,c\], \[b\])`
 fn res_ext2_build_partition_results_split(
     env: &mut Environment,
 ) -> std::result::Result<(), String> {
     res_ext_forall2_axiom("Result.partition_results_split", env)
 }
-/// `Result.collect_all_ok : collectAll [ok a, ok b, ok c] = ok [a, b, c]`
+/// `Result.collect_all_ok : collectAll \[ok a, ok b, ok c\] = ok \[a, b, c\]`
 fn res_ext2_build_collect_all_ok(env: &mut Environment) -> std::result::Result<(), String> {
     res_ext_forall2_axiom("Result.collect_all_ok", env)
 }
-/// `Result.collect_first_err : collectAll [ok a, err b, ok c] = err b`
+/// `Result.collect_first_err : collectAll \[ok a, err b, ok c\] = err b`
 fn res_ext2_build_collect_first_err(env: &mut Environment) -> std::result::Result<(), String> {
     res_ext_forall2_axiom("Result.collect_first_err", env)
 }

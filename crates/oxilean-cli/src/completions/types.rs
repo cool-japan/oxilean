@@ -98,7 +98,7 @@ impl CompletionHistory {
             .iter()
             .filter(|e| e.input.starts_with(input))
             .collect();
-        matching.sort_by(|a, b| b.count.cmp(&a.count));
+        matching.sort_by_key(|b| std::cmp::Reverse(b.count));
         matching.truncate(n);
         matching
     }

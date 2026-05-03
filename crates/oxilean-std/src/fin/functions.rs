@@ -1597,7 +1597,7 @@ pub fn fin_ext_stirling_second(n: usize, k: usize) -> u64 {
     let factorial_k: u64 = (1..=k as u64).product();
     (sum.unsigned_abs()) / factorial_k
 }
-/// Euler's totient function φ(n): count of integers in [1,n] coprime to n.
+/// Euler's totient function φ(n): count of integers in \[1,n\] coprime to n.
 #[allow(dead_code)]
 pub fn fin_ext_euler_phi(n: usize) -> usize {
     if n == 0 {

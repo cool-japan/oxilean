@@ -179,7 +179,7 @@ pub fn elliptic_curve_point_ty() -> Expr {
     )
 }
 /// `TorsionSubgroup : CommRing → EllipticCurve CommRing → Nat → Type` — the n-torsion
-/// subgroup E[n] of an elliptic curve.
+/// subgroup E\[n\] of an elliptic curve.
 pub fn torsion_subgroup_ty() -> Expr {
     arrow(
         cst("CommRing"),
@@ -405,7 +405,7 @@ pub fn cohomology_long_exact_sequence_ty() -> Expr {
 /// `hilbert_nullstellensatz_ty` — Hilbert's Nullstellensatz: the radical ideal
 /// of the variety corresponds to the vanishing ideal.
 ///
-/// `∀ (k : Field) (I : Ideal k[x₁,..,xₙ]), Ideal(Variety(I)) = Radical(I)`
+/// `∀ (k : Field) (I : Ideal k\[x₁,..,xₙ\]), Ideal(Variety(I)) = Radical(I)`
 pub fn hilbert_nullstellensatz_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -426,7 +426,7 @@ pub fn hilbert_nullstellensatz_ty() -> Expr {
 /// `weak_nullstellensatz_ty` — the weak Nullstellensatz: a system of polynomials
 /// with no common zero has 1 in its ideal.
 ///
-/// `∀ (k : AlgClosedField) (I : Ideal k[x]), Variety(I) = ∅ → 1 ∈ I`
+/// `∀ (k : AlgClosedField) (I : Ideal k\[x\]), Variety(I) = ∅ → 1 ∈ I`
 pub fn weak_nullstellensatz_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1245,7 +1245,7 @@ pub fn divisor_degree(components: &[(&str, i64)]) -> i64 {
 }
 /// Compute the topological Euler characteristic χ(X) = Σ (-1)^i dim H^i(X, ℤ).
 ///
-/// Input: `betti_numbers[i]` = dim H^i(X, ℤ).
+/// Input: `betti_numbers\[i\]` = dim H^i(X, ℤ).
 pub fn euler_characteristic(betti_numbers: &[u64]) -> i64 {
     betti_numbers
         .iter()
@@ -1289,7 +1289,7 @@ pub fn riemann_roch_dim(deg_d: i64, genus: i64) -> i64 {
         (deg_d - genus + 1).max(0)
     }
 }
-/// Count lattice points in a closed interval [a, b].
+/// Count lattice points in a closed interval \[a, b\].
 ///
 /// Used as a building block for Ehrhart polynomial computations in the context of
 /// toric varieties and Newton-Okounkov bodies.

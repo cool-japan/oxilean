@@ -28,7 +28,7 @@ impl RenormalizationGroup {
     }
     /// Iterate the RG recursion R(g) for n steps.
     ///
-    /// Returns the trajectory [g₀, g₁, ..., gₙ].
+    /// Returns the trajectory \[g₀, g₁, ..., gₙ\].
     pub fn iterate<F>(&self, rg_map: F, n_steps: usize) -> Vec<f64>
     where
         F: Fn(f64) -> f64,
@@ -96,9 +96,9 @@ impl RenormalizationGroup {
 pub struct GrandCanonicalEnsemble {
     /// Single-particle energy levels ε_k
     pub energy_levels: Vec<f64>,
-    /// Temperature T [K]
+    /// Temperature T \[K\]
     pub temperature: f64,
-    /// Chemical potential μ [J]
+    /// Chemical potential μ \[J\]
     pub chemical_potential: f64,
     /// Statistics: true = Fermi-Dirac, false = Bose-Einstein
     pub is_fermionic: bool,
@@ -552,7 +552,7 @@ impl LandauFreeEnergy {
             m_neg
         }
     }
-    /// Spontaneous magnetization as a function of reduced temperature t in [-1, 0]
+    /// Spontaneous magnetization as a function of reduced temperature t in \[-1, 0\]
     pub fn spontaneous_magnetization_curve(&self, n_points: usize) -> Vec<(f64, f64)> {
         (0..n_points)
             .map(|i| {
@@ -644,11 +644,11 @@ impl CanonicalEnsemble {
 ///   (P + a/v²)(v - b) = k_B T   where v = V/N is volume per particle.
 #[allow(dead_code)]
 pub struct VanDerWaalsGas {
-    /// Attractive interaction parameter a [J·m³]
+    /// Attractive interaction parameter a \[J·m³\]
     pub a: f64,
-    /// Excluded volume parameter b [m³]
+    /// Excluded volume parameter b \[m³\]
     pub b: f64,
-    /// Temperature T [K]
+    /// Temperature T \[K\]
     pub temperature: f64,
 }
 impl VanDerWaalsGas {
@@ -695,11 +695,11 @@ impl VanDerWaalsGas {
 /// P/(ρk_BT) = 1 + B₂(T) ρ + B₃(T) ρ² + ...
 #[allow(dead_code)]
 pub struct VirialGas {
-    /// Second virial coefficient B₂(T) [m³]
+    /// Second virial coefficient B₂(T) \[m³\]
     pub b2: f64,
-    /// Third virial coefficient B₃(T) [m⁶]
+    /// Third virial coefficient B₃(T) \[m⁶\]
     pub b3: f64,
-    /// Temperature T [K]
+    /// Temperature T \[K\]
     pub temperature: f64,
 }
 impl VirialGas {
@@ -986,7 +986,7 @@ impl IsingModel1D {
     ///
     /// The 2×2 transfer matrix T with elements T_{s,s'} = exp(βJ s s' + βh(s+s')/2)
     /// has eigenvalues:
-    ///   λ± = exp(βJ) [cosh(βh) ± sqrt(sinh²(βh) + exp(-4βJ))]
+    ///   λ± = exp(βJ) \[cosh(βh) ± sqrt(sinh²(βh) + exp(-4βJ))\]
     pub fn eigenvalues(&self) -> (f64, f64) {
         let b = self.beta();
         let bj = b * self.j_coupling;

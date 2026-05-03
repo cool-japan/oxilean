@@ -333,7 +333,7 @@ pub fn derived_functor_ty() -> Expr {
     )
 }
 /// `AdamsSpectralSequence : Spectrum → Spectrum → SpectralSequence` —
-/// E_2^{s,t} = Ext^{s,t}_{A}(H*(Y), H*(X)) ⟹ [X, Y]_{t-s}^∧.
+/// E_2^{s,t} = Ext^{s,t}_{A}(H*(Y), H*(X)) ⟹ \[X, Y\]_{t-s}^∧.
 pub fn adams_spectral_sequence_ty() -> Expr {
     arrow(
         cst("Spectrum"),

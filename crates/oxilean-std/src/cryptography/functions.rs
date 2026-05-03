@@ -818,7 +818,7 @@ pub fn sha256_compress_round(state: &mut [u32; 8], w: u32, k: u32) {
 }
 /// Simple polynomial rolling hash over a byte slice.
 ///
-/// Computes `Σ data[i] * BASE^i mod MOD`. This is a common non-cryptographic
+/// Computes `Σ data\[i\] * BASE^i mod MOD`. This is a common non-cryptographic
 /// hash used in string algorithms (e.g., Rabin-Karp).
 ///
 /// # WARNING
@@ -1164,7 +1164,7 @@ pub fn cry_ext_lwe_hardness_ty() -> Expr {
 /// `RlweHardness : Nat → Prop`
 ///
 /// Ring-LWE (RLWE) hardness: the LWE problem instantiated over polynomial rings
-/// Z_q[x]/(f(x)). More efficient than standard LWE while maintaining
+/// Z_q\[x\]/(f(x)). More efficient than standard LWE while maintaining
 /// comparable security. Basis of CRYSTALS-Kyber and CRYSTALS-Dilithium.
 pub fn cry_ext_rlwe_hardness_ty() -> Expr {
     arrow(nat_ty(), prop())
@@ -1203,7 +1203,7 @@ pub fn cry_ext_kyber_ind_cca2_ty() -> Expr {
 /// `NtruHardness : Nat → Prop`
 ///
 /// NTRU hardness assumption: given (h = f^{-1} * g mod q) in the ring
-/// Z[x]/(x^n - 1), it is computationally hard to recover the short
+/// Z\[x\]/(x^n - 1), it is computationally hard to recover the short
 /// polynomials f and g. NTRU was one of the first lattice-based cryptosystems.
 pub fn cry_ext_ntru_hardness_ty() -> Expr {
     arrow(nat_ty(), prop())
@@ -1225,7 +1225,7 @@ pub fn cry_ext_dilithium_euf_cma_ty() -> Expr {
 }
 /// `LinearCode : Nat → Nat → Nat → Type`
 ///
-/// A linear error-correcting code [n, k, d]: a k-dimensional subspace of F_2^n
+/// A linear error-correcting code \[n, k, d\]: a k-dimensional subspace of F_2^n
 /// with minimum Hamming distance d. Can correct up to ⌊(d-1)/2⌋ errors.
 pub fn cry_ext_linear_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))

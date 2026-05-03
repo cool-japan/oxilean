@@ -175,11 +175,10 @@ pub fn axiom_dependencies(term: &Expr) -> HashSet<Name> {
 }
 pub(super) fn axiom_deps_impl(term: &Expr, deps: &mut HashSet<Name>) {
     match term {
-        Expr::Const(name, _) => {
-            if CLASSICAL_AXIOMS.contains(&name.to_string().as_str()) {
-                deps.insert(name.clone());
-            }
+        Expr::Const(name, _) if CLASSICAL_AXIOMS.contains(&name.to_string().as_str()) => {
+            deps.insert(name.clone());
         }
+        Expr::Const(_, _) => {}
         Expr::App(f, a) => {
             axiom_deps_impl(f, deps);
             axiom_deps_impl(a, deps);
@@ -201,13 +200,8 @@ pub(super) fn axiom_deps_impl(term: &Expr, deps: &mut HashSet<Name>) {
 #[allow(dead_code)]
 pub fn count_const_occurrences(term: &Expr, target: &Name) -> usize {
     match term {
-        Expr::Const(name, _) => {
-            if name == target {
-                1
-            } else {
-                0
-            }
-        }
+        Expr::Const(name, _) if name == target => 1,
+        Expr::Const(_, _) => 0,
         Expr::App(f, a) => count_const_occurrences(f, target) + count_const_occurrences(a, target),
         Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
             count_const_occurrences(ty, target) + count_const_occurrences(body, target)

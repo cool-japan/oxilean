@@ -62,7 +62,7 @@ pub fn k0_group_ty() -> Expr {
 }
 /// `K1 : Ring → AbelianGroup` — the Whitehead group.
 ///
-/// K1(R) = GL(R)^ab = lim_{n→∞} GL_n(R) / [GL_n(R), GL_n(R)]
+/// K1(R) = GL(R)^ab = lim_{n→∞} GL_n(R) / \[GL_n(R), GL_n(R)\]
 /// where GL(R) is the infinite general linear group.
 pub fn k1_group_ty() -> Expr {
     arrow(ring_ty(), abelian_group_ty())
@@ -116,7 +116,7 @@ pub fn elementary_matrix_ty() -> Expr {
     )
 }
 /// `BassQuillenConjecture : Ring → Prop` — every projective module over
-/// a polynomial ring R[x_1,...,x_n] over a regular ring R is free.
+/// a polynomial ring R\[x_1,...,x_n\] over a regular ring R is free.
 pub fn bass_quillen_conjecture_ty() -> Expr {
     pi(BinderInfo::Default, "R", ring_ty(), prop())
 }
@@ -148,7 +148,7 @@ pub fn bott_periodicity_ty() -> Expr {
     pi(BinderInfo::Default, "A", cst("CStarAlgebra"), prop())
 }
 /// `BassFundamental : Ring → Prop` — Bass's fundamental theorem:
-/// K_{-1}(R[x, x^{-1}]) ≅ K_0(R) ⊕ K_{-1}(R) (for negative K-groups).
+/// K_{-1}(R\[x, x^{-1}\]) ≅ K_0(R) ⊕ K_{-1}(R) (for negative K-groups).
 pub fn bass_fundamental_ty() -> Expr {
     pi(BinderInfo::Default, "R", ring_ty(), prop())
 }
@@ -448,7 +448,7 @@ pub fn motivic_k_theory_ty() -> Expr {
     )
 }
 /// `BassQuillenPolynomial : Ring → Prop` — the Bass-Quillen conjecture for
-/// polynomial rings: every projective R[x_1,...,x_n]-module is extended from R.
+/// polynomial rings: every projective R\[x_1,...,x_n\]-module is extended from R.
 pub fn bass_quillen_polynomial_ty() -> Expr {
     pi(BinderInfo::Default, "R", ring_ty(), prop())
 }
@@ -484,7 +484,7 @@ pub fn devissage_theorem_ty() -> Expr {
 pub fn resolution_theorem_ty() -> Expr {
     pi(BinderInfo::Default, "C", cst("ExactCategory"), prop())
 }
-/// `WhiteheadGroup : Group → AbelianGroup` — the Whitehead group Wh(G) = K_1(Z[G]) / {±G}.
+/// `WhiteheadGroup : Group → AbelianGroup` — the Whitehead group Wh(G) = K_1(Z\[G\]) / {±G}.
 /// Central in surgery theory and s-cobordism theorem.
 pub fn whitehead_group_ty() -> Expr {
     arrow(cst("Group"), abelian_group_ty())
@@ -506,7 +506,7 @@ pub fn matrix_stabilisation_ty() -> Expr {
     )
 }
 /// `LambdaRingStructure : Ring → Prop` — the λ-ring structure on K_0(R):
-/// λ^k[E] = [∧^k E] (k-th exterior power). Satisfies the λ-ring axioms.
+/// λ^k\[E\] = \[∧^k E\] (k-th exterior power). Satisfies the λ-ring axioms.
 pub fn lambda_ring_structure_ty() -> Expr {
     pi(BinderInfo::Default, "R", ring_ty(), prop())
 }
@@ -555,7 +555,7 @@ pub fn k_sphere_computation_ty() -> Expr {
 pub fn ko_sphere_pattern_ty() -> Expr {
     arrow(nat_ty(), abelian_group_ty())
 }
-/// `VirtualBundle : Space → Int → KClass` — a virtual bundle [E] - [F] in K(X)
+/// `VirtualBundle : Space → Int → KClass` — a virtual bundle \[E\] - \[F\] in K(X)
 /// represented as a formal difference of isomorphism classes.
 pub fn virtual_bundle_ty() -> Expr {
     arrow(cst("Space"), arrow(int_ty(), cst("KClass")))
@@ -575,7 +575,7 @@ pub fn suspension_isomorphism_ty() -> Expr {
 pub fn negative_k_groups_ty() -> Expr {
     arrow(ring_ty(), arrow(int_ty(), abelian_group_ty()))
 }
-/// `HomotopyInvariance : Ring → Prop` — K_n(R) ≅ K_n(R[t]) for all n ≥ 0
+/// `HomotopyInvariance : Ring → Prop` — K_n(R) ≅ K_n(R\[t\]) for all n ≥ 0
 /// when R is a regular ring (homotopy invariance of K-theory).
 pub fn homotopy_invariance_ty() -> Expr {
     pi(BinderInfo::Default, "R", cst("RegularRing"), prop())

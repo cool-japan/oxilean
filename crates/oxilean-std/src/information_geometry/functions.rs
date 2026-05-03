@@ -54,7 +54,7 @@ pub fn list_ty(elem: Expr) -> Expr {
 pub fn statistical_manifold_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
-/// `FisherInformationMetric`: g_{ij}(θ) = E[∂_i log p · ∂_j log p]
+/// `FisherInformationMetric`: g_{ij}(θ) = E\[∂_i log p · ∂_j log p\]
 /// Type: Nat → Type (dim n → n×n metric tensor field)
 pub fn fisher_information_metric_ty() -> Expr {
     arrow(nat_ty(), type0())
@@ -416,7 +416,7 @@ pub fn quantum_statistical_manifold_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
 /// `SLDMetric`: Symmetric Logarithmic Derivative (SLD) Fisher metric on quantum states;
-/// the quantum analogue of Fisher-Rao: g_{ij}^{SLD} = (1/2) Tr[ρ {L_i, L_j}]
+/// the quantum analogue of Fisher-Rao: g_{ij}^{SLD} = (1/2) Tr\[ρ {L_i, L_j}\]
 /// Type: Nat → Nat → Type (Hilbert-dim → param-dim → metric)
 pub fn sld_metric_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
@@ -426,7 +426,7 @@ pub fn sld_metric_ty() -> Expr {
 pub fn rld_metric_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
-/// `QuantumRelativeEntropy`: S(ρ ‖ σ) = Tr[ρ (log ρ - log σ)] (von Neumann relative entropy)
+/// `QuantumRelativeEntropy`: S(ρ ‖ σ) = Tr\[ρ (log ρ - log σ)\] (von Neumann relative entropy)
 /// Type: Nat → Type (dim → relative-entropy operator)
 pub fn quantum_relative_entropy_ty() -> Expr {
     arrow(nat_ty(), type0())
@@ -441,7 +441,7 @@ pub fn quantum_cramer_rao_ty() -> Expr {
 pub fn sld_monotonicity_ty() -> Expr {
     prop()
 }
-/// Uhlmann's theorem: geometric phase = arc cos of fidelity F(ρ,σ) = Tr[√(√ρ σ √ρ)]
+/// Uhlmann's theorem: geometric phase = arc cos of fidelity F(ρ,σ) = Tr\[√(√ρ σ √ρ)\]
 /// Type: ∀ (n : Nat), Prop
 pub fn uhlmann_theorem_ty() -> Expr {
     pi(BinderInfo::Default, "n", nat_ty(), prop())

@@ -551,7 +551,7 @@ pub fn catalan(n: u32) -> u128 {
 }
 /// Compute a table of unsigned Stirling numbers of the first kind |s(n,k)| up to size `max_n+1`.
 ///
-/// `stirling1u[n][k]` = number of permutations of {1..n} with k cycles.
+/// `stirling1u\[n\]\[k\]` = number of permutations of {1..n} with k cycles.
 /// Recurrence: |s(n+1,k)| = n*|s(n,k)| + |s(n,k-1)|
 pub fn stirling1u_table(max_n: usize) -> Vec<Vec<u128>> {
     let sz = max_n + 1;
@@ -585,7 +585,7 @@ pub fn stirling1_row(n: usize) -> Vec<i128> {
 }
 /// Compute a table of Stirling numbers of the second kind S(n,k) up to size `max_n+1`.
 ///
-/// `stirling2[n][k]` = number of partitions of {1..n} into k non-empty subsets.
+/// `stirling2\[n\]\[k\]` = number of partitions of {1..n} into k non-empty subsets.
 /// Recurrence: S(n+1,k) = k*S(n,k) + S(n,k-1)
 pub fn stirling2_table(max_n: usize) -> Vec<Vec<u128>> {
     let sz = max_n + 1;
@@ -857,7 +857,7 @@ pub fn alteration_method_ty() -> Expr {
     prop()
 }
 /// `SecondMomentMethod : Prop`
-/// Second moment method: E[X²] ≥ E[X]² / E[1_{X>0}].
+/// Second moment method: E\[X²\] ≥ E\[X\]² / E[1_{X>0}].
 pub fn second_moment_method_ty() -> Expr {
     prop()
 }
@@ -1244,7 +1244,7 @@ pub fn gcd_usize(a: usize, b: usize) -> usize {
 /// Compute an upper bound table for Ramsey numbers R(s,t) using the bound
 /// R(s,t) ≤ R(s-1,t) + R(s,t-1) and R(1,t) = 1, R(s,1) = 1.
 ///
-/// Returns a `max×max` table where `table[s][t]` is an upper bound on R(s,t).
+/// Returns a `max×max` table where `table\[s\]\[t\]` is an upper bound on R(s,t).
 pub fn ramsey_upper_bounds(max: usize) -> Vec<Vec<u64>> {
     let sz = max + 1;
     let mut r = vec![vec![u64::MAX / 2; sz]; sz];

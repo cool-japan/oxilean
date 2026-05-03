@@ -802,7 +802,7 @@ impl RandomMatrixStats {
         }
     }
     /// The Marchenko-Pastur density for aspect ratio γ = p/n at x.
-    /// Supported on [(1-√γ)², (1+√γ)²].
+    /// Supported on \[(1-√γ)², (1+√γ)²\].
     pub fn marchenko_pastur_density(x: f64, gamma: f64) -> f64 {
         if gamma <= 0.0 || x <= 0.0 {
             return 0.0;

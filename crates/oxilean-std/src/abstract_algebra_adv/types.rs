@@ -47,7 +47,7 @@ impl GradedRing {
         self.components.keys().all(|&d| d >= 0)
     }
 }
-/// Represents a primary decomposition of an ideal over Z/pZ[x₁,…,xₙ].
+/// Represents a primary decomposition of an ideal over Z/pZ\[x₁,…,xₙ\].
 ///
 /// Each component is a primary ideal given by its radical (a prime) and
 /// the primary ideal itself, represented as lists of generator strings.
@@ -98,7 +98,7 @@ impl PrimaryDecompositionData {
 /// The antipode S is stored as a map from basis element to its image.
 #[derive(Debug, Clone)]
 pub struct HopfAlgebraData {
-    /// The name of the Hopf algebra (e.g., "k[G]" for a group algebra)
+    /// The name of the Hopf algebra (e.g., "k\[G\]" for a group algebra)
     pub name: String,
     /// Basis elements
     pub basis: Vec<String>,
@@ -242,7 +242,7 @@ impl KrullDimEstimator {
 /// Used to check Nakayama-type conditions and compute local invariants.
 #[derive(Debug, Clone)]
 pub struct LocalRing {
-    /// Name of the ring (e.g., "Z_(p)", "k[[x]]")
+    /// Name of the ring (e.g., "Z_(p)", "k[\[x\]]")
     pub name: String,
     /// Generators of the unique maximal ideal m
     pub maximal_ideal_gens: Vec<String>,
@@ -342,9 +342,9 @@ pub struct GaloisExtensionData {
     pub base_field: String,
     /// The extension field (e.g., "Q(sqrt(2), sqrt(3))")
     pub extension_field: String,
-    /// Degree [L:K]
+    /// Degree \[L:K\]
     pub degree: usize,
-    /// Generators of L over K (e.g., ["sqrt(2)", "sqrt(3)"])
+    /// Generators of L over K (e.g., \["sqrt(2)", "sqrt(3)"\])
     pub generators: Vec<String>,
     /// Automorphism generators: (name, action on generators)
     /// The action is a list of images of each generator.
@@ -374,7 +374,7 @@ impl GaloisExtensionData {
     pub fn galois_group_order(&self) -> usize {
         self.automorphisms.len()
     }
-    /// Check whether the fundamental theorem holds: |Gal(L/K)| = [L:K].
+    /// Check whether the fundamental theorem holds: |Gal(L/K)| = \[L:K\].
     pub fn satisfies_fundamental_theorem(&self) -> bool {
         self.galois_group_order() == self.degree
     }

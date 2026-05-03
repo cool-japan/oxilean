@@ -286,7 +286,7 @@ pub fn lyapunov_stability_ty() -> Expr {
     prop()
 }
 /// Kalman rank condition: system (A, B) is controllable iff
-/// rank([B, AB, ..., A^{n-1}B]) = n
+/// rank(\[B, AB, ..., A^{n-1}B\]) = n
 pub fn kalman_rank_ty() -> Expr {
     pi(
         BinderInfo::Default,

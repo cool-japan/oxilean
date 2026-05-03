@@ -8,7 +8,7 @@ use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 /// A dimension context: a list of named interval variables in scope.
 #[allow(dead_code)]
 pub struct CubicalDimension {
-    /// The dimension variables in scope (e.g. ["i", "j", "k"]).
+    /// The dimension variables in scope (e.g. \["i", "j", "k"\]).
     pub vars: Vec<String>,
 }
 #[allow(dead_code)]
@@ -374,7 +374,7 @@ impl CubicalSet {
         }
     }
 }
-/// A point in the abstract interval [0, 1].
+/// A point in the abstract interval \[0, 1\].
 #[derive(Debug, Clone, PartialEq)]
 pub enum IntervalPoint {
     /// The left endpoint i0 = 0.

@@ -6,7 +6,7 @@ use super::functions::*;
 /// The Iwasawa structure theorem for a finitely generated Λ-module M.
 ///
 /// States: M ~ Λ^r ⊕ ⊕_{i=1}^{s} Λ/(f_i^{e_i}) ⊕ ⊕_{j=1}^{t} Λ/(p^{n_j})
-/// where the f_i are distinguished irreducible polynomials in Λ ≅ ℤ_p[[T]].
+/// where the f_i are distinguished irreducible polynomials in Λ ≅ ℤ_p[\[T\]].
 pub struct StructureTheorem {
     /// The module being decomposed.
     pub module: IwasawaModule,
@@ -31,17 +31,17 @@ impl StructureTheorem {
         !self.polynomial_factors.is_empty() || self.module.lambda == 0
     }
 }
-/// Represents the Iwasawa algebra Λ = ℤ_p[[Γ]], the completed group ring of
+/// Represents the Iwasawa algebra Λ = ℤ_p[\[Γ\]], the completed group ring of
 /// Γ ≅ ℤ_p over the p-adic integers.
 ///
 /// The topological generator γ₀ of Γ satisfies Γ = ⟨γ₀⟩ ≅ ℤ_p.
-/// Power series representation: Λ ≅ ℤ_p[[T]] via γ₀ ↦ 1+T.
+/// Power series representation: Λ ≅ ℤ_p[\[T\]] via γ₀ ↦ 1+T.
 pub struct IwasawaAlgebra {
     /// The prime p.
     pub p: u64,
     /// Index of the topological generator γ₀ (encoded as integer).
     pub generator_index: i64,
-    /// Whether the algebra is identified with ℤ_p[[T]] via γ₀ ↦ 1+T.
+    /// Whether the algebra is identified with ℤ_p[\[T\]] via γ₀ ↦ 1+T.
     pub power_series_form: bool,
     /// The Γ-group description (typically "ℤ_p" or "Gal(ℚ(ζ_{p^∞})/ℚ)").
     pub gamma_group: String,
@@ -94,14 +94,14 @@ impl IwasawaAlgebra {
     pub fn characteristic_ideal(&self) -> String {
         format!("char(Sel^∨) ⊂ Λ = ℤ_{}[[T]]", self.p)
     }
-    /// Λ = ℤ_p[[Γ]] as a formal power series ring: Λ ≅ ℤ_p[[T]].
+    /// Λ = ℤ_p[\[Γ\]] as a formal power series ring: Λ ≅ ℤ_p[\[T\]].
     pub fn lambda_ring(&self) -> String {
         format!(
             "ℤ_{}[[T]] ≅ ℤ_{}[[Γ]] (Iwasawa algebra as power series ring)",
             self.p, self.p
         )
     }
-    /// The completed group ring ℤ_p[[Γ]] for Γ = Gal(ℚ(ζ_{p^∞})/ℚ) ≅ ℤ_p.
+    /// The completed group ring ℤ_p[\[Γ\]] for Γ = Gal(ℚ(ζ_{p^∞})/ℚ) ≅ ℤ_p.
     pub fn completed_group_ring(&self) -> String {
         format!(
             "ℤ_{}[[{}]] — completed group ring (profinite group ring completion)",
@@ -243,7 +243,7 @@ impl SelectiveUnit {
 }
 /// Sinnott's index formula for cyclotomic units.
 ///
-/// The index [O_K^× : C_K] of cyclotomic units C_K inside O_K^× equals h^+(K),
+/// The index \[O_K^× : C_K\] of cyclotomic units C_K inside O_K^× equals h^+(K),
 /// the plus part of the class number.
 pub struct CyclotomicUnit {
     /// The cyclotomic field.
@@ -259,7 +259,7 @@ impl CyclotomicUnit {
             generator: format!("1 - zeta_{}", p),
         }
     }
-    /// Sinnott's index: [O_K^× : C_K] = h^+(K).
+    /// Sinnott's index: \[O_K^× : C_K\] = h^+(K).
     pub fn sinnott_index(&self) -> String {
         format!("h_plus(Q(zeta_{}^{}))", self.field.p, self.field.level)
     }
@@ -310,7 +310,7 @@ impl IwasawaMainConjecture {
 /// Non-commutative Iwasawa theory for GL_2 extensions.
 ///
 /// For an elliptic curve E and a non-abelian Galois extension F/ℚ with
-/// Gal(F_∞/ℚ) ≅ GL_2(ℤ_p), the Iwasawa algebra Λ(G) = ℤ_p[[G]] is non-commutative.
+/// Gal(F_∞/ℚ) ≅ GL_2(ℤ_p), the Iwasawa algebra Λ(G) = ℤ_p[\[G\]] is non-commutative.
 pub struct NoncommutativeIwasawa {
     /// The group G (e.g., "GL_2(ℤ_p)").
     pub group: String,
@@ -335,7 +335,7 @@ impl NoncommutativeIwasawa {
             self.group, self.p
         )
     }
-    /// The non-commutative main conjecture: ∂(ξ) = [M] in K_0(Λ(G)-mod).
+    /// The non-commutative main conjecture: ∂(ξ) = \[M\] in K_0(Λ(G)-mod).
     pub fn noncommutative_main_conjecture(&self) -> String {
         format!(
             "Non-comm IMC: ∂(ξ) = [Sel_∞^∨] in K_0(Λ({})_S-mod) (Coates–Fukaya–Kato–Sujatha–Venjakob)",
@@ -430,7 +430,7 @@ impl CyclotomicField {
     pub fn conductor(&self) -> u64 {
         self.p.pow(self.level)
     }
-    /// Degree [ℚ(ζ_{p^n}) : ℚ] = φ(p^n) = p^{n-1}(p-1).
+    /// Degree \[ℚ(ζ_{p^n}) : ℚ\] = φ(p^n) = p^{n-1}(p-1).
     pub fn degree(&self) -> u64 {
         if self.level == 0 {
             1
@@ -451,7 +451,7 @@ impl CyclotomicField {
 }
 /// The Iwasawa main conjecture for elliptic curves (Mazur's formulation).
 ///
-/// char_Λ(Sel(E/ℚ_∞)^∨) = (f_E(T)) in Λ = ℤ_p[[T]]
+/// char_Λ(Sel(E/ℚ_∞)^∨) = (f_E(T)) in Λ = ℤ_p[\[T\]]
 /// where f_E(T) is the characteristic power series of the Pontryagin dual.
 pub struct EllipticCurveMainConjecture {
     /// Elliptic curve label.
@@ -485,7 +485,7 @@ impl EllipticCurveMainConjecture {
 /// Equivariant L-function and Deligne–Ribet p-adic L-function.
 ///
 /// For a totally real field F and finite group Δ = Gal(F/ℚ), the equivariant
-/// p-adic L-function lives in Λ[Δ] ⊗ ℚ_p and interpolates Artin L-functions.
+/// p-adic L-function lives in Λ\[Δ\] ⊗ ℚ_p and interpolates Artin L-functions.
 pub struct EquivariantLFunction {
     /// Totally real field F.
     pub field: String,
@@ -503,7 +503,7 @@ impl EquivariantLFunction {
             galois_order,
         }
     }
-    /// The Deligne–Ribet p-adic L-function in Λ[Δ] ⊗ ℚ_p.
+    /// The Deligne–Ribet p-adic L-function in Λ\[Δ\] ⊗ ℚ_p.
     pub fn deligne_ribet_lfunction(&self) -> String {
         format!(
             "L_p^eq({}, s) ∈ Λ[Δ] ⊗ ℚ_{} (Deligne–Ribet equivariant, |Δ|={})",
@@ -598,7 +598,7 @@ impl SelmerGroupInTower {
     pub fn is_bounded_growth(&self) -> bool {
         self.mu == 0
     }
-    /// The difference exponent[n+1] - exponent[n] (should be ~ μ·p^n + λ).
+    /// The difference exponent[n+1] - exponent\[n\] (should be ~ μ·p^n + λ).
     pub fn growth_rate_at(&self, n: u32) -> u64 {
         self.selmer_exponent_at(n + 1)
             .saturating_sub(self.selmer_exponent_at(n))
@@ -1257,7 +1257,7 @@ impl ColemanPAdicL {
 }
 /// Non-abelian Iwasawa theory over admissible p-adic Lie extensions.
 ///
-/// For a p-adic Lie group G (not necessarily abelian), Λ(G) = ℤ_p[[G]]
+/// For a p-adic Lie group G (not necessarily abelian), Λ(G) = ℤ_p[\[G\]]
 /// is a non-Noetherian ring in general, but for uniform pro-p groups it is Noetherian.
 pub struct PAdicLieExtension {
     /// The p-adic Lie group G.
@@ -1279,14 +1279,14 @@ impl PAdicLieExtension {
             is_uniform: true,
         }
     }
-    /// The Iwasawa algebra Λ(G) = ℤ_p[[G]] for p-adic Lie group G.
+    /// The Iwasawa algebra Λ(G) = ℤ_p[\[G\]] for p-adic Lie group G.
     pub fn iwasawa_algebra(&self) -> String {
         format!(
             "Λ({}) = ℤ_{}[[{}]] — completed group ring (dim {})",
             self.lie_group, self.p, self.lie_group, self.dimension
         )
     }
-    /// For uniform pro-p G, Λ(G) ≅ ℤ_p[[x_1, ..., x_d]] (Lazard isomorphism).
+    /// For uniform pro-p G, Λ(G) ≅ ℤ_p[\[x_1, ..., x_d\]] (Lazard isomorphism).
     pub fn lazard_isomorphism(&self) -> String {
         let vars: Vec<String> = (1..=self.dimension).map(|i| format!("x_{i}")).collect();
         format!(
@@ -1462,7 +1462,7 @@ impl EulerSystemValidator {
 }
 /// Growth pattern of Selmer groups in the cyclotomic ℤ_p-tower.
 ///
-/// By Iwasawa's theorem, |Sel(E/ℚ_n)[p^∞]| ~ p^{μ p^n + λ n + ν}
+/// By Iwasawa's theorem, |Sel(E/ℚ_n)\[p^∞\]| ~ p^{μ p^n + λ n + ν}
 /// for constants μ, λ, ν depending only on E and p.
 pub struct SelmerTowerGrowth {
     /// Elliptic curve label.
@@ -1502,7 +1502,7 @@ impl SelmerTowerGrowth {
 }
 /// The Euler characteristic formula for Selmer groups.
 ///
-/// χ(Γ, Sel(E/ℚ_∞)) = |Sel(E/ℚ)| / |E(ℚ)[p^∞]|^2 · ∏_v c_v
+/// χ(Γ, Sel(E/ℚ_∞)) = |Sel(E/ℚ)| / |E(ℚ)\[p^∞\]|^2 · ∏_v c_v
 pub struct EulerCharacteristicFormula {
     /// Elliptic curve label.
     pub curve: String,
@@ -1520,7 +1520,7 @@ impl EulerCharacteristicFormula {
             tamagawa_product,
         }
     }
-    /// The Euler characteristic: χ(Γ, Sel) = |Sel(E/ℚ)| / |E(ℚ)[p^∞]|^2 · ∏ c_v.
+    /// The Euler characteristic: χ(Γ, Sel) = |Sel(E/ℚ)| / |E(ℚ)\[p^∞\]|^2 · ∏ c_v.
     pub fn euler_characteristic(&self) -> String {
         format!(
             "χ(Γ, Sel({}/ℚ_∞)) = |Sel({}⁄ℚ)| / |{}(ℚ)[{}^∞]|^2 × {}",
@@ -1677,7 +1677,7 @@ impl RubinStarkConjecture {
 }
 /// The class group tower {Cl(ℚ(ζ_{p^n}))}_{n≥1} viewed as an Iwasawa module.
 ///
-/// The inverse limit X_∞ = lim←_n Cl(ℚ(ζ_{p^n}))[p^∞] is a finitely generated
+/// The inverse limit X_∞ = lim←_n Cl(ℚ(ζ_{p^n}))\[p^∞\] is a finitely generated
 /// torsion Λ-module (Iwasawa's theorem).
 pub struct ClassGroupTower {
     /// Prime p.
@@ -1772,7 +1772,7 @@ impl IwasawaMainConjectureStatement {
 }
 /// The Kubota–Leopoldt p-adic L-function for Dirichlet characters.
 ///
-/// L_p(s, χ) ∈ ℤ_p[[T]] interpolates classical Dirichlet L-values L(1-n, χ·ω^n)
+/// L_p(s, χ) ∈ ℤ_p[\[T\]] interpolates classical Dirichlet L-values L(1-n, χ·ω^n)
 /// for n ≥ 1, where ω is the Teichmüller character mod p.
 pub struct KubotaLeopoldt {
     /// Prime p.
@@ -1794,7 +1794,7 @@ impl KubotaLeopoldt {
             num_interpolations: 0,
         }
     }
-    /// The Iwasawa power series representation g(T) ∈ ℤ_p[[T]] such that
+    /// The Iwasawa power series representation g(T) ∈ ℤ_p[\[T\]] such that
     /// L_p(s, χ) = g(u^s - 1) where u = 1 + p (topological generator of 1 + pℤ_p).
     pub fn iwasawa_power_series(&self) -> String {
         format!(
@@ -1819,7 +1819,7 @@ impl KubotaLeopoldt {
 }
 /// The geometric Iwasawa main conjecture over function fields.
 ///
-/// For a curve C over F_q[t], the geometric analogue uses the Λ-module
+/// For a curve C over F_q\[t\], the geometric analogue uses the Λ-module
 /// of l-adic cohomology and the characteristic polynomial of Frobenius.
 pub struct GeometricMainConjecture {
     /// The function field base (e.g., "F_q(t)").

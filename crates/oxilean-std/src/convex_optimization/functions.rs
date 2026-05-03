@@ -95,7 +95,7 @@ pub fn supporting_hyperplane_ty() -> Expr {
     prop()
 }
 /// `JensenInequality : (List Real -> Real) -> Prop`
-/// For convex f: f(E[X]) ≤ E[f(X)].
+/// For convex f: f(E\[X\]) ≤ E[f(X)].
 pub fn jensen_inequality_ty() -> Expr {
     arrow(fn_ty(list_ty(real_ty()), real_ty()), prop())
 }
@@ -380,7 +380,7 @@ pub fn dcp_verification_ty() -> Expr {
     arrow(rn_to_r, prop())
 }
 /// `SelfConcordantBarrier : (List Real -> Real) -> Real -> Prop`
-/// A function phi is nu-self-concordant: |D^3 phi(x)[h,h,h]| <= 2(D^2 phi(x)[h,h])^{3/2}.
+/// A function phi is nu-self-concordant: |D^3 phi(x)\[h,h,h\]| <= 2(D^2 phi(x)\[h,h\])^{3/2}.
 pub fn self_concordant_barrier_ty() -> Expr {
     let rn_to_r = fn_ty(list_ty(real_ty()), real_ty());
     arrow(rn_to_r, arrow(real_ty(), prop()))
@@ -397,7 +397,7 @@ pub fn logarithmic_barrier_ty() -> Expr {
     arrow(nat_ty(), arrow(rn_to_r, prop()))
 }
 /// `NewtonDecrement : (List Real -> Real) -> List Real -> Real`
-/// lambda(f,x)^2 = grad f(x)^T [Hess f(x)]^{-1} grad f(x), the Newton decrement squared.
+/// lambda(f,x)^2 = grad f(x)^T \[Hess f(x)\]^{-1} grad f(x), the Newton decrement squared.
 pub fn newton_decrement_ty() -> Expr {
     let rn_to_r = fn_ty(list_ty(real_ty()), real_ty());
     let lr = list_ty(real_ty());
@@ -603,7 +603,7 @@ pub fn chance_constraint_ty() -> Expr {
     arrow(rn_prop, arrow(real_ty(), prop()))
 }
 /// `DistributionallyRobustObjective : (List Real -> Real) -> Real -> Prop`
-/// DRO: min_x max_{P in U} E_P[f(x,xi)] over ambiguity set U.
+/// DRO: min_x max_{P in U} E_P\[f(x,xi)\] over ambiguity set U.
 pub fn distributionally_robust_objective_ty() -> Expr {
     let rn_to_r = fn_ty(list_ty(real_ty()), real_ty());
     arrow(rn_to_r, arrow(real_ty(), prop()))

@@ -144,7 +144,7 @@ impl ReedSolomonCode {
             eval_points,
         }
     }
-    /// Encode a message polynomial `msg[0] + msg[1]*x + … + msg[k-1]*x^{k-1}`
+    /// Encode a message polynomial `msg\[0\] + msg\[1\]*x + … + msg[k-1]*x^{k-1}`
     /// by evaluating at the `n` field points.
     ///
     /// Returns a codeword of length `n`.
@@ -208,7 +208,7 @@ pub struct ConvolutionalEncoder {
     pub constraint_length: usize,
     /// Generator polynomials (one per output bit), each as a bit mask.
     ///
-    /// `generators[j]` is a bitmask over the `constraint_length` shift-register stages
+    /// `generators\[j\]` is a bitmask over the `constraint_length` shift-register stages
     /// for output bit `j`. Bit `i` of the mask means register stage `i` feeds into output `j`.
     pub generators: Vec<u32>,
     /// Current shift register state (`constraint_length - 1` bits).
@@ -284,9 +284,9 @@ pub struct GF2m {
     pub size: u32,
     /// Primitive polynomial (as integer, e.g., x^3+x+1 = 0b1011 = 11).
     pub prim_poly: u32,
-    /// Log table: `log_table[i]` = discrete log of element i (0 = undefined).
+    /// Log table: `log_table\[i\]` = discrete log of element i (0 = undefined).
     log_table: Vec<i32>,
-    /// Exp table: `exp_table[i]` = α^i.
+    /// Exp table: `exp_table\[i\]` = α^i.
     exp_table: Vec<u32>,
 }
 impl GF2m {

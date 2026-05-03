@@ -203,7 +203,7 @@ impl ExponentialSumV2 {
 pub struct SieveOfEratosthenes {
     /// The sieve limit N: primes up to N are found.
     pub limit: u64,
-    /// The sieve array: `sieve[i]` is `true` if `i + 2` is prime.
+    /// The sieve array: `sieve\[i\]` is `true` if `i + 2` is prime.
     pub sieve: Vec<bool>,
 }
 impl SieveOfEratosthenes {
@@ -703,7 +703,7 @@ impl SieveEstimator {
         let _ = a;
         2.0 * (self.n as f64) / (phi_q * ln_xq)
     }
-    /// Estimate the number of primes detected by the sieve in [N/2, N].
+    /// Estimate the number of primes detected by the sieve in \[N/2, N\].
     pub fn sieve_prime_count_estimate(&self) -> u64 {
         if self.n < 2 {
             return 0;
@@ -1151,7 +1151,7 @@ impl GaussSum {
         self.character.is_principal
     }
 }
-/// Represents a finite subset A of an abelian group (modeled as Vec<i64>).
+/// Represents a finite subset A of an abelian group (modeled as `Vec<i64>`).
 #[allow(dead_code)]
 pub struct AdditiveSet {
     pub elements: Vec<i64>,

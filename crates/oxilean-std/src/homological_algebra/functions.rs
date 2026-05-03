@@ -1086,8 +1086,8 @@ pub fn ha_ext_derived_equivalence_ty() -> Expr {
     )
 }
 /// `ShiftFunctor : TriangulatedCategory → Int → TriangulatedCategory`
-/// — the translation functor T = [1] (suspension) on a triangulated category,
-/// with T^n = [n] for n ∈ ℤ.
+/// — the translation functor T = \[1\] (suspension) on a triangulated category,
+/// with T^n = \[n\] for n ∈ ℤ.
 pub fn ha_ext_shift_functor_ty() -> Expr {
     arrow(
         cst("TriangulatedCategory"),
@@ -1244,12 +1244,12 @@ pub fn ha_ext_serre_isomorphism_ty() -> Expr {
     )
 }
 /// `CalabiyauCategory : TriangulatedCategory → Nat → Prop` — a triangulated
-/// category D is n-Calabi-Yau if the Serre functor S ≅ [n] (shift by n).
+/// category D is n-Calabi-Yau if the Serre functor S ≅ \[n\] (shift by n).
 pub fn ha_ext_calabi_yau_category_ty() -> Expr {
     arrow(cst("TriangulatedCategory"), arrow(nat_ty(), prop()))
 }
 /// `CalabiyauDimension : TriangulatedCategory → Int` — the Calabi-Yau dimension
-/// of a triangulated category: the unique n such that S ≅ [n].
+/// of a triangulated category: the unique n such that S ≅ \[n\].
 pub fn ha_ext_calabi_yau_dimension_ty() -> Expr {
     arrow(cst("TriangulatedCategory"), int_ty())
 }

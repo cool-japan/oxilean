@@ -165,7 +165,7 @@ pub fn entropy_rate_ty() -> Expr {
 pub fn differential_entropy_ty() -> Expr {
     arrow(arrow(real_ty(), real_ty()), real_ty())
 }
-/// Fisher information I(θ) = E[(d/dθ log f(X;θ))^2]
+/// Fisher information I(θ) = E\[(d/dθ log f(X;θ))^2\]
 /// Type: (Real → Real → Real) → Real → Real
 pub fn fisher_information_ty() -> Expr {
     arrow(
@@ -178,7 +178,7 @@ pub fn fisher_information_ty() -> Expr {
 pub fn cramer_rao_bound_ty() -> Expr {
     prop()
 }
-/// Wiretap channel secrecy capacity: C_s = max [I(X;Y) - I(X;Z)]
+/// Wiretap channel secrecy capacity: C_s = max \[I(X;Y) - I(X;Z)\]
 /// Type: (List (List Real)) → (List (List Real)) → Real
 pub fn secrecy_capacity_ty() -> Expr {
     arrow(
@@ -719,7 +719,7 @@ pub fn entropy(probs: &[f64]) -> f64 {
 }
 /// Joint entropy H(X,Y) from a joint distribution table.
 ///
-/// `joint[i][j]` = P(X=i, Y=j). Returns -Σ_{i,j} p_{ij} * log2(p_{ij}).
+/// `joint\[i\]\[j\]` = P(X=i, Y=j). Returns -Σ_{i,j} p_{ij} * log2(p_{ij}).
 pub fn joint_entropy(joint: &[Vec<f64>]) -> f64 {
     joint
         .iter()
@@ -818,7 +818,7 @@ pub fn bec_capacity(epsilon: f64) -> f64 {
 }
 /// Compute Huffman code lengths for a set of symbol probabilities.
 ///
-/// Returns `(code_lengths, avg_bits_per_symbol)` where `code_lengths[i]`
+/// Returns `(code_lengths, avg_bits_per_symbol)` where `code_lengths\[i\]`
 /// is the number of bits for symbol i. Uses a greedy priority-queue approach.
 pub fn huffman_code_lengths(probs: &[f64]) -> (Vec<u32>, f64) {
     let n = probs.len();
@@ -1291,6 +1291,184 @@ mod tests {
         );
     }
 }
+/// Shannon entropy H(X) = -Σ p log₂ p for a typed `Distribution`.
+///
+/// This is the primary public API function using the `Distribution` type.
+pub fn entropy_dist(dist: &super::types::Distribution) -> f64 {
+    dist.entropy()
+}
+
+/// Joint entropy H(X,Y) from a list of (probability, x_index, y_index) triples.
+///
+/// H(X,Y) = -Σ_{x,y} P(X=x,Y=y) * log₂ P(X=x,Y=y)
+pub fn joint_entropy_triples(joint: &[(f64, usize, usize)]) -> f64 {
+    joint
+        .iter()
+        .filter(|(p, _, _)| *p > 0.0)
+        .map(|(p, _, _)| -p * p.log2())
+        .sum()
+}
+
+/// Marginal distribution of X from joint triples.
+fn marginal_x_from_triples(joint: &[(f64, usize, usize)]) -> Vec<f64> {
+    if joint.is_empty() {
+        return vec![];
+    }
+    let max_x = joint.iter().map(|(_, x, _)| x).max().copied().unwrap_or(0);
+    let mut px = vec![0.0f64; max_x + 1];
+    for &(p, x, _) in joint {
+        px[x] += p;
+    }
+    px
+}
+
+/// Marginal distribution of Y from joint triples.
+fn marginal_y_from_triples(joint: &[(f64, usize, usize)]) -> Vec<f64> {
+    if joint.is_empty() {
+        return vec![];
+    }
+    let max_y = joint.iter().map(|(_, _, y)| y).max().copied().unwrap_or(0);
+    let mut py = vec![0.0f64; max_y + 1];
+    for &(p, _, y) in joint {
+        py[y] += p;
+    }
+    py
+}
+
+/// Conditional entropy H(Y|X) = H(X,Y) - H(X) from joint triples.
+pub fn conditional_entropy_triples(joint: &[(f64, usize, usize)]) -> f64 {
+    let h_xy = joint_entropy_triples(joint);
+    let px = marginal_x_from_triples(joint);
+    let h_x: f64 = px
+        .iter()
+        .filter(|&&p| p > 0.0)
+        .map(|&p| -p * p.log2())
+        .sum();
+    h_xy - h_x
+}
+
+/// Mutual information I(X;Y) = H(X) + H(Y) - H(X,Y) from joint triples.
+pub fn mutual_information_triples(joint: &[(f64, usize, usize)]) -> f64 {
+    let px = marginal_x_from_triples(joint);
+    let py = marginal_y_from_triples(joint);
+    let h_x: f64 = px
+        .iter()
+        .filter(|&&p| p > 0.0)
+        .map(|&p| -p * p.log2())
+        .sum();
+    let h_y: f64 = py
+        .iter()
+        .filter(|&&p| p > 0.0)
+        .map(|&p| -p * p.log2())
+        .sum();
+    let h_xy = joint_entropy_triples(joint);
+    h_x + h_y - h_xy
+}
+
+/// KL divergence D_KL(P‖Q) using typed `Distribution`.
+pub fn kl_divergence_dist(p: &super::types::Distribution, q: &super::types::Distribution) -> f64 {
+    kl_divergence(&p.probs, &q.probs)
+}
+
+/// Channel capacity C = max_{P(X)} I(X;Y) via Blahut-Arimoto algorithm.
+///
+/// Runs up to 500 iterations with tolerance 1e-9.
+pub fn channel_capacity(channel: &super::types::Channel) -> f64 {
+    let ba = BlahutArimoto::new(channel.matrix.clone(), 500, 1e-9);
+    let (cap, _) = ba.run();
+    cap
+}
+
+/// Build a Huffman code from a `Distribution` returning a typed `HuffmanCode`.
+pub fn build_huffman_code(dist: &super::types::Distribution) -> HuffmanCode {
+    HuffmanCode::build(&dist.probs)
+}
+
+/// Encode a sequence of symbol indices using a `HuffmanCode`.
+pub fn huffman_encode(data: &[usize], code: &HuffmanCode) -> Vec<bool> {
+    code.encode(data)
+}
+
+/// Decode a bit sequence using a `HuffmanCode`.
+///
+/// Returns `None` if the bits do not decode to valid codewords.
+pub fn huffman_decode(bits: &[bool], code: &HuffmanCode) -> Option<Vec<usize>> {
+    code.decode(bits)
+}
+
+/// Arithmetic encode a symbol sequence using an `ArithmeticCodeState`.
+///
+/// Returns a bit sequence representing the final interval midpoint.
+/// Emits one bit per ~1 bit of information using successive interval subdivision.
+pub fn arithmetic_encode(symbols: &[usize], dist: &super::types::Distribution) -> Vec<bool> {
+    use super::types::ArithmeticCodeState;
+    if symbols.is_empty() || dist.probs.is_empty() {
+        return vec![];
+    }
+    let mut state = ArithmeticCodeState::new(dist);
+    for &s in symbols {
+        if s < dist.probs.len() {
+            state.encode_symbol(s);
+        }
+    }
+    // Output bits by extracting the interval midpoint in binary
+    let mid = (state.low + state.high) / 2.0;
+    let mut bits = Vec::new();
+    let mut val = mid;
+    // Use 64 bits of precision (sufficient for double)
+    for _ in 0..64 {
+        val *= 2.0;
+        if val >= 1.0 {
+            bits.push(true);
+            val -= 1.0;
+        } else {
+            bits.push(false);
+        }
+    }
+    // Trim trailing zeros but keep at least 1 bit
+    while bits.len() > 1 && !bits[bits.len() - 1] {
+        bits.pop();
+    }
+    bits
+}
+
+/// Arithmetic decode a bit sequence to recover `len` symbols.
+pub fn arithmetic_decode(
+    bits: &[bool],
+    dist: &super::types::Distribution,
+    len: usize,
+) -> Vec<usize> {
+    use super::types::ArithmeticCodeState;
+    if bits.is_empty() || dist.probs.is_empty() || len == 0 {
+        return vec![];
+    }
+    // Reconstruct the floating-point value from bits
+    let mut val = 0.0f64;
+    let mut place = 0.5f64;
+    for &b in bits {
+        if b {
+            val += place;
+        }
+        place *= 0.5;
+    }
+    let mut state = ArithmeticCodeState::new(dist);
+    let mut result = Vec::with_capacity(len);
+    for _ in 0..len {
+        match state.decode_symbol(val) {
+            Some(s) => {
+                result.push(s);
+                let range = state.high - state.low;
+                let lo = state.low + range * state.cdf[s];
+                let hi = state.low + range * state.cdf[s + 1];
+                state.low = lo;
+                state.high = hi;
+            }
+            None => break,
+        }
+    }
+    result
+}
+
 #[allow(dead_code)]
 pub fn shannon_entropy(pmf: &[f64]) -> f64 {
     pmf.iter()
@@ -1343,5 +1521,275 @@ mod tests_it_extra {
         let weak = InfoTheoreticSecurity::new(256, 128, 256);
         assert!(!weak.is_perfectly_secret());
         assert_eq!(weak.leakage_bits(), 128.0);
+    }
+}
+
+#[cfg(test)]
+mod tests_new_api {
+    use super::super::types::{ArithmeticCodeState, Channel, Distribution, InformationMeasure};
+    use super::*;
+
+    const EPS: f64 = 1e-9;
+
+    #[test]
+    fn test_distribution_new_uniform() {
+        let d = Distribution::new(vec![0.25, 0.25, 0.25, 0.25]).expect("valid dist");
+        assert_eq!(d.alphabet_size(), 4);
+        assert!((d.entropy() - 2.0).abs() < EPS);
+    }
+
+    #[test]
+    fn test_distribution_new_normalizes() {
+        let d = Distribution::new(vec![1.0, 1.0, 2.0]).expect("valid dist");
+        assert!((d.probs[0] - 0.25).abs() < EPS);
+        assert!((d.probs[2] - 0.5).abs() < EPS);
+    }
+
+    #[test]
+    fn test_distribution_new_invalid() {
+        assert!(Distribution::new(vec![]).is_none());
+        assert!(Distribution::new(vec![-0.1, 0.5]).is_none());
+    }
+
+    #[test]
+    fn test_entropy_dist() {
+        let d = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        assert!((entropy_dist(&d) - 1.0).abs() < EPS);
+    }
+
+    #[test]
+    fn test_joint_entropy_triples() {
+        // Uniform joint over 2x2: each cell has prob 0.25
+        let joint = vec![(0.25, 0, 0), (0.25, 0, 1), (0.25, 1, 0), (0.25, 1, 1)];
+        let h = joint_entropy_triples(&joint);
+        assert!((h - 2.0).abs() < EPS, "H(X,Y)=2 for uniform 2x2, got {h}");
+    }
+
+    #[test]
+    fn test_conditional_entropy_triples() {
+        // Independent: H(Y|X) = H(Y)
+        let joint = vec![(0.25, 0, 0), (0.25, 0, 1), (0.25, 1, 0), (0.25, 1, 1)];
+        let h_yx = conditional_entropy_triples(&joint);
+        assert!(
+            (h_yx - 1.0).abs() < EPS,
+            "H(Y|X)=1 for independent uniform, got {h_yx}"
+        );
+    }
+
+    #[test]
+    fn test_conditional_entropy_deterministic() {
+        // Y = X: H(Y|X) = 0
+        let joint = vec![(0.5, 0, 0), (0.5, 1, 1)];
+        let h_yx = conditional_entropy_triples(&joint);
+        assert!(h_yx.abs() < EPS, "H(Y|X)=0 for deterministic, got {h_yx}");
+    }
+
+    #[test]
+    fn test_mutual_information_triples_independent() {
+        let joint = vec![(0.25, 0, 0), (0.25, 0, 1), (0.25, 1, 0), (0.25, 1, 1)];
+        let mi = mutual_information_triples(&joint);
+        assert!(mi.abs() < EPS, "MI=0 for independent vars, got {mi}");
+    }
+
+    #[test]
+    fn test_mutual_information_triples_deterministic() {
+        let joint = vec![(0.5, 0, 0), (0.5, 1, 1)];
+        let mi = mutual_information_triples(&joint);
+        assert!(
+            (mi - 1.0).abs() < EPS,
+            "MI=1 for deterministic binary, got {mi}"
+        );
+    }
+
+    #[test]
+    fn test_kl_divergence_dist_self() {
+        let p = Distribution::new(vec![0.3, 0.4, 0.3]).expect("valid");
+        let kl = kl_divergence_dist(&p, &p);
+        assert!(kl.abs() < EPS, "D_KL(P||P)=0, got {kl}");
+    }
+
+    #[test]
+    fn test_kl_divergence_dist_known() {
+        let p = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        let q = Distribution::new(vec![0.25, 0.75]).expect("valid");
+        let kl = kl_divergence_dist(&p, &q);
+        // D_KL(Bern(0.5)||Bern(0.25)) = 0.5*log2(2) + 0.5*log2(2/3) > 0
+        assert!(kl > 0.0, "KL divergence should be positive, got {kl}");
+    }
+
+    #[test]
+    fn test_channel_capacity_bsc() {
+        // BSC with p=0: capacity = 1 bit
+        let matrix = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
+        let ch = Channel::new(matrix).expect("valid channel");
+        let cap = channel_capacity(&ch);
+        assert!((cap - 1.0).abs() < 1e-5, "BSC(p=0) capacity=1, got {cap}");
+    }
+
+    #[test]
+    fn test_channel_capacity_noisy() {
+        // BSC with p=0.1: capacity ≈ 1 - h_b(0.1)
+        let p = 0.1;
+        let matrix = vec![vec![1.0 - p, p], vec![p, 1.0 - p]];
+        let ch = Channel::new(matrix).expect("valid channel");
+        let cap = channel_capacity(&ch);
+        let expected = bsc_capacity(p);
+        assert!(
+            (cap - expected).abs() < 1e-5,
+            "BSC({p}) capacity: expected {expected}, got {cap}"
+        );
+    }
+
+    #[test]
+    fn test_build_huffman_code_and_encode_decode() {
+        let dist = Distribution::new(vec![0.5, 0.25, 0.25]).expect("valid");
+        let code = build_huffman_code(&dist);
+        assert_eq!(code.codewords.len(), 3);
+        let symbols = vec![0, 1, 2, 0, 0, 1];
+        let bits = huffman_encode(&symbols, &code);
+        let decoded = huffman_decode(&bits, &code).expect("decode failed");
+        assert_eq!(decoded, symbols);
+    }
+
+    #[test]
+    fn test_build_huffman_code_average_bits() {
+        let dist = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        let code = build_huffman_code(&dist);
+        assert!(
+            (code.avg_bits - 1.0).abs() < EPS,
+            "avg_bits should be 1.0, got {}",
+            code.avg_bits
+        );
+    }
+
+    #[test]
+    fn test_huffman_decode_invalid() {
+        // All symbols map to single bit codes; extra bits that don't match -> None
+        let dist = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        let code = build_huffman_code(&dist);
+        // Empty is valid (decodes to empty vec)
+        let decoded = huffman_decode(&[], &code);
+        assert_eq!(decoded, Some(vec![]));
+    }
+
+    #[test]
+    fn test_arithmetic_encode_decode_roundtrip() {
+        let dist = Distribution::new(vec![0.5, 0.25, 0.25]).expect("valid");
+        let symbols = vec![0, 1, 2];
+        let bits = arithmetic_encode(&symbols, &dist);
+        assert!(!bits.is_empty(), "encoded bits should not be empty");
+        let decoded = arithmetic_decode(&bits, &dist, symbols.len());
+        assert_eq!(decoded, symbols, "arithmetic codec roundtrip failed");
+    }
+
+    #[test]
+    fn test_arithmetic_encode_single_symbol() {
+        let dist = Distribution::new(vec![0.7, 0.3]).expect("valid");
+        let symbols = vec![0];
+        let bits = arithmetic_encode(&symbols, &dist);
+        let decoded = arithmetic_decode(&bits, &dist, 1);
+        assert_eq!(decoded, symbols);
+    }
+
+    #[test]
+    fn test_arithmetic_encode_empty() {
+        let dist = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        let bits = arithmetic_encode(&[], &dist);
+        assert!(bits.is_empty());
+    }
+
+    #[test]
+    fn test_arithmetic_code_state_encode_symbol() {
+        let dist = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        let mut state = ArithmeticCodeState::new(&dist);
+        state.encode_symbol(0);
+        // After encoding symbol 0 (lower half), interval should be [0, 0.5)
+        assert!(
+            state.low < state.high,
+            "interval should be valid after encoding"
+        );
+        assert!(
+            state.high <= 0.5 + EPS,
+            "high should be <= 0.5 for symbol 0"
+        );
+    }
+
+    #[test]
+    fn test_information_measure_enum() {
+        assert_eq!(InformationMeasure::Entropy, InformationMeasure::Entropy);
+        assert_ne!(InformationMeasure::Entropy, InformationMeasure::MutualInfo);
+        assert_ne!(
+            InformationMeasure::RelativeEntropy,
+            InformationMeasure::ChannelCapacity
+        );
+    }
+
+    #[test]
+    fn test_channel_output_distribution() {
+        // Identity channel: output matches input
+        let matrix = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
+        let ch = Channel::new(matrix).expect("valid");
+        let px = Distribution::new(vec![0.3, 0.7]).expect("valid");
+        let py = ch.output_distribution(&px);
+        assert!((py.probs[0] - 0.3).abs() < EPS);
+        assert!((py.probs[1] - 0.7).abs() < EPS);
+    }
+
+    #[test]
+    fn test_channel_new_invalid() {
+        // Inconsistent row lengths
+        let matrix = vec![vec![0.5, 0.5], vec![0.3]];
+        assert!(Channel::new(matrix).is_none());
+        // Empty
+        assert!(Channel::new(vec![]).is_none());
+    }
+
+    #[test]
+    fn test_huffman_node_collect_codewords() {
+        use super::super::types::HuffmanNode;
+        let leaf0 = HuffmanNode::Leaf {
+            symbol: 0,
+            prob: 0.5,
+        };
+        let leaf1 = HuffmanNode::Leaf {
+            symbol: 1,
+            prob: 0.5,
+        };
+        let root = HuffmanNode::Internal {
+            prob: 1.0,
+            left: Box::new(leaf0),
+            right: Box::new(leaf1),
+        };
+        let mut codes = Vec::new();
+        root.collect_codewords(vec![], &mut codes);
+        assert_eq!(codes.len(), 2);
+        // Symbol 0 gets prefix [false], symbol 1 gets prefix [true]
+        let code0 = codes
+            .iter()
+            .find(|(s, _)| *s == 0)
+            .map(|(_, c)| c.clone())
+            .expect("sym 0");
+        let code1 = codes
+            .iter()
+            .find(|(s, _)| *s == 1)
+            .map(|(_, c)| c.clone())
+            .expect("sym 1");
+        assert_eq!(code0, vec![false]);
+        assert_eq!(code1, vec![true]);
+    }
+
+    #[test]
+    fn test_arithmetic_decode_empty_bits() {
+        let dist = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        let result = arithmetic_decode(&[], &dist, 3);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_arithmetic_decode_zero_len() {
+        let dist = Distribution::new(vec![0.5, 0.5]).expect("valid");
+        let bits = vec![false, true];
+        let result = arithmetic_decode(&bits, &dist, 0);
+        assert!(result.is_empty());
     }
 }

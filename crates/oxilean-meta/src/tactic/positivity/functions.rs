@@ -13,6 +13,10 @@ use super::types::{
     TacticPositivityDiagnostics, TacticPositivityDiff, TacticPositivityPipeline,
     TacticPositivityResult,
 };
+#[allow(unused_imports)]
+use crate::basic::{MVarId, MetaContext};
+use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::{Expr, Name};
 
 /// Check whether a string represents a square term: `x^2`, `(...)^2`, or numeric squares.
 pub(super) fn is_square_term(s: &str) -> bool {
@@ -1024,5 +1028,87 @@ mod positivity_ext_tests_101 {
         let l = PositivityExtConfigVal101::List(vec!["a".to_string(), "b".to_string()]);
         assert_eq!(l.type_name(), "list");
         assert_eq!(l.as_list().map(|v| v.len()), Some(2));
+    }
+}
+
+/// `positivity` — prove `0 < e`, `0 ≤ e`, or `e ≠ 0` goals by sign analysis.
+///
+/// Converts the current goal's target to a string representation, then
+/// applies the [`PositivityTactic`] sign analyzer to determine if the sign
+/// of the expression can be established. If proved, closes the goal with
+/// a synthetic proof constant; otherwise returns an error.
+pub fn tac_positivity(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal = state.current_goal()?;
+    let target = ctx
+        .get_mvar_type(goal)
+        .cloned()
+        .ok_or_else(|| TacticError::Internal("positivity: goal has no type".into()))?;
+    let target = ctx.instantiate_mvars(&target);
+    let target_str = target.to_string();
+
+    let tac = PositivityTactic::new();
+
+    // Detect the positivity/nonnegativity claim shape from the goal string.
+    // Common patterns (after Display): "(0 < e)", "(0 ≤ e)", "(e ≠ 0)"
+    let (can_close, proof_name) = if target_str.contains(" < ") {
+        // Goal has the form "0 < e": try to prove strict positivity of rhs.
+        let rhs = extract_rhs(&target_str, " < ");
+        let ok = tac.can_prove_pos(rhs.trim());
+        (ok, "positivity.pos")
+    } else if target_str.contains(" ≤ ") || target_str.contains(" <= ") {
+        // Goal has the form "0 ≤ e": prove nonnegativity.
+        let sep = if target_str.contains(" ≤ ") {
+            " ≤ "
+        } else {
+            " <= "
+        };
+        let rhs = extract_rhs(&target_str, sep);
+        let ok = tac.can_prove_nonneg(rhs.trim());
+        (ok, "positivity.nonneg")
+    } else if target_str.contains(" ≠ ") || target_str.contains(" != ") {
+        // Goal has the form "e ≠ 0": prove expression is nonzero (sign is Pos or Neg).
+        let sep = if target_str.contains(" ≠ ") {
+            " ≠ "
+        } else {
+            " != "
+        };
+        let lhs = extract_lhs(&target_str, sep);
+        let sign = tac.analyze_expr(lhs.trim());
+        let ok = sign.is_known() && !matches!(sign, Sign::Zero);
+        (ok, "positivity.ne_zero")
+    } else {
+        // Fallback: try analyzing the whole expression as a positivity claim.
+        let sign = tac.analyze_expr(target_str.trim());
+        let ok = sign.is_nonneg();
+        (ok, "positivity.nonneg")
+    };
+
+    if can_close {
+        let proof = Expr::Const(Name::str(proof_name), vec![]);
+        state.close_goal(proof, ctx)?;
+        Ok(())
+    } else {
+        Err(TacticError::Failed(format!(
+            "positivity: could not determine sign of goal `{}`",
+            target_str
+        )))
+    }
+}
+
+/// Extract the right-hand side of `"lhs SEP rhs"` at the first occurrence of `sep`.
+fn extract_rhs<'a>(s: &'a str, sep: &str) -> &'a str {
+    if let Some(idx) = s.find(sep) {
+        &s[idx + sep.len()..]
+    } else {
+        s
+    }
+}
+
+/// Extract the left-hand side of `"lhs SEP rhs"` at the first occurrence of `sep`.
+fn extract_lhs<'a>(s: &'a str, sep: &str) -> &'a str {
+    if let Some(idx) = s.find(sep) {
+        &s[..idx]
+    } else {
+        s
     }
 }

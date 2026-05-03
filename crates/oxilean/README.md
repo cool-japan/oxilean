@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/crates/l/oxilean.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 
-**Unified facade crate for OxiLean** — a Pure Rust interactive theorem prover implementing the Calculus of Inductive Constructions (CiC), inspired by Lean 4.
+**Unified facade crate for OxiLean** -- a Pure Rust interactive theorem prover implementing the Calculus of Inductive Constructions (CiC), inspired by Lean 4.
 
 This crate re-exports all OxiLean library subcrates under a single API surface with feature-gated imports. Zero C/Fortran dependencies.
 
@@ -43,14 +43,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean = "0.1"
+oxilean = "0.1.2"
 ```
 
 Or with all library components:
 
 ```toml
 [dependencies]
-oxilean = { version = "0.1", features = ["full"] }
+oxilean = { version = "0.1.2", features = ["full"] }
 ```
 
 ## Feature Flags
@@ -84,7 +84,7 @@ use oxilean::meta::{MetaContext, TacticState, InstanceSynthesizer, DiscrTree};
 
 ```toml
 # Cargo.toml
-oxilean = { version = "0.1", features = ["full"] }
+oxilean = { version = "0.1.2", features = ["full"] }
 ```
 
 ```rust
@@ -104,8 +104,8 @@ use oxilean::build_sys;
 Include only what you need to minimize compile times:
 
 ```toml
-# Cargo.toml — kernel + standard library only
-oxilean = { version = "0.1", default-features = false, features = ["kernel", "std-lib"] }
+# Cargo.toml -- kernel + standard library only
+oxilean = { version = "0.1.2", default-features = false, features = ["kernel", "std-lib"] }
 ```
 
 ```rust
@@ -178,4 +178,4 @@ OxiLean is part of the [COOLJAPAN](https://github.com/cool-japan) Pure Rust ecos
 
 ## License
 
-Apache-2.0 — Copyright (c) COOLJAPAN OU (Team Kitasan)
+Copyright COOLJAPAN OU (Team Kitasan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.

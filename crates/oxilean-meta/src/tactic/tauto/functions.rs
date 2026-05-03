@@ -7,6 +7,10 @@ use super::types::{
     HornClause, HornSolver, Interpolant, IntuitTactic, LtlFormula, NdContext, NdStep,
     ProofTreeNode, PropFormula, PropProof, Sequent, TautoTactic, TruthTable, WatchedClauses,
 };
+#[allow(unused_imports)]
+use crate::basic::{MVarId, MetaContext};
+use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::{Expr, Name};
 use std::collections::HashMap;
 
 #[cfg(test)]
@@ -1211,5 +1215,34 @@ mod canonical_and_equiv_tests {
         let f1 = PropFormula::Or(Box::new(p.clone()), Box::new(q.clone()));
         let f2 = PropFormula::Or(Box::new(q), Box::new(p));
         assert_eq!(canonical_form(&f1), canonical_form(&f2));
+    }
+}
+
+/// `tauto` — decide propositional tautologies.
+///
+/// Converts the current goal's target expression to its string representation and
+/// passes it through [`TautoTactic::prove`], which parses common propositional
+/// connectives (`∧`, `∨`, `→`, `↔`, `¬`, `True`, `False`) and verifies tautology
+/// via truth-table or DPLL.  If the formula is a tautology, the goal is closed
+/// with a synthetic proof constant; otherwise a [`TacticError::Failed`] is returned.
+pub fn tac_tauto(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal = state.current_goal()?;
+    let target = ctx
+        .get_mvar_type(goal)
+        .cloned()
+        .ok_or_else(|| TacticError::Internal("tauto: goal has no type".into()))?;
+    let target = ctx.instantiate_mvars(&target);
+    let target_str = target.to_string();
+
+    let tactic = TautoTactic::new();
+    if tactic.prove(&target_str) {
+        let proof = Expr::Const(Name::str("tauto.proved"), vec![]);
+        state.close_goal(proof, ctx)?;
+        Ok(())
+    } else {
+        Err(TacticError::Failed(format!(
+            "tauto: could not prove `{}` as a propositional tautology",
+            target_str
+        )))
     }
 }

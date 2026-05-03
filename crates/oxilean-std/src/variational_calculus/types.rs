@@ -153,8 +153,8 @@ impl NoetherSymmetryData {
 /// Find a minimal surface spanning a planar boundary polygon
 /// using a discrete Douglas-type energy minimisation.
 ///
-/// We parameterise the surface over a unit square [0,1]² and minimise
-/// the Dirichlet energy E[u] = ∫∫ (|∂u/∂x|² + |∂u/∂y|²) dx dy
+/// We parameterise the surface over a unit square \[0,1\]² and minimise
+/// the Dirichlet energy E\[u\] = ∫∫ (|∂u/∂x|² + |∂u/∂y|²) dx dy
 /// (harmonic maps are conformal parametrisations of minimal surfaces).
 #[derive(Debug, Clone)]
 pub struct MinimalSurfaceFinder {
@@ -181,7 +181,7 @@ impl MinimalSurfaceFinder {
             boundary,
         }
     }
-    /// Solve for the interior values u[i][j] using successive over-relaxation (SOR).
+    /// Solve for the interior values u\[i\]\[j\] using successive over-relaxation (SOR).
     /// Minimises the discrete Dirichlet energy: E = Σ (u_i,j+1 − u_i,j)² + (u_i+1,j − u_i,j)².
     pub fn solve(&self, max_iter: usize, omega: f64) -> Vec<Vec<f64>> {
         let n = self.resolution;
@@ -226,7 +226,7 @@ impl MinimalSurfaceFinder {
         energy * 0.5
     }
 }
-/// Action functional S[q] = ∫_{t0}^{t1} L(q, q̇, t) dt.
+/// Action functional S\[q\] = ∫_{t0}^{t1} L(q, q̇, t) dt.
 #[derive(Debug, Clone)]
 pub struct ActionFunctional {
     /// The Lagrangian expression (as a string).
@@ -438,7 +438,7 @@ impl LagrangianFunction {
 }
 /// Finite-difference Euler-Lagrange solver for 1D problems.
 ///
-/// Minimises J[y] = ∫_a^b L(x, y, y') dx subject to y(a) = ya, y(b) = yb
+/// Minimises J\[y\] = ∫_a^b L(x, y, y') dx subject to y(a) = ya, y(b) = yb
 /// using a gradient-descent iteration on the interior grid nodes.
 #[derive(Debug, Clone)]
 pub struct EulerLagrangeSolver {
@@ -456,7 +456,7 @@ pub struct EulerLagrangeSolver {
     pub step_size: f64,
 }
 impl EulerLagrangeSolver {
-    /// Create a new solver on [a, b] with n+1 subintervals.
+    /// Create a new solver on \[a, b\] with n+1 subintervals.
     pub fn new(a: f64, b: f64, ya: f64, yb: f64, n_interior: usize, step_size: f64) -> Self {
         Self {
             a,
@@ -484,7 +484,7 @@ impl EulerLagrangeSolver {
             .collect()
     }
     /// Run `max_iter` gradient-descent steps minimising the arc-length functional
-    /// J[y] = ∫ sqrt(1 + y'²) dx (geodesic in the plane).
+    /// J\[y\] = ∫ sqrt(1 + y'²) dx (geodesic in the plane).
     ///
     /// Returns the interior y-values at convergence.
     pub fn solve_arc_length(&self, max_iter: usize) -> Vec<f64> {
@@ -569,7 +569,7 @@ impl LowerSemicontinuous {
 /// minimising movement scheme.
 ///
 /// Evolves a discrete probability measure ρ = (x_i, w_i) under the gradient
-/// flow of the free energy F[ρ] = ∫ ρ log ρ dx + ∫ V ρ dx (Fokker-Planck).
+/// flow of the free energy F\[ρ\] = ∫ ρ log ρ dx + ∫ V ρ dx (Fokker-Planck).
 #[derive(Debug, Clone)]
 pub struct WassersteinGradientFlow {
     /// JKO time step τ.
@@ -611,7 +611,7 @@ impl WassersteinGradientFlow {
         }
     }
     /// Perform one JKO step: move particles to minimise
-    /// τ F[ρ] + W_2²(ρ^n, ρ) / 2
+    /// τ F\[ρ\] + W_2²(ρ^n, ρ) / 2
     /// via a proximal operator.  For the quadratic potential V = α x²/2 the
     /// JKO update has the closed-form shrinkage:
     ///   x_i^{n+1} = x_i^n / (1 + τ α).
@@ -730,7 +730,7 @@ pub struct YangMillsEnergy {
     /// Grid size N: an N×N lattice.
     pub n: usize,
     /// Link variables U_{i,j,dir} ∈ U(1), stored as angles θ ∈ [0, 2π).
-    /// `links[i * n + j][dir]` = θ at site (i,j), direction dir (0=right, 1=up).
+    /// `links\[i * n + j\][dir]` = θ at site (i,j), direction dir (0=right, 1=up).
     pub links: Vec<[f64; 2]>,
 }
 impl YangMillsEnergy {
@@ -836,7 +836,7 @@ impl MorseCriticalPointData {
         }
     }
 }
-/// First variation δF[φ; η] of a functional F in direction η.
+/// First variation δF\[φ; η\] of a functional F in direction η.
 #[derive(Debug, Clone)]
 pub struct FirstVariation {
     /// Name of the functional being varied.
@@ -1161,7 +1161,7 @@ impl WeakConvergence {
 pub struct PontryaginPrinciple {
     /// The underlying control system.
     pub system: ControlSystem,
-    /// The running cost / objective J[u] = ∫ L(x, u, t) dt.
+    /// The running cost / objective J\[u\] = ∫ L(x, u, t) dt.
     pub cost: String,
 }
 impl PontryaginPrinciple {

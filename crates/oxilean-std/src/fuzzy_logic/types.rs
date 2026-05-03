@@ -72,7 +72,7 @@ impl FuzzyInferenceSystem {
     }
     /// Run Mamdani inference and defuzzify.
     ///
-    /// `input_degrees[i]` contains the firing degrees for input variable i.
+    /// `input_degrees\[i\]` contains the firing degrees for input variable i.
     pub fn infer_mamdani(&self, input_degrees: &[Vec<f64>]) -> f64 {
         let sys = MamdaniSystem {
             rules: self.mamdani_rules.clone(),
@@ -105,7 +105,7 @@ pub enum TConorm {
     Drastic,
 }
 impl TConorm {
-    /// Evaluate the t-conorm at (a, b) ∈ [0,1]².
+    /// Evaluate the t-conorm at (a, b) ∈ \[0,1\]².
     pub fn eval(self, a: f64, b: f64) -> f64 {
         match self {
             TConorm::Maximum => a.max(b),
@@ -214,8 +214,8 @@ impl FuzzyCMeans {
     /// Run FCM on `data` (each row is a data point).
     ///
     /// Returns `(membership, centers)`:
-    /// - `membership[i][k]` = degree of point i belonging to cluster k.
-    /// - `centers[k]` = center of cluster k.
+    /// - `membership\[i\]\[k\]` = degree of point i belonging to cluster k.
+    /// - `centers\[k\]` = center of cluster k.
     pub fn fit(&self, data: &[Vec<f64>]) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
         let n = data.len();
         let dim = if n > 0 { data[0].len() } else { 1 };
@@ -289,7 +289,7 @@ impl FuzzyCMeans {
         }
         (u, centers)
     }
-    /// Compute the partition coefficient V_PC = (1/N) Σ Σ u_{ik}^2 ∈ [1/c, 1].
+    /// Compute the partition coefficient V_PC = (1/N) Σ Σ u_{ik}^2 ∈ \[1/c, 1\].
     ///
     /// V_PC = 1 means hard partition, 1/c means maximum fuzziness.
     pub fn partition_coefficient(membership: &[Vec<f64>]) -> f64 {
@@ -425,9 +425,9 @@ impl ManyValuedLogic {
 #[derive(Debug, Clone)]
 pub struct FiniteMTLAlgebra {
     pub size: usize,
-    /// t-norm table: tnorm[i][j]
+    /// t-norm table: tnorm\[i\]\[j\]
     pub tnorm: Vec<Vec<usize>>,
-    /// residuum table: residuum[i][j] = max { k | tnorm[k][i] ≤ j }
+    /// residuum table: residuum\[i\]\[j\] = max { k | tnorm\[k\]\[i\] ≤ j }
     pub residuum: Vec<Vec<usize>>,
 }
 impl FiniteMTLAlgebra {
@@ -524,7 +524,7 @@ pub enum TNorm {
     Drastic,
 }
 impl TNorm {
-    /// Evaluate the t-norm at (a, b) ∈ [0,1]².
+    /// Evaluate the t-norm at (a, b) ∈ \[0,1\]².
     pub fn eval(self, a: f64, b: f64) -> f64 {
         match self {
             TNorm::Minimum => a.min(b),
@@ -551,11 +551,11 @@ impl TNorm {
     }
 }
 /// A fuzzy set over a universe represented as a list of (element, degree) pairs.
-/// Degrees are in [0, 1].
+/// Degrees are in \[0, 1\].
 #[derive(Debug, Clone)]
 pub struct FuzzySet {
     pub universe_size: usize,
-    /// membership[i] ∈ [0.0, 1.0]
+    /// membership\[i\] ∈ \[0.0, 1.0\]
     pub membership: Vec<f64>,
 }
 impl FuzzySet {
@@ -566,7 +566,7 @@ impl FuzzySet {
             membership: vec![0.0; universe_size],
         }
     }
-    /// Set the membership degree for element i (clamped to [0,1]).
+    /// Set the membership degree for element i (clamped to \[0,1\]).
     pub fn set(&mut self, i: usize, degree: f64) {
         self.membership[i] = degree.clamp(0.0, 1.0);
     }
@@ -785,11 +785,11 @@ impl GradualElement {
     }
 }
 /// A fuzzy metric space (in the sense of George and Veeramani).
-/// M(x, y, t) ∈ [0,1] represents the "probability" that d(x,y) < t.
+/// M(x, y, t) ∈ \[0,1\] represents the "probability" that d(x,y) < t.
 #[derive(Debug, Clone)]
 pub struct FuzzyMetricSpace {
     pub points: usize,
-    /// M[x][y][t_idx] — indexed over a finite grid of t values.
+    /// M\[x\]\[y\]\[t_idx\] — indexed over a finite grid of t values.
     pub metric: Vec<Vec<Vec<f64>>>,
     pub t_grid: Vec<f64>,
 }

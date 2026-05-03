@@ -103,7 +103,7 @@ pub fn stabilizer_group_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
 /// `StabilizerCode : Nat → Nat → Nat → Type`
-/// [[n, k, d]] stabilizer code: n physical, k logical, distance d.
+/// [\[n, k, d\]] stabilizer code: n physical, k logical, distance d.
 pub fn stabilizer_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -139,12 +139,12 @@ pub fn knill_laflamme_conditions_ty() -> Expr {
     prop()
 }
 /// Theorem: `QuantumSingletonBound`
-/// For an [[n,k,d]] code: k ≤ n - 4(d-1) (quantum Singleton bound).
+/// For an [\[n,k,d\]] code: k ≤ n - 4(d-1) (quantum Singleton bound).
 pub fn quantum_singleton_bound_ty() -> Expr {
     prop()
 }
 /// Theorem: `QuantumHammingBound`
-/// For a non-degenerate [[n,k,d]] code: 2^k ∑_{j=0}^{t} C(n,j) 3^j ≤ 2^n.
+/// For a non-degenerate [\[n,k,d\]] code: 2^k ∑_{j=0}^{t} C(n,j) 3^j ≤ 2^n.
 pub fn quantum_hamming_bound_ty() -> Expr {
     prop()
 }
@@ -154,12 +154,12 @@ pub fn gottesman_knill_theorem_ty() -> Expr {
     prop()
 }
 /// `ClassicalCode : Nat → Nat → Nat → Type`
-/// [n, k, d] classical linear code over F₂.
+/// \[n, k, d\] classical linear code over F₂.
 pub fn classical_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
 /// `CSSCode : Nat → Nat → Nat → Type`
-/// CSS code [[n, k₁+k₂-n, d]] from two classical codes C₁⊥ ⊆ C₂.
+/// CSS code [\[n, k₁+k₂-n, d\]] from two classical codes C₁⊥ ⊆ C₂.
 pub fn css_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -184,7 +184,7 @@ pub fn css_transversal_cnot_ty() -> Expr {
     prop()
 }
 /// `ShorCode : Type`
-/// The 9-qubit Shor code [[9,1,3]]: first quantum error correcting code.
+/// The 9-qubit Shor code [\[9,1,3\]]: first quantum error correcting code.
 pub fn shor_code_ty() -> Expr {
     type0()
 }
@@ -219,12 +219,12 @@ pub fn shor_is_css_ty() -> Expr {
     prop()
 }
 /// `SteaneCode : Type`
-/// The [[7,1,3]] Steane code from the [7,4,3] Hamming code.
+/// The [\[7,1,3\]] Steane code from the \[7,4,3\] Hamming code.
 pub fn steane_code_ty() -> Expr {
     type0()
 }
 /// `SteaneHMatrix : Type`
-/// Parity check matrix H of the classical [7,4,3] Hamming code.
+/// Parity check matrix H of the classical \[7,4,3\] Hamming code.
 pub fn steane_h_matrix_ty() -> Expr {
     type0()
 }
@@ -234,7 +234,7 @@ pub fn steane_stabilizer_ty() -> Expr {
     arrow(cst("SteaneCode"), arrow(nat_ty(), type0()))
 }
 /// Theorem: `SteaneCorrectsSingleErrors`
-/// The Steane [[7,1,3]] code corrects all single-qubit errors.
+/// The Steane [\[7,1,3\]] code corrects all single-qubit errors.
 pub fn steane_corrects_single_errors_ty() -> Expr {
     prop()
 }
@@ -249,7 +249,7 @@ pub fn steane_is_css_ty() -> Expr {
     prop()
 }
 /// `FaultTolerantGate : Nat → Nat → Nat → Type`
-/// A fault-tolerant implementation of a gate on an [[n,k,d]] code.
+/// A fault-tolerant implementation of a gate on an [\[n,k,d\]] code.
 pub fn fault_tolerant_gate_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -289,7 +289,7 @@ pub fn error_threshold_ty() -> Expr {
     real_ty()
 }
 /// `ConcatenatedCode : Nat → Nat → Nat → Nat → Type`
-/// [[n,k,d]] code concatenated to level L.
+/// [\[n,k,d\]] code concatenated to level L.
 pub fn concatenated_code_ty() -> Expr {
     arrow(
         nat_ty(),
@@ -302,7 +302,7 @@ pub fn fault_tolerance_overhead_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), real_ty()))
 }
 /// `PseudoThreshold : Nat → Nat → Nat → Real`
-/// Pseudo-threshold for an [[n,k,d]] code.
+/// Pseudo-threshold for an [\[n,k,d\]] code.
 pub fn pseudo_threshold_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), real_ty())))
 }
@@ -312,7 +312,7 @@ pub fn threshold_theorem_ty() -> Expr {
     prop()
 }
 /// Theorem: `ConcatenatedCodeDistance`
-/// Level-L concatenation of [[n,1,d]] code has distance d^L.
+/// Level-L concatenation of [\[n,1,d\]] code has distance d^L.
 pub fn concatenated_code_distance_ty() -> Expr {
     prop()
 }
@@ -392,7 +392,7 @@ pub fn kl_error_set_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
 /// `KLCorrectableCode : Nat → Nat → Nat → Type`
-/// An [[n,k,d]] code satisfying the Knill-Laflamme conditions for a given error set.
+/// An [\[n,k,d\]] code satisfying the Knill-Laflamme conditions for a given error set.
 pub fn kl_correctable_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -429,12 +429,12 @@ pub fn kl_degenerate_code_ty() -> Expr {
     prop()
 }
 /// `ReedMullerCode : Nat → Nat → Type`
-/// Classical Reed-Muller code R(r, m) with parameters [2^m, ∑_{i≤r} C(m,i), 2^{m-r}].
+/// Classical Reed-Muller code R(r, m) with parameters \[2^m, ∑_{i≤r} C(m,i), 2^{m-r}\].
 pub fn reed_muller_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
 /// `QuantumReedMullerCode : Nat → Nat → Type`
-/// Quantum Reed-Muller code [[2^m, k, d]] from two RM codes.
+/// Quantum Reed-Muller code [\[2^m, k, d\]] from two RM codes.
 pub fn quantum_reed_muller_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
@@ -454,17 +454,17 @@ pub fn rm_transversal_universal_ty() -> Expr {
     prop()
 }
 /// Theorem: `RMCodeDistance`
-/// Quantum RM code [[2^m, 1, 2^{m-r}]] has distance 2^{m-r}.
+/// Quantum RM code [\[2^m, 1, 2^{m-r}\]] has distance 2^{m-r}.
 pub fn rm_code_distance_ty() -> Expr {
     prop()
 }
 /// `SurfaceCode : Nat → Type`
-/// Distance-d surface code [[d², 1, d]] on a d×d planar lattice.
+/// Distance-d surface code [\[d², 1, d\]] on a d×d planar lattice.
 pub fn surface_code_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
 /// `ToricCode : Nat → Type`
-/// Distance-d toric code [[2d², 2, d]] on a torus (Kitaev's toric code).
+/// Distance-d toric code [\[2d², 2, d\]] on a torus (Kitaev's toric code).
 pub fn toric_code_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
@@ -484,7 +484,7 @@ pub fn surface_code_logical_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
 /// Theorem: `SurfaceCodeDistance`
-/// The surface code [[d², 1, d]] has code distance d (minimum weight logical).
+/// The surface code [\[d², 1, d\]] has code distance d (minimum weight logical).
 pub fn surface_code_distance_ty() -> Expr {
     prop()
 }
@@ -499,7 +499,7 @@ pub fn surface_code_threshold_ty() -> Expr {
     prop()
 }
 /// `QLDPCCode : Nat → Nat → Nat → Type`
-/// Quantum low-density parity-check code [[n, k, d]] with constant check weight.
+/// Quantum low-density parity-check code [\[n, k, d\]] with constant check weight.
 pub fn qldpc_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -544,7 +544,7 @@ pub fn gkp_code_ty() -> Expr {
     arrow(real_ty(), type0())
 }
 /// `BinomialCode : Nat → Nat → Type`
-/// Binomial code [[N, M, d]]_b protecting against d-photon loss/gain errors.
+/// Binomial code [\[N, M, d\]]_b protecting against d-photon loss/gain errors.
 pub fn binomial_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
@@ -624,7 +624,7 @@ pub fn magic_state_non_stabilizer_ty() -> Expr {
     prop()
 }
 /// `MWPMDecoder : Nat → Nat → Nat → Type`
-/// Minimum-weight perfect matching decoder for [[n,k,d]] stabilizer codes.
+/// Minimum-weight perfect matching decoder for [\[n,k,d\]] stabilizer codes.
 pub fn mwpm_decoder_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), type0())))
 }
@@ -659,7 +659,7 @@ pub fn bp_convergence_ldpc_ty() -> Expr {
     prop()
 }
 /// `SubsystemCode : Nat → Nat → Nat → Nat → Type`
-/// [[n, k, r, d]] subsystem (operator) code with k logical and r gauge qubits.
+/// [\[n, k, r, d\]] subsystem (operator) code with k logical and r gauge qubits.
 pub fn subsystem_code_ty() -> Expr {
     arrow(
         nat_ty(),
@@ -675,7 +675,7 @@ pub fn gauge_group_ty() -> Expr {
     )
 }
 /// `BaconShorCode : Nat → Type`
-/// Bacon-Shor code on an m×m grid: [[m², 1, r, m]] subsystem code.
+/// Bacon-Shor code on an m×m grid: [\[m², 1, r, m\]] subsystem code.
 pub fn bacon_shor_code_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
@@ -698,7 +698,7 @@ pub fn bacon_shor_single_fault_tolerant_ty() -> Expr {
     prop()
 }
 /// `CodeSwitching : Nat → Nat → Nat → Nat → Nat → Nat → Type`
-/// Protocol for switching between two codes [[n1,k,d1]] and [[n2,k,d2]].
+/// Protocol for switching between two codes [\[n1,k,d1\]] and [\[n2,k,d2\]].
 pub fn code_switching_ty() -> Expr {
     arrow(
         nat_ty(),
@@ -911,7 +911,7 @@ pub fn erasure_channel_capacity(epsilon: f64) -> f64 {
 pub fn amplitude_damping_capacity(gamma: f64) -> f64 {
     (1.0 - binary_entropy(gamma)).max(0.0)
 }
-/// T-state fidelity after one round of [[15,1,3]] distillation.
+/// T-state fidelity after one round of [\[15,1,3\]] distillation.
 /// Input fidelity F → output fidelity F_out ≈ 1 - 35(1-F)³.
 pub fn distill_t_state_fidelity(f_in: f64) -> f64 {
     let eps = 1.0 - f_in;

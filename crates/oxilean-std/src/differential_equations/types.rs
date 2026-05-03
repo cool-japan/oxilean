@@ -286,7 +286,7 @@ impl LorenzSystem {
     pub fn new(sigma: f64, rho: f64, beta: f64) -> Self {
         Self { sigma, rho, beta }
     }
-    /// Advance one RK4 step of size h from the given state [x, y, z].
+    /// Advance one RK4 step of size h from the given state \[x, y, z\].
     pub fn step(&self, state: &[f64; 3], h: f64) -> [f64; 3] {
         let lorenz = |s: &[f64; 3]| -> [f64; 3] {
             [
@@ -443,7 +443,7 @@ impl DelayDE {
     }
     /// Solve by the method of steps from t0 to t_end.
     ///
-    /// `phi` is the history function on [t0 - tau, t0].
+    /// `phi` is the history function on \[t0 - tau, t0\].
     pub fn solve_to(
         &self,
         f: &dyn Fn(f64, f64, f64) -> f64,
@@ -599,7 +599,7 @@ impl ItoSDE {
 /// u(x) = f(x) + λ ∫_a^b K(x, y) u(y) dy.
 #[allow(dead_code)]
 pub struct FredholmEquation {
-    /// The interval [a, b].
+    /// The interval \[a, b\].
     pub a: f64,
     pub b: f64,
     /// The parameter λ.
@@ -647,7 +647,7 @@ impl FredholmEquation {
 }
 /// A Laplace equation Δu = 0 representation.
 pub struct LaplacianEqn {
-    /// Domain: [x_min, x_max] × [y_min, y_max]
+    /// Domain: \[x_min, x_max\] × \[y_min, y_max\]
     pub domain: [f64; 4],
 }
 impl LaplacianEqn {
@@ -755,7 +755,7 @@ impl StabilityAnalysis {
         }
     }
 }
-/// A solution in function space C([t₀−τ, T]).
+/// A solution in function space C(\[t₀−τ, T\]).
 pub struct FunctionSpaceSolution {
     /// The solution values at grid points
     pub times: Vec<f64>,
@@ -809,7 +809,7 @@ impl VolterraIntegralEquation {
             n_quad,
         }
     }
-    /// Solve numerically using the Nyström method (trapezoidal rule in s) on [0, t_end].
+    /// Solve numerically using the Nyström method (trapezoidal rule in s) on \[0, t_end\].
     pub fn solve(&self, kernel: &dyn Fn(f64, f64) -> f64, t_end: f64, n: usize) -> Vec<(f64, f64)> {
         let h = t_end / n as f64;
         let mut y = vec![0.0f64; n + 1];
@@ -1068,7 +1068,7 @@ impl VectorODE {
             )
         }
     }
-    /// Approximate equilibrium points by sampling the grid [-5,5]^n (only for dim ≤ 2).
+    /// Approximate equilibrium points by sampling the grid \[-5,5\]^n (only for dim ≤ 2).
     pub fn equilibrium_points(&self, tol: f64) -> Vec<Vec<f64>> {
         let mut result = Vec::new();
         if self.dimension == 1 {
@@ -1193,7 +1193,7 @@ impl SturmLiouville {
         }
     }
     /// Approximate the lowest eigenvalue by power-iteration on the Rayleigh quotient
-    /// (grid-based, for regular SL problems on [0, 1]).
+    /// (grid-based, for regular SL problems on \[0, 1\]).
     pub fn approximate_lowest_eigenvalue(&self, n: usize) -> f64 {
         let h = 1.0 / (n + 1) as f64;
         let mut y: Vec<f64> = (1..=n)
@@ -1226,7 +1226,7 @@ impl SturmLiouville {
             numerator / denominator
         }
     }
-    /// Check whether this is a regular Sturm-Liouville problem (p, q, w continuous and p > 0, w > 0 on [0,1]).
+    /// Check whether this is a regular Sturm-Liouville problem (p, q, w continuous and p > 0, w > 0 on \[0,1\]).
     pub fn is_regular(&self) -> bool {
         let n = 10usize;
         (0..=n).all(|k| {
@@ -1276,7 +1276,7 @@ pub struct EquilibriumPoint {
     pub x: f64,
     /// y-coordinate of the equilibrium
     pub y: f64,
-    /// 2×2 Jacobian matrix [[a, b], [c, d]]
+    /// 2×2 Jacobian matrix [\[a, b\], \[c, d\]]
     pub jacobian: [[f64; 2]; 2],
 }
 impl EquilibriumPoint {
@@ -1330,9 +1330,9 @@ impl EquilibriumPoint {
 pub struct FredholmIntegralEquation {
     /// Eigenvalue parameter λ
     pub lambda: f64,
-    /// Interval [a, b]
+    /// Interval \[a, b\]
     pub a: f64,
-    /// Interval [a, b]
+    /// Interval \[a, b\]
     pub b: f64,
     /// Forcing function g(t)
     pub g: Box<dyn Fn(f64) -> f64>,

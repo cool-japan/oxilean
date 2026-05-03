@@ -71,11 +71,10 @@ pub(super) fn is_norm_lt(l1: &Level, l2: &Level) -> bool {
                 return s1 < s2;
             }
         }
-        (Level::MVar(m1), Level::MVar(m2)) => {
-            if m1.0 != m2.0 {
-                return m1.0 < m2.0;
-            }
+        (Level::MVar(m1), Level::MVar(m2)) if m1.0 != m2.0 => {
+            return m1.0 < m2.0;
         }
+        (Level::MVar(_), Level::MVar(_)) => {}
         (Level::Max(a1, a2), Level::Max(b1_inner, b2_inner))
         | (Level::IMax(a1, a2), Level::IMax(b1_inner, b2_inner)) => {
             if a1 != b1_inner {
@@ -106,23 +105,45 @@ pub fn normalize(l: &Level) -> Level {
             let l1_norm = normalize(l1);
             let l2_norm = normalize(l2);
             if l2_norm.is_zero() {
+                // imax(_, 0) = 0; with offset: Succ^k(0)
                 return from_offset(Level::Zero, k);
             }
             if l2_norm.is_not_zero() {
-                return from_offset(normalize(&Level::max(l1_norm, l2_norm)), k);
+                // imax(u, v) = max(u, v) when v != 0.
+                // Distribute the outer offset k into each Max argument so the
+                // result is in the same canonical form as the Max branch
+                // (offsets are carried inside each component, not outside).
+                return normalize(&Level::max(
+                    from_offset(l1_norm, k),
+                    from_offset(l2_norm, k),
+                ));
             }
             if l1_norm.is_zero() {
-                return from_offset(l2_norm, k);
+                // imax(0, v) = v; with offset: Succ^k(v).
+                // If v is a Max, from_offset produces Succ^k(Max(a,b)) which
+                // is not the same canonical form as Max(Succ^k(a), Succ^k(b)).
+                // Re-normalize to distribute the offset inside any Max.
+                let with_offset = from_offset(l2_norm, k);
+                return if k == 0 {
+                    with_offset
+                } else {
+                    normalize(&with_offset)
+                };
             }
             from_offset(Level::imax(l1_norm, l2_norm), k)
         }
         Level::Max(_, _) => {
             let mut args = Vec::new();
             push_max_args(base, &mut args);
-            let mut normed: Vec<Level> = args
-                .into_iter()
-                .map(|a| normalize(&from_offset(a, k)))
-                .collect();
+            // Normalize each argument.  A component such as Succ(Max(…)) may
+            // normalize to a fresh Max node; those must be re-flattened so the
+            // resulting list has no nested Max nodes (idempotency requirement).
+            let mut normed: Vec<Level> = Vec::new();
+            for a in args {
+                let normalized_a = normalize(&from_offset(a, k));
+                // Re-flatten in case normalization produced a new Max.
+                push_max_args(&normalized_a, &mut normed);
+            }
             normed.sort_by(|a, b| {
                 if is_norm_lt(a, b) {
                     std::cmp::Ordering::Less

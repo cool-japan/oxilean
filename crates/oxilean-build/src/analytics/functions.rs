@@ -29,7 +29,7 @@ pub fn compute_dependency_stats(deps: &HashMap<String, Vec<String>>) -> Dependen
         }
     }
     let mut most_depended: Vec<(String, usize)> = in_degree.into_iter().collect();
-    most_depended.sort_by(|a, b| b.1.cmp(&a.1));
+    most_depended.sort_by_key(|b| std::cmp::Reverse(b.1));
     most_depended.truncate(10);
     let max_depth = compute_max_depth(deps);
     let strongly_connected = count_sccs(deps);

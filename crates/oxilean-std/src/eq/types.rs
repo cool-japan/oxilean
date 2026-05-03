@@ -218,7 +218,7 @@ impl<T> SetoidInstance<T> {
 pub struct EqChain {
     /// The type of all elements.
     pub ty: Expr,
-    /// The sequence of steps; `steps[i].rhs == steps[i+1].lhs`.
+    /// The sequence of steps; `steps\[i\].rhs == steps[i+1].lhs`.
     pub steps: Vec<PropEq>,
 }
 impl EqChain {

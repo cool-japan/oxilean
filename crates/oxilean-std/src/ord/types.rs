@@ -390,7 +390,7 @@ impl Permutation {
     }
     /// Create a permutation from a sorted-order vector.
     ///
-    /// `perm[i] = j` means that position `i` in the sorted order
+    /// `perm\[i\] = j` means that position `i` in the sorted order
     /// came from position `j` in the original.
     pub fn from_sort_order<T: Ord>(v: &[T]) -> Self {
         let mut indices: Vec<usize> = (0..v.len()).collect();

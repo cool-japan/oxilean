@@ -1,7 +1,7 @@
 # oxilean-cli — TODO
 
 > Task list for the CLI crate.
-> Last updated: 2026-03-09
+> Last updated: 2026-05-03
 
 ## ✅ Completed
 

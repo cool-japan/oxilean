@@ -110,15 +110,15 @@ pub trait Functor<A> {
     /// Apply f to every element.
     fn fmap<B, F: Fn(A) -> B>(self, f: F) -> Self::Mapped<B>;
 }
-/// Lift f over Option<A>.
+/// Lift f over `Option<A>`.
 pub fn fmap_option<A, B, F: Fn(A) -> B>(opt: Option<A>, f: F) -> Option<B> {
     opt.map(f)
 }
-/// Lift f over Vec<A>.
+/// Lift f over `Vec<A>`.
 pub fn fmap_vec<A, B, F: Fn(A) -> B>(v: Vec<A>, f: F) -> Vec<B> {
     v.into_iter().map(f).collect()
 }
-/// Lift f over Result<A, E>.
+/// Lift f over `Result<A, E>`.
 pub fn fmap_result<A, B, E, F: Fn(A) -> B>(r: Result<A, E>, f: F) -> Result<B, E> {
     r.map(f)
 }
@@ -166,15 +166,15 @@ pub fn option_composition_law<A: Clone, B: Clone + PartialEq, C: PartialEq>(
 pub fn vec_identity_law<A: Clone + PartialEq>(xs: Vec<A>) -> bool {
     fmap_vec(xs.clone(), |a| a) == xs
 }
-/// Map f over Option<Vec<A>>.
+/// Map f over `Option<Vec<A>`>.
 pub fn fmap_option_vec<A, B, F: Fn(A) -> B>(opt_vec: Option<Vec<A>>, f: F) -> Option<Vec<B>> {
     fmap_option(opt_vec, |v| fmap_vec(v, &f))
 }
-/// Map f over Vec<Option<A>>.
+/// Map f over `Vec<Option<A>`>.
 pub fn fmap_vec_option<A, B, F: Fn(A) -> B>(v: Vec<Option<A>>, f: F) -> Vec<Option<B>> {
     fmap_vec(v, |opt| fmap_option(opt, &f))
 }
-/// Map f over Vec<Result<A, E>>.
+/// Map f over `Vec<Result<A, E>`>.
 pub fn fmap_vec_result<A, B, E, F: Fn(A) -> B>(v: Vec<Result<A, E>>, f: F) -> Vec<Result<B, E>> {
     fmap_vec(v, |r| fmap_result(r, &f))
 }
@@ -189,22 +189,22 @@ pub fn option_to_vec<A>(opt: Option<A>) -> Vec<A> {
 pub fn vec_to_option<A>(v: Vec<A>) -> Option<A> {
     v.into_iter().next()
 }
-/// Flatten Option<Option<A>>.
+/// Flatten `Option<Option<A>`>.
 pub fn join_option<A>(opt: Option<Option<A>>) -> Option<A> {
     opt.flatten()
 }
-/// Flatten Vec<Vec<A>>.
+/// Flatten `Vec<Vec<A>`>.
 pub fn join_vec<A>(vv: Vec<Vec<A>>) -> Vec<A> {
     vv.into_iter().flatten().collect()
 }
-/// Apply Option<fn> to Option<A>.
+/// Apply `Option<fn>` to `Option<A>`.
 pub fn ap_option<A, B, F: Fn(A) -> B>(f: Option<F>, a: Option<A>) -> Option<B> {
     match (f, a) {
         (Some(g), Some(x)) => Some(g(x)),
         _ => None,
     }
 }
-/// Apply Vec<fn> to Vec<A> (cartesian product).
+/// Apply `Vec<fn>` to `Vec<A>` (cartesian product).
 #[allow(clippy::redundant_closure)]
 pub fn ap_vec<A: Clone, B, F: Fn(A) -> B>(fs: Vec<F>, xs: Vec<A>) -> Vec<B> {
     fs.into_iter()
@@ -219,11 +219,11 @@ pub fn bind_option<A, B, F: Fn(A) -> Option<B>>(opt: Option<A>, f: F) -> Option<
 pub fn bind_vec<A, B, F: Fn(A) -> Vec<B>>(v: Vec<A>, f: F) -> Vec<B> {
     v.into_iter().flat_map(f).collect()
 }
-/// Traverse Vec<A> with Option effect.
+/// Traverse `Vec<A>` with Option effect.
 pub fn traverse_vec_option<A, B, F: Fn(A) -> Option<B>>(v: Vec<A>, f: F) -> Option<Vec<B>> {
     v.into_iter().map(f).collect()
 }
-/// Traverse Vec<A> with Result effect.
+/// Traverse `Vec<A>` with Result effect.
 pub fn traverse_vec_result<A, B, E, F: Fn(A) -> Result<B, E>>(
     v: Vec<A>,
     f: F,
@@ -680,11 +680,11 @@ pub fn split_at_pred<A, P: Fn(&A) -> bool>(v: Vec<A>, pred: P) -> (Vec<A>, Vec<A
     let left = right.drain(..pos).collect();
     (left, right)
 }
-/// Flatten an Option<Vec<A>> to Vec<A>.
+/// Flatten an `Option<Vec<A>`> to `Vec<A>`.
 pub fn flatten_opt_vec<A>(opt: Option<Vec<A>>) -> Vec<A> {
     opt.unwrap_or_default()
 }
-/// Flatten a Vec<Option<A>> to Vec<A> (keep Some values).
+/// Flatten a `Vec<Option<A>`> to `Vec<A>` (keep Some values).
 pub fn flatten_vec_opt<A>(v: Vec<Option<A>>) -> Vec<A> {
     v.into_iter().flatten().collect()
 }
@@ -699,7 +699,7 @@ pub fn chunk<A: Clone>(v: Vec<A>, n: usize) -> Vec<Vec<A>> {
 pub fn windows<A: Clone>(v: &[A], n: usize) -> Vec<Vec<A>> {
     v.windows(n).map(|w| w.to_vec()).collect()
 }
-/// Transpose a Vec<Vec<A>> (assuming all inner vecs have the same length).
+/// Transpose a `Vec<Vec<A>`> (assuming all inner vecs have the same length).
 pub fn transpose<A: Clone>(vv: Vec<Vec<A>>) -> Vec<Vec<A>> {
     if vv.is_empty() {
         return vec![];
@@ -1669,7 +1669,7 @@ pub fn dimap_fn<A, B, C, D>(
 pub fn fmap_via_nat_trans<A: Clone, B, F: Fn(A) -> B>(v: Option<A>, f: F) -> Vec<B> {
     option_to_vec(v).into_iter().map(f).collect()
 }
-/// Sequence Option<Vec<A>> — swap the two functors.
+/// Sequence `Option<Vec<A>`> — swap the two functors.
 pub fn sequence_option_vec<A: Clone>(xs: Vec<Option<A>>) -> Option<Vec<A>> {
     xs.into_iter().collect()
 }

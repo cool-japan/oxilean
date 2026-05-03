@@ -647,7 +647,7 @@ impl ScriptProfiler {
     /// All profiles sorted by total duration (descending — hottest first).
     pub fn hottest_scripts(&self) -> Vec<&ScriptProfile> {
         let mut profiles: Vec<_> = self.profiles.values().collect();
-        profiles.sort_by(|a, b| b.total_duration.cmp(&a.total_duration));
+        profiles.sort_by_key(|b| std::cmp::Reverse(b.total_duration));
         profiles
     }
     /// Total wall-clock time across all scripts.

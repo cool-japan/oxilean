@@ -85,7 +85,7 @@ impl Mat2x2 {
     pub fn is_sl2z(&self) -> bool {
         self.det() == 1
     }
-    /// The standard generator S = [[0,-1],[1,0]] (order 4 in GL₂, order 2 in PSL₂).
+    /// The standard generator S = [\[0,-1\],\[1,0\]] (order 4 in GL₂, order 2 in PSL₂).
     pub fn generator_s() -> Self {
         Mat2x2 {
             a: 0,
@@ -94,7 +94,7 @@ impl Mat2x2 {
             d: 0,
         }
     }
-    /// The standard generator T = [[1,1],[0,1]] (translation τ ↦ τ+1).
+    /// The standard generator T = [\[1,1\],\[0,1\]] (translation τ ↦ τ+1).
     pub fn generator_t() -> Self {
         Mat2x2 {
             a: 1,
@@ -103,7 +103,7 @@ impl Mat2x2 {
             d: 1,
         }
     }
-    /// The identity element I = [[1,0],[0,1]].
+    /// The identity element I = [\[1,0\],\[0,1\]].
     pub fn identity() -> Self {
         Mat2x2 {
             a: 1,
@@ -935,7 +935,7 @@ impl AutomorphicRepresentation {
 /// Extended from the basic `RamanujanTau` struct with batch evaluation support.
 #[derive(Debug, Clone)]
 pub struct RamanujanTauFunction {
-    /// Cached tau values: cache[n] = τ(n).
+    /// Cached tau values: cache\[n\] = τ(n).
     cache: Vec<i64>,
 }
 #[allow(dead_code)]

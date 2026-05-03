@@ -78,10 +78,16 @@ impl TacticRegistry {
     }
     /// Execute a tactic by name.
     #[allow(dead_code)]
-    pub fn execute(&self, name: &str, state: &TacticState, _args: &[Expr]) -> TacticResult {
+    pub fn execute(
+        &self,
+        name: &str,
+        state: &TacticState,
+        _args: &[Expr],
+        env: &oxilean_kernel::Environment,
+    ) -> TacticResult {
         let tactic_name = Name::str(name);
         if self.tactics.contains_key(&tactic_name) {
-            eval_tactic(state, name)
+            eval_tactic(state, name, env)
         } else {
             Err(TacticError::UnknownTactic(name.to_string()))
         }

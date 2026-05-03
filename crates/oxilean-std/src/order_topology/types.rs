@@ -134,7 +134,7 @@ impl OrdinalArithmetic {
     /// Create from a list of (exponent, coefficient) pairs.
     /// Normalizes by sorting and merging equal exponents.
     pub fn new(mut terms: Vec<(u64, u64)>) -> Self {
-        terms.sort_by(|a, b| b.0.cmp(&a.0));
+        terms.sort_by_key(|b| std::cmp::Reverse(b.0));
         let mut cnf: Vec<(u64, u64)> = Vec::new();
         for (exp, coef) in terms {
             if coef == 0 {
@@ -363,7 +363,7 @@ impl SorgenfreyLineTopology {
     pub fn in_basis_set(lo: f64, hi: f64, x: f64) -> bool {
         x >= lo && x < hi
     }
-    /// Return all basis elements [points[i], points[j]) for i < j.
+    /// Return all basis elements [points\[i\], points\[j\]) for i < j.
     pub fn basis_sets(&self) -> Vec<(f64, f64)> {
         let mut result = Vec::new();
         for i in 0..self.points.len() {
@@ -406,7 +406,7 @@ impl OrderTopologyBasis {
         points.dedup_by(|a, b| (*a - *b).abs() < f64::EPSILON);
         OrderTopologyBasis { points }
     }
-    /// Return all open intervals (points[i], points[j]) for i < j.
+    /// Return all open intervals (points\[i\], points\[j\]) for i < j.
     pub fn open_intervals(&self) -> Vec<(f64, f64)> {
         let mut result = Vec::new();
         for i in 0..self.points.len() {
@@ -461,7 +461,7 @@ impl OrderedMetricSpace {
             None
         }
     }
-    /// Checks the order: points[i] <= points[j].
+    /// Checks the order: points\[i\] <= points\[j\].
     pub fn order_leq(&self, i: usize, j: usize) -> bool {
         if i < self.points.len() && j < self.points.len() {
             self.points[i] <= self.points[j]
@@ -501,7 +501,7 @@ pub struct RealInterval {
 }
 #[allow(dead_code)]
 impl RealInterval {
-    /// Creates [a, b].
+    /// Creates \[a, b\].
     pub fn closed(a: f64, b: f64) -> Self {
         RealInterval {
             left: IntervalBound::Closed(a),
@@ -564,7 +564,7 @@ impl RealInterval {
 pub struct MacNeilleCompletion {
     /// Number of elements in the base poset.
     pub n: usize,
-    /// Relation matrix: `order[i][j]` is true iff i ≤ j.
+    /// Relation matrix: `order\[i\]\[j\]` is true iff i ≤ j.
     pub order: Vec<Vec<bool>>,
 }
 impl MacNeilleCompletion {
@@ -754,7 +754,7 @@ impl SmallOrdinal {
         self.omega_coeff == 0 && self.finite_part == 0
     }
 }
-/// A closed interval [lo, hi] in an ordered type.
+/// A closed interval \[lo, hi\] in an ordered type.
 ///
 /// Supports membership testing and overlap detection.
 #[derive(Debug, Clone, PartialEq)]
@@ -765,7 +765,7 @@ pub struct OrderedInterval<T: PartialOrd + Clone> {
     pub hi: T,
 }
 impl<T: PartialOrd + Clone> OrderedInterval<T> {
-    /// Create a new interval [lo, hi]. Returns `None` if lo > hi.
+    /// Create a new interval \[lo, hi\]. Returns `None` if lo > hi.
     pub fn new(lo: T, hi: T) -> Option<Self> {
         if lo <= hi {
             Some(OrderedInterval { lo, hi })
@@ -773,7 +773,7 @@ impl<T: PartialOrd + Clone> OrderedInterval<T> {
             None
         }
     }
-    /// Test whether a point `x` lies in [lo, hi].
+    /// Test whether a point `x` lies in \[lo, hi\].
     pub fn contains(&self, x: &T) -> bool {
         &self.lo <= x && x <= &self.hi
     }

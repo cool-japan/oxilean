@@ -152,7 +152,7 @@ pub fn connection_1form_ty() -> Expr {
 pub fn curvature_2form_ty() -> Expr {
     arrow(type0(), type0())
 }
-/// Bianchi identity: dΩ + [A, Ω] = 0
+/// Bianchi identity: dΩ + \[A, Ω\] = 0
 pub fn bianchi_identity_ty() -> Expr {
     arrow(type0(), arrow(type0(), prop()))
 }
@@ -310,7 +310,7 @@ pub fn axiom_conformal_metric_ty() -> Expr {
         arrow(arrow(type0(), real_ty()), arrow(type0(), type0())),
     )
 }
-/// Conformal class [g]: equivalence class of metrics differing by positive function
+/// Conformal class \[g\]: equivalence class of metrics differing by positive function
 pub fn axiom_conformal_class_ty() -> Expr {
     arrow(type0(), type0())
 }

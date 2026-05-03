@@ -1001,7 +1001,7 @@ pub fn goemans_williamson_max_cut_ty() -> Expr {
 }
 /// `GoemansWilliamsonRatio : Real`
 ///
-/// The Goemans-Williamson constant α_GW = 2/π · min_{θ∈[0,π]} θ/(1 - cos θ) ≈ 0.8786.
+/// The Goemans-Williamson constant α_GW = 2/π · min_{θ∈\[0,π\]} θ/(1 - cos θ) ≈ 0.8786.
 pub fn goemans_williamson_ratio_ty() -> Expr {
     real_ty()
 }

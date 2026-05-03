@@ -91,7 +91,7 @@ impl VectorBundleData {
 }
 /// Quantum cohomology ring of P^2 (projective plane).
 ///
-/// QH*(P^2) = Z[H, q] / (H^3 - q) where q has degree 3.
+/// QH*(P^2) = Z\[H, q\] / (H^3 - q) where q has degree 3.
 /// The quantum product satisfies H ★ H ★ H = q · 1.
 #[derive(Debug, Clone)]
 pub struct QuantumCohomologyP2 {
@@ -118,12 +118,12 @@ impl QuantumCohomologyP2 {
     }
 }
 /// A Chow ring element represented as a polynomial in the hyperplane class H.
-/// For P^n, this is Z[H]/(H^{n+1}).
+/// For P^n, this is Z\[H\]/(H^{n+1}).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChowRingElem {
     /// Dimension of the ambient variety.
     pub dim: usize,
-    /// Coefficients: coeffs[k] = coefficient of H^k.
+    /// Coefficients: coeffs\[k\] = coefficient of H^k.
     pub coeffs: Vec<i64>,
 }
 impl ChowRingElem {
@@ -134,7 +134,7 @@ impl ChowRingElem {
             coeffs: vec![0; dim + 1],
         }
     }
-    /// Create the unit element 1 = [X].
+    /// Create the unit element 1 = \[X\].
     pub fn one(dim: usize) -> Self {
         let mut c = vec![0i64; dim + 1];
         c[0] = 1;
@@ -171,7 +171,7 @@ impl ChowRingElem {
                 .collect(),
         })
     }
-    /// Multiplication in Z[H]/(H^{n+1}).
+    /// Multiplication in Z\[H\]/(H^{n+1}).
     pub fn mul(&self, other: &ChowRingElem) -> Option<ChowRingElem> {
         if self.dim != other.dim {
             return None;
@@ -365,7 +365,7 @@ impl HilbertPolynomial {
 ///
 /// When two subvarieties X and Y of Z meet in a component W with
 /// excess dimension e = dim(X) + dim(Y) - dim(Z) - dim(W),
-/// the contribution of W to X · Y is e(E_W) ∩ [W] where E_W is the excess bundle.
+/// the contribution of W to X · Y is e(E_W) ∩ \[W\] where E_W is the excess bundle.
 #[allow(dead_code)]
 pub struct ExcessIntersection {
     /// Dimension of ambient variety Z.
@@ -447,7 +447,7 @@ impl BezoutBound {
         self.degrees.len() > num_vars
     }
     /// Compute the multi-homogeneous Bezout bound given variable groups.
-    /// `groups[i]` = (number of variables in group i, degree vector for each polynomial).
+    /// `groups\[i\]` = (number of variables in group i, degree vector for each polynomial).
     pub fn multi_homogeneous_bound(groups: &[(usize, Vec<u64>)]) -> u64 {
         groups
             .iter()
@@ -530,7 +530,7 @@ impl CycleClass {
             name: name.into(),
         }
     }
-    /// The fundamental class [X] in A^0(X).
+    /// The fundamental class \[X\] in A^0(X).
     pub fn fundamental(name: impl Into<String>) -> Self {
         CycleClass::new(0, 1, name)
     }
@@ -556,7 +556,7 @@ impl CycleClass {
 }
 /// Chow ring presentation for the complete flag variety FL(1, 2, …, n; C^n).
 ///
-/// A*(FL(n)) = Z[x_1, …, x_n] / (e_1, …, e_n) where e_k are elementary
+/// A*(FL(n)) = Z\[x_1, …, x_n\] / (e_1, …, e_n) where e_k are elementary
 /// symmetric polynomials (representing Chern classes of the tautological bundles).
 #[allow(dead_code)]
 pub struct FlagVarietyChowRing {
@@ -607,7 +607,7 @@ impl FlagVarietyChowRing {
         total > self.dim()
     }
     /// Compute the Poincare polynomial ∑_k dim(A^k) t^k.
-    /// For FL(n), the Poincare polynomial is the q-factorial [n]_q!.
+    /// For FL(n), the Poincare polynomial is the q-factorial \[n\]_q!.
     pub fn poincare_poly_coeffs(&self) -> Vec<u64> {
         let mut result = vec![1u64];
         for k in 2..=self.n {

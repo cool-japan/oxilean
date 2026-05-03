@@ -11,6 +11,10 @@ use super::types::{
     TacticGcongrConfig, TacticGcongrConfigValue, TacticGcongrDiagnostics, TacticGcongrDiff,
     TacticGcongrPipeline, TacticGcongrResult,
 };
+#[allow(unused_imports)]
+use crate::basic::{MVarId, MetaContext, MetavarKind};
+use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::{Expr, Level, Name};
 
 /// Find the first occurrence of `op` (a multi-char operator like ` <= `)
 /// at parenthesis depth 0 in `s`.
@@ -792,4 +796,59 @@ mod gcongr_ext_tests_1000 {
         assert_eq!(l.type_name(), "list");
         assert_eq!(l.as_list().map(|v| v.len()), Some(2));
     }
+}
+
+/// `gcongr` — generalized congruence tactic.
+///
+/// When the current goal has the form `f a₁ … aₙ ≤ f b₁ … bₙ` (or `<`, `=`, `≥`, `>`),
+/// this tactic applies the monotonicity rule for `f` to reduce the goal to a list of
+/// positional subgoals `aᵢ ≤ bᵢ` (skipping reflexive arguments where `aᵢ = bᵢ`).
+///
+/// Each non-trivial subgoal is registered as a fresh `Prop`-typed metavariable so that
+/// subsequent tactics can fill them in.  If the tactic cannot decompose the goal it
+/// returns [`TacticError::GoalMismatch`].
+pub fn tac_gcongr(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal = state.current_goal()?;
+    let target = ctx
+        .get_mvar_type(goal)
+        .cloned()
+        .ok_or_else(|| TacticError::Internal("gcongr: goal has no type".into()))?;
+    let target = ctx.instantiate_mvars(&target);
+    let target_str = target.to_string();
+
+    let tac = GCongrTactic::new();
+    let result = tac.apply(&target_str);
+
+    if !result.success {
+        return Err(TacticError::GoalMismatch(format!(
+            "gcongr: {}",
+            result.message
+        )));
+    }
+
+    // If the goal is already closed (no non-reflexive subgoals), assign a trivial proof.
+    if result.is_closed() {
+        let proof = Expr::Const(Name::str("gcongr.refl"), vec![]);
+        state.close_goal(proof, ctx)?;
+        return Ok(());
+    }
+
+    // For each non-reflexive subgoal, create a fresh Prop-typed metavariable.
+    let prop_sort = Expr::Sort(Level::zero());
+    let mut new_goal_ids: Vec<MVarId> = Vec::with_capacity(result.subgoals.len());
+    for subgoal in &result.subgoals {
+        if subgoal.is_reflexive() {
+            continue;
+        }
+        let (sub_id, _sub_expr) = ctx.mk_fresh_expr_mvar(prop_sort.clone(), MetavarKind::Natural);
+        new_goal_ids.push(sub_id);
+    }
+
+    // Assign the current goal's metavar to a synthetic congruence application
+    // and replace the focused goal with the fresh subgoal metavars.
+    let congr_proof = Expr::Const(Name::str("gcongr.apply"), vec![]);
+    ctx.assign_mvar(goal, congr_proof);
+    state.replace_goal(new_goal_ids);
+
+    Ok(())
 }

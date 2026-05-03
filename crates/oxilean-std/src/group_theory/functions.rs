@@ -178,7 +178,7 @@ pub fn group_action_smul(g: Expr, x: Expr) -> Expr {
 pub fn conjugate(g: Expr, h: Expr) -> Expr {
     app2(cst("Conjugate"), g, h)
 }
-/// `{G : Type} -> [Group G] -> <body>` where body builder gets de Bruijn depth.
+/// `{G : Type} -> \[Group G\] -> <body>` where body builder gets de Bruijn depth.
 #[allow(dead_code)]
 pub fn mk_group_law<F>(prop_builder: F) -> Expr
 where
@@ -196,7 +196,7 @@ where
         ),
     )
 }
-/// `{G : Type} -> [Group G] -> forall (a : G), <body>`
+/// `{G : Type} -> \[Group G\] -> forall (a : G), <body>`
 #[allow(dead_code)]
 pub fn mk_group_forall1<F>(prop_builder: F) -> Expr
 where
@@ -214,7 +214,7 @@ where
         ),
     )
 }
-/// `{G : Type} -> [Group G] -> forall (a b : G), <body>`
+/// `{G : Type} -> \[Group G\] -> forall (a b : G), <body>`
 #[allow(dead_code)]
 pub fn mk_group_forall2<F>(prop_builder: F) -> Expr
 where
@@ -237,7 +237,7 @@ where
         ),
     )
 }
-/// `{G : Type} -> [Group G] -> forall (a b c : G), <body>`
+/// `{G : Type} -> \[Group G\] -> forall (a b c : G), <body>`
 #[allow(dead_code)]
 pub fn mk_group_forall3<F>(prop_builder: F) -> Expr
 where
@@ -265,7 +265,7 @@ where
         ),
     )
 }
-/// `{G H : Type} -> [Group G] -> [Group H] -> <body>`
+/// `{G H : Type} -> \[Group G\] -> \[Group H\] -> <body>`
 #[allow(dead_code)]
 pub fn mk_two_group_law<F>(prop_builder: F) -> Expr
 where
@@ -293,7 +293,7 @@ where
         ),
     )
 }
-/// `{G H : Type} -> [Group G] -> [Group H] -> forall (f : GroupHom G H), <body>`
+/// `{G H : Type} -> \[Group G\] -> \[Group H\] -> forall (f : GroupHom G H), <body>`
 #[allow(dead_code)]
 pub fn mk_hom_forall1<F>(prop_builder: F) -> Expr
 where
@@ -326,7 +326,7 @@ where
         ),
     )
 }
-/// `{G H : Type} -> [Group G] -> [Group H] -> forall (f : GroupHom G H) (a : G), <body>`
+/// `{G H : Type} -> \[Group G\] -> \[Group H\] -> forall (f : GroupHom G H) (a : G), <body>`
 #[allow(dead_code)]
 pub fn mk_hom_forall2<F>(prop_builder: F) -> Expr
 where
@@ -359,7 +359,7 @@ where
         ),
     )
 }
-/// `{G H : Type} -> [Group G] -> [Group H] -> forall (f : GroupHom G H) (a b : G), <body>`
+/// `{G H : Type} -> \[Group G\] -> \[Group H\] -> forall (f : GroupHom G H) (a b : G), <body>`
 #[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
 pub fn mk_hom_forall3<F>(prop_builder: F) -> Expr
@@ -398,7 +398,7 @@ where
         ),
     )
 }
-/// Build `{G : Type} -> [Group G] -> (S : Subgroup G) -> <body>`.
+/// Build `{G : Type} -> \[Group G\] -> (S : Subgroup G) -> <body>`.
 #[allow(dead_code)]
 pub fn mk_subgroup_law<F>(prop_builder: F) -> Expr
 where
@@ -421,7 +421,7 @@ where
         ),
     )
 }
-/// Build `{G : Type} -> [Group G] -> (S : Subgroup G) -> forall (a : G), <body>`.
+/// Build `{G : Type} -> \[Group G\] -> (S : Subgroup G) -> forall (a : G), <body>`.
 #[allow(dead_code)]
 pub fn mk_subgroup_forall1<F>(prop_builder: F) -> Expr
 where
@@ -444,7 +444,7 @@ where
         ),
     )
 }
-/// Build `{G : Type} -> [Group G] -> (S : Subgroup G) -> forall (a b : G), <body>`.
+/// Build `{G : Type} -> \[Group G\] -> (S : Subgroup G) -> forall (a b : G), <body>`.
 #[allow(dead_code)]
 pub fn mk_subgroup_forall2<F>(prop_builder: F) -> Expr
 where
@@ -472,7 +472,7 @@ where
         ),
     )
 }
-/// Build `{G : Type} -> [Group G] -> (N : Subgroup G) -> [IsNormal N] -> <body>`.
+/// Build `{G : Type} -> \[Group G\] -> (N : Subgroup G) -> \[IsNormal N\] -> <body>`.
 #[allow(dead_code)]
 pub fn mk_normal_law<F>(prop_builder: F) -> Expr
 where
@@ -500,7 +500,7 @@ where
         ),
     )
 }
-/// Build `{G : Type} -> [Group G] -> (N : Subgroup G) -> [IsNormal N] -> forall (a : G), <body>`.
+/// Build `{G : Type} -> \[Group G\] -> (N : Subgroup G) -> \[IsNormal N\] -> forall (a : G), <body>`.
 #[allow(dead_code)]
 pub fn mk_normal_forall1<F>(prop_builder: F) -> Expr
 where
@@ -528,7 +528,7 @@ where
         ),
     )
 }
-/// Build `{G : Type} -> [Group G] -> (N : Subgroup G) -> [IsNormal N] -> forall (a b : G), <body>`.
+/// Build `{G : Type} -> \[Group G\] -> (N : Subgroup G) -> \[IsNormal N\] -> forall (a b : G), <body>`.
 #[allow(dead_code)]
 pub fn mk_normal_forall2<F>(prop_builder: F) -> Expr
 where

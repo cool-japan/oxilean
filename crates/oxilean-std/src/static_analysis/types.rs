@@ -57,7 +57,7 @@ pub struct FixpointSolver<V: Clone + PartialEq> {
     pub num_nodes: usize,
     /// Current abstract values.
     pub values: Vec<V>,
-    /// CFG edges: edges[n] = successors of n.
+    /// CFG edges: edges\[n\] = successors of n.
     pub edges: Vec<Vec<usize>>,
     /// Bottom element.
     pub bottom: V,
@@ -220,7 +220,7 @@ impl Interval {
     pub fn bot() -> Self {
         Interval::Bottom
     }
-    /// Top element ⊤ = [-∞, +∞] (represented with i64 extremes).
+    /// Top element ⊤ = \[-∞, +∞\] (represented with i64 extremes).
     pub fn top() -> Self {
         Interval::Range(i64::MIN, i64::MAX)
     }
@@ -366,7 +366,7 @@ pub struct TypestateAutomaton {
     pub initial: usize,
     /// Accepting (final) states.
     pub accepting: BTreeSet<usize>,
-    /// Transition table: transitions[state][op_name] = next_state.
+    /// Transition table: transitions\[state\]\[op_name\] = next_state.
     pub transitions: Vec<std::collections::BTreeMap<String, usize>>,
     /// Error states (invalid transitions recorded here).
     pub error_states: BTreeSet<usize>,
@@ -416,13 +416,13 @@ impl TypestateAutomaton {
 pub struct AndersenPTA {
     /// Number of variables.
     pub num_vars: usize,
-    /// Points-to sets: pts[v] = set of allocation sites.
+    /// Points-to sets: pts\[v\] = set of allocation sites.
     pub pts: Vec<BTreeSet<usize>>,
-    /// Copy constraints: copy_edges[a] = {b | pts(a) ⊆ pts(b)}.
+    /// Copy constraints: copy_edges\[a\] = {b | pts(a) ⊆ pts(b)}.
     pub copy_edges: Vec<BTreeSet<usize>>,
-    /// Store constraints: store[a] = set of (src, field).
+    /// Store constraints: store\[a\] = set of (src, field).
     pub store: Vec<Vec<(usize, usize)>>,
-    /// Load constraints: load[a] = set of (dst, field).
+    /// Load constraints: load\[a\] = set of (dst, field).
     pub load: Vec<Vec<(usize, usize)>>,
 }
 impl AndersenPTA {
@@ -471,9 +471,9 @@ impl AndersenPTA {
 pub struct PDGraph {
     /// Number of statements.
     pub num_stmts: usize,
-    /// Data dependence edges: data_edges[s] = set of statements s flows data to.
+    /// Data dependence edges: data_edges\[s\] = set of statements s flows data to.
     pub data_edges: Vec<BTreeSet<usize>>,
-    /// Control dependence edges: ctrl_edges[s] = statements s controls.
+    /// Control dependence edges: ctrl_edges\[s\] = statements s controls.
     pub ctrl_edges: Vec<BTreeSet<usize>>,
 }
 impl PDGraph {

@@ -16,7 +16,7 @@ impl PrimeFactorization {
     pub fn new(prime: u64, factors: Vec<IdealFactor>) -> Self {
         PrimeFactorization { prime, factors }
     }
-    /// Verify the fundamental identity: sum of e_i * f_i = [K:Q].
+    /// Verify the fundamental identity: sum of e_i * f_i = \[K:Q\].
     pub fn check_identity(&self, field_degree: u32) -> bool {
         let sum: u32 = self
             .factors
@@ -25,7 +25,7 @@ impl PrimeFactorization {
             .sum();
         sum == field_degree
     }
-    /// Return true if this prime is totally ramified (one factor with e=[K:Q], f=1).
+    /// Return true if this prime is totally ramified (one factor with e=\[K:Q\], f=1).
     pub fn is_totally_ramified(&self, field_degree: u32) -> bool {
         self.factors.len() == 1
             && self.factors[0].ramification_index == field_degree
@@ -83,7 +83,7 @@ impl ModularityChecker {
 /// described by its degree and discriminant.
 #[derive(Debug, Clone, PartialEq)]
 pub struct NumberField {
-    /// The degree [K : Q].
+    /// The degree \[K : Q\].
     pub degree: u32,
     /// The discriminant disc(K/Q).
     pub discriminant: i64,
@@ -146,7 +146,7 @@ impl NumberField {
 /// Represents the group as a product of cyclic groups Z/n_1 Z × ... × Z/n_k Z.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassGroupSim {
-    /// The invariant factors [n_1, n_2, ..., n_k] with n_1 | n_2 | ... | n_k.
+    /// The invariant factors \[n_1, n_2, ..., n_k\] with n_1 | n_2 | ... | n_k.
     pub invariant_factors: Vec<u64>,
 }
 impl ClassGroupSim {
@@ -208,7 +208,7 @@ pub struct DirichletCharacter {
     pub modulus: u64,
     /// The order of the character.
     pub order: u64,
-    /// Values: `values[a]` = χ(a) encoded as an integer in {0, 1, ..., order-1},
+    /// Values: `values\[a\]` = χ(a) encoded as an integer in {0, 1, ..., order-1},
     /// where 0 means χ(a) = 0 (when gcd(a, N) > 1).
     pub values: Vec<u64>,
 }
@@ -374,7 +374,7 @@ impl EulerSystemModel {
 }
 /// Models the Sha (Shafarevich-Tate) group computation for an elliptic curve.
 ///
-/// Ш(E/K) fits into the exact sequence 0 → E(K)/nE(K) → Sel^n(E/K) → Ш(E/K)[n] → 0.
+/// Ш(E/K) fits into the exact sequence 0 → E(K)/nE(K) → Sel^n(E/K) → Ш(E/K)\[n\] → 0.
 /// For numerical purposes, we represent Ш by its order (assuming finiteness, which is
 /// known for rank ≤ 1 by Kolyvagin-Euler systems).
 #[allow(dead_code)]
@@ -412,7 +412,7 @@ impl ShaTateWeilComputer {
         self.rank == 0 && self.sha_bound < u64::MAX
     }
     /// Compute the Selmer-Sha exact sequence dimension formula:
-    /// dim(Sel^p) = rank + dim(Ш[p]).
+    /// dim(Sel^p) = rank + dim(Ш\[p\]).
     pub fn selmer_dimension_formula(&self, sha_p_rank: u32) -> u32 {
         self.rank + sha_p_rank
     }
@@ -467,13 +467,13 @@ impl NormResidueMap {
 /// field tower of a number field K is infinite.
 ///
 /// For the pro-p group G = Gal(K_∞/K) (p-class tower group):
-/// - d = d(G) = minimum number of generators = dim_{F_p} Cl(K)[p]
+/// - d = d(G) = minimum number of generators = dim_{F_p} Cl(K)\[p\]
 /// - r = r(G) = number of relations
 /// The Golod-Shafarevich inequality states: if d^2 > 4r then the tower is infinite.
 /// Equivalently, if d^2 / 4 > r.
 #[derive(Debug, Clone)]
 pub struct ClassFieldTowerChecker {
-    /// The p-rank d = dim_{F_p} Cl(K)[p] (number of generators of the p-class group).
+    /// The p-rank d = dim_{F_p} Cl(K)\[p\] (number of generators of the p-class group).
     pub d_generators: u32,
     /// The number of relations r (lower bounded by the number of ramified primes / 2).
     pub r_relations: u32,
@@ -553,7 +553,7 @@ impl IdealFactor {
     pub fn is_ramified(&self) -> bool {
         self.ramification_index > 1
     }
-    /// Return true if this prime is inert (e=1, f=[K:Q]).
+    /// Return true if this prime is inert (e=1, f=\[K:Q\]).
     pub fn is_inert(&self, field_degree: u32) -> bool {
         self.ramification_index == 1 && self.inertial_degree == field_degree
     }
@@ -672,7 +672,7 @@ impl BSDLeadingCoefficientComputer {
 /// the Artin L-function is L(s, ρ) = ∏_p det(1 − ρ(Frob_p) p^{-s})^{-1}.
 #[allow(dead_code)]
 pub struct ArtinLFunctionComputer {
-    /// Degree of the number field [K:Q].
+    /// Degree of the number field \[K:Q\].
     pub field_degree: u32,
     /// Dimension n of the representation ρ : G → GL_n(C).
     pub rep_dimension: u32,
@@ -729,7 +729,7 @@ impl ArtinLFunctionComputer {
 /// Stored as coefficients `[a0, a1, ..., a_{n-1}]` for `x^n + a_{n-1} x^{n-1} + ... + a0`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AlgebraicInteger {
-    /// Coefficients in ascending order: `coeffs[i]` is the coefficient of `x^i`.
+    /// Coefficients in ascending order: `coeffs\[i\]` is the coefficient of `x^i`.
     /// The leading coefficient (`x^n`) is implicitly 1 (monic).
     pub coeffs: Vec<i64>,
 }

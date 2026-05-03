@@ -135,7 +135,7 @@ impl HoareTriple {
             total: true,
         }
     }
-    /// Return the display string `{P} C {Q}` or `[P] C [Q]`.
+    /// Return the display string `{P} C {Q}` or `[P] C \[Q\]`.
     pub fn display(&self) -> String {
         if self.total {
             format!("[{}] {} [{}]", self.pre, self.command, self.post)

@@ -32,9 +32,11 @@
 #![allow(clippy::write_with_newline)]
 #![allow(clippy::unnecessary_map_or)]
 
+pub mod actor_model;
 pub mod arena;
 pub mod bytecode_interp;
 pub mod closure;
+pub mod distributed_rpc;
 pub mod eval_error;
 pub mod gc_strategies;
 pub mod io_runtime;
@@ -43,8 +45,10 @@ pub mod memory_pool;
 pub mod object;
 pub mod profiler;
 pub mod rc;
+pub mod region_alloc;
 pub mod scheduler;
 pub mod string_pool;
+pub mod task_scheduler;
 pub mod tco;
 pub mod wasm_runtime;
 
@@ -73,10 +77,18 @@ pub use rc::{
     ArcWeak, BorrowFlag, BorrowState, CowBox, Rc, RcElisionAnalysis, RcElisionHint, RcManager,
     RcPolicy, RcStats, RtArc, Weak,
 };
+pub use region_alloc::{
+    align_up, AllocStats, RegionAllocator, RegionConfig, RegionHandle, RegionId,
+};
 pub use scheduler::{
     LoadBalanceStrategy, LoadBalancer, ParallelEval, Scheduler, SchedulerConfig, SharedState, Task,
     TaskId, TaskPriority, TaskState, WorkStealingDeque, Worker,
 };
+// Note: region_alloc::Region is available as region_alloc::Region (arena::Region takes precedence at crate root)
+pub use task_scheduler::{
+    imbalance_ratio, suggest_worker_count, AdaptiveScheduler, LoadBalancePolicy, SchedulerMetrics,
+};
+// Note: task_scheduler types TaskId/TaskPriority/TaskState/Task/WorkerStats are accessible via task_scheduler::
 pub use tco::{
     run_tco_interpreter, trampoline, trampoline_instrumented, RecursiveStep, StepResult, TailCall,
     TailCallCounter, TailCallDetector, TailPosition,

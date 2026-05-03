@@ -369,7 +369,7 @@ pub fn free_lattice_ty() -> Expr {
         arrow(arrow(bvar(0), app(cst("Lattice"), bvar(1))), prop()),
     )
 }
-/// Fuzzy lattice: a lattice equipped with a truth-value in [0,1].
+/// Fuzzy lattice: a lattice equipped with a truth-value in \[0,1\].
 ///
 /// FuzzyLattice A : Lattice A → (A → Real) → Prop
 pub fn fuzzy_lattice_ty() -> Expr {

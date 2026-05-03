@@ -119,13 +119,13 @@ pub fn continuous_on_ty() -> Expr {
         ),
     )
 }
-/// `IsOpen_Ioi : ∀ (α : Type) [LinearOrder α] [OrderTopology α] (a : α), IsOpen (Ioi a)`
+/// `IsOpen_Ioi : ∀ (α : Type) \[LinearOrder α\] \[OrderTopology α\] (a : α), IsOpen (Ioi a)`
 ///
 /// The open ray (a, ∞) is open in the order topology.
 pub fn is_open_ioi_ty() -> Expr {
     impl_pi("α", type0(), arrow(bvar(0), prop()))
 }
-/// `IsOpen_Iio : ∀ (α : Type) [LinearOrder α] [OrderTopology α] (b : α), IsOpen (Iio b)`
+/// `IsOpen_Iio : ∀ (α : Type) \[LinearOrder α\] \[OrderTopology α\] (b : α), IsOpen (Iio b)`
 ///
 /// The open ray (-∞, b) is open in the order topology.
 pub fn is_open_iio_ty() -> Expr {
@@ -233,7 +233,7 @@ pub fn is_compact_icc_ty() -> Expr {
 }
 /// `IntermediateValueThm : ∀ (f : α → β) (a b : α) (y : β), ContinuousOn f (Icc a b) → Prop`
 ///
-/// The intermediate value theorem: a continuous function on [a,b] attains every
+/// The intermediate value theorem: a continuous function on \[a,b\] attains every
 /// value between f(a) and f(b).
 pub fn intermediate_value_thm_ty() -> Expr {
     impl_pi(
@@ -298,7 +298,7 @@ pub fn dedekind_complete_ty() -> Expr {
 /// `OrderConnected : Set α → Prop`
 ///
 /// A set S in an ordered space is order-connected if for all a,b ∈ S with a ≤ b,
-/// the interval [a,b] ⊆ S.
+/// the interval \[a,b\] ⊆ S.
 pub fn order_connected_ty() -> Expr {
     impl_pi("α", type0(), arrow(app(cst("Set"), bvar(0)), prop()))
 }
@@ -309,7 +309,7 @@ pub fn order_connected_ty() -> Expr {
 pub fn connected_space_ty() -> Expr {
     impl_pi("α", type0(), prop())
 }
-/// `OrderTopologyConnected : ∀ (α : Type) [LinearOrder α] [DedekindComplete α], Connected α`
+/// `OrderTopologyConnected : ∀ (α : Type) \[LinearOrder α\] \[DedekindComplete α\], Connected α`
 ///
 /// A Dedekind-complete linear order with the order topology is connected.
 pub fn order_topology_connected_ty() -> Expr {
@@ -599,7 +599,7 @@ pub fn cantor_normal_form_ty() -> Expr {
 pub fn helly_order_ty() -> Expr {
     prop()
 }
-/// Convex set in an ordered space: a set C such that [a,b] ⊆ C for all a,b ∈ C.
+/// Convex set in an ordered space: a set C such that \[a,b\] ⊆ C for all a,b ∈ C.
 /// Type: `(α : Type) → Set α → Prop`.
 pub fn convex_ordered_set_ty() -> Expr {
     impl_pi("α", type0(), arrow(app(cst("Set"), bvar(0)), prop()))

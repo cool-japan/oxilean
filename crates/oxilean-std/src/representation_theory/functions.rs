@@ -314,7 +314,7 @@ pub fn dual_rep_ty() -> Expr {
 }
 /// `InducedRep : H ≤ G → Rep H V → Rep G (Ind_H^G V)` — induced representation.
 ///
-/// Ind_H^G ρ = k[G] ⊗_{k[H]} V has dimension [G:H] · dim V.
+/// Ind_H^G ρ = k\[G\] ⊗_{k\[H\]} V has dimension \[G:H\] · dim V.
 pub fn induced_rep_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -604,7 +604,7 @@ pub fn bgg_category_o_ty() -> Expr {
 /// `KazhdanLusztigPoly : WeylGroupElement → WeylGroupElement → Poly Int` — K-L polynomial P_{x,w}.
 ///
 /// The Kazhdan-Lusztig polynomial P_{x,w}(q) encodes the multiplicities
-/// [M(w·0) : L(x·0)] in category 𝒪.
+/// \[M(w·0) : L(x·0)\] in category 𝒪.
 pub fn kazhdan_lusztig_poly_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -642,7 +642,7 @@ pub fn quantum_group_rep_ty() -> Expr {
     arrow(cst("QuantumGroup"), arrow(cst("VectorSpace"), type0()))
 }
 /// Geometric Satake Correspondence: an equivalence of tensor categories
-/// Rep(G^∨) ≃ Perv_{G[[t]]}(Gr_G) between representations of the Langlands dual group
+/// Rep(G^∨) ≃ Perv_{G[\[t\]]}(Gr_G) between representations of the Langlands dual group
 /// and equivariant perverse sheaves on the affine Grassmannian.
 ///
 /// `∀ (G : ReductiveGroup), GeomSatakeEquiv G (LanglandsDual G)`

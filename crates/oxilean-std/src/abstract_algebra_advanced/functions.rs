@@ -66,7 +66,7 @@ pub fn field_extension_ty() -> Expr {
 }
 /// `ExtensionDegree : ∀ (K L : Type), FieldExtension K L → Nat`
 ///
-/// The degree [L : K] of a field extension, i.e., the dimension of L
+/// The degree \[L : K\] of a field extension, i.e., the dimension of L
 /// as a K-vector space. Finite degree ↔ algebraic iff L is algebraic over K
 /// when both sides are number fields.
 pub fn extension_degree_ty() -> Expr {
@@ -130,7 +130,7 @@ pub fn separable_extension_ty() -> Expr {
 /// `NormalExtension : ∀ (K L : Type), FieldExtension K L → Prop`
 ///
 /// L/K is normal if L is a splitting field of some polynomial over K,
-/// equivalently if every irreducible polynomial in K[X] that has one root
+/// equivalently if every irreducible polynomial in K\[X\] that has one root
 /// in L splits completely in L.
 pub fn normal_extension_ty() -> Expr {
     pi(
@@ -163,7 +163,7 @@ pub fn galois_extension_ty() -> Expr {
 }
 /// `Polynomial : Type → Type`
 ///
-/// The type of polynomials over a coefficient ring R: `R[X]`.
+/// The type of polynomials over a coefficient ring R: `R\[X\]`.
 pub fn polynomial_ty() -> Expr {
     arrow(type0(), type0())
 }
@@ -219,7 +219,7 @@ pub fn polynomial_splits_ty() -> Expr {
 /// `MinimalPolynomial : ∀ (K L : Type), L → Polynomial K`
 ///
 /// The minimal polynomial of an algebraic element α ∈ L over K:
-/// the unique monic irreducible polynomial in K[X] of which α is a root.
+/// the unique monic irreducible polynomial in K\[X\] of which α is a root.
 pub fn minimal_polynomial_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -257,7 +257,7 @@ pub fn galois_group_ty() -> Expr {
     )
 }
 /// `GaloisGroupOrder : ∀ (K L : Type) (h : GaloisExtension K L),
-///     |Gal(L/K)| = [L:K]`
+///     |Gal(L/K)| = \[L:K\]`
 ///
 /// For a finite Galois extension, the order of the Galois group equals
 /// the degree of the extension.
@@ -293,7 +293,7 @@ pub fn fixed_field_ty() -> Expr {
 /// and the lattice of intermediate fields K ⊆ E ⊆ L.
 /// - H ↦ L^H (fixed field)
 /// - E ↦ Gal(L/E) (restriction)
-/// Moreover: [L : L^H] = |H| and [L^H : K] = [G : H].
+/// Moreover: \[L : L^H\] = |H| and \[L^H : K\] = \[G : H\].
 pub fn fundamental_theorem_galois_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -410,7 +410,7 @@ pub fn sylow_conjugacy_ty() -> Expr {
 /// `SylowCount : ∀ (G : Type) (p : Nat), Nat`
 ///
 /// The number n_p of Sylow p-subgroups of G.
-/// Third Sylow theorem: n_p ≡ 1 (mod p) and n_p divides [G : P].
+/// Third Sylow theorem: n_p ≡ 1 (mod p) and n_p divides \[G : P\].
 pub fn sylow_count_ty() -> Expr {
     arrow(type0(), arrow(nat_ty(), nat_ty()))
 }
@@ -501,14 +501,14 @@ pub fn nilpotent_ty() -> Expr {
 /// `DerivedSeries : Type → List Type`
 ///
 /// The derived series G ⊇ G' ⊇ G'' ⊇ ...
-/// where G^(n+1) = [G^(n), G^(n)]. G is solvable iff G^(n) = 1 for some n.
+/// where G^(n+1) = \[G^(n), G^(n)\]. G is solvable iff G^(n) = 1 for some n.
 pub fn derived_series_ty() -> Expr {
     arrow(type0(), app(cst("List"), type0()))
 }
 /// `LowerCentralSeries : Type → List Type`
 ///
 /// The lower central series γ_1(G) ⊇ γ_2(G) ⊇ ...
-/// where γ_{n+1}(G) = [G, γ_n(G)]. G is nilpotent iff γ_n(G) = 1 for some n.
+/// where γ_{n+1}(G) = \[G, γ_n(G)\]. G is nilpotent iff γ_n(G) = 1 for some n.
 pub fn lower_central_series_ty() -> Expr {
     arrow(type0(), app(cst("List"), type0()))
 }
@@ -1089,7 +1089,7 @@ pub fn tensor_algebra_universal_ty() -> Expr {
 ///
 /// The symmetric algebra S(V) = T(V) / ⟨v⊗w − w⊗v⟩:
 /// the free commutative algebra on the vector space V.
-/// S(V) ≅ k[x₁, …, xₙ] when dim V = n.
+/// S(V) ≅ k\[x₁, …, xₙ\] when dim V = n.
 pub fn symmetric_algebra_ty() -> Expr {
     arrow(type0(), type0())
 }
@@ -1378,7 +1378,7 @@ pub fn type_classification_vna_ty() -> Expr {
 }
 /// `LieAlgebra : Type → Prop`
 ///
-/// A Lie algebra: a vector space g with a bilinear bracket [·,·]
+/// A Lie algebra: a vector space g with a bilinear bracket \[·,·\]
 /// satisfying antisymmetry and the Jacobi identity.
 pub fn lie_algebra_ty() -> Expr {
     arrow(type0(), prop())
@@ -1436,7 +1436,7 @@ pub fn uea_universal_property_ty() -> Expr {
 }
 /// `WeylAlgebra : Nat → Type`
 ///
-/// The n-th Weyl algebra A_n(k) = k⟨x₁,...,xₙ,∂₁,...,∂ₙ⟩ / ⟨[∂ᵢ,xⱼ]=δᵢⱼ⟩.
+/// The n-th Weyl algebra A_n(k) = k⟨x₁,...,xₙ,∂₁,...,∂ₙ⟩ / ⟨\[∂ᵢ,xⱼ\]=δᵢⱼ⟩.
 /// This is the algebra of differential operators on polynomial rings.
 pub fn weyl_algebra_ty() -> Expr {
     arrow(nat_ty(), type0())
@@ -1454,7 +1454,7 @@ pub fn weyl_simple_ty() -> Expr {
 }
 /// `OreExtension : Type → Type → Type`
 ///
-/// The Ore extension R[x; σ, δ]: polynomials in x over R with twisted multiplication
+/// The Ore extension R\[x; σ, δ\]: polynomials in x over R with twisted multiplication
 /// x·r = σ(r)·x + δ(r), where σ is an endomorphism and δ is a σ-derivation.
 pub fn ore_extension_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
@@ -1474,7 +1474,7 @@ pub fn ore_condition_ty() -> Expr {
 }
 /// `SkewPolynomialRing : ∀ (R : Type) (σ : R → R), Type`
 ///
-/// Skew polynomial ring R[x; σ] with rule x·r = σ(r)·x.
+/// Skew polynomial ring R\[x; σ\] with rule x·r = σ(r)·x.
 /// Special case of Ore extension with δ = 0.
 pub fn skew_polynomial_ring_ty() -> Expr {
     pi(
@@ -1538,7 +1538,7 @@ pub fn morita_invariant_ty() -> Expr {
 }
 /// `GroupAlgebra : Type → Type → Type`
 ///
-/// The group algebra k[G]: the free k-module on G with multiplication
+/// The group algebra k\[G\]: the free k-module on G with multiplication
 /// extending the group law linearly.
 pub fn group_algebra_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
@@ -1573,7 +1573,7 @@ pub fn group_representation_ty() -> Expr {
 /// `MaschkeTheorem : ∀ (G k : Type), IsFiniteGroup G → IsField k →
 ///     ¬ (Char k ∣ |G|) → IsSemisimple (GroupAlgebra k G)`
 ///
-/// Maschke's theorem: k[G] is semisimple iff char k ∤ |G|.
+/// Maschke's theorem: k\[G\] is semisimple iff char k ∤ |G|.
 pub fn maschke_theorem_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1611,7 +1611,7 @@ pub fn koszul_algebra_ty() -> Expr {
 /// `KoszulDual : Type → Type`
 ///
 /// The Koszul dual A^! of a Koszul algebra A.
-/// For a polynomial ring k[x₁,...,xₙ], the Koszul dual is the exterior algebra Λ(y₁,...,yₙ).
+/// For a polynomial ring k\[x₁,...,xₙ\], the Koszul dual is the exterior algebra Λ(y₁,...,yₙ).
 pub fn koszul_dual_ty() -> Expr {
     arrow(type0(), type0())
 }
@@ -1665,7 +1665,7 @@ pub fn central_simple_algebra_ty() -> Expr {
 }
 /// `BrauerGroupPeriodicity : ∀ (k : Type), IsField k → Nat`
 ///
-/// The period of an element in the Brauer group: the order of [A] in Br(k).
+/// The period of an element in the Brauer group: the order of \[A\] in Br(k).
 /// Tsen's theorem: Br(k) = 0 for algebraically closed k.
 pub fn brauer_period_ty() -> Expr {
     pi(

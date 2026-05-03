@@ -116,7 +116,7 @@ pub fn filtered_phi_module_ty() -> Expr {
 pub fn fontaine_dieudonne_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
-/// `BreuilKisinTy : Nat → Nat → Type` — Kisin module over S = W(k)[[u]].
+/// `BreuilKisinTy : Nat → Nat → Type` — Kisin module over S = W(k)[\[u\]].
 pub fn breuil_kisin_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
@@ -260,7 +260,7 @@ pub fn prismatic_cohomology_ty() -> Expr {
 pub fn nygaard_filtration_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
-/// `BKPrismTy : Nat → Type` — the Breuil–Kisin prism (S, (E(u))) where S = W[[u]].
+/// `BKPrismTy : Nat → Type` — the Breuil–Kisin prism (S, (E(u))) where S = W[\[u\]].
 pub fn bk_prism_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
@@ -300,7 +300,7 @@ pub fn padic_l_function_ty() -> Expr {
 pub fn iwasawa_main_conjecture_ty() -> Expr {
     prop()
 }
-/// `IwasawaAlgebraTy : Nat → Type` — the Iwasawa algebra Λ = Z_p[[Γ]] ≅ Z_p[[T]].
+/// `IwasawaAlgebraTy : Nat → Type` — the Iwasawa algebra Λ = Z_p[\[Γ\]] ≅ Z_p[\[T\]].
 pub fn iwasawa_algebra_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
@@ -348,7 +348,7 @@ pub fn admissible_filtered_module_ty() -> Expr {
 pub fn weakly_admissible_equals_admissible_ty() -> Expr {
     prop()
 }
-/// `BreuilKisinModuleTy : Nat → Nat → Type` — Kisin module M over S = W(k)[[u]].
+/// `BreuilKisinModuleTy : Nat → Nat → Type` — Kisin module M over S = W(k)[\[u\]].
 pub fn breuil_kisin_module_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }

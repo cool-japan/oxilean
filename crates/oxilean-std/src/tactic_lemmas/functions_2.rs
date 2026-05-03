@@ -471,7 +471,7 @@ pub fn tl2_ext_decide_true_ty() -> Expr {
 pub fn tl2_ext_decide_false_ty() -> Expr {
     mk_bool_eq(app(cst("decide"), cst("False")), cst("false"))
 }
-/// `native_decide_reflect : ∀ (p : Prop) [Decidable p], native_decide p = true → p`
+/// `native_decide_reflect : ∀ (p : Prop) \[Decidable p\], native_decide p = true → p`
 #[allow(dead_code)]
 pub fn tl2_ext_native_decide_reflect_ty() -> Expr {
     pi(

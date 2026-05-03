@@ -19,6 +19,35 @@ Copyright (c) COOLJAPAN OU (Team Kitasan)
 
 ---
 
+## [0.1.2] — 2026-05-03
+
+Codegen compilation fixes and real WASM pipeline integration: 59 test compilation errors resolved, oxilean-wasm now uses the full kernel/parse/elab pipeline.
+
+### Added
+- `EvmBackend::compute_selector` and `SolidityFunction::selector` now use real keccak256 (via `tiny-keccak`) — EVM/Solidity ABI 4-byte selectors are spec-correct and interoperate with real chains
+- `GroebnerBasis::reduce` — full multivariate polynomial division (Cox–Little–O'Shea §2.3); `contains` is now meaningful for ideal membership testing in `polyrith` tactic
+- `SmtContext::check_sat` and `run_smt_tactic` — real SMT solving via `oxiz-solver 0.2.1` (OxiZ); returns `Sat`/`Unsat`/`Unknown` from live solver
+- `WasmModule::call_function` — full WebAssembly bytecode interpreter: all 157 `WasmInstruction` variants wired, structured control flow (Block/Loop/If/Else/End), branch instructions (Br/BrIf/BrTable/Return), frame-stack call dispatch (Call/CallIndirect with locals and return-PC bookkeeping)
+- `InliningPass::run_all` / `run_with_context` in `opt_copy_prop` — real fixed-point function inliner with variable-ID freshening and configurable cost threshold
+- 1,041 rustdoc `broken_intra_doc_links` / HTML tag errors fixed across `oxilean-std` (math bracket escaping), `oxilean-elab`, `oxilean-parse`, `oxilean-wasm`
+
+### Changed
+- `rand` upgraded 0.9.2 → 0.9.4 (resolves RUSTSEC-2026-0097)
+- `wasm-bindgen` upgraded 0.2.118 → 0.2.120; `js-sys` 0.3.95 → 0.3.97; `fastrand` 2.4.0 → 2.4.1 (was yanked)
+- 5 files proactively split via `splitrs` (all were 1,945–1,985 lines, now ≤1,004 lines)
+- SLOC grown to ~1,347,650 across 5,978 files
+- Test suite grown to **33,091 passing** (was ~29,831 at v0.1.1)
+
+### Fixed
+
+- 59 test compilation errors in `oxilean-codegen` caused by private method/field visibility after splitrs refactoring, affecting modules: `core_types`, `matlab_backend`, `wasm_backend`, `elixir_backend`, `evm_backend`, `kotlin_backend`, `lua_backend`, `opt_cse`, `opt_regalloc`, `x86_64_backend`
+
+### Changed (pipeline)
+
+- `oxilean-wasm` now integrates with the real `oxilean-kernel` / `oxilean-parse` / `oxilean-elab` pipeline instead of mock/stub implementations
+
+---
+
 ## [0.1.1] — 2026-03-09
 
 Mathlib4 compatibility leap: from 4,530 to 181,890 declarations tested, achieving 99.7% parse compatibility across the entire Mathlib4 codebase.
@@ -177,6 +206,7 @@ implemented in pure Rust. 1,221,710 SLOC across 11 crates and 5,380 files.
 
 ---
 
-[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/cool-japan/oxilean/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/cool-japan/oxilean/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cool-japan/oxilean/releases/tag/v0.1.0

@@ -76,7 +76,7 @@ impl TrampolineMetricsRegistry {
     #[allow(dead_code)]
     pub fn top_by_steps(&self, n: usize) -> Vec<&FunctionTcoMetrics> {
         let mut sorted: Vec<&FunctionTcoMetrics> = self.functions.values().collect();
-        sorted.sort_by(|a, b| b.total_steps.cmp(&a.total_steps));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.total_steps));
         sorted.truncate(n);
         sorted
     }
@@ -522,13 +522,7 @@ impl BinopKind {
             BinopKind::Add => Some(lhs.wrapping_add(rhs)),
             BinopKind::Sub => Some(lhs.wrapping_sub(rhs)),
             BinopKind::Mul => Some(lhs.wrapping_mul(rhs)),
-            BinopKind::Div => {
-                if rhs == 0 {
-                    None
-                } else {
-                    Some(lhs / rhs)
-                }
-            }
+            BinopKind::Div => lhs.checked_div(rhs),
         }
     }
 }

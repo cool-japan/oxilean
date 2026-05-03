@@ -709,7 +709,7 @@ pub fn build_combinatorial_optimization_env(env: &mut Environment) -> Result<(),
     Ok(())
 }
 /// Solve the minimum-weight assignment problem using the Hungarian algorithm.
-/// Returns (total cost, assignment vector where assignment[i] = j means row i → col j).
+/// Returns (total cost, assignment vector where assignment\[i\] = j means row i → col j).
 pub fn hungarian(cost: &[Vec<i64>]) -> (i64, Vec<usize>) {
     let n = cost.len();
     if n == 0 {

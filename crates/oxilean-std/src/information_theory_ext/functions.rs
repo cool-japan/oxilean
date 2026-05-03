@@ -132,7 +132,7 @@ pub fn quantum_cramer_rao_ty() -> Expr {
     prop()
 }
 /// `FisherInformationMetric : (List Real) → Real`
-/// g_{ij}(θ) = E[∂_i log p · ∂_j log p]; defines Riemannian metric on stat manifolds.
+/// g_{ij}(θ) = E\[∂_i log p · ∂_j log p\]; defines Riemannian metric on stat manifolds.
 pub fn fisher_information_metric_ty() -> Expr {
     arrow(list_ty(real_ty()), real_ty())
 }
@@ -272,12 +272,12 @@ pub fn wyner_ziv_rate_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), real_ty()))
 }
 /// `GelfandPinskerCapacity : Real → Real`
-/// C_GP = max_{p(u,x|s)} [ I(U;Y) − I(U;S) ]; channel coding with state info at encoder.
+/// C_GP = max_{p(u,x|s)} \[ I(U;Y) − I(U;S) \]; channel coding with state info at encoder.
 pub fn gelfand_pinsker_capacity_ty() -> Expr {
     arrow(real_ty(), real_ty())
 }
 /// `WiretapSecrecyCapacity : Real → Real → Real`
-/// C_s = max_{p(x)} [I(X;Y_main) − I(X;Y_wiretap)]^+; Wyner wiretap channel.
+/// C_s = max_{p(x)} \[I(X;Y_main) − I(X;Y_wiretap)\]^+; Wyner wiretap channel.
 pub fn wiretap_secrecy_capacity_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), real_ty()))
 }
@@ -417,7 +417,7 @@ pub fn berger_tung_scheme_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), prop()))
 }
 /// `CapacityCostFunction : (Real → Real) → Real → Real`
-/// C(P) = max_{p(x): E[cost] ≤ P} I(X;Y); capacity under an input cost constraint.
+/// C(P) = max_{p(x): E\[cost\] ≤ P} I(X;Y); capacity under an input cost constraint.
 pub fn capacity_cost_function_ty() -> Expr {
     arrow(arrow(real_ty(), real_ty()), arrow(real_ty(), real_ty()))
 }
@@ -457,17 +457,17 @@ pub fn logarithmic_sobolev_inequality_ty() -> Expr {
     arrow(real_ty(), prop())
 }
 /// `StabilizerCode : Nat → Nat → Nat → Prop`
-/// An [[n, k, d]] stabilizer code encodes k logical qubits into n physical qubits with distance d.
+/// An [\[n, k, d\]] stabilizer code encodes k logical qubits into n physical qubits with distance d.
 pub fn stabilizer_code_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), prop())))
 }
 /// `HammingBoundQuantum : Nat → Nat → Nat → Prop`
-/// Quantum Hamming bound: Σ_{j=0}^{t} C(n,j) 3^j ≤ 2^{n-k} for an [[n,k,2t+1]] code.
+/// Quantum Hamming bound: Σ_{j=0}^{t} C(n,j) 3^j ≤ 2^{n-k} for an [\[n,k,2t+1\]] code.
 pub fn hamming_bound_quantum_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(nat_ty(), prop())))
 }
 /// `ShorCode : Prop`
-/// The Shor [[9,1,3]] code: first quantum error correcting code, corrects any single-qubit error.
+/// The Shor [\[9,1,3\]] code: first quantum error correcting code, corrects any single-qubit error.
 pub fn shor_code_ty() -> Expr {
     prop()
 }

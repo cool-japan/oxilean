@@ -62,7 +62,7 @@ impl PrioritizedDischarge {
     /// Add a strategy with a given priority.
     pub fn add(&mut self, priority: i32, strategy: DischargeStrategy) {
         self.strategies.push((priority, strategy));
-        self.strategies.sort_by(|a, b| b.0.cmp(&a.0));
+        self.strategies.sort_by_key(|b| std::cmp::Reverse(b.0));
     }
     /// Attempt discharge using each strategy in priority order.
     pub fn discharge(

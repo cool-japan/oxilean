@@ -115,7 +115,7 @@ impl MeanFieldVI {
             .map(|&lv| 0.5 * (1.0 + lv + log2pi))
             .sum()
     }
-    /// Compute ELBO = E_Q[log p(z)] + H[Q] given a log-prior function.
+    /// Compute ELBO = E_Q\[log p(z)\] + H\[Q\] given a log-prior function.
     pub fn elbo<F>(&self, log_prior: F) -> f64
     where
         F: Fn(&[f64]) -> f64,
@@ -164,11 +164,11 @@ pub struct Hmm {
     pub n_states: usize,
     /// Number of observable symbols.
     pub n_obs: usize,
-    /// Initial state distribution π[s].
+    /// Initial state distribution π\[s\].
     pub pi: Vec<f64>,
-    /// Transition matrix A[s][s'] = P(s_{t+1}=s' | s_t=s).
+    /// Transition matrix A\[s\][s'] = P(s_{t+1}=s' | s_t=s).
     pub transition: Vec<Vec<f64>>,
-    /// Emission matrix B[s][o] = P(o_t=o | s_t=s).
+    /// Emission matrix B\[s\]\[o\] = P(o_t=o | s_t=s).
     pub emission: Vec<Vec<f64>>,
 }
 impl Hmm {
@@ -997,11 +997,11 @@ impl BayesianLearning {
 pub struct LoopyBP {
     pub n_vars: usize,
     pub cards: Vec<usize>,
-    /// Unary potentials: unary[i][v] = ψ_i(v)
+    /// Unary potentials: unary\[i\]\[v\] = ψ_i(v)
     pub unary: Vec<Vec<f64>>,
-    /// Pairwise potentials: pairwise[(i,j)][v_i * card_j + v_j] = ψ_ij(v_i, v_j)
+    /// Pairwise potentials: pairwise\[(i,j)\]\[v_i * card_j + v_j\] = ψ_ij(v_i, v_j)
     pub pairwise: std::collections::HashMap<(usize, usize), Vec<f64>>,
-    /// Messages: msg[(i,j)][v] = message from var i to var j for value v
+    /// Messages: msg\[(i,j)\]\[v\] = message from var i to var j for value v
     messages: std::collections::HashMap<(usize, usize), Vec<f64>>,
 }
 impl LoopyBP {
@@ -1129,9 +1129,9 @@ impl MarkovBlanket {
 #[derive(Debug, Clone)]
 pub struct DagGraph {
     pub n: usize,
-    /// children[i] = list of children of node i
+    /// children\[i\] = list of children of node i
     pub children: Vec<Vec<usize>>,
-    /// parents[i] = list of parents of node i
+    /// parents\[i\] = list of parents of node i
     pub parents: Vec<Vec<usize>>,
 }
 impl DagGraph {

@@ -691,7 +691,7 @@ pub fn ns_uniform_continuity_ty() -> Expr {
     arrow(arrow(real_ty(), real_ty()), arrow(set_ty(), prop()))
 }
 /// `InternalProb : InternalSet → Hyperreal` —
-/// an internal probability measure (taking values in *[0,1]).
+/// an internal probability measure (taking values in *\[0,1\]).
 pub fn internal_prob_ty() -> Expr {
     arrow(internal_set_ty(), hyperreal_ty())
 }
@@ -1684,7 +1684,7 @@ pub fn nsa_ext_ns_tychonoff_ty() -> Expr {
     )
 }
 /// `nsa_ramsey_ty` — nonstandard proof of Ramsey's theorem (finite version).
-/// For every r, k : ℕ, there exists N such that any r-coloring of [N]^k has a monochromatic copy.
+/// For every r, k : ℕ, there exists N such that any r-coloring of \[N\]^k has a monochromatic copy.
 #[allow(dead_code)]
 pub fn nsa_ext_nsa_ramsey_ty() -> Expr {
     nsa_ext_pi(

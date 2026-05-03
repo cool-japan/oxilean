@@ -62,7 +62,7 @@ pub fn sigma_model_map_ty() -> Expr {
     arrow(cst("Worldsheet"), cst("TargetManifold"))
 }
 /// SigmaModelAction : SigmaModelMap → ℝ
-/// S[X] = 1/(4πα') ∫_Σ d²σ √h h^{ab} ∂_a X^μ ∂_b X_μ
+/// S\[X\] = 1/(4πα') ∫_Σ d²σ √h h^{ab} ∂_a X^μ ∂_b X_μ
 pub fn sigma_model_action_ty() -> Expr {
     arrow(arrow(cst("Worldsheet"), cst("TargetManifold")), real_ty())
 }
@@ -203,7 +203,7 @@ pub fn virasoro_generator_ty() -> Expr {
     arrow(int_ty(), arrow(cst("CFTState"), cst("CFTState")))
 }
 /// VirasoroCommutator : Prop
-/// [L_m, L_n] = (m-n) L_{m+n} + c/12 m(m²-1) δ_{m+n,0}
+/// \[L_m, L_n\] = (m-n) L_{m+n} + c/12 m(m²-1) δ_{m+n,0}
 pub fn virasoro_commutator_ty() -> Expr {
     prop()
 }
@@ -254,7 +254,7 @@ pub fn vacuum_vector_ty() -> Expr {
     cst("VertexAlgebra")
 }
 /// LocalityAxiom : VertexAlgebra → Prop
-/// (z-w)^N [Y(a,z), Y(b,w)] = 0 for N large enough.
+/// (z-w)^N \[Y(a,z), Y(b,w)\] = 0 for N large enough.
 pub fn locality_axiom_ty() -> Expr {
     arrow(cst("VertexAlgebra"), prop())
 }
@@ -285,7 +285,7 @@ pub fn oscillator_mode_ty() -> Expr {
     arrow(int_ty(), arrow(cst("CFTState"), cst("CFTState")))
 }
 /// OscillatorCommutator : Prop
-/// [α^μ_m, α^ν_n] = m η^μν δ_{m+n,0}
+/// \[α^μ_m, α^ν_n\] = m η^μν δ_{m+n,0}
 pub fn oscillator_commutator_ty() -> Expr {
     prop()
 }
@@ -552,9 +552,11 @@ pub fn build_string_theory_env() -> Environment {
     env
 }
 /// Check the Virasoro algebra relation for integer modes.
-/// Returns the value of [L_m, L_n] - ((m-n)L_{m+n} + c/12 m(m²-1) δ_{m+n,0})
+/// Returns the value of \[L_m, L_n\] - ((m-n)L_{m+n} + c/12 m(m²-1) δ_{m+n,0})
 /// acting on a single mode, modeled as real numbers (eigenvalue sector).
 pub fn virasoro_commutator_residual(m: i64, n: i64, lm: f64, ln: f64, l_mpn: f64, c: f64) -> f64 {
+    // For commuting real-valued eigenvalue scalars, [L_m, L_n] = 0
+    #[allow(clippy::eq_op)]
     let commutator = lm * ln - ln * lm;
     let rhs_algebraic = ((m - n) as f64) * l_mpn;
     let central = if m + n == 0 {
@@ -914,7 +916,7 @@ pub fn holographic_dictionary_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), real_ty()))
 }
 /// WilsonLoop_AdS : ℝ → ℝ
-/// Holographic Wilson loop: W[C] = exp(-S_string[C]) for a string ending on C.
+/// Holographic Wilson loop: W\[C\] = exp(-S_string\[C\]) for a string ending on C.
 pub fn wilson_loop_ads_ty() -> Expr {
     arrow(real_ty(), real_ty())
 }

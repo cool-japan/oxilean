@@ -57,7 +57,7 @@ pub enum IntegratorMethod {
 pub struct BRSTComplex {
     /// Cochains at each ghost number 0, 1, 2, ...
     pub cochains: Vec<Vec<f64>>,
-    /// The differential matrix Q[k] : C^k → C^{k+1}.
+    /// The differential matrix Q\[k\] : C^k → C^{k+1}.
     pub differentials: Vec<Vec<Vec<f64>>>,
 }
 #[allow(dead_code)]
@@ -74,7 +74,7 @@ impl BRSTComplex {
             differentials,
         }
     }
-    /// Apply the differential Q at degree k: (Qv)[i] = Σ_j Q[k][i][j] * v[j].
+    /// Apply the differential Q at degree k: (Qv)\[i\] = Σ_j Q\[k\]\[i\]\[j\] * v\[j\].
     pub fn apply_differential(&self, k: usize, v: &[f64]) -> Vec<f64> {
         if k + 1 >= self.differentials.len() + 1 {
             return vec![];
@@ -737,7 +737,7 @@ impl SymplecticIntegrator {
 }
 /// A U(1) lattice gauge field on a 2D periodic lattice.
 ///
-/// Each link (i, j, mu) stores a phase angle θ ∈ [−π, π], representing
+/// Each link (i, j, mu) stores a phase angle θ ∈ \[−π, π\], representing
 /// the gauge connection U_{i,mu} = e^{iθ_{i,mu}}.
 ///
 /// The Wilson plaquette action is S = β Σ_{plaq} (1 − cos(θ_plaq)).
@@ -745,7 +745,7 @@ impl SymplecticIntegrator {
 pub struct GaugeField {
     /// Lattice size in each spatial direction.
     pub size: usize,
-    /// Link angles: `links[mu][i * size + j]` for direction mu, site (i,j).
+    /// Link angles: `links[mu]\[i * size + j\]` for direction mu, site (i,j).
     pub links: Vec<Vec<f64>>,
     /// Inverse coupling β = 1/g².
     pub beta: f64,

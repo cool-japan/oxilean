@@ -8,8 +8,8 @@ use super::functions::GOLDEN_RATIO;
 use super::functions::*;
 
 /// The Fibonacci F-matrix for the (τ,τ,τ;τ) sector:
-/// F = [[ 1/φ,  1/√φ ],
-///      [ 1/√φ, -1/φ ]]
+/// F = [\[ 1/φ,  1/√φ \],
+///      \[ 1/√φ, -1/φ \]]
 pub struct FibFMatrix {
     pub data: [[f64; 2]; 2],
 }
@@ -602,7 +602,7 @@ impl AnyonModel {
 pub struct PentagonEquationChecker {
     /// Number of distinct anyon types.
     pub n_anyons: usize,
-    /// F-matrix data: indexed as f_data[a][b][c][d] = 2×2 matrix (for simplicity).
+    /// F-matrix data: indexed as f_data\[a\]\[b\]\[c\]\[d\] = 2×2 matrix (for simplicity).
     /// Here we use a flat representation for the Fibonacci case.
     pub f_data: Vec<f64>,
 }
@@ -785,7 +785,7 @@ pub struct SModularMatrix {
 impl SModularMatrix {
     /// Build S-matrix from quantum dimensions and topological spins.
     /// S_{ab} = (1/D²) ∑_c N_{ab}^{c̄} d_c θ_c / (θ_a θ_b).
-    /// For toric code: S = (1/2) [[1,1,1,1],[1,1,-1,-1],[1,-1,1,-1],[1,-1,-1,1]].
+    /// For toric code: S = (1/2) [\[1,1,1,1\],\[1,1,-1,-1\],\[1,-1,1,-1\],\[1,-1,-1,1\]].
     pub fn toric_code() -> Self {
         let half = 0.5_f64;
         let data = vec![

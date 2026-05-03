@@ -939,7 +939,7 @@ impl WRTInvariantComputer {
     pub fn modular_category_rank(&self) -> u32 {
         self.level - 1
     }
-    /// Quantum integer [n]_q = (q^n - q^{-n}) / (q - q^{-1}) at q = e^{2πi/r}.
+    /// Quantum integer \[n\]_q = (q^n - q^{-n}) / (q - q^{-1}) at q = e^{2πi/r}.
     /// Returns a description string (exact arithmetic requires complex numbers).
     pub fn quantum_integer_description(&self, n: u32) -> String {
         format!(

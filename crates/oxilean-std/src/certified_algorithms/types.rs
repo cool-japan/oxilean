@@ -36,7 +36,7 @@ pub struct NegativeCycleWitness {
 pub struct CertifyingUnionFind {
     parent: Vec<usize>,
     rank: Vec<u8>,
-    /// Edge certificates: edge_cert[v] = the edge (u, v) that caused v to be merged.
+    /// Edge certificates: edge_cert\[v\] = the edge (u, v) that caused v to be merged.
     pub edge_cert: Vec<Option<(usize, usize)>>,
     /// Number of components.
     pub num_components: usize,
@@ -170,7 +170,7 @@ impl CertifiedBinarySearch {
         }
         None
     }
-    /// Certificate: v[idx] == target AND v is sorted around idx.
+    /// Certificate: v\[idx\] == target AND v is sorted around idx.
     pub fn certificate(v: &[i64], target: i64, idx: usize) -> bool {
         if idx >= v.len() {
             return false;
@@ -946,7 +946,7 @@ impl ApproximationVerifier {
             opt / output_value
         }
     }
-    /// Verify that the ratio is within [1.0, claimed_ratio] (correct approximation).
+    /// Verify that the ratio is within \[1.0, claimed_ratio\] (correct approximation).
     pub fn verify_bounds(&self, output_value: f64, opt: f64, claimed_ratio: f64) -> bool {
         let ratio = self.actual_ratio(output_value, opt);
         ratio >= 1.0 - self.tolerance && ratio <= claimed_ratio + self.tolerance
@@ -1383,7 +1383,7 @@ impl CertifiedDijkstra {
         }
     }
     /// Run Dijkstra from `src` on the adjacency list `adj`.
-    /// `adj[u]` contains `(v, weight)` pairs.
+    /// `adj\[u\]` contains `(v, weight)` pairs.
     pub fn run(&mut self, adj: &[Vec<(usize, f64)>], src: usize) {
         if src >= self.dist.len() {
             return;

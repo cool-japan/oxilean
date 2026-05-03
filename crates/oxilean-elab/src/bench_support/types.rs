@@ -832,7 +832,7 @@ impl HotPathAnalyzer {
     /// Return the top-N hottest functions by total time.
     pub fn top_n(&self, n: usize) -> Vec<&HotPathEntry> {
         let mut entries: Vec<&HotPathEntry> = self.entries.values().collect();
-        entries.sort_by(|a, b| b.total_ns.cmp(&a.total_ns));
+        entries.sort_by_key(|b| std::cmp::Reverse(b.total_ns));
         entries.truncate(n);
         entries
     }

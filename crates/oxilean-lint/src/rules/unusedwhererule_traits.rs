@@ -36,21 +36,19 @@ impl LintRule for UnusedWhereRule {
         match &decl.value {
             Decl::Definition {
                 val, where_clauses, ..
-            } => {
-                if !where_clauses.is_empty() {
-                    let refs = collect_var_refs(&val.value);
-                    for wc in where_clauses {
-                        if !refs.contains(&wc.name) {
-                            ctx.emit(
-                                LintDiagnostic::new(
-                                    self.id(),
-                                    Severity::Warning,
-                                    format!("where clause `{}` is never used in the body", wc.name),
-                                    SourceRange::from_span(&decl.span),
-                                )
-                                .with_note("consider removing this where clause"),
-                            );
-                        }
+            } if !where_clauses.is_empty() => {
+                let refs = collect_var_refs(&val.value);
+                for wc in where_clauses {
+                    if !refs.contains(&wc.name) {
+                        ctx.emit(
+                            LintDiagnostic::new(
+                                self.id(),
+                                Severity::Warning,
+                                format!("where clause `{}` is never used in the body", wc.name),
+                                SourceRange::from_span(&decl.span),
+                            )
+                            .with_note("consider removing this where clause"),
+                        );
                     }
                 }
             }
@@ -58,24 +56,19 @@ impl LintRule for UnusedWhereRule {
                 proof,
                 where_clauses,
                 ..
-            } => {
-                if !where_clauses.is_empty() {
-                    let refs = collect_var_refs(&proof.value);
-                    for wc in where_clauses {
-                        if !refs.contains(&wc.name) {
-                            ctx.emit(
-                                LintDiagnostic::new(
-                                    self.id(),
-                                    Severity::Warning,
-                                    format!(
-                                        "where clause `{}` is never used in the proof",
-                                        wc.name
-                                    ),
-                                    SourceRange::from_span(&decl.span),
-                                )
-                                .with_note("consider removing this where clause"),
-                            );
-                        }
+            } if !where_clauses.is_empty() => {
+                let refs = collect_var_refs(&proof.value);
+                for wc in where_clauses {
+                    if !refs.contains(&wc.name) {
+                        ctx.emit(
+                            LintDiagnostic::new(
+                                self.id(),
+                                Severity::Warning,
+                                format!("where clause `{}` is never used in the proof", wc.name),
+                                SourceRange::from_span(&decl.span),
+                            )
+                            .with_note("consider removing this where clause"),
+                        );
                     }
                 }
             }

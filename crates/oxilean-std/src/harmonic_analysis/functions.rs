@@ -100,7 +100,7 @@ pub fn fourier_coefficient_ty() -> Expr {
 }
 /// `FourierTransform : (n : Nat) → SchwartzSpace n → SchwartzSpace n`
 ///
-/// The Fourier transform F: S(ℝⁿ) → S(ℝⁿ), F[f](ξ) = ∫ f(x) e^{-2πi⟨x,ξ⟩} dx.
+/// The Fourier transform F: S(ℝⁿ) → S(ℝⁿ), F\[f\](ξ) = ∫ f(x) e^{-2πi⟨x,ξ⟩} dx.
 pub fn fourier_transform_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -114,7 +114,7 @@ pub fn fourier_transform_ty() -> Expr {
 }
 /// `InverseFourierTransform : (n : Nat) → SchwartzSpace n → SchwartzSpace n`
 ///
-/// The inverse Fourier transform F⁻¹[g](x) = ∫ g(ξ) e^{2πi⟨x,ξ⟩} dξ.
+/// The inverse Fourier transform F⁻¹\[g\](x) = ∫ g(ξ) e^{2πi⟨x,ξ⟩} dξ.
 pub fn inverse_fourier_transform_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -128,7 +128,7 @@ pub fn inverse_fourier_transform_ty() -> Expr {
 }
 /// `PlancherelTheorem : (n : Nat) → Prop`
 ///
-/// Plancherel's theorem: ‖F[f]‖_{L²} = ‖f‖_{L²} for all f ∈ L²(ℝⁿ).
+/// Plancherel's theorem: ‖F\[f\]‖_{L²} = ‖f‖_{L²} for all f ∈ L²(ℝⁿ).
 /// The Fourier transform extends to a unitary operator on L²(ℝⁿ).
 pub fn plancherel_theorem_ty() -> Expr {
     pi(
@@ -146,7 +146,7 @@ pub fn fourier_inversion_theorem_ty() -> Expr {
 }
 /// `ConvolutionTheorem : (n : Nat) → Prop`
 ///
-/// Convolution theorem: F[f * g] = F[f] · F[g].
+/// Convolution theorem: F\[f * g\] = F\[f\] · F\[g\].
 pub fn convolution_theorem_ty() -> Expr {
     arrow(nat_ty(), prop())
 }
@@ -783,7 +783,7 @@ pub fn build_harmonic_analysis_env(env: &mut Environment) {
 }
 /// Compute the N-point Discrete Fourier Transform of a real-valued sequence.
 ///
-/// DFT[k] = Σ_{n=0}^{N-1} x[n] e^{-2πi nk/N}
+/// DFT\[k\] = Σ_{n=0}^{N-1} x\[n\] e^{-2πi nk/N}
 /// Returns (real part, imaginary part) pairs.
 pub fn dft(signal: &[f64]) -> Vec<(f64, f64)> {
     let n = signal.len();
@@ -839,8 +839,8 @@ pub fn signal_l2_norm_squared(signal: &[f64]) -> f64 {
 }
 /// Discrete Hardy-Littlewood maximal function on a 1D signal.
 ///
-/// M[f](i) = max_{r ≥ 0} (1/(2r+1)) Σ_{j=i-r}^{i+r} |f(j)|
-/// (with zero-boundary conditions outside [0, n)).
+/// M\[f\](i) = max_{r ≥ 0} (1/(2r+1)) Σ_{j=i-r}^{i+r} |f(j)|
+/// (with zero-boundary conditions outside \[0, n)).
 pub fn discrete_maximal_function(signal: &[f64]) -> Vec<f64> {
     let n = signal.len();
     if n == 0 {
@@ -887,7 +887,7 @@ pub fn discrete_bmo_seminorm(signal: &[f64]) -> f64 {
     }
     best
 }
-/// Computes the interpolated operator norm at exponent t ∈ [0,1] via Riesz-Thorin.
+/// Computes the interpolated operator norm at exponent t ∈ \[0,1\] via Riesz-Thorin.
 ///
 /// Given T : Lᵖ⁰ → Lq⁰ with norm M₀ and T : Lᵖ¹ → Lq¹ with norm M₁,
 /// the interpolated norm at parameter t is M₀^{1-t} M₁^t.

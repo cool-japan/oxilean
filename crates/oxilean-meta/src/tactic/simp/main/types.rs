@@ -55,7 +55,7 @@ impl SimpLemmaSet {
     }
     /// Sort lemmas by priority (descending).
     pub fn sort_by_priority(&mut self) {
-        self.lemmas.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.lemmas.sort_by_key(|b| std::cmp::Reverse(b.priority));
     }
 }
 /// Selects which simp lemmas to apply based on a predicate.

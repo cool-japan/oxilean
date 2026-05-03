@@ -294,7 +294,7 @@ fn opt_ext_kleisli_assoc(env: &mut Environment) -> Result<(), String> {
     );
     opt_ext_axiom(env, "Option.kleisli_assoc", ty)
 }
-/// Option.to_list_some: toList (Some x) = [x]
+/// Option.to_list_some: toList (Some x) = \[x\]
 fn opt_ext_to_list_some(env: &mut Environment) -> Result<(), String> {
     let t = opt_ext_type0();
     let ty = opt_ext_pi_imp(

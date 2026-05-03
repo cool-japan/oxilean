@@ -9,7 +9,7 @@
 
 Unlike the kernel -- which is the Trusted Computing Base (TCB) and must be auditable -- the runtime is **untrusted**: bugs here can cause incorrect evaluation results or crashes but never logical unsoundness (all terms are checked before reaching the runtime).
 
-31,676 SLOC -- fully implemented runtime system (253 source files, 969 tests passing).
+31,676 SLOC -- fully implemented runtime system (253 source files, 1,162 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -34,6 +34,13 @@ Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-c
 | `string_pool` | Interned string storage |
 | `wasm_runtime` | WebAssembly-specific runtime adaptations |
 
+### WASM / Bytecode Interpreter
+
+| Entry Point | Description |
+|-------------|-------------|
+| `WasmModule::call_function` | Complete WebAssembly bytecode interpreter; all 157 `WasmInstruction` variants dispatched via `StackMachine`; structured control flow (`Block`/`Loop`/`If`/`Else`/`End`), branch instructions (`Br`/`BrIf`/`BrTable`/`Return`), frame-stack call dispatch (`Call`/`CallIndirect` with locals, return-PC, and label-base bookkeeping) |
+| `WasmModule::register_function` | Register named functions into the `WasmModule.functions` registry for cross-function call dispatch |
+
 ### Global Configuration
 
 ```rust
@@ -56,7 +63,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-runtime = "0.1.1"
+oxilean-runtime = "0.1.2"
 ```
 
 ### Arena Allocation

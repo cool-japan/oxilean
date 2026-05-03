@@ -244,7 +244,7 @@ pub enum PAdicLanglandsType {
 /// - B_crys: Frobenius φ and filtration
 /// - B_st: Frobenius φ and monodromy N with N φ = p φ N
 /// - B_dR: complete DVR with filtration Fil^i = t^i B_dR^+
-/// - B_HT = C_p[t, t^{-1}]: Hodge–Tate decomposition ring
+/// - B_HT = C_p\[t, t^{-1}\]: Hodge–Tate decomposition ring
 pub struct PAdicPeriodRings {
     /// Prime p.
     pub p: u64,
@@ -299,9 +299,9 @@ pub enum PeriodRing {
     BdR,
     /// B_crys^+: the positive crystalline period ring.
     BcrysPlus,
-    /// B_crys = B_crys^+[φ^{-1}]: the crystalline period ring.
+    /// B_crys = B_crys^+\[φ^{-1}\]: the crystalline period ring.
     Bcrys,
-    /// B_st = B_crys[log p]: the semi-stable period ring.
+    /// B_st = B_crys\[log p\]: the semi-stable period ring.
     Bst,
     /// B_HT = ⊕_n ℂ_p(n): the Hodge–Tate period ring.
     Bht,
@@ -420,7 +420,7 @@ pub struct FiltrationOnBdR {
     pub filtration_steps: Vec<i32>,
 }
 impl FiltrationOnBdR {
-    /// Construct the B_dR filtration for prime p and steps i ∈ [low, high].
+    /// Construct the B_dR filtration for prime p and steps i ∈ \[low, high\].
     pub fn new(p: u64, low: i32, high: i32) -> Self {
         FiltrationOnBdR {
             p,
@@ -669,7 +669,7 @@ impl GaloisRepresentationOfEllipticCurve {
 /// The Fontaine–Dieudonné module D(G) of a formal p-divisible group G.
 ///
 /// D(G) is a filtered φ-module characterizing G up to isogeny.
-/// For G = E[p^∞] (elliptic curve), dim D(G) = 2 over W(k).
+/// For G = E\[p^∞\] (elliptic curve), dim D(G) = 2 over W(k).
 pub struct FontaineDieudonne {
     /// Height of the formal group (= dim V_p G).
     pub height: usize,
@@ -691,14 +691,14 @@ impl FontaineDieudonne {
     pub fn newton_slopes(&self) -> Vec<f64> {
         vec![self.formal_dim as f64 / self.height as f64; self.height]
     }
-    /// Dieudonné classification: slope λ = d/h ∈ [0,1] ∩ ℚ.
+    /// Dieudonné classification: slope λ = d/h ∈ \[0,1\] ∩ ℚ.
     pub fn slope(&self) -> f64 {
         self.formal_dim as f64 / self.height as f64
     }
 }
 /// Kisin modules (Breuil–Kisin): integral p-adic Hodge theory.
 ///
-/// A Kisin module is a finite free S = W(k)[[u]]-module M with φ-semilinear
+/// A Kisin module is a finite free S = W(k)[\[u\]]-module M with φ-semilinear
 /// map φ_M : M → M satisfying coker(φ_M^* M → M) killed by E(u)^h.
 /// Kisin proves: free ℤ_p-representations ↔ Kisin modules.
 pub struct BreuilKisin {
@@ -808,7 +808,7 @@ impl DieudonneModule {
 pub struct PadicNumber {
     /// The prime p.
     pub p: u64,
-    /// Coefficients: digits[i] = a_i, so x = Σ digits[i] * p^i.
+    /// Coefficients: digits\[i\] = a_i, so x = Σ digits\[i\] * p^i.
     pub digits: Vec<u64>,
     /// p-adic valuation: the index of the first non-zero digit.
     pub valuation: Option<usize>,
@@ -904,7 +904,7 @@ impl PadicNumber {
 }
 /// Verify that a module satisfies the Wach module axioms.
 ///
-/// A Wach module N over A^+ = W(k)[[π]] is a free A^+-module with:
+/// A Wach module N over A^+ = W(k)[\[π\]] is a free A^+-module with:
 /// 1. A φ-semilinear Frobenius φ_N with coker killed by q^h (where q = φ(π)/π).
 /// 2. A Γ-action commuting with φ_N.
 /// 3. N/πN is a filtered module over K_0.

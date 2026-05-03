@@ -173,11 +173,7 @@ mod tests {
         assert!(!t.is_running());
         t.start();
         assert!(t.is_running());
-        let mut acc = 0u64;
-        for i in 0..1000 {
-            acc = acc.wrapping_add(i);
-        }
-        std::hint::black_box(acc);
+        std::thread::sleep(Duration::from_micros(100));
         t.stop();
         assert!(!t.is_running());
         assert!(t.elapsed_ns() > 0);

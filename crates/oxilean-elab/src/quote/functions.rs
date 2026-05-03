@@ -913,10 +913,8 @@ pub fn free_vars(expr: &Expr) -> Vec<oxilean_kernel::FVarId> {
 }
 fn collect_fvars(expr: &Expr, acc: &mut Vec<oxilean_kernel::FVarId>) {
     match expr {
-        Expr::FVar(id) => {
-            if !acc.contains(id) {
-                acc.push(*id);
-            }
+        Expr::FVar(id) if !acc.contains(id) => {
+            acc.push(*id);
         }
         Expr::App(f, a) => {
             collect_fvars(f, acc);
@@ -1281,10 +1279,8 @@ pub fn quote_free_bvars(expr: &Expr, depth: u32) -> std::collections::HashSet<u3
 }
 fn qfbv_rec(expr: &Expr, depth: u32, out: &mut std::collections::HashSet<u32>) {
     match expr {
-        Expr::BVar(i) => {
-            if *i >= depth {
-                out.insert(*i - depth);
-            }
+        Expr::BVar(i) if *i >= depth => {
+            out.insert(*i - depth);
         }
         Expr::App(f, a) => {
             qfbv_rec(f, depth, out);

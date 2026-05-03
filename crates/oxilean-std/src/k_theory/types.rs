@@ -79,7 +79,7 @@ impl AlgebraicKGroups {
     pub fn k0_description(&self) -> String {
         format!("K_0({}) = {}", self.ring, self.k0)
     }
-    /// Returns Whitehead group Wh(π) = K_1(Z[π]) / {±π}.
+    /// Returns Whitehead group Wh(π) = K_1(Z\[π\]) / {±π}.
     pub fn whitehead_group_description(&self) -> String {
         format!("Wh related to K_1({})", self.ring)
     }
@@ -477,7 +477,7 @@ impl ChernCharacterComputer {
         let c3 = self.chern_classes.get(2).copied().unwrap_or(0);
         c1 * c1 * c1 - 3 * c1 * c2 + 3 * c3
     }
-    /// Total Chern character as a vector [ch_0, ch_1, ch_2_num, ch_3_num, ...].
+    /// Total Chern character as a vector \[ch_0, ch_1, ch_2_num, ch_3_num, ...\].
     pub fn chern_character_terms(&self) -> Vec<i64> {
         vec![
             self.ch0(),
@@ -564,7 +564,7 @@ pub struct GrothendieckGroup {
     pub monoid_name: String,
     /// Generators (as monoid elements)
     pub generators: Vec<(String, i64)>,
-    /// Relations (pairs (a, b) meaning [a] = [b] in K0)
+    /// Relations (pairs (a, b) meaning \[a\] = \[b\] in K0)
     pub relations: Vec<(usize, usize)>,
 }
 impl GrothendieckGroup {
@@ -580,7 +580,7 @@ impl GrothendieckGroup {
     pub fn add_generator(&mut self, name: &str, value: i64) {
         self.generators.push((name.to_string(), value));
     }
-    /// Add a relation [i] ~ [j] (stable isomorphism).
+    /// Add a relation \[i\] ~ \[j\] (stable isomorphism).
     pub fn add_relation(&mut self, i: usize, j: usize) {
         self.relations.push((i, j));
     }
@@ -692,9 +692,9 @@ pub struct QCategory {
     pub name: String,
     /// Objects (finitely generated projective modules, by rank)
     pub objects: Vec<usize>,
-    /// Admissible monomorphisms: pairs (i, j) meaning rank[i] injects into rank[j]
+    /// Admissible monomorphisms: pairs (i, j) meaning rank\[i\] injects into rank\[j\]
     pub mono: Vec<(usize, usize)>,
-    /// Admissible epimorphisms: pairs (i, j) meaning rank[i] surjects onto rank[j]
+    /// Admissible epimorphisms: pairs (i, j) meaning rank\[i\] surjects onto rank\[j\]
     pub epi: Vec<(usize, usize)>,
 }
 impl QCategory {
@@ -732,7 +732,7 @@ impl QCategory {
 /// Checks whether a finitely presented module is stably free.
 ///
 /// A module M over ring R is stably free if M ⊕ R^m ≅ R^n for some m, n.
-/// Equivalently, [M] = n - m in K0(R) = ℤ (for R a PID or polynomial ring over field).
+/// Equivalently, \[M\] = n - m in K0(R) = ℤ (for R a PID or polynomial ring over field).
 #[derive(Debug, Clone)]
 pub struct StablyFreeModuleChecker {
     /// Rank of the module M.
@@ -758,7 +758,7 @@ impl StablyFreeModuleChecker {
     pub fn is_stably_free(&self) -> bool {
         self.module_rank + self.free_summand == self.target_rank
     }
-    /// Compute the K0 class of M: [M] = module_rank - free_summand in K0(R) ≅ ℤ.
+    /// Compute the K0 class of M: \[M\] = module_rank - free_summand in K0(R) ≅ ℤ.
     pub fn k0_class(&self) -> i64 {
         self.module_rank as i64 - self.free_summand as i64
     }
@@ -969,13 +969,13 @@ impl VectorBundle {
         (0..=self.rank).map(|i| format!("c_{}(E)", i)).collect()
     }
 }
-/// Represents an element of K0(R) as a virtual difference [P] - [Q]
+/// Represents an element of K0(R) as a virtual difference \[P\] - \[Q\]
 /// of isomorphism classes of finitely generated projective modules.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct K0Element {
-    /// Rank of the positive part [P]
+    /// Rank of the positive part \[P\]
     pub pos_rank: i64,
-    /// Rank of the negative part [Q]
+    /// Rank of the negative part \[Q\]
     pub neg_rank: i64,
     /// A label for identification
     pub label: String,
@@ -1076,7 +1076,7 @@ impl AdamsOperationApplier {
 }
 /// Estimates the size of the Whitehead group Wh(G) for a finite group G.
 ///
-/// Wh(G) = K_1(Z[G]) / {±g : g ∈ G}.
+/// Wh(G) = K_1(Z\[G\]) / {±g : g ∈ G}.
 /// For finite cyclic groups: Wh(Z/n) = 0 (Bass, 1968).
 /// For general finite groups: Wh(G) is a finitely generated abelian group
 /// whose rank equals the number of irreducible real representations minus

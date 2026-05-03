@@ -258,7 +258,7 @@ impl SeparationLogicChecker {
     pub fn check_frame_rule(&self, spec: &HoareTriple, frame: &HeapPredicate) -> bool {
         frame.is_satisfiable() && !spec.program.is_empty()
     }
-    /// Check incorrectness logic: [P] C [Q] means Q is reachable from some P state.
+    /// Check incorrectness logic: \[P\] C \[Q\] means Q is reachable from some P state.
     /// Approximation: valid if P is satisfiable.
     pub fn check_incorrectness(&self, pre: &HeapPredicate, _post: &HeapPredicate) -> bool {
         pre.is_satisfiable()
@@ -778,7 +778,7 @@ pub struct KripkeStructure {
     pub states: Vec<String>,
     /// Transition relation as pairs of state indices.
     pub transitions: Vec<(usize, usize)>,
-    /// Labeling: `labeling[i]` is the set of atomic propositions true in `states[i]`.
+    /// Labeling: `labeling\[i\]` is the set of atomic propositions true in `states\[i\]`.
     pub labeling: Vec<Vec<String>>,
 }
 impl KripkeStructure {

@@ -944,7 +944,7 @@ impl ErrorAccumulator2 {
     #[allow(missing_docs)]
     pub fn sorted_by_severity(&self) -> Vec<&RichError> {
         let mut sorted: Vec<_> = self.errors.iter().collect();
-        sorted.sort_by(|a, b| b.severity.cmp(&a.severity));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.severity));
         sorted
     }
 }

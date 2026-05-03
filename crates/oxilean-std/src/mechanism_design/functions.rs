@@ -262,11 +262,11 @@ pub fn all_pay_auction(bids: &[f64]) -> AuctionResult {
 }
 /// Compute Myerson's virtual value for a bidder with uniform valuation.
 ///
-/// For uniform distribution on [0, 1]: ψ(v) = v - (1 - F(v)) / f(v) = 2v - 1.
+/// For uniform distribution on \[0, 1\]: ψ(v) = v - (1 - F(v)) / f(v) = 2v - 1.
 pub fn myerson_virtual_value_uniform(v: f64) -> f64 {
     2.0 * v - 1.0
 }
-/// Myerson's optimal auction for n bidders with i.i.d. uniform values on [0,1].
+/// Myerson's optimal auction for n bidders with i.i.d. uniform values on \[0,1\].
 ///
 /// Allocates the item to the bidder with the highest non-negative virtual value.
 /// Returns (winner_index, payment).
@@ -374,8 +374,8 @@ pub fn check_individual_rationality(
 }
 /// Run the Gale-Shapley deferred acceptance algorithm (proposer-optimal).
 ///
-/// `proposer_prefs[i]` = list of reviewers in order of preference for proposer i.
-/// `reviewer_prefs[j]` = list of proposers in order of preference for reviewer j.
+/// `proposer_prefs\[i\]` = list of reviewers in order of preference for proposer i.
+/// `reviewer_prefs\[j\]` = list of proposers in order of preference for reviewer j.
 ///
 /// Returns `matching[proposer]` = reviewer matched to that proposer (or None if unmatched).
 pub fn gale_shapley(
@@ -522,8 +522,8 @@ pub fn greedy_winner_determination(bids: &[CombBid], n_items: usize) -> Vec<usiz
 /// the expected revenue of the second-price auction and the first-price auction
 /// should be approximately equal.
 ///
-/// For n bidders with values uniform on [0,1]:
-/// Expected revenue of SPA = n/(n+1) * E[max value] = (n-1)/(n+1)
+/// For n bidders with values uniform on \[0,1\]:
+/// Expected revenue of SPA = n/(n+1) * E\[max value\] = (n-1)/(n+1)
 /// Expected revenue of FPA (symmetric equilibrium bid = v*(n-1)/n) = (n-1)/(n+1)
 ///
 /// Returns the empirical expected revenues of SPA and FPA respectively.
@@ -752,8 +752,8 @@ pub fn shapley_value_cost(n_agents: usize, cost_fn: impl Fn(usize) -> f64) -> Ve
 /// Check if a cost-sharing method is cross-monotone:
 /// agent i's share does not increase when new agents join.
 ///
-/// `shares[S][i]` = share of agent i in coalition S (bitmask).
-/// Returns true if for all i ∈ S ⊆ T, shares[S][i] >= shares[T][i].
+/// `shares\[S\]\[i\]` = share of agent i in coalition S (bitmask).
+/// Returns true if for all i ∈ S ⊆ T, shares\[S\]\[i\] >= shares\[T\]\[i\].
 pub fn is_cross_monotone(n_agents: usize, shares: &[Vec<f64>]) -> bool {
     let n_coalitions = 1usize << n_agents;
     for s in 0..n_coalitions {

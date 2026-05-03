@@ -69,7 +69,7 @@ impl LocalTimeEstimator {
         }
         total / epsilon
     }
-    /// Compute the occupation time measure: time spent in interval [lo, hi].
+    /// Compute the occupation time measure: time spent in interval \[lo, hi\].
     pub fn occupation_time(&self, lo: f64, hi: f64) -> f64 {
         if self.path.len() < 2 {
             return 0.0;
@@ -85,7 +85,7 @@ impl LocalTimeEstimator {
         }
         total
     }
-    /// Compute the quadratic variation [B]_t ≈ Σ |B_{t_k} - B_{t_{k-1}}|².
+    /// Compute the quadratic variation \[B\]_t ≈ Σ |B_{t_k} - B_{t_{k-1}}|².
     pub fn quadratic_variation(&self) -> f64 {
         self.path
             .windows(2)
@@ -103,7 +103,7 @@ impl LocalTimeEstimator {
 #[derive(Debug, Clone)]
 pub struct CtMarkovChain {
     pub states: Vec<String>,
-    /// Q matrix: rate_matrix[i][j] = q_{ij}.
+    /// Q matrix: rate_matrix\[i\]\[j\] = q_{ij}.
     pub rate_matrix: Vec<Vec<f64>>,
 }
 impl CtMarkovChain {
@@ -256,7 +256,7 @@ impl PoissonProcessSimulator {
         }
         path
     }
-    /// Expected number of arrivals in [0, t]: E[N_t] = λt.
+    /// Expected number of arrivals in \[0, t\]: E\[N_t\] = λt.
     pub fn expected_count(&self, t: f64) -> f64 {
         self.rate * t
     }
@@ -308,11 +308,11 @@ impl CompoundPoissonProcess {
         }
         path
     }
-    /// Theoretical mean of Y_t: E[Y_t] = λ t E[Z].
+    /// Theoretical mean of Y_t: E\[Y_t\] = λ t E\[Z\].
     pub fn expected_value(&self, t: f64) -> f64 {
         self.rate * t * self.jump_mean
     }
-    /// Theoretical variance of Y_t: Var[Y_t] = λ t E[Z²] = λ t (σ² + μ²).
+    /// Theoretical variance of Y_t: Var\[Y_t\] = λ t E\[Z²\] = λ t (σ² + μ²).
     pub fn variance(&self, t: f64) -> f64 {
         self.rate * t * (self.jump_std * self.jump_std + self.jump_mean * self.jump_mean)
     }
@@ -364,7 +364,7 @@ impl MilsteinScheme {
         }
         path
     }
-    /// Estimate the mean E[X_T] using Monte Carlo with `n_paths` paths.
+    /// Estimate the mean E\[X_T\] using Monte Carlo with `n_paths` paths.
     pub fn monte_carlo_mean(
         &self,
         x0: f64,
@@ -417,7 +417,7 @@ impl HestonModel {
     }
     /// Simulate (S_t, V_t) paths using Euler-Maruyama.
     ///
-    /// Returns Vec<(time, S_t, V_t)>.
+    /// Returns `Vec<(time, S_t, V_t)>`.
     pub fn simulate(
         &self,
         s0: f64,
@@ -478,11 +478,11 @@ impl GeometricBrownianMotionProcess {
     pub fn simulate(&self, s0: f64, t_end: f64, n_steps: u32, seed: u64) -> Vec<(f64, f64)> {
         geometric_brownian_motion(s0, self.mu, self.sigma, t_end, n_steps, seed)
     }
-    /// Expected value E[S_t] = S_0 exp(μ t).
+    /// Expected value E\[S_t\] = S_0 exp(μ t).
     pub fn expected_value(&self, s0: f64, t: f64) -> f64 {
         s0 * (self.mu * t).exp()
     }
-    /// Variance Var[S_t] = S_0² e^{2μt} (e^{σ²t} - 1).
+    /// Variance Var\[S_t\] = S_0² e^{2μt} (e^{σ²t} - 1).
     pub fn variance(&self, s0: f64, t: f64) -> f64 {
         let s0sq = s0 * s0;
         s0sq * (2.0 * self.mu * t).exp() * ((self.sigma * self.sigma * t).exp() - 1.0)
@@ -662,11 +662,11 @@ impl VarianceGammaProcess {
         }
         path
     }
-    /// Theoretical mean of X_t: E[X_t] = x0 + μ t.
+    /// Theoretical mean of X_t: E\[X_t\] = x0 + μ t.
     pub fn theoretical_mean(&self, x0: f64, t: f64) -> f64 {
         x0 + self.mu * t
     }
-    /// Theoretical variance of X_t: Var[X_t] = σ² t + μ² ν t.
+    /// Theoretical variance of X_t: Var\[X_t\] = σ² t + μ² ν t.
     pub fn theoretical_variance(&self, t: f64) -> f64 {
         self.sigma * self.sigma * t + self.mu * self.mu * self.nu * t
     }
@@ -758,11 +758,11 @@ impl SubordinatedProcess {
         }
         path
     }
-    /// Theoretical mean E[X_t] = x0 + base_drift * gamma_a/gamma_b * t.
+    /// Theoretical mean E\[X_t\] = x0 + base_drift * gamma_a/gamma_b * t.
     pub fn theoretical_mean(&self, x0: f64, t: f64) -> f64 {
         x0 + self.base_drift * (self.gamma_a / self.gamma_b) * t
     }
-    /// Theoretical variance Var[X_t] for subordinated Brownian motion.
+    /// Theoretical variance Var\[X_t\] for subordinated Brownian motion.
     pub fn theoretical_variance(&self, t: f64) -> f64 {
         let e_sub = self.gamma_a / self.gamma_b * t;
         let var_sub = self.gamma_a / (self.gamma_b * self.gamma_b) * t;
@@ -805,5 +805,212 @@ impl Lcg {
         let u1 = self.next_f64().max(1e-15);
         let u2 = self.next_f64();
         (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
+    }
+}
+
+// ── New Markov Chain / Stochastic Analysis Types ──────────────────────────────
+
+/// A state index in a discrete Markov chain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct State(pub usize);
+
+/// Row-stochastic transition matrix P where P\[i\]\[j\] = P(next = j | current = i).
+#[derive(Debug, Clone)]
+pub struct TransitionMatrix {
+    /// Flattened row-major storage of the matrix.
+    pub data: Vec<Vec<f64>>,
+    /// Number of states.
+    pub size: usize,
+}
+
+impl TransitionMatrix {
+    /// Create a new transition matrix.  `data\[i\]\[j\]` must give P(j | i).
+    pub fn new(data: Vec<Vec<f64>>) -> Self {
+        let size = data.len();
+        TransitionMatrix { data, size }
+    }
+
+    /// Get the transition probability P(j | i).
+    pub fn get(&self, i: usize, j: usize) -> f64 {
+        self.data
+            .get(i)
+            .and_then(|row| row.get(j))
+            .copied()
+            .unwrap_or(0.0)
+    }
+
+    /// Set the transition probability P(j | i).
+    pub fn set(&mut self, i: usize, j: usize, val: f64) {
+        if let Some(row) = self.data.get_mut(i) {
+            if let Some(cell) = row.get_mut(j) {
+                *cell = val;
+            }
+        }
+    }
+
+    /// Create the n×n identity matrix (as a transition matrix: all self-loops).
+    pub fn identity(n: usize) -> Self {
+        let data = (0..n)
+            .map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect())
+            .collect();
+        TransitionMatrix { data, size: n }
+    }
+}
+
+/// A discrete-time Markov chain.
+#[derive(Debug, Clone)]
+pub struct MarkovChain {
+    /// The transition probability matrix.
+    pub transition: TransitionMatrix,
+    /// Initial distribution π_0.
+    pub initial: Vec<f64>,
+    /// Human-readable state names.
+    pub state_names: Vec<String>,
+}
+
+impl MarkovChain {
+    /// Construct a Markov chain with given transition matrix and initial distribution.
+    pub fn new(transition: TransitionMatrix, initial: Vec<f64>, state_names: Vec<String>) -> Self {
+        MarkovChain {
+            transition,
+            initial,
+            state_names,
+        }
+    }
+
+    /// Uniform initial distribution.
+    pub fn with_uniform_start(transition: TransitionMatrix, state_names: Vec<String>) -> Self {
+        let n = transition.size;
+        let initial = vec![1.0 / n as f64; n];
+        MarkovChain {
+            transition,
+            initial,
+            state_names,
+        }
+    }
+}
+
+/// The stationary distribution π satisfying πP = π.
+#[derive(Debug, Clone)]
+pub struct StationaryDistribution {
+    /// Probability of each state under the stationary distribution.
+    pub probs: Vec<f64>,
+}
+
+impl StationaryDistribution {
+    pub fn new(probs: Vec<f64>) -> Self {
+        StationaryDistribution { probs }
+    }
+
+    /// Total variation distance to another distribution.
+    pub fn tv_distance(&self, other: &[f64]) -> f64 {
+        0.5 * self
+            .probs
+            .iter()
+            .zip(other.iter())
+            .map(|(a, b)| (a - b).abs())
+            .sum::<f64>()
+    }
+}
+
+/// Absorption data for a Markov chain with absorbing states.
+#[derive(Debug, Clone)]
+pub struct AbsorptionData {
+    /// The absorbing states (where the chain gets trapped).
+    pub absorbing_states: Vec<State>,
+    /// The transient states.
+    pub transient_states: Vec<State>,
+    /// absorption_probs\[t\]\[a\] = P(absorbed into state a | start in transient t).
+    pub absorption_probs: Vec<Vec<f64>>,
+    /// expected_steps\[t\] = expected number of steps to absorption from transient t.
+    pub expected_steps: Vec<f64>,
+}
+
+/// Expected hitting time from one state to another.
+#[derive(Debug, Clone)]
+pub struct HittingTime {
+    pub from: State,
+    pub to: State,
+    /// E\[T_{from→to}\].
+    pub expected_steps: f64,
+    /// Var\[T_{from→to}\] if computable.
+    pub variance: Option<f64>,
+}
+
+/// Distribution of steps in a random walk.
+#[derive(Debug, Clone)]
+pub enum WalkDistribution {
+    /// Simple symmetric random walk: ±1 with probability 1/2 each.
+    Simple,
+    /// Lazy random walk: stays with probability `stay_prob`, otherwise ±1.
+    Lazy { stay_prob: f64 },
+    /// Biased random walk with given direction probabilities (must sum to 1).
+    Biased { bias: Vec<f64> },
+}
+
+/// A multi-dimensional random walk.
+#[derive(Debug, Clone)]
+pub struct RandomWalk {
+    /// Dimension of the walk.
+    pub dimension: usize,
+    /// Steps taken so far: `steps\[t\]\[d\]` is the position at time t in dimension d.
+    pub steps: Vec<Vec<i64>>,
+    /// The step distribution.
+    pub step_distribution: WalkDistribution,
+}
+
+impl RandomWalk {
+    pub fn new(dimension: usize, step_distribution: WalkDistribution) -> Self {
+        let initial = vec![0i64; dimension];
+        RandomWalk {
+            dimension,
+            steps: vec![initial],
+            step_distribution,
+        }
+    }
+}
+
+/// A Poisson process with given rate and arrival times.
+#[derive(Debug, Clone)]
+pub struct PoissonProcess {
+    /// Arrival rate λ > 0.
+    pub rate: f64,
+    /// Sorted arrival times.
+    pub arrivals: Vec<f64>,
+}
+
+impl PoissonProcess {
+    pub fn new(rate: f64, arrivals: Vec<f64>) -> Self {
+        PoissonProcess { rate, arrivals }
+    }
+
+    /// Number of arrivals in \[0, t\].
+    pub fn count_by(&self, t: f64) -> usize {
+        self.arrivals.iter().filter(|&&s| s <= t).count()
+    }
+}
+
+/// Discrete approximation of a Brownian motion path B_0, B_{dt}, B_{2dt}, ...
+#[derive(Debug, Clone)]
+pub struct BrownianMotion {
+    /// Time step dt.
+    pub dt: f64,
+    /// B_0 = 0, B_{k·dt} = path\[k\].
+    pub path: Vec<f64>,
+}
+
+impl BrownianMotion {
+    pub fn new(dt: f64, path: Vec<f64>) -> Self {
+        BrownianMotion { dt, path }
+    }
+
+    /// Quadratic variation \[B\]_T ≈ n·dt (should ≈ T).
+    pub fn quadratic_variation(&self) -> f64 {
+        self.path.windows(2).map(|w| (w[1] - w[0]).powi(2)).sum()
+    }
+
+    /// Terminal time T = n·dt.
+    pub fn terminal_time(&self) -> f64 {
+        (self.path.len().saturating_sub(1)) as f64 * self.dt
     }
 }

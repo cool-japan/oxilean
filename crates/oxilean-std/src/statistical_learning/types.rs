@@ -196,7 +196,7 @@ impl SVMClassifier {
         self.n_support_vectors as f64 / n_training as f64
     }
 }
-/// Fisher information I(θ) = E[(∂/∂θ log p(x;θ))²].
+/// Fisher information I(θ) = E\[(∂/∂θ log p(x;θ))²\].
 pub struct FisherInformation {
     /// Log-density function log p(x; θ) as a closure index (stored as parameter).
     pub theta: f64,
@@ -303,7 +303,7 @@ pub struct MutualInformation;
 impl MutualInformation {
     /// Compute I(X;Y) from a joint distribution table.
     ///
-    /// `joint[i][j]` = P(X=i, Y=j).
+    /// `joint\[i\]\[j\]` = P(X=i, Y=j).
     pub fn compute(joint: &[Vec<f64>]) -> f64 {
         if joint.is_empty() {
             return 0.0;
@@ -442,7 +442,10 @@ impl VCDimension {
         let mut binom = 1usize;
         for i in 0..=d.min(m) {
             if i > 0 {
-                binom = binom * (m - i + 1) / i;
+                binom = binom
+                    .saturating_mul(m - i + 1)
+                    .checked_div(i)
+                    .unwrap_or(binom);
             }
             bound = bound.saturating_add(binom);
         }
@@ -520,7 +523,7 @@ impl SampleComplexity {
 pub struct KernelSVMTrainer {
     /// Number of training points.
     pub n: usize,
-    /// Dual variables α_i ∈ [0, C].
+    /// Dual variables α_i ∈ \[0, C\].
     pub alphas: Vec<f64>,
     /// Labels y_i ∈ {-1, +1}.
     pub labels: Vec<f64>,
@@ -618,11 +621,11 @@ impl PACLearner {
 }
 /// Evidence Lower Bound (ELBO) for variational inference.
 ///
-/// ℒ(q) = E_q[log p(x,z)] - E_q[log q(z)] = log p(x) - D_KL(q(z) ‖ p(z|x))
+/// ℒ(q) = E_q\[log p(x,z)\] - E_q\[log q(z)\] = log p(x) - D_KL(q(z) ‖ p(z|x))
 pub struct ELBO {
     /// D_KL(q‖p) component.
     pub kl_term: f64,
-    /// E_q[log p(x,z)] reconstruction term.
+    /// E_q\[log p(x,z)\] reconstruction term.
     pub reconstruction_term: f64,
 }
 impl ELBO {

@@ -372,7 +372,7 @@ pub fn monoidal_infty_category_ty() -> Expr {
 }
 /// `day_convolution_ty()` — Day convolution monoidal structure.
 ///
-/// For a monoidal category C, the functor category [C, Set] is monoidal via Day convolution.
+/// For a monoidal category C, the functor category \[C, Set\] is monoidal via Day convolution.
 pub fn day_convolution_ty() -> Expr {
     arrow(monoidal_category_ty(), monoidal_category_ty())
 }
@@ -483,7 +483,7 @@ pub fn additive_category_ty() -> Expr {
 }
 /// `triangulated_category_ty()` — type of a triangulated category.
 ///
-/// Has a shift functor [1] and distinguished triangles.
+/// Has a shift functor \[1\] and distinguished triangles.
 pub fn triangulated_category_ty() -> Expr {
     type0()
 }
@@ -613,7 +613,7 @@ pub fn six_functor_base_change_ty() -> Expr {
 }
 /// `poincare_duality_six_functor_ty()` — Poincaré duality via six functors.
 ///
-/// For a smooth proper morphism f of relative dimension d, f^! ≃ f^* ⊗ ω_{X/S}[d].
+/// For a smooth proper morphism f of relative dimension d, f^! ≃ f^* ⊗ ω_{X/S}\[d\].
 pub fn poincare_duality_six_functor_ty() -> Expr {
     pi(
         BinderInfo::Default,

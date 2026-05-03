@@ -96,7 +96,7 @@ pub fn logarithmic_height_ty() -> Expr {
 /// `AbsoluteLogarithmicHeight : Type → Real`
 ///
 /// The absolute logarithmic Weil height on projective space P^n(Q̄):
-/// h(x) = (1/[K:Q]) ∑_v max_i log |x_i|_v for a number field K.
+/// h(x) = (1/\[K:Q\]) ∑_v max_i log |x_i|_v for a number field K.
 pub fn absolute_logarithmic_height_ty() -> Expr {
     arrow(type0(), real_ty())
 }
@@ -157,8 +157,8 @@ pub fn descent_procedure_ty() -> Expr {
 }
 /// `SelmerGroup : Type → Type`
 ///
-/// The n-Selmer group Sel^(n)(A/K) ⊆ H^1(K, A[n]): fits into
-/// 0 → A(K)/nA(K) → Sel^(n)(A/K) → Ш(A/K)[n] → 0.
+/// The n-Selmer group Sel^(n)(A/K) ⊆ H^1(K, A\[n\]): fits into
+/// 0 → A(K)/nA(K) → Sel^(n)(A/K) → Ш(A/K)\[n\] → 0.
 pub fn selmer_group_ty() -> Expr {
     arrow(type0(), type0())
 }
@@ -472,7 +472,7 @@ pub fn nevanlinna_characteristic_ty() -> Expr {
 }
 /// `DeficiencyFunction : Type → Real`
 ///
-/// The deficiency δ(a, f) = 1 - lim sup N(r, a, f)/T(r, f) ∈ [0, 1];
+/// The deficiency δ(a, f) = 1 - lim sup N(r, a, f)/T(r, f) ∈ \[0, 1\];
 /// the deficiency relation ∑_a δ(a, f) ≤ 2 follows from the second main theorem.
 pub fn deficiency_function_ty() -> Expr {
     arrow(type0(), real_ty())
@@ -643,7 +643,7 @@ pub fn visibility_of_selmer_ty() -> Expr {
 /// `IsogenyDescent : Type → Type → Type`
 ///
 /// Descent via an isogeny φ: A → B, giving a short exact sequence
-/// 0 → B(K)/φA(K) → Sel^(φ)(A/K) → Ш(A/K)[φ̂] → 0.
+/// 0 → B(K)/φA(K) → Sel^(φ)(A/K) → Ш(A/K)\[φ̂\] → 0.
 pub fn isogeny_descent_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
 }
@@ -692,7 +692,7 @@ pub fn function_field_analogy_ty() -> Expr {
 /// `MasonStothers : Prop`
 ///
 /// Mason-Stothers theorem (function field abc): for coprime polynomials a+b=c
-/// over ℂ[t], max(deg a, deg b, deg c) ≤ deg(rad(abc)) - 1.
+/// over ℂ\[t\], max(deg a, deg b, deg c) ≤ deg(rad(abc)) - 1.
 pub fn mason_stothers_ty() -> Expr {
     prop()
 }

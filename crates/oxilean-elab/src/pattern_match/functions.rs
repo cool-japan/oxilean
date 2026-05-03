@@ -1374,10 +1374,8 @@ pub fn collect_literals(patterns: &[ElabPattern]) -> Vec<oxilean_kernel::Literal
 }
 fn collect_lit_recursive(pat: &ElabPattern, out: &mut Vec<oxilean_kernel::Literal>) {
     match pat {
-        ElabPattern::Lit(l) => {
-            if !out.contains(l) {
-                out.push(l.clone());
-            }
+        ElabPattern::Lit(l) if !out.contains(l) => {
+            out.push(l.clone());
         }
         ElabPattern::Ctor(_, sub, _) => {
             for s in sub {

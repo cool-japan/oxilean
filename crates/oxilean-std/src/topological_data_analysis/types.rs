@@ -17,7 +17,7 @@ pub struct CechComplex {
 impl CechComplex {
     /// Build a Čech complex from point coordinates and radius ε.
     ///
-    /// `points[i]` = coordinate vector of point i.
+    /// `points\[i\]` = coordinate vector of point i.
     /// A simplex {i₀, …, iₖ} is included iff the intersection of balls B(iⱼ, ε) is non-empty,
     /// which is approximated here by: circumradius of the set of points ≤ ε.
     pub fn build(points: &[Vec<f64>], epsilon: f64) -> Self {
@@ -56,7 +56,7 @@ pub struct ReebNode {
 /// Computes and stores the persistence landscape λₖ(t) for a persistence diagram.
 ///
 /// The k-th landscape function is defined as the k-th largest tent function:
-/// λₖ(t) = kth-max_{[b,d] ∈ dgm} min(t - b, d - t)₊.
+/// λₖ(t) = kth-max_{\[b,d\] ∈ dgm} min(t - b, d - t)₊.
 #[allow(dead_code)]
 pub struct PersistenceLandscapeComputer {
     /// The persistence intervals (finite only).
@@ -65,7 +65,7 @@ pub struct PersistenceLandscapeComputer {
     pub t_values: Vec<f64>,
 }
 impl PersistenceLandscapeComputer {
-    /// Create a landscape computer for a diagram, evaluated at `n_pts` points in [lo, hi].
+    /// Create a landscape computer for a diagram, evaluated at `n_pts` points in \[lo, hi\].
     pub fn new(diagram: &PersistenceDiagram, lo: f64, hi: f64, n_pts: usize) -> Self {
         let intervals: Vec<(f64, f64)> = diagram
             .intervals
@@ -222,7 +222,7 @@ pub struct PersistenceImage {
     pub weight_power: f64,
     /// The image pixels (resolution × resolution matrix).
     pub pixels: Vec<Vec<f64>>,
-    /// Bounding box of the diagram [min_birth, max_birth] × [0, max_persistence].
+    /// Bounding box of the diagram \[min_birth, max_birth\] × \[0, max_persistence\].
     pub birth_range: (f64, f64),
     /// Maximum persistence value.
     pub max_persistence: f64,
@@ -414,24 +414,24 @@ impl AlphaComplex {
         }
     }
 }
-/// An elementary interval in one dimension: either [k, k+1] (non-degenerate) or [k, k] (degenerate).
+/// An elementary interval in one dimension: either \[k, k+1\] (non-degenerate) or \[k, k\] (degenerate).
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ElementaryInterval {
     /// Left endpoint.
     pub left: i64,
-    /// True if the interval is non-degenerate: [left, left+1].
+    /// True if the interval is non-degenerate: \[left, left+1\].
     pub non_degenerate: bool,
 }
 impl ElementaryInterval {
-    /// Create a non-degenerate interval [left, left+1].
+    /// Create a non-degenerate interval \[left, left+1\].
     pub fn non_deg(left: i64) -> Self {
         Self {
             left,
             non_degenerate: true,
         }
     }
-    /// Create a degenerate interval [left, left].
+    /// Create a degenerate interval \[left, left\].
     pub fn deg(left: i64) -> Self {
         Self {
             left,
@@ -1153,7 +1153,7 @@ impl SimplicialComplex {
             .filter(|s| s.dimension() == k)
             .collect()
     }
-    /// Compute the k-th boundary matrix as a Vec<Vec<i8>>.
+    /// Compute the k-th boundary matrix as a `Vec<Vec<i8>`>.
     /// Rows = (k-1)-simplices, Columns = k-simplices, entries ∈ {-1, 0, +1}.
     pub fn boundary_matrix(&self, k: usize) -> Vec<Vec<i64>> {
         let col_simplices: Vec<&Simplex> = {
@@ -1218,7 +1218,7 @@ pub struct VietorisRipsComplex {
 impl VietorisRipsComplex {
     /// Build a Vietoris-Rips complex from a distance matrix and threshold ε.
     ///
-    /// `dist[i][j]` = distance between points i and j.
+    /// `dist\[i\]\[j\]` = distance between points i and j.
     pub fn build(dist: &[Vec<f64>], epsilon: f64, max_dim: usize) -> Self {
         let n = dist.len();
         let mut complex = SimplicialComplex::new();

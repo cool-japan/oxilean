@@ -14,5 +14,6 @@ pub mod tacticgcongrconfig_traits;
 pub mod tacticgcongrdiff_traits;
 pub mod types;
 
-// Re-export all types
+// Re-export all types and functions
+pub use functions::*;
 pub use types::*;

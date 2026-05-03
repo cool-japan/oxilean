@@ -242,7 +242,7 @@ impl CallGraph {
     /// Nodes sorted by inclusive time, descending.
     pub fn top_by_inclusive(&self, n: usize) -> Vec<&CallNode> {
         let mut sorted: Vec<&CallNode> = self.nodes.iter().collect();
-        sorted.sort_by(|a, b| b.inclusive_ns.cmp(&a.inclusive_ns));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.inclusive_ns));
         sorted.into_iter().take(n).collect()
     }
 }
@@ -606,14 +606,14 @@ impl ElabHotPathReport {
     pub fn add_decl(&mut self, name: impl Into<String>, total_ns: u64) {
         if total_ns >= self.threshold_ns {
             self.top_decls.push((name.into(), total_ns));
-            self.top_decls.sort_by(|a, b| b.1.cmp(&a.1));
+            self.top_decls.sort_by_key(|b| std::cmp::Reverse(b.1));
         }
     }
     /// Add a tactic to the report.
     pub fn add_tactic(&mut self, name: impl Into<String>, total_ns: u64) {
         if total_ns >= self.threshold_ns {
             self.top_tactics.push((name.into(), total_ns));
-            self.top_tactics.sort_by(|a, b| b.1.cmp(&a.1));
+            self.top_tactics.sort_by_key(|b| std::cmp::Reverse(b.1));
         }
     }
     /// Return the total time accounted for in declarations.
@@ -778,7 +778,7 @@ impl ElabProfiler {
     /// Returns the `n` slowest declaration profiles, sorted descending by total time.
     pub fn top_slow(&self, n: usize) -> Vec<&DeclProfile> {
         let mut sorted: Vec<&DeclProfile> = self.decl_profiles.iter().collect();
-        sorted.sort_by(|a, b| b.total_ns.cmp(&a.total_ns));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.total_ns));
         sorted.into_iter().take(n).collect()
     }
     /// Generates a full ProfileReport from accumulated data.
@@ -854,7 +854,7 @@ impl HotspotDetector {
                 }
             })
             .collect();
-        hotspots.sort_by(|a, b| b.total_ns.cmp(&a.total_ns));
+        hotspots.sort_by_key(|b| std::cmp::Reverse(b.total_ns));
         hotspots
     }
     /// Detect hotspots directly from a `ProfileReport`.
@@ -1361,7 +1361,7 @@ impl UnificationProfiler {
     /// Top-N slowest unification records.
     pub fn top_slow(&self, n: usize) -> Vec<&UnificationRecord> {
         let mut sorted: Vec<&UnificationRecord> = self.records.iter().collect();
-        sorted.sort_by(|a, b| b.duration_ns.cmp(&a.duration_ns));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.duration_ns));
         sorted.into_iter().take(n).collect()
     }
     /// Time breakdown by unification kind.

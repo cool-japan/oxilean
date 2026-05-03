@@ -722,3 +722,84 @@ pub enum CompositionType {
     Parallel,
     PostProcessing,
 }
+
+/// Simple (epsilon, delta) budget pair for composition functions.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SimpleBudget {
+    pub epsilon: f64,
+    pub delta: f64,
+}
+
+impl SimpleBudget {
+    pub fn new(epsilon: f64, delta: f64) -> Self {
+        SimpleBudget { epsilon, delta }
+    }
+    pub fn pure_dp(epsilon: f64) -> Self {
+        SimpleBudget {
+            epsilon,
+            delta: 0.0,
+        }
+    }
+}
+
+/// Mechanism variant used in DpMechanism.
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Mechanism {
+    Laplace,
+    Gaussian,
+    Exponential,
+    RandomizedResponse,
+}
+
+/// Sensitivity type for DP mechanisms.
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SensitivityType {
+    Global,
+    Local,
+    Smooth,
+}
+
+/// A concrete DP mechanism with its parameters.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct DpMechanism {
+    pub name: String,
+    pub mechanism: Mechanism,
+    pub sensitivity: f64,
+    pub epsilon: f64,
+    pub delta: f64,
+}
+
+impl DpMechanism {
+    #[allow(dead_code)]
+    pub fn new(
+        name: impl Into<String>,
+        mechanism: Mechanism,
+        sensitivity: f64,
+        epsilon: f64,
+        delta: f64,
+    ) -> Self {
+        DpMechanism {
+            name: name.into(),
+            mechanism,
+            sensitivity,
+            epsilon,
+            delta,
+        }
+    }
+    #[allow(dead_code)]
+    pub fn budget(&self) -> SimpleBudget {
+        SimpleBudget::new(self.epsilon, self.delta)
+    }
+}
+
+/// High-level composition theorem variant.
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompositionTheorem {
+    Sequential,
+    Parallel,
+    Advanced,
+}

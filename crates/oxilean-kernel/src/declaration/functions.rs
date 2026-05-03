@@ -278,11 +278,10 @@ fn collect_level_params_in_expr_impl(e: &Expr, out: &mut Vec<Name>) {
 }
 fn collect_level_params_in_level(l: &Level, out: &mut Vec<Name>) {
     match l {
-        Level::Param(n) => {
-            if !out.contains(n) {
-                out.push(n.clone());
-            }
+        Level::Param(n) if !out.contains(n) => {
+            out.push(n.clone());
         }
+        Level::Param(_) => {}
         Level::Succ(inner) => collect_level_params_in_level(inner, out),
         Level::Max(a, b) | Level::IMax(a, b) => {
             collect_level_params_in_level(a, out);

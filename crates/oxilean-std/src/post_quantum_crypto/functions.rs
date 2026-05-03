@@ -124,7 +124,7 @@ pub fn lwe_regev_theorem_ty() -> Expr {
 }
 /// `RingLWEDistribution : Nat → Nat → Type`
 ///
-/// Ring-LWE distribution over Rq = Zq[x]/(x^n + 1):
+/// Ring-LWE distribution over Rq = Zq\[x\]/(x^n + 1):
 /// samples (a, b = a·s + e) where a is uniform in Rq,
 /// s is secret in Rq, e is drawn from a Gaussian χ over Rq.
 pub fn rlwe_distribution_ty() -> Expr {
@@ -146,14 +146,14 @@ pub fn rlwe_to_lwe_reduction_ty() -> Expr {
 }
 /// `NTRUParams : Nat → Nat → Type`
 ///
-/// NTRU parameters (N, q): polynomial ring Z[x]/(x^N - 1), modulus q.
+/// NTRU parameters (N, q): polynomial ring Z\[x\]/(x^N - 1), modulus q.
 /// Keys f, g are small (ternary or binary) polynomials in this ring.
 pub fn ntru_params_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
 /// `NTRUPublicKey : NTRUParams → Type`
 ///
-/// NTRU public key h = p·g·f^{-1} mod q in the ring Z_q[x]/(x^N - 1).
+/// NTRU public key h = p·g·f^{-1} mod q in the ring Z_q\[x\]/(x^N - 1).
 pub fn ntru_public_key_ty() -> Expr {
     arrow(app2(cst("NTRUParams"), nat_ty(), nat_ty()), type0())
 }
@@ -245,7 +245,7 @@ pub fn falcon_euf_cma_ty() -> Expr {
 ///
 /// Lamport one-time signature parameters with n-bit hash output.
 /// Key generation: for each bit i ∈ {0, ..., n-1}, sample two pre-images
-/// (x[i][0], x[i][1]); public key is (H(x[i][0]), H(x[i][1])).
+/// (x\[i\]\[0\], x\[i\]\[1\]); public key is (H(x\[i\]\[0\]), H(x\[i\]\[1\])).
 pub fn lamport_params_ty() -> Expr {
     arrow(nat_ty(), type0())
 }

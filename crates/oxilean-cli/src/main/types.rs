@@ -533,11 +533,9 @@ impl ProgressBar {
     }
     /// Format as a simple ASCII bar of given width.
     pub fn render(&self, bar_width: usize) -> String {
-        let filled = if self.total == 0 {
-            bar_width
-        } else {
-            self.current * bar_width / self.total
-        };
+        let filled = (self.current * bar_width)
+            .checked_div(self.total)
+            .unwrap_or(bar_width);
         let empty = bar_width - filled;
         format!(
             "[{}{}] {}/{} {}",

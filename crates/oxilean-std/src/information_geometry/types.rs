@@ -81,7 +81,7 @@ impl JeffreysPrior {
     }
     /// Compute the Jeffreys prior density (unnormalized) at θ for a 1D model.
     ///
-    /// π(θ) ∝ √I(θ) where I(θ) = -E[∂²/∂θ² log p(x;θ)].
+    /// π(θ) ∝ √I(θ) where I(θ) = -E\[∂²/∂θ² log p(x;θ)\].
     /// Numerically: √(Fisher information at θ).
     pub fn density(
         &self,
@@ -497,7 +497,7 @@ impl WassersteinGeometry {
 ///
 /// For a latent variable model p(x,z; θ) = p(x|z; θ) p(z; θ), EM alternates:
 /// E-step: q(z) ← p(z|x; θ^{(t)}) (m-projection of joint onto latent marginal)
-/// M-step: θ^{(t+1)} ← argmax_θ E_q[log p(x,z; θ)] (e-projection onto exp family)
+/// M-step: θ^{(t+1)} ← argmax_θ E_q\[log p(x,z; θ)\] (e-projection onto exp family)
 pub struct EMAlternatingProjection {
     /// Current model parameters θ.
     pub theta: Vec<f64>,
@@ -517,7 +517,7 @@ impl EMAlternatingProjection {
     }
     /// E-step: compute responsibilities r_{ik} ∝ π_k p(x_i | z=k; θ).
     ///
-    /// `log_likelihoods[i][k]` = log p(x_i | z=k; θ) + log π_k.
+    /// `log_likelihoods\[i\]\[k\]` = log p(x_i | z=k; θ) + log π_k.
     pub fn e_step(&mut self, log_likelihoods: &[Vec<f64>]) {
         let n = log_likelihoods.len();
         self.responsibilities = Vec::with_capacity(n);
@@ -535,7 +535,7 @@ impl EMAlternatingProjection {
     }
     /// M-step for a Gaussian mixture: update means and mixing weights.
     ///
-    /// `data[i]` is the i-th observation (scalar).
+    /// `data\[i\]` is the i-th observation (scalar).
     /// Returns (means, weights) after M-step.
     pub fn m_step_gaussian(&self, data: &[f64]) -> (Vec<f64>, Vec<f64>) {
         let n = data.len();
@@ -672,7 +672,7 @@ impl ConstantCurvatureManifold {
         self.alpha.abs() < 1e-9
     }
 }
-/// Fisher information matrix G_{ij}(θ) = E[∂_i log p · ∂_j log p].
+/// Fisher information matrix G_{ij}(θ) = E\[∂_i log p · ∂_j log p\].
 ///
 /// Estimated numerically from samples via finite differences.
 pub struct FisherInformationMetric {
@@ -750,7 +750,7 @@ impl GeodesicOfDistributions {
     pub fn new(p: Vec<f64>, q: Vec<f64>) -> Self {
         Self { p, q }
     }
-    /// Evaluate the e-geodesic (exponential geodesic) at time t ∈ [0,1]:
+    /// Evaluate the e-geodesic (exponential geodesic) at time t ∈ \[0,1\]:
     /// p_t(x) ∝ p(x)^{1-t} q(x)^t.
     pub fn e_geodesic(&self, t: f64) -> Vec<f64> {
         let unnorm: Vec<f64> = self
@@ -775,7 +775,7 @@ impl GeodesicOfDistributions {
         }
         unnorm.iter().map(|&v| v / z).collect()
     }
-    /// Evaluate the m-geodesic (mixture geodesic) at time t ∈ [0,1]:
+    /// Evaluate the m-geodesic (mixture geodesic) at time t ∈ \[0,1\]:
     /// p_t = (1-t) p + t q.
     pub fn m_geodesic(&self, t: f64) -> Vec<f64> {
         self.p
@@ -934,7 +934,7 @@ pub struct BeliefPropagation {
     pub n_vars: usize,
     /// Variable beliefs (discrete probability distributions).
     pub beliefs: Vec<Vec<f64>>,
-    /// Messages from variable i to factor a: messages[i][a].
+    /// Messages from variable i to factor a: messages\[i\]\[a\].
     pub messages: Vec<Vec<Vec<f64>>>,
     /// Number of factor nodes.
     pub n_factors: usize,
@@ -1121,7 +1121,7 @@ impl ExponentialFamilyExt {
     pub fn e_project_moment(&self, eta_target: &[f64]) -> Vec<f64> {
         eta_target.to_vec()
     }
-    /// Variational lower bound: L(q; x) = E_q[log p(x,z)] − E_q[log q(z)]
+    /// Variational lower bound: L(q; x) = E_q\[log p(x,z)\] − E_q\[log q(z)\]
     /// approximated as: A*(η) + ⟨θ_x, η⟩ − A(θ) for observed data natural parameter θ_x.
     pub fn variational_lower_bound(&self, theta_obs: &[f64]) -> f64 {
         let inner = dot_product(&self.moment_params, theta_obs);
@@ -1330,7 +1330,7 @@ impl ReferenceAnalysis {
     }
     /// Expected Kullback-Leibler divergence between prior and posterior (approximation).
     ///
-    /// Under mild regularity: E[D_KL(p(θ|x^n) ‖ π(θ))] ≈ (1/2) log(n/(2πe)) + (1/2) E[log I(θ)]
+    /// Under mild regularity: E[D_KL(p(θ|x^n) ‖ π(θ))] ≈ (1/2) log(n/(2πe)) + (1/2) E\[log I(θ)\]
     pub fn expected_kl_approximation(&self, log_fisher_mean: f64) -> f64 {
         let n = self.n_obs as f64;
         0.5 * (n / (2.0 * std::f64::consts::PI * std::f64::consts::E)).ln() + 0.5 * log_fisher_mean
@@ -1472,7 +1472,7 @@ impl QuantumInfoGeometry {
 /// Legendre transform A*(η) = sup_θ {⟨θ, η⟩ - A(θ)}.
 pub struct LegendreTransform {
     /// The primal function A (log-partition), discretized at grid points.
-    /// `theta_grid[i]` → `a_values[i]`
+    /// `theta_grid\[i\]` → `a_values\[i\]`
     pub theta_grid: Vec<f64>,
     /// A(θ) values.
     pub a_values: Vec<f64>,

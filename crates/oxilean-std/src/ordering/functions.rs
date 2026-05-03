@@ -1145,7 +1145,7 @@ pub fn axiom_ordinal_cnf_ty() -> Expr {
     )
 }
 /// Type of `PartialOrder.antisymmetry`: a partial order is antisymmetric.
-/// `PartialOrder.antisymmetry : ∀ {α} [PartialOrder α] (a b : α), a ≤ b → b ≤ a → a = b`
+/// `PartialOrder.antisymmetry : ∀ {α} \[PartialOrder α\] (a b : α), a ≤ b → b ≤ a → a = b`
 #[allow(dead_code)]
 pub fn axiom_partial_order_antisymmetry_ty() -> Expr {
     Expr::Pi(
@@ -1442,7 +1442,7 @@ pub fn axiom_bounded_lattice_ty() -> Expr {
     )
 }
 /// Type of `CompleteLattice.sup`: supremum of an arbitrary set.
-/// `CompleteLattice.sup : ∀ {L : Type} [CompleteLattice L], (L → Prop) → L`
+/// `CompleteLattice.sup : ∀ {L : Type} \[CompleteLattice L\], (L → Prop) → L`
 #[allow(dead_code)]
 pub fn axiom_complete_lattice_sup_ty() -> Expr {
     Expr::Pi(
@@ -1456,7 +1456,7 @@ pub fn axiom_complete_lattice_sup_ty() -> Expr {
     )
 }
 /// Type of `GaloisConnection`: a Galois connection between two posets.
-/// `GaloisConnection : ∀ (P Q : Type) [PartialOrder P] [PartialOrder Q], (P → Q) → (Q → P) → Prop`
+/// `GaloisConnection : ∀ (P Q : Type) \[PartialOrder P\] \[PartialOrder Q\], (P → Q) → (Q → P) → Prop`
 #[allow(dead_code)]
 pub fn axiom_galois_connection_ty() -> Expr {
     Expr::Pi(
@@ -1540,7 +1540,7 @@ pub fn axiom_order_embedding_ty() -> Expr {
 }
 /// Type of `CofinalSubset`: a subset S of a poset is cofinal if every element
 /// has an upper bound in S.
-/// `CofinalSubset : ∀ {P : Type} [PartialOrder P], (P → Prop) → Prop`
+/// `CofinalSubset : ∀ {P : Type} \[PartialOrder P\], (P → Prop) → Prop`
 #[allow(dead_code)]
 pub fn axiom_cofinal_subset_ty() -> Expr {
     Expr::Pi(

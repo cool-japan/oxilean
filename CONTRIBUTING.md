@@ -1,6 +1,6 @@
 # Contributing to OxiLean
 
-Thank you for your interest in contributing to OxiLean! This document provides guidelines for contributing to our proof assistant (Lean4-like kernel) implemented in Rust. The project consists of 11 crates with over 1.2 million lines of Rust code across 5,380 files.
+Thank you for your interest in contributing to OxiLean! This document provides guidelines for contributing to our proof assistant (Lean4-like kernel) implemented in Rust. The project consists of 12 crates with over 1.35M lines of Rust code (1,347,647 lines) across 5,978 files, with 33,091+ tests.
 
 ---
 
@@ -145,7 +145,7 @@ docs: update BLUEPRINT with quotient types section
 ### Good First Issues
 
 - Writing additional unit tests for undercovered modules
-- Improving error messages across all 11 crates
+- Improving error messages across all 12 crates
 - Documentation improvements (rustdoc comments, examples)
 - Adding `Display` implementations where missing
 - Fixing clippy lints and code style issues

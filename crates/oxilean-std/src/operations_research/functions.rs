@@ -306,7 +306,7 @@ pub fn bellman_equation_ty() -> Expr {
     )
 }
 /// `MG1Queue : Real -> Real -> Real -> Prop`
-/// M/G/1 queue: arrival rate λ, mean service time E[S], variance Var[S].
+/// M/G/1 queue: arrival rate λ, mean service time E\[S\], variance Var\[S\].
 pub fn mg1_queue_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), arrow(real_ty(), prop())))
 }
@@ -544,7 +544,7 @@ pub fn cone_program_ty() -> Expr {
 pub fn minimax_regret_ty() -> Expr {
     arrow(type0(), prop())
 }
-/// Box uncertainty set: each parameter varies in interval [a_i - Δ_i, a_i + Δ_i]
+/// Box uncertainty set: each parameter varies in interval \[a_i - Δ_i, a_i + Δ_i\]
 /// Type: List Real → List Real → Type  (center, radius → box uncertainty set)
 pub fn box_uncertainty_set_ty() -> Expr {
     arrow(list_ty(real_ty()), arrow(list_ty(real_ty()), type0()))
@@ -589,7 +589,7 @@ pub fn progressive_hedging_ty() -> Expr {
 pub fn markov_decision_process_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(real_ty(), prop())))
 }
-/// Bellman optimality equation: V*(s) = max_a Σ P(s'|s,a)[R(s,a,s') + γV*(s')]
+/// Bellman optimality equation: V*(s) = max_a Σ P(s'|s,a)\[R(s,a,s') + γV*(s')\]
 /// Type: (Nat → Real) → Prop  (value function V → satisfies Bellman optimality)
 pub fn bellman_optimality_equation_ty() -> Expr {
     arrow(fn_ty(nat_ty(), real_ty()), prop())
@@ -647,7 +647,7 @@ pub fn multi_armed_bandit_ty() -> Expr {
 pub fn ucb1_index_ty() -> Expr {
     arrow(nat_ty(), arrow(real_ty(), arrow(nat_ty(), real_ty())))
 }
-/// UCB regret bound: E[regret] = O(√(kT log T)) for UCB1
+/// UCB regret bound: E\[regret\] = O(√(kT log T)) for UCB1
 /// Type: Nat → Nat → Real  (k, T → regret bound)
 pub fn ucb_regret_bound_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), real_ty()))

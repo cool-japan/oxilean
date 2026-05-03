@@ -203,6 +203,77 @@ mod tests {
         assert_eq!(f1.selector(), f2.selector());
     }
     #[test]
+    pub(super) fn test_selector_canonical_ethereum_values() {
+        // transfer(address,uint256) → 0xa9059cbb
+        let mut transfer = SolidityFunction::new("transfer");
+        transfer
+            .params
+            .push(SolidityParam::new(SolidityType::Address, "to"));
+        transfer
+            .params
+            .push(SolidityParam::new(SolidityType::Uint256, "amount"));
+        assert_eq!(
+            transfer.selector(),
+            [0xa9, 0x05, 0x9c, 0xbb],
+            "transfer(address,uint256) selector mismatch"
+        );
+
+        // balanceOf(address) → 0x70a08231
+        let mut balance_of = SolidityFunction::new("balanceOf");
+        balance_of
+            .params
+            .push(SolidityParam::new(SolidityType::Address, "account"));
+        assert_eq!(
+            balance_of.selector(),
+            [0x70, 0xa0, 0x82, 0x31],
+            "balanceOf(address) selector mismatch"
+        );
+
+        // approve(address,uint256) → 0x095ea7b3
+        let mut approve = SolidityFunction::new("approve");
+        approve
+            .params
+            .push(SolidityParam::new(SolidityType::Address, "spender"));
+        approve
+            .params
+            .push(SolidityParam::new(SolidityType::Uint256, "amount"));
+        assert_eq!(
+            approve.selector(),
+            [0x09, 0x5e, 0xa7, 0xb3],
+            "approve(address,uint256) selector mismatch"
+        );
+
+        // allowance(address,address) → 0xdd62ed3e
+        let mut allowance = SolidityFunction::new("allowance");
+        allowance
+            .params
+            .push(SolidityParam::new(SolidityType::Address, "owner"));
+        allowance
+            .params
+            .push(SolidityParam::new(SolidityType::Address, "spender"));
+        assert_eq!(
+            allowance.selector(),
+            [0xdd, 0x62, 0xed, 0x3e],
+            "allowance(address,address) selector mismatch"
+        );
+
+        // totalSupply() → 0x18160ddd
+        let total_supply = SolidityFunction::new("totalSupply");
+        assert_eq!(
+            total_supply.selector(),
+            [0x18, 0x16, 0x0d, 0xdd],
+            "totalSupply() selector mismatch"
+        );
+
+        // Additional well-known selector: decimals() → 0x313ce567
+        let decimals = SolidityFunction::new("decimals");
+        assert_eq!(
+            decimals.selector(),
+            [0x31, 0x3c, 0xe5, 0x67],
+            "decimals() selector mismatch"
+        );
+    }
+    #[test]
     pub(super) fn test_msg_sender_display() {
         assert_eq!(SolidityExpr::MsgSender.to_string(), "msg.sender");
     }

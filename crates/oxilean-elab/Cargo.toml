@@ -19,6 +19,7 @@ path = "src/lib.rs"
 
 [dependencies]
 oxilean-kernel = { workspace = true }
+oxilean-meta = { workspace = true }
 oxilean-parse = { workspace = true }
 lazy_static = "1.5"
 

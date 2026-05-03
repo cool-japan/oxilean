@@ -8,9 +8,9 @@ use super::functions::*;
 
 /// Deterministic Finite Automaton.
 ///
-/// States are indices `0..states`.  `delta[q][c]` gives the next state
+/// States are indices `0..states`.  `delta\[q\]\[c\]` gives the next state
 /// when the automaton is in state `q` and reads symbol index `c`.
-/// `alphabet[c]` maps symbol index to `char`.
+/// `alphabet\[c\]` maps symbol index to `char`.
 pub struct Dfa {
     /// Number of states.
     pub states: usize,
@@ -20,7 +20,7 @@ pub struct Dfa {
     pub delta: Vec<Vec<usize>>,
     /// Start state index.
     pub start: usize,
-    /// `accept[q]` is true iff state `q` is accepting.
+    /// `accept\[q\]` is true iff state `q` is accepting.
     pub accept: Vec<bool>,
 }
 impl Dfa {
@@ -59,7 +59,7 @@ pub struct CykParser {
 impl CykParser {
     /// Returns `true` iff the grammar derives `input`.
     ///
-    /// Uses the standard CYK DP table: `table[i][j]` is the set of variables
+    /// Uses the standard CYK DP table: `table\[i\]\[j\]` is the set of variables
     /// that derive `input[i..=j]`.
     pub fn accepts(&self, input: &str) -> bool {
         let chars: Vec<char> = input.chars().collect();
@@ -266,7 +266,7 @@ impl TuringMachine {
 }
 /// Nondeterministic Finite Automaton.
 ///
-/// `delta[q][c]` is the set of states reachable from `q` on symbol index `c`.
+/// `delta\[q\]\[c\]` is the set of states reachable from `q` on symbol index `c`.
 /// Epsilon transitions are not modelled; use subset construction via
 /// [`nfa_to_dfa`] for conversion.
 pub struct Nfa {
@@ -278,7 +278,7 @@ pub struct Nfa {
     pub delta: Vec<Vec<Vec<usize>>>,
     /// Start state index.
     pub start: usize,
-    /// `accept[q]` is true iff state `q` is accepting.
+    /// `accept\[q\]` is true iff state `q` is accepting.
     pub accept: Vec<bool>,
 }
 impl Nfa {
@@ -542,7 +542,7 @@ impl RegexExt {
 /// Nondeterministic Pushdown Automaton.
 ///
 /// Accepts by empty stack.  Transitions are of the form:
-/// `(state, input_symbol_opt, stack_top_opt) → [(next_state, push_symbols)]`
+/// `(state, input_symbol_opt, stack_top_opt) → \[(next_state, push_symbols)\]`
 ///
 /// - `input_symbol_opt = None` denotes an epsilon transition on input.
 /// - `stack_top_opt = None` means the top of stack is not checked / consumed.
@@ -848,7 +848,7 @@ impl TuringMachineSimulator {
 }
 /// Büchi automaton over infinite words.
 ///
-/// An infinite run over `word[0], word[1], word[2], ...` (represented as a
+/// An infinite run over `word\[0\], word\[1\], word\[2\], ...` (represented as a
 /// finite `lasso` = `prefix + cycle`) is accepting iff it visits some
 /// accepting state infinitely often.
 ///
@@ -863,7 +863,7 @@ pub struct BuchiAutomaton {
     pub delta: Vec<Vec<Vec<usize>>>,
     /// Start state.
     pub start: usize,
-    /// `accept[q]` is true iff state `q` is an accepting (Büchi) state.
+    /// `accept\[q\]` is true iff state `q` is an accepting (Büchi) state.
     pub accept: Vec<bool>,
 }
 impl BuchiAutomaton {

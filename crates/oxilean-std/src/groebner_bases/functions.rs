@@ -605,7 +605,7 @@ pub fn gb_ext_algebraic_variety_ty() -> Expr {
     arrow(cst("Ideal"), type0())
 }
 /// `CoordinateRing : Ideal → Type`
-/// — the coordinate ring k[x]/I of an affine variety V(I).
+/// — the coordinate ring k\[x\]/I of an affine variety V(I).
 pub fn gb_ext_coordinate_ring_ty() -> Expr {
     arrow(cst("Ideal"), type0())
 }

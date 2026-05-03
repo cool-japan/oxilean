@@ -348,7 +348,7 @@ pub fn hammerstein_equation_ty() -> Expr {
 }
 /// `FunctionSpaceSolution : (Real → Real) → Real → Real → Real → Prop`
 ///
-/// φ is the solution in C([t₀−τ, T]) for a delay DE.
+/// φ is the solution in C(\[t₀−τ, T\]) for a delay DE.
 pub fn function_space_solution_ty() -> Expr {
     arrow(
         fn_ty(real_ty(), real_ty()),

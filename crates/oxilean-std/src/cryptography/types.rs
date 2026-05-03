@@ -111,7 +111,7 @@ impl ModularArithmetic {
 /// provides no real security. This is a structural illustration only.
 #[derive(Debug, Clone)]
 pub struct HashChain {
-    /// The chain of hash values: chain[0] is genesis, chain[i+1] = hash(chain[i], data[i])
+    /// The chain of hash values: chain\[0\] is genesis, chain[i+1] = hash(chain\[i\], data\[i\])
     pub chain: Vec<u64>,
 }
 impl HashChain {
@@ -417,7 +417,7 @@ impl ShamirSecretShare {
     pub fn new(p: u64, k: usize, n: usize) -> Self {
         ShamirSecretShare { p, k, n }
     }
-    /// Evaluate the polynomial f(x) = coeffs[0] + coeffs[1]*x + ... + coeffs[k-1]*x^{k-1} mod p.
+    /// Evaluate the polynomial f(x) = coeffs\[0\] + coeffs\[1\]*x + ... + coeffs[k-1]*x^{k-1} mod p.
     fn eval_poly(&self, coeffs: &[u64], x: u64) -> u64 {
         let mut result = 0u64;
         for &c in coeffs.iter().rev() {
@@ -505,7 +505,7 @@ impl RsaKeyGen {
         Some((rsa, p, q))
     }
 }
-/// Polynomial-ring arithmetic over Z_q[x]/(x^n + 1).
+/// Polynomial-ring arithmetic over Z_q\[x\]/(x^n + 1).
 ///
 /// Supports the ring operations needed for Ring-LWE and NTRU-based schemes.
 ///
@@ -520,7 +520,7 @@ pub struct RingZq {
 }
 #[allow(dead_code)]
 impl RingZq {
-    /// Create a new ring Z_q[x]/(x^n + 1).
+    /// Create a new ring Z_q\[x\]/(x^n + 1).
     pub fn new(n: usize, q: u64) -> Self {
         RingZq { n, q }
     }
@@ -546,7 +546,7 @@ impl RingZq {
             .map(|(&ai, &bi)| (ai + self.q - bi % self.q) % self.q)
             .collect()
     }
-    /// Multiply two polynomials in Z_q[x]/(x^n + 1) using schoolbook multiplication.
+    /// Multiply two polynomials in Z_q\[x\]/(x^n + 1) using schoolbook multiplication.
     ///
     /// O(n^2) — for educational purposes. Real implementations use NTT.
     pub fn mul(&self, a: &[u64], b: &[u64]) -> Vec<u64> {

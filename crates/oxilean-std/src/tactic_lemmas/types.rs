@@ -171,7 +171,7 @@ impl ExtendedSimpSet {
             .filter(|(n, _)| !self.erased.contains(n))
             .cloned()
             .collect();
-        result.sort_by(|a, b| b.1.cmp(&a.1));
+        result.sort_by_key(|b| std::cmp::Reverse(b.1));
         result
     }
     /// Total number of active lemmas.

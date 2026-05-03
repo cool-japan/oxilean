@@ -648,7 +648,7 @@ impl AntColonyPheromone {
             self.pheromone[i][j] += delta;
         }
     }
-    /// Transition probability: proportional to τ[i][j]^alpha * η[i][j]^beta.
+    /// Transition probability: proportional to τ\[i\]\[j\]^alpha * η\[i\]\[j\]^beta.
     pub fn transition_prob(
         &self,
         i: usize,

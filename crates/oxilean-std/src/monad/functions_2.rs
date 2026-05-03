@@ -313,7 +313,7 @@ fn mnd_ext_do_notation(env: &mut Environment) -> Result<(), String> {
     .map_err(|e| e.to_string())
 }
 /// Build the ListT transformer axiom.
-/// ListT m a = m [a]  (list monad transformer)
+/// ListT m a = m \[a\]  (list monad transformer)
 fn mnd_ext_list_t(env: &mut Environment) -> Result<(), String> {
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let ty = Expr::Pi(
@@ -636,7 +636,7 @@ pub fn arrow_arr<A: 'static, B: 'static>(f: impl FnOnce(A) -> B + 'static) -> Ar
 pub fn arrow_run<A, B>(arrow: ArrowF<A, B>, a: A) -> B {
     (arrow.run_arrow)(a)
 }
-/// Monad transformer: lift a Maybe into a Writer<Vec<String>, Option<A>>.
+/// Monad transformer: lift a Maybe into a Writer<`Vec<String>`, `Option<A>`>.
 pub fn lift_maybe_to_writer<A>(m: Maybe<A>) -> Writer<Vec<String>, Option<A>> {
     Writer::new(m.into_option(), vec![])
 }

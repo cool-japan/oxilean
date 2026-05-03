@@ -606,7 +606,7 @@ impl LyapunovExponentComputer {
 /// A shift space (subshift) represented by its transition matrix.
 ///
 /// Subshifts of finite type (SFTs) are specified by a 0/1 adjacency matrix A:
-/// allowed transitions are those with A[i][j] = 1.  The topological entropy
+/// allowed transitions are those with A\[i\]\[j\] = 1.  The topological entropy
 /// equals log(spectral_radius(A)).
 #[derive(Debug, Clone)]
 pub struct SymbolicDynamicsShift {
@@ -936,7 +936,7 @@ impl HaarMeasure {
 pub struct TransitionMatrix {
     /// Dimension n of the n×n matrix.
     pub size: usize,
-    /// Row-major entries: entries[i][j] = probability / count of i → j transition.
+    /// Row-major entries: entries\[i\]\[j\] = probability / count of i → j transition.
     pub entries: Vec<Vec<f64>>,
 }
 impl TransitionMatrix {
@@ -1049,7 +1049,7 @@ impl WeylEquidistributionChecker {
             .sum();
         val.fract().abs()
     }
-    /// Empirical check: fraction of {p(1), …, p(N)} mod 1 landing in [a, b].
+    /// Empirical check: fraction of {p(1), …, p(N)} mod 1 landing in \[a, b\].
     pub fn empirical_frequency(&self, a: f64, b: f64) -> f64 {
         let count = (1..=self.num_terms)
             .filter(|&n| {

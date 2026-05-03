@@ -396,7 +396,7 @@ impl UltrametricBallTree {
 pub struct CWComplex {
     /// Name of the complex.
     pub name: String,
-    /// Cells by dimension: cells[k] = number of k-cells.
+    /// Cells by dimension: cells\[k\] = number of k-cells.
     pub cells: Vec<u32>,
 }
 #[allow(dead_code)]
@@ -623,7 +623,7 @@ impl MetricSpace {
 pub struct ProObjectLimit {
     /// Each level is a finite set represented as `Vec<u32>`.
     pub levels: Vec<Vec<u32>>,
-    /// projection[i] maps level i+1 → level i: `projection[i][j]` is the index in level i
+    /// projection\[i\] maps level i+1 → level i: `projection\[i\]\[j\]` is the index in level i
     /// that element j of level i+1 maps to.
     pub projections: Vec<Vec<usize>>,
 }
@@ -638,7 +638,7 @@ impl ProObjectLimit {
     /// Compute the inverse limit: tuples (x_0, x_1, …, x_{n-1}) consistent with
     /// all projections.
     ///
-    /// A tuple is consistent if for each level i: projection[i][x_{i+1}] == x_i.
+    /// A tuple is consistent if for each level i: projection\[i\][x_{i+1}] == x_i.
     pub fn compute_limit(&self) -> Vec<Vec<usize>> {
         if self.levels.is_empty() {
             return vec![];
@@ -902,7 +902,7 @@ impl CWComplexBuilder {
     }
 }
 /// The Banach–Mazur game (a.k.a. Baire category game) played on the unit
-/// interval [0, 1] discretised into `grid_size` equally spaced points.
+/// interval \[0, 1\] discretised into `grid_size` equally spaced points.
 ///
 /// Player I (the "meager" player) picks a closed interval; Player II (the
 /// "dense" player) picks a sub-interval.  Player II wins if the intersection
@@ -922,7 +922,7 @@ pub struct BaireCategoryGame {
     pub round: usize,
 }
 impl BaireCategoryGame {
-    /// Start a new game on [0, grid_size-1].
+    /// Start a new game on \[0, grid_size-1\].
     pub fn new(grid_size: usize) -> Self {
         assert!(grid_size >= 2, "grid must have at least 2 points");
         BaireCategoryGame {

@@ -56,7 +56,7 @@ pub fn count_occurrences(haystack: &str, needle: &str) -> usize {
 /// Truncate `s` to at most `max_len` characters, appending `suffix` if cut.
 ///
 /// If `s.len() <= max_len`, returns `s` unchanged.
-/// Otherwise returns `s[..max_len - suffix.len()] + suffix`.
+/// Otherwise returns `s\[..max_len - suffix.len()\] + suffix`.
 pub fn truncate(s: &str, max_len: usize, suffix: &str) -> String {
     let chars: Vec<char> = s.chars().collect();
     if chars.len() <= max_len {

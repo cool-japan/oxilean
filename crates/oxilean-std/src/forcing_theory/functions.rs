@@ -134,7 +134,7 @@ pub fn generic_filter_ty() -> Expr {
 }
 /// Axiom: The Forcing Theorem (truth lemma).
 /// ∀ P : ForcingPoset, ∀ G : GenericFilter P, ∀ φ : Prop,
-///   (∃ p ∈ G, p ⊩ φ) ↔ M[G] ⊨ φ
+///   (∃ p ∈ G, p ⊩ φ) ↔ M\[G\] ⊨ φ
 pub fn forcing_theorem_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -625,7 +625,7 @@ pub fn properness_criterion_ty() -> Expr {
         ),
     )
 }
-/// Axiom: semi-properness — preservation of stationarity in [ω₁]^ω.
+/// Axiom: semi-properness — preservation of stationarity in \[ω₁\]^ω.
 /// ∀ P, IsSemiProper P → PreservesStationaryOmega1 P
 pub fn semi_proper_stationarity_ty() -> Expr {
     pi(
@@ -686,7 +686,7 @@ pub fn levy_collapse_supercompact_ty() -> Expr {
     )
 }
 /// Axiom: forcing indestructibility of supercompact cardinals (Laver preparation).
-/// ∃ P, LaverPreparation P κ → ∀ Q proper, κ supercompact in V[G][H]
+/// ∃ P, LaverPreparation P κ → ∀ Q proper, κ supercompact in V\[G\]\[H\]
 pub fn laver_indestructibility_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -821,7 +821,7 @@ pub fn measurable_ultrapower_embedding_ty() -> Expr {
     )
 }
 /// Axiom: forcing can produce elementary embeddings (generic embeddings).
-/// ∀ P κ, P collapses κ → ∃ j : V → V[G], GenericEmbedding j κ
+/// ∀ P κ, P collapses κ → ∃ j : V → V\[G\], GenericEmbedding j κ
 pub fn generic_elementary_embedding_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -838,7 +838,7 @@ pub fn generic_elementary_embedding_ty() -> Expr {
         ),
     )
 }
-/// Axiom: Łoś theorem for ultrapowers: j(x) = [const_x]_U.
+/// Axiom: Łoś theorem for ultrapowers: j(x) = \[const_x\]_U.
 /// ∀ x, ∀ U : Ultrafilter, UltrapowerImage(j_U, x) = ConstantClass(x, U)
 pub fn los_theorem_ty() -> Expr {
     pi(
@@ -867,7 +867,7 @@ pub fn hod_inner_model_ty() -> Expr {
     )
 }
 /// Axiom: every set-generic extension of V has the same HOD.
-/// ∀ G : SetGenericFilter, HOD(V[G]) = HOD(V)
+/// ∀ G : SetGenericFilter, HOD(V\[G\]) = HOD(V)
 pub fn hod_invariant_under_forcing_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -965,7 +965,7 @@ pub fn mathias_forcing_proper_ty() -> Expr {
     )
 }
 /// Axiom: Mathias reals are Ramsey (partition property).
-/// ∀ r : MathiasReal, ∀ f : [r]^2 → 2, ∃ H ⊆ r infinite, f is constant on [H]^2
+/// ∀ r : MathiasReal, ∀ f : \[r\]^2 → 2, ∃ H ⊆ r infinite, f is constant on \[H\]^2
 pub fn mathias_ramsey_property_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1019,7 +1019,7 @@ pub fn pfa_aronszajn_special_ty() -> Expr {
 pub fn suslin_hypothesis_consistent_ty() -> Expr {
     app(cst("Con"), cst("ZFC_plus_SH"))
 }
-/// Axiom: check names for ground model sets: x̌[G] = x for all generic G.
+/// Axiom: check names for ground model sets: x̌\[G\] = x for all generic G.
 /// ∀ x ∈ M, ∀ G : GenericFilter, Interpretation(CheckName x, G) = x
 pub fn check_name_interpretation_ty() -> Expr {
     pi(
@@ -1037,7 +1037,7 @@ pub fn check_name_interpretation_ty() -> Expr {
         ),
     )
 }
-/// Axiom: the generic filter name Ġ satisfies Ġ[G] = G.
+/// Axiom: the generic filter name Ġ satisfies Ġ\[G\] = G.
 /// ∀ G : GenericFilter, Interpretation(GenericName, G) = G
 pub fn generic_name_interpretation_ty() -> Expr {
     pi(
@@ -1050,8 +1050,8 @@ pub fn generic_name_interpretation_ty() -> Expr {
         ),
     )
 }
-/// Axiom: every element of M[G] is the interpretation of some P-name in M.
-/// ∀ x ∈ M[G], ∃ τ ∈ M, τ is a P-name ∧ τ[G] = x
+/// Axiom: every element of M\[G\] is the interpretation of some P-name in M.
+/// ∀ x ∈ M\[G\], ∃ τ ∈ M, τ is a P-name ∧ τ\[G\] = x
 pub fn every_element_has_pname_ty() -> Expr {
     pi(
         BinderInfo::Default,

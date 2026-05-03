@@ -138,7 +138,7 @@ pub fn algebraic_integer_ty() -> Expr {
 pub fn minimal_polynomial_ty() -> Expr {
     arrow(cst("AlgebraicInteger"), type0())
 }
-/// `FieldDegree : AlgebraicNumberField → Nat` — the degree [K : Q] of a number field.
+/// `FieldDegree : AlgebraicNumberField → Nat` — the degree \[K : Q\] of a number field.
 pub fn field_degree_ty() -> Expr {
     arrow(cst("AlgebraicNumberField"), nat_ty())
 }
@@ -165,7 +165,7 @@ pub fn ramification_index_ty() -> Expr {
     arrow(nat_ty(), arrow(cst("AlgebraicNumberField"), nat_ty()))
 }
 /// `InertialDegree : Nat → AlgebraicNumberField → Nat`
-/// — the inertial degree f(P|p) = [O_K/P : F_p].
+/// — the inertial degree f(P|p) = \[O_K/P : F_p\].
 pub fn inertial_degree_ty() -> Expr {
     arrow(nat_ty(), arrow(cst("AlgebraicNumberField"), nat_ty()))
 }
@@ -323,7 +323,7 @@ pub fn bsd_conjecture_ty() -> Expr {
     arrow(cst("AlgebraicNumberField"), arrow(type0(), prop()))
 }
 /// `SelmerGroup : AlgebraicNumberField → Type → Nat → Type`
-/// — the n-Selmer group Sel^n(E/K) ⊆ H^1(G_K, E[n]).
+/// — the n-Selmer group Sel^n(E/K) ⊆ H^1(G_K, E\[n\]).
 pub fn selmer_group_ty() -> Expr {
     arrow(
         cst("AlgebraicNumberField"),
@@ -386,7 +386,7 @@ pub fn euler_characteristic_formula_ty() -> Expr {
     arrow(cst("AlgebraicNumberField"), arrow(type0(), prop()))
 }
 /// `CharacteristicIdeal : AlgebraicNumberField → Nat → Type`
-/// — the characteristic ideal char(X) of an Iwasawa module X over Λ = Z_p[[T]].
+/// — the characteristic ideal char(X) of an Iwasawa module X over Λ = Z_p[\[T\]].
 pub fn characteristic_ideal_ty() -> Expr {
     arrow(cst("AlgebraicNumberField"), arrow(nat_ty(), type0()))
 }
@@ -772,7 +772,7 @@ pub fn ant_ext_cassels_euler_characteristic_ty() -> Expr {
     arrow(cst("AlgebraicNumberField"), prop())
 }
 /// `WeilPairing : AlgebraicNumberField → Type → Nat → Type`
-/// — the Weil pairing e_n : E[n] × E[n] → μ_n on n-torsion points.
+/// — the Weil pairing e_n : E\[n\] × E\[n\] → μ_n on n-torsion points.
 pub fn ant_ext_weil_pairing_ty() -> Expr {
     arrow(
         cst("AlgebraicNumberField"),

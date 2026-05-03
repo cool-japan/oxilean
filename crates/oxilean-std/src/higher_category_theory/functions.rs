@@ -472,8 +472,8 @@ pub fn segal_space_ty() -> Expr {
 }
 /// `SegalCondition : SegalSpace → Prop`
 ///
-/// The Segal condition: the spine inclusions Sp[n] ↪ Δ[n] induce
-/// equivalences X(Δ[n]) ≃ X(Sp[n]).
+/// The Segal condition: the spine inclusions Sp\[n\] ↪ Δ\[n\] induce
+/// equivalences X(Δ\[n\]) ≃ X(Sp\[n\]).
 pub fn segal_condition_ty() -> Expr {
     arrow(cst("SegalSpace"), prop())
 }

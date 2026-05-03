@@ -159,7 +159,7 @@ pub fn is_mono(f: Expr) -> Expr {
 pub fn is_epi(f: Expr) -> Expr {
     app(cst("IsEpi"), f)
 }
-/// `{C : Type} -> [Category C] -> <body>`
+/// `{C : Type} -> \[Category C\] -> <body>`
 #[allow(dead_code)]
 pub fn mk_cat_law<F>(prop_builder: F) -> Expr
 where
@@ -177,7 +177,7 @@ where
         ),
     )
 }
-/// `{C : Type} -> [Category C] -> forall (a : C), <body>`
+/// `{C : Type} -> \[Category C\] -> forall (a : C), <body>`
 #[allow(dead_code)]
 pub fn mk_cat_forall1<F>(prop_builder: F) -> Expr
 where
@@ -195,7 +195,7 @@ where
         ),
     )
 }
-/// `{C : Type} -> [Category C] -> forall (a b : C), <body>`
+/// `{C : Type} -> \[Category C\] -> forall (a b : C), <body>`
 #[allow(dead_code)]
 pub fn mk_cat_forall2<F>(prop_builder: F) -> Expr
 where
@@ -218,7 +218,7 @@ where
         ),
     )
 }
-/// `{C : Type} -> [Category C] -> forall (a b c : C), <body>`
+/// `{C : Type} -> \[Category C\] -> forall (a b c : C), <body>`
 #[allow(dead_code)]
 pub fn mk_cat_forall3<F>(prop_builder: F) -> Expr
 where
@@ -246,7 +246,7 @@ where
         ),
     )
 }
-/// `{C : Type} -> [Category C] -> forall (a b c d : C), <body>`
+/// `{C : Type} -> \[Category C\] -> forall (a b c d : C), <body>`
 #[allow(dead_code)]
 pub fn mk_cat_forall4<F>(prop_builder: F) -> Expr
 where
@@ -279,7 +279,7 @@ where
         ),
     )
 }
-/// `{C D : Type} -> [Category C] -> [Category D] -> <body>`
+/// `{C D : Type} -> \[Category C\] -> \[Category D\] -> <body>`
 #[allow(dead_code)]
 pub fn mk_two_cat_law<F>(prop_builder: F) -> Expr
 where
@@ -307,7 +307,7 @@ where
         ),
     )
 }
-/// `{C D : Type} -> [Category C] -> [Category D] ->
+/// `{C D : Type} -> \[Category C\] -> \[Category D\] ->
 ///  forall (F : Functor C D), <body>`
 #[allow(dead_code)]
 pub fn mk_functor_forall1<F>(prop_builder: F) -> Expr
@@ -341,7 +341,7 @@ where
         ),
     )
 }
-/// `{C D : Type} -> [Category C] -> [Category D] ->
+/// `{C D : Type} -> \[Category C\] -> \[Category D\] ->
 ///  forall (F G : Functor C D), <body>`
 #[allow(dead_code)]
 pub fn mk_functor_forall2<F>(prop_builder: F) -> Expr

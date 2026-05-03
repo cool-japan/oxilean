@@ -127,22 +127,22 @@ pub fn writhe_ty() -> Expr {
     arrow(knot_diagram_ty(), int_ty())
 }
 /// `AlexanderPolynomial : Knot → Polynomial`
-/// The Alexander polynomial Δ_K(t) ∈ Z[t, t⁻¹].
+/// The Alexander polynomial Δ_K(t) ∈ Z\[t, t⁻¹\].
 pub fn alexander_polynomial_ty() -> Expr {
     arrow(knot_ty(), poly_ty())
 }
 /// `JonesPolynomial : Knot → Polynomial`
-/// V_K(t) ∈ Z[t^{1/2}, t^{-1/2}]; defined via the Kauffman bracket.
+/// V_K(t) ∈ Z\[t^{1/2}, t^{-1/2}\]; defined via the Kauffman bracket.
 pub fn jones_polynomial_ty() -> Expr {
     arrow(knot_ty(), poly_ty())
 }
 /// `HomflyPt : Knot → Polynomial`
-/// P_K(v, z) ∈ Z[v^{±1}, z^{±1}]; generalises both Alexander and Jones.
+/// P_K(v, z) ∈ Z\[v^{±1}, z^{±1}\]; generalises both Alexander and Jones.
 pub fn homfly_pt_ty() -> Expr {
     arrow(knot_ty(), poly_ty())
 }
 /// `KauffmanBracket : KnotDiagram → Ring → Polynomial`
-/// ⟨D⟩ ∈ R[A, A⁻¹]; invariant of regular isotopy.
+/// ⟨D⟩ ∈ R\[A, A⁻¹\]; invariant of regular isotopy.
 pub fn kauffman_bracket_ty() -> Expr {
     arrow(knot_diagram_ty(), arrow(ring_ty(), poly_ty()))
 }
@@ -497,7 +497,7 @@ pub fn homfly_normalization_ty() -> Expr {
     prop()
 }
 /// `KauffmanPolynomial : Knot → Polynomial`
-/// F_K(a, x) ∈ ℤ[a^{±1}, x^{±1}]: the Kauffman polynomial (not the bracket).
+/// F_K(a, x) ∈ ℤ\[a^{±1}, x^{±1}\]: the Kauffman polynomial (not the bracket).
 pub fn kauffman_polynomial_ty() -> Expr {
     arrow(knot_ty(), poly_ty())
 }
@@ -562,7 +562,7 @@ pub fn wirtinger_presentation_ty() -> Expr {
     arrow(knot_ty(), type0())
 }
 /// `AlexanderIdeal : Knot → Type`
-/// The Alexander ideal in ℤ[t, t⁻¹] obtained from the Alexander matrix.
+/// The Alexander ideal in ℤ\[t, t⁻¹\] obtained from the Alexander matrix.
 pub fn alexander_ideal_ty() -> Expr {
     arrow(knot_ty(), type0())
 }
@@ -728,7 +728,7 @@ pub fn s_invariant_ty() -> Expr {
     arrow(knot_ty(), int_ty())
 }
 /// `UpsilonInvariant : Knot → ℝ → ℝ`
-/// Υ_K(t) for t ∈ [0,2]: a concordance invariant from knot Floer homology.
+/// Υ_K(t) for t ∈ \[0,2\]: a concordance invariant from knot Floer homology.
 pub fn upsilon_invariant_ty() -> Expr {
     arrow(knot_ty(), arrow(real_ty(), real_ty()))
 }

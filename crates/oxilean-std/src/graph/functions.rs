@@ -64,7 +64,7 @@ pub fn simple_graph_adj_ty() -> Expr {
 pub fn bvar(n: u32) -> Expr {
     Expr::BVar(n)
 }
-/// SimpleGraph.degree : ∀ {V} [Fintype V] [DecidableEq V], SimpleGraph V → V → Nat
+/// SimpleGraph.degree : ∀ {V} \[Fintype V\] \[DecidableEq V\], SimpleGraph V → V → Nat
 pub fn simple_graph_degree_ty() -> Expr {
     impl_pi(
         "V",
@@ -114,7 +114,7 @@ pub fn is_tree_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), prop()),
     )
 }
-/// chromatic_number : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// chromatic_number : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 pub fn chromatic_number_ty() -> Expr {
     impl_pi(
         "V",
@@ -164,7 +164,7 @@ pub fn matching_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), type0()),
     )
 }
-/// IsPerfectMatching : ∀ {V} [Fintype V], SimpleGraph V → Matching → Prop
+/// IsPerfectMatching : ∀ {V} \[Fintype V\], SimpleGraph V → Matching → Prop
 pub fn is_perfect_matching_ty() -> Expr {
     impl_pi(
         "V",
@@ -349,7 +349,7 @@ pub fn edge_expansion_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), arrow(real_ty(), prop())),
     )
 }
-/// CheegerConstant : ∀ {V} [Fintype V], SimpleGraph V → Real
+/// CheegerConstant : ∀ {V} \[Fintype V\], SimpleGraph V → Real
 /// The Cheeger constant (edge expansion ratio) of a graph.
 #[allow(dead_code)]
 pub fn cheeger_constant_ty() -> Expr {
@@ -359,7 +359,7 @@ pub fn cheeger_constant_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), real_ty()),
     )
 }
-/// CheegerInequality : ∀ {V} [Fintype V] (G : SimpleGraph V),
+/// CheegerInequality : ∀ {V} \[Fintype V\] (G : SimpleGraph V),
 ///   λ₂/2 ≤ h(G) ≤ √(2·d·λ₂)
 /// The Cheeger inequality connecting spectral gap λ₂ to edge expansion h(G).
 #[allow(dead_code)]
@@ -379,7 +379,7 @@ pub fn cheeger_inequality_ty() -> Expr {
         ),
     )
 }
-/// SpectralGap : ∀ {V} [Fintype V], SimpleGraph V → Real
+/// SpectralGap : ∀ {V} \[Fintype V\], SimpleGraph V → Real
 /// The spectral gap λ₂ = second smallest eigenvalue of the normalized Laplacian.
 #[allow(dead_code)]
 pub fn spectral_gap_ty() -> Expr {
@@ -427,7 +427,7 @@ pub fn phase_transition_ty() -> Expr {
     )
 }
 /// Graphon : Type
-/// A graphon is a symmetric measurable function W : [0,1]² → [0,1].
+/// A graphon is a symmetric measurable function W : \[0,1\]² → \[0,1\].
 #[allow(dead_code)]
 pub fn graphon_ty() -> Expr {
     type0()
@@ -438,7 +438,7 @@ pub fn graphon_ty() -> Expr {
 pub fn graphon_cut_distance_ty() -> Expr {
     arrow(cst("Graphon"), arrow(cst("Graphon"), real_ty()))
 }
-/// SzemerediRegularity : ∀ {V} [Fintype V] (G : SimpleGraph V) (ε : Real),
+/// SzemerediRegularity : ∀ {V} \[Fintype V\] (G : SimpleGraph V) (ε : Real),
 ///   ∃ partition, ε-regular and |partition| ≤ M(ε)
 /// Szemerédi regularity lemma: every graph has an ε-regular partition.
 #[allow(dead_code)]
@@ -497,7 +497,7 @@ pub fn strong_perfect_graph_thm_ty() -> Expr {
         ),
     )
 }
-/// CliqueCoverNumber : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// CliqueCoverNumber : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 /// The minimum number of cliques needed to cover all vertices.
 #[allow(dead_code)]
 pub fn clique_cover_number_ty() -> Expr {
@@ -507,7 +507,7 @@ pub fn clique_cover_number_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), nat_ty()),
     )
 }
-/// VertexConnectivity : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// VertexConnectivity : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 /// κ(G) = minimum number of vertices whose removal disconnects G.
 #[allow(dead_code)]
 pub fn vertex_connectivity_ty() -> Expr {
@@ -517,7 +517,7 @@ pub fn vertex_connectivity_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), nat_ty()),
     )
 }
-/// EdgeConnectivity : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// EdgeConnectivity : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 /// λ(G) = minimum number of edges whose removal disconnects G.
 #[allow(dead_code)]
 pub fn edge_connectivity_ty() -> Expr {
@@ -527,7 +527,7 @@ pub fn edge_connectivity_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), nat_ty()),
     )
 }
-/// MengersThm : ∀ {V} [Fintype V] (G : SimpleGraph V) (s t : V),
+/// MengersThm : ∀ {V} \[Fintype V\] (G : SimpleGraph V) (s t : V),
 ///   MaxDisjointPaths G s t = MinVertexCut G s t
 /// Menger's theorem: max number of vertex-disjoint s-t paths = min vertex cut size.
 #[allow(dead_code)]
@@ -593,7 +593,7 @@ pub fn max_flow_min_cut_ty() -> Expr {
         ),
     )
 }
-/// Genus : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// Genus : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 /// The genus of a graph: minimum genus of orientable surface for embedding.
 #[allow(dead_code)]
 pub fn genus_ty() -> Expr {
@@ -603,7 +603,7 @@ pub fn genus_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), nat_ty()),
     )
 }
-/// CrossingNumber : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// CrossingNumber : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 /// The crossing number cr(G): minimum crossings in any planar drawing.
 #[allow(dead_code)]
 pub fn crossing_number_ty() -> Expr {
@@ -720,7 +720,7 @@ pub fn graph_homomorphism_ty() -> Expr {
         ),
     )
 }
-/// LovaszThetaFunction : ∀ {V} [Fintype V], SimpleGraph V → Real
+/// LovaszThetaFunction : ∀ {V} \[Fintype V\], SimpleGraph V → Real
 /// The Lovász theta function ϑ(G), sandwiched between ω(G) and χ(G̅).
 #[allow(dead_code)]
 pub fn lovasz_theta_ty() -> Expr {
@@ -730,7 +730,7 @@ pub fn lovasz_theta_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), real_ty()),
     )
 }
-/// FractionalChromaticNumber : ∀ {V} [Fintype V], SimpleGraph V → Real
+/// FractionalChromaticNumber : ∀ {V} \[Fintype V\], SimpleGraph V → Real
 /// χ_f(G) = inf { k/d : G has a (k:d)-coloring }.
 #[allow(dead_code)]
 pub fn fractional_chromatic_number_ty() -> Expr {
@@ -779,7 +779,7 @@ pub fn tree_decomposition_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), type0()),
     )
 }
-/// Treewidth : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// Treewidth : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 /// tw(G) = min over tree decompositions of (max bag size - 1).
 #[allow(dead_code)]
 pub fn treewidth_ty() -> Expr {
@@ -789,7 +789,7 @@ pub fn treewidth_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), nat_ty()),
     )
 }
-/// Pathwidth : ∀ {V} [Fintype V], SimpleGraph V → Nat
+/// Pathwidth : ∀ {V} \[Fintype V\], SimpleGraph V → Nat
 /// pw(G) = min over path decompositions of (max bag size - 1).
 #[allow(dead_code)]
 pub fn pathwidth_ty() -> Expr {
@@ -799,7 +799,7 @@ pub fn pathwidth_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), nat_ty()),
     )
 }
-/// TreewidthDuality : ∀ {V} [Fintype V] (G : SimpleGraph V) (k : Nat),
+/// TreewidthDuality : ∀ {V} \[Fintype V\] (G : SimpleGraph V) (k : Nat),
 ///   Treewidth G ≤ k ↔ ¬ HasBranchDecompositionObstruction G k
 /// Treewidth duality via brambles/haven obstructions.
 #[allow(dead_code)]
@@ -827,7 +827,7 @@ pub fn treewidth_duality_ty() -> Expr {
         ),
     )
 }
-/// AdjacencyMatrix : ∀ {V} [Fintype V], SimpleGraph V → Matrix V V Real
+/// AdjacencyMatrix : ∀ {V} \[Fintype V\], SimpleGraph V → Matrix V V Real
 /// The adjacency matrix of a graph.
 #[allow(dead_code)]
 pub fn adjacency_matrix_ty() -> Expr {
@@ -840,7 +840,7 @@ pub fn adjacency_matrix_ty() -> Expr {
         ),
     )
 }
-/// GraphLaplacian : ∀ {V} [Fintype V], SimpleGraph V → Matrix V V Real
+/// GraphLaplacian : ∀ {V} \[Fintype V\], SimpleGraph V → Matrix V V Real
 /// L = D - A where D is degree matrix, A is adjacency matrix.
 #[allow(dead_code)]
 pub fn graph_laplacian_ty() -> Expr {
@@ -853,7 +853,7 @@ pub fn graph_laplacian_ty() -> Expr {
         ),
     )
 }
-/// EigenvalueInterlacing : ∀ {V} [Fintype V] (G H : SimpleGraph V),
+/// EigenvalueInterlacing : ∀ {V} \[Fintype V\] (G H : SimpleGraph V),
 ///   IsInducedSubgraph H G → InterlacesEigenvalues (Laplacian G) (Laplacian H)
 /// Cauchy's eigenvalue interlacing theorem for graph Laplacians.
 #[allow(dead_code)]
@@ -881,7 +881,7 @@ pub fn eigenvalue_interlacing_ty() -> Expr {
         ),
     )
 }
-/// IharaZetaFunction : ∀ {V} [Fintype V], SimpleGraph V → (Complex → Complex)
+/// IharaZetaFunction : ∀ {V} \[Fintype V\], SimpleGraph V → (Complex → Complex)
 /// The Ihara zeta function Z_G(u) = ∏_p (1 - u^{|p|})^{-1} over prime cycles p.
 #[allow(dead_code)]
 pub fn ihara_zeta_function_ty() -> Expr {
@@ -894,7 +894,7 @@ pub fn ihara_zeta_function_ty() -> Expr {
         ),
     )
 }
-/// ChromaticPolynomial : ∀ {V} [Fintype V], SimpleGraph V → (Nat → Int)
+/// ChromaticPolynomial : ∀ {V} \[Fintype V\], SimpleGraph V → (Nat → Int)
 /// P(G, k) = number of proper k-colorings of G.
 #[allow(dead_code)]
 pub fn chromatic_polynomial_ty() -> Expr {
@@ -907,7 +907,7 @@ pub fn chromatic_polynomial_ty() -> Expr {
         ),
     )
 }
-/// TuttePolynomial : ∀ {V} [Fintype V], SimpleGraph V → (Real → Real → Real)
+/// TuttePolynomial : ∀ {V} \[Fintype V\], SimpleGraph V → (Real → Real → Real)
 /// T(G; x, y) = universal graph polynomial encoding many graph invariants.
 #[allow(dead_code)]
 pub fn tutte_polynomial_ty() -> Expr {
@@ -920,7 +920,7 @@ pub fn tutte_polynomial_ty() -> Expr {
         ),
     )
 }
-/// MatchingPolynomial : ∀ {V} [Fintype V], SimpleGraph V → (Real → Real)
+/// MatchingPolynomial : ∀ {V} \[Fintype V\], SimpleGraph V → (Real → Real)
 /// μ(G, x) = ∑_k (-1)^k m_k(G) x^{n-2k} where m_k = number of k-matchings.
 #[allow(dead_code)]
 pub fn matching_polynomial_ty() -> Expr {
@@ -933,7 +933,7 @@ pub fn matching_polynomial_ty() -> Expr {
         ),
     )
 }
-/// DeletionContractionTutte : ∀ {V} [Fintype V] (G : SimpleGraph V) (e : Edge V),
+/// DeletionContractionTutte : ∀ {V} \[Fintype V\] (G : SimpleGraph V) (e : Edge V),
 ///   TuttePolynomial G = TuttePolynomial (Delete G e) + TuttePolynomial (Contract G e)
 /// Deletion-contraction recurrence for the Tutte polynomial.
 #[allow(dead_code)]
@@ -984,7 +984,7 @@ pub fn cayley_graph_ty() -> Expr {
         ),
     )
 }
-/// StronglyRegularGraph : ∀ {V} [Fintype V] (G : SimpleGraph V) (k λ μ : Nat), Prop
+/// StronglyRegularGraph : ∀ {V} \[Fintype V\] (G : SimpleGraph V) (k λ μ : Nat), Prop
 /// srg(n, k, λ, μ): k-regular, adjacent pairs have λ common neighbors,
 /// non-adjacent pairs have μ common neighbors.
 #[allow(dead_code)]
@@ -1016,7 +1016,7 @@ pub fn strongly_regular_graph_ty() -> Expr {
 pub fn dynamic_graph_ty() -> Expr {
     pi(BinderInfo::Default, "V", type0(), type0())
 }
-/// FullyDynamicConnectivity : ∀ {V} [Fintype V], DynamicGraph V → Prop
+/// FullyDynamicConnectivity : ∀ {V} \[Fintype V\], DynamicGraph V → Prop
 /// A data structure supporting edge insertions, deletions, and connectivity queries.
 #[allow(dead_code)]
 pub fn fully_dynamic_connectivity_ty() -> Expr {
@@ -1026,7 +1026,7 @@ pub fn fully_dynamic_connectivity_ty() -> Expr {
         arrow(app(cst("DynamicGraph"), bvar(0)), prop()),
     )
 }
-/// IncrementalConnectivity : ∀ {V} [Fintype V], DynamicGraph V → Prop
+/// IncrementalConnectivity : ∀ {V} \[Fintype V\], DynamicGraph V → Prop
 /// An online connectivity structure supporting only edge insertions.
 #[allow(dead_code)]
 pub fn incremental_connectivity_ty() -> Expr {
@@ -1036,7 +1036,7 @@ pub fn incremental_connectivity_ty() -> Expr {
         arrow(app(cst("DynamicGraph"), bvar(0)), prop()),
     )
 }
-/// SemiStreamingSketch : ∀ {V} [Fintype V], SimpleGraph V → Type
+/// SemiStreamingSketch : ∀ {V} \[Fintype V\], SimpleGraph V → Type
 /// A semi-streaming sketch using O(n · polylog n) space for n = |V|.
 #[allow(dead_code)]
 pub fn semi_streaming_sketch_ty() -> Expr {
@@ -1046,7 +1046,7 @@ pub fn semi_streaming_sketch_ty() -> Expr {
         arrow(app(cst("SimpleGraph"), bvar(0)), type0()),
     )
 }
-/// SketchedConnectivity : ∀ {V} [Fintype V], SemiStreamingSketch → Prop
+/// SketchedConnectivity : ∀ {V} \[Fintype V\], SemiStreamingSketch → Prop
 /// Determine connectivity from a semi-streaming sketch.
 #[allow(dead_code)]
 pub fn sketched_connectivity_ty() -> Expr {

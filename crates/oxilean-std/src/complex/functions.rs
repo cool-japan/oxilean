@@ -1160,7 +1160,7 @@ where
     }
     sum
 }
-/// Discrete Fourier Transform: X[k] = Σ_{n=0}^{N-1} x[n] · e^(-2πi·k·n/N).
+/// Discrete Fourier Transform: X\[k\] = Σ_{n=0}^{N-1} x\[n\] · e^(-2πi·k·n/N).
 #[allow(dead_code)]
 pub fn dft(signal: &[Complex]) -> Vec<Complex> {
     let n = signal.len();
@@ -1178,7 +1178,7 @@ pub fn dft(signal: &[Complex]) -> Vec<Complex> {
         })
         .collect()
 }
-/// Inverse Discrete Fourier Transform: x[n] = (1/N) Σ_{k=0}^{N-1} X[k] · e^(2πi·k·n/N).
+/// Inverse Discrete Fourier Transform: x\[n\] = (1/N) Σ_{k=0}^{N-1} X\[k\] · e^(2πi·k·n/N).
 #[allow(dead_code)]
 pub fn idft(spectrum: &[Complex]) -> Vec<Complex> {
     let n = spectrum.len();

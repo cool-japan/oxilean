@@ -873,7 +873,7 @@ impl PolishSpaceExample {
             is_baire_space: false,
         }
     }
-    /// Hilbert cube [0,1]^ℕ.
+    /// Hilbert cube \[0,1\]^ℕ.
     pub fn hilbert_cube() -> Self {
         Self {
             name: "Hilbert cube ([0,1]^ℕ)",

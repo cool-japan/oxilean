@@ -12,7 +12,7 @@ pub struct RamseyColoringFinder {
     pub n: usize,
     /// Number of colors.
     pub k: u32,
-    /// coloring[i][j] = color of the pair {i, j}, for i < j.
+    /// coloring\[i\]\[j\] = color of the pair {i, j}, for i < j.
     pub coloring: Vec<Vec<u32>>,
 }
 impl RamseyColoringFinder {

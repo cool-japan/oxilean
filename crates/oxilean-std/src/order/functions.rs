@@ -57,7 +57,7 @@ pub fn mk_class_ty() -> Expr {
     pi(BinderInfo::Default, "α", type0(), type1())
 }
 /// Build a binary relation method type:
-/// `{α : Type} → [Class α] → α → α → Prop`
+/// `{α : Type} → \[Class α\] → α → α → Prop`
 #[allow(dead_code)]
 pub fn mk_relation_method(class: &str) -> Expr {
     pi(
@@ -78,7 +78,7 @@ pub fn mk_relation_method(class: &str) -> Expr {
     )
 }
 /// Build a binary operation method type:
-/// `{α : Type} → [Class α] → α → α → α`
+/// `{α : Type} → \[Class α\] → α → α → α`
 #[allow(dead_code)]
 pub fn mk_binop_method(class: &str) -> Expr {
     pi(
@@ -98,7 +98,7 @@ pub fn mk_binop_method(class: &str) -> Expr {
         ),
     )
 }
-/// Build a nullary method type: `{α : Type} → [Class α] → α`
+/// Build a nullary method type: `{α : Type} → \[Class α\] → α`
 #[allow(dead_code)]
 pub fn mk_nullary_method(class: &str) -> Expr {
     pi(
@@ -119,7 +119,7 @@ pub fn mk_eq(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
     app3(cst("Eq"), ty, lhs, rhs)
 }
 /// Build a law with ∀ (a : α):
-/// `{α : Type} → [Class α] → ∀ (a : α), <prop>`
+/// `{α : Type} → \[Class α\] → ∀ (a : α), <prop>`
 #[allow(dead_code)]
 pub fn mk_law_forall1<F>(class: &str, prop_builder: F) -> Expr
 where
@@ -138,7 +138,7 @@ where
     )
 }
 /// Build a law with ∀ (a b : α):
-/// `{α : Type} → [Class α] → ∀ (a b : α), <prop>`
+/// `{α : Type} → \[Class α\] → ∀ (a b : α), <prop>`
 #[allow(dead_code)]
 pub fn mk_law_forall2<F>(class: &str, prop_builder: F) -> Expr
 where
@@ -162,7 +162,7 @@ where
     )
 }
 /// Build a law with ∀ (a b c : α):
-/// `{α : Type} → [Class α] → ∀ (a b c : α), <prop>`
+/// `{α : Type} → \[Class α\] → ∀ (a b c : α), <prop>`
 #[allow(dead_code)]
 pub fn mk_law_forall3<F>(class: &str, prop_builder: F) -> Expr
 where
@@ -191,7 +191,7 @@ where
     )
 }
 /// Build an "extends" projection:
-/// `{α : Type} → [Class α] → ParentClass α`
+/// `{α : Type} → \[Class α\] → ParentClass α`
 #[allow(dead_code)]
 pub fn mk_extends(class: &str, parent: &str) -> Expr {
     pi(
@@ -930,7 +930,7 @@ pub(super) fn ord2_ext_arrow(dom: Expr, cod: Expr) -> Expr {
 pub(super) fn ord2_ext_pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
 }
-/// `{α : Type} → [Class α] → α → α → Prop`
+/// `{α : Type} → \[Class α\] → α → α → Prop`
 #[allow(dead_code)]
 pub fn ord2_ext_rel_method(class: &str) -> Expr {
     ord2_ext_pi(
@@ -950,7 +950,7 @@ pub fn ord2_ext_rel_method(class: &str) -> Expr {
         ),
     )
 }
-/// `{α : Type} → [Class α] → α → α → α`
+/// `{α : Type} → \[Class α\] → α → α → α`
 #[allow(dead_code)]
 pub(super) fn ord2_ext_binop_method(class: &str) -> Expr {
     ord2_ext_pi(
@@ -970,7 +970,7 @@ pub(super) fn ord2_ext_binop_method(class: &str) -> Expr {
         ),
     )
 }
-/// `{α : Type} → [Class α] → α`
+/// `{α : Type} → \[Class α\] → α`
 #[allow(dead_code)]
 pub fn ord2_ext_nullary_method(class: &str) -> Expr {
     ord2_ext_pi(
@@ -995,7 +995,7 @@ pub(super) fn ord2_ext_class_ty() -> Expr {
         Expr::Sort(Level::succ(Level::succ(Level::zero()))),
     )
 }
-/// `{α : Type} → [C α] → ParentClass α`
+/// `{α : Type} → \[C α\] → ParentClass α`
 #[allow(dead_code)]
 pub(super) fn ord2_ext_extends(class: &str, parent: &str) -> Expr {
     ord2_ext_pi(

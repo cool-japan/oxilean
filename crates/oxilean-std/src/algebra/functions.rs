@@ -67,7 +67,7 @@ pub fn mk_class_ty() -> Expr {
 pub fn mk_typeclass(name: &str) -> Expr {
     cst(name)
 }
-/// Build a nullary method type: `{α : Type} → [Class α] → α`
+/// Build a nullary method type: `{α : Type} → \[Class α\] → α`
 #[allow(dead_code)]
 pub fn mk_nullary_method(class: &str) -> Expr {
     pi(
@@ -82,7 +82,7 @@ pub fn mk_nullary_method(class: &str) -> Expr {
         ),
     )
 }
-/// Build a unary method type: `{α : Type} → [Class α] → α → α`
+/// Build a unary method type: `{α : Type} → \[Class α\] → α → α`
 #[allow(dead_code)]
 pub fn mk_unop_method(class: &str) -> Expr {
     pi(
@@ -97,7 +97,7 @@ pub fn mk_unop_method(class: &str) -> Expr {
         ),
     )
 }
-/// Build a binary method type: `{α : Type} → [Class α] → α → α → α`
+/// Build a binary method type: `{α : Type} → \[Class α\] → α → α → α`
 #[allow(dead_code)]
 pub fn mk_binop_method(class: &str) -> Expr {
     pi(
@@ -118,7 +118,7 @@ pub fn mk_binop_method(class: &str) -> Expr {
     )
 }
 /// Build a law type (proposition with class instance):
-/// `{α : Type} → [Class α] → <prop>`
+/// `{α : Type} → \[Class α\] → <prop>`
 /// The `prop_builder` receives the de Bruijn depth (number of binders above it).
 #[allow(dead_code)]
 pub fn mk_law<F>(class: &str, prop_builder: F) -> Expr
@@ -138,7 +138,7 @@ where
     )
 }
 /// Build a law with universally quantified element(s):
-/// `{α : Type} → [Class α] → ∀ (a : α), <prop(a)>`
+/// `{α : Type} → \[Class α\] → ∀ (a : α), <prop(a)>`
 #[allow(dead_code)]
 pub fn mk_law_forall1<F>(class: &str, prop_builder: F) -> Expr
 where
@@ -156,7 +156,7 @@ where
         ),
     )
 }
-/// `{α : Type} → [Class α] → ∀ (a b : α), <prop(a, b)>`
+/// `{α : Type} → \[Class α\] → ∀ (a b : α), <prop(a, b)>`
 #[allow(dead_code)]
 pub fn mk_law_forall2<F>(class: &str, prop_builder: F) -> Expr
 where
@@ -179,7 +179,7 @@ where
         ),
     )
 }
-/// `{α : Type} → [Class α] → ∀ (a b c : α), <prop(a, b, c)>`
+/// `{α : Type} → \[Class α\] → ∀ (a b c : α), <prop(a, b, c)>`
 #[allow(dead_code)]
 pub fn mk_law_forall3<F>(class: &str, prop_builder: F) -> Expr
 where

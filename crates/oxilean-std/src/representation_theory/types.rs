@@ -8,7 +8,7 @@ use super::functions::*;
 ///
 /// The character table satisfies two orthogonality relations:
 /// - Row orthogonality: ⟨χᵢ, χⱼ⟩ = δᵢⱼ
-/// - Column orthogonality: ∑_χ χ(g)χ̄(h) = |C_G(g)| δ_{[g],[h]}
+/// - Column orthogonality: ∑_χ χ(g)χ̄(h) = |C_G(g)| δ_{\[g\],\[h\]}
 #[derive(Debug, Clone, Default)]
 pub struct CharacterTable {
     /// The irreducible characters χ₁, χ₂, …, χ_k.
@@ -123,7 +123,7 @@ impl ModularRepresentation {
 /// The character of a representation: a class function χ : G → ℂ.
 ///
 /// Stored as a vector of complex-valued traces, one per group element.
-/// `values[0]` is χ(e) = dim V (the identity element maps to the dimension).
+/// `values\[0\]` is χ(e) = dim V (the identity element maps to the dimension).
 #[derive(Debug, Clone)]
 pub struct Character {
     /// The order of the group |G|.
@@ -162,7 +162,7 @@ impl Character {
     pub fn is_irreducible(&self) -> bool {
         (self.inner_product(self) - 1.0).abs() < 1e-9
     }
-    /// The dimension of the representation: χ(e) = dim V = `values[0]`.
+    /// The dimension of the representation: χ(e) = dim V = `values\[0\]`.
     ///
     /// Returns 0.0 if no values have been added yet.
     pub fn dimension(&self) -> f64 {
@@ -228,7 +228,7 @@ impl SchurFunctor {
 /// exactly once, increasing along rows and down columns.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct YoungTableau {
-    /// Rows of the tableau: `rows[i][j]` is the entry in row i, column j.
+    /// Rows of the tableau: `rows\[i\]\[j\]` is the entry in row i, column j.
     pub rows: Vec<Vec<usize>>,
 }
 impl YoungTableau {
@@ -299,7 +299,7 @@ pub struct DynkinDiagram {
     pub kind: DynkinDiagramKind,
     /// The rank (number of nodes).
     pub rank: usize,
-    /// Adjacency matrix: `adj[i][j]` = |A_{ij}| for i ≠ j (0 if disconnected, 1/2/3 otherwise).
+    /// Adjacency matrix: `adj\[i\]\[j\]` = |A_{ij}| for i ≠ j (0 if disconnected, 1/2/3 otherwise).
     pub adj: Vec<Vec<u8>>,
 }
 impl DynkinDiagram {
@@ -406,7 +406,7 @@ impl WeylGroupElement {
     /// Apply this Weyl group element to a weight vector (given in the basis of fundamental weights).
     ///
     /// Uses the action sᵢ(λ) = λ - ⟨λ, αᵢ⟩ αᵢ on weight lattice coordinates.
-    /// For a weight given in simple-root coordinates [λ₁, …, λₙ],
+    /// For a weight given in simple-root coordinates \[λ₁, …, λₙ\],
     /// the simple reflection sᵢ negates the i-th coordinate and adds the off-diagonal
     /// Cartan contributions.
     ///
@@ -469,7 +469,7 @@ impl RepresentationRing {
         )
     }
 }
-/// A group algebra k[G] with a specified field characteristic.
+/// A group algebra k\[G\] with a specified field characteristic.
 ///
 /// The group algebra is the vector space with basis {e_g | g ∈ G} and
 /// multiplication induced by the group law.
@@ -742,11 +742,7 @@ impl YoungDiagram {
             .flat_map(|i| (0..self.rows[i]).map(move |j| (i, j)))
             .map(|(i, j)| self.hook_length(i, j) as u64)
             .product();
-        if hook_product == 0 {
-            0
-        } else {
-            n_fact / hook_product
-        }
+        n_fact.checked_div(hook_product).unwrap_or(0)
     }
 }
 /// Character table entry for a finite group.

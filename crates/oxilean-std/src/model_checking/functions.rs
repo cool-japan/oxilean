@@ -288,7 +288,7 @@ pub fn check_pctl_ty() -> Expr {
         arrow(cst("PCTLFormula"), bool_ty()),
     )
 }
-/// reachability_probability: P[reach(T) from s] in a Markov chain
+/// reachability_probability: P\[reach(T) from s\] in a Markov chain
 /// reachability_probability : ProbabilisticKripke → State → Set State → Real
 pub fn reachability_probability_ty() -> Expr {
     arrow(

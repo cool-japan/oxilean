@@ -254,7 +254,7 @@ impl Term {
 ///
 /// Narrowing generalises rewriting to terms with variables: a term `t` narrows
 /// to `t'` if there is a substitution σ and a rule `l → r` such that
-/// `t[σ]_p = l[σ]` for some non-variable position `p`, and `t' = t[r]_p[σ]`.
+/// `t\[σ\]_p = l\[σ\]` for some non-variable position `p`, and `t' = t\[r\]_p\[σ\]`.
 #[derive(Debug, Clone)]
 pub struct NarrowingSystem {
     /// The underlying TRS used for narrowing steps.
@@ -554,7 +554,7 @@ impl PolynomialInterpretation {
     }
     /// Evaluate the polynomial interpretation of term `t` given variable assignment.
     ///
-    /// Variable `Var(i)` maps to `assignment[i]`.
+    /// Variable `Var(i)` maps to `assignment\[i\]`.
     pub fn eval(&self, t: &Term, assignment: &[i64]) -> i64 {
         match t {
             Term::Var(i) => assignment.get(*i as usize).copied().unwrap_or(0),
@@ -602,7 +602,7 @@ impl PolynomialInterpretation {
         true
     }
     /// Check whether this interpretation proves termination of the given TRS
-    /// (all rules are strictly oriented for assignments in [0, max_val]^n).
+    /// (all rules are strictly oriented for assignments in \[0, max_val\]^n).
     pub fn proves_termination(&self, trs: &Trs, max_val: i64) -> bool {
         trs.rules.iter().all(|r| self.orients_rule(r, max_val))
     }
@@ -1006,7 +1006,7 @@ impl Srs {
 pub struct DependencyPairGraph {
     /// The dependency pairs (nodes of the graph).
     pub pairs: Vec<DependencyPairNode>,
-    /// Edges: `edges[i]` is the set of indices j such that pair i may precede pair j.
+    /// Edges: `edges\[i\]` is the set of indices j such that pair i may precede pair j.
     pub edges: Vec<HashSet<usize>>,
 }
 impl DependencyPairGraph {

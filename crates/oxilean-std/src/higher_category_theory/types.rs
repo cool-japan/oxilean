@@ -237,7 +237,7 @@ impl InnerHorn {
 ///
 /// Represented as layers of cells at each dimension with source/target maps.
 pub struct GlobularSetData {
-    /// `cells[n]` is the list of n-cell names/labels.
+    /// `cells\[n\]` is the list of n-cell names/labels.
     pub cells: Vec<Vec<String>>,
 }
 impl GlobularSetData {
@@ -452,7 +452,7 @@ impl FactorizationAlgebra {
 ///
 /// Represented here by its list of n-simplices for each dimension n.
 pub struct SimplicialSet {
-    /// `n_simplices[n]` holds the list of n-simplices.
+    /// `n_simplices\[n\]` holds the list of n-simplices.
     pub n_simplices: Vec<Vec<String>>,
 }
 impl SimplicialSet {
@@ -768,7 +768,7 @@ impl GoodwillieCalculus {
 ///
 /// Each dimension carries a list of generating cells with source/target data.
 pub struct ComputadData {
-    /// `generators[n]` = list of (source_cells, target_cells, label) at dimension n.
+    /// `generators\[n\]` = list of (source_cells, target_cells, label) at dimension n.
     pub generators: Vec<Vec<(Vec<usize>, Vec<usize>, String)>>,
 }
 impl ComputadData {
@@ -1028,9 +1028,9 @@ impl InfinityAdjunction {
 }
 /// A Segal space: a simplicial space satisfying the Segal condition.
 ///
-/// Represented by a list of spaces (as Vec<String>) at each simplicial degree.
+/// Represented by a list of spaces (as `Vec<String>`) at each simplicial degree.
 pub struct SegalSpaceData {
-    /// `spaces[n]` is the set of points in X_n.
+    /// `spaces\[n\]` is the set of points in X_n.
     pub spaces: Vec<Vec<String>>,
 }
 impl SegalSpaceData {
@@ -1147,7 +1147,7 @@ pub struct ObjectClassifier {
 pub struct InftyOperad {
     /// The colors (objects) of the operad.
     pub colors: Vec<String>,
-    /// Operation arities: `operations[k]` = list of (input colors, output color).
+    /// Operation arities: `operations\[k\]` = list of (input colors, output color).
     pub operations: Vec<(Vec<usize>, usize)>,
 }
 impl InftyOperad {

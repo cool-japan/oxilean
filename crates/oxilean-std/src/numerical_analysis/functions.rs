@@ -447,7 +447,7 @@ pub fn bifurcation_point_ty() -> Expr {
     )
 }
 /// `IntervalArithmetic : (Real → Real) → Real → Real → Real → Real → Prop`
-/// Interval arithmetic evaluates f([a,b]) ⊆ [c,d] rigorously.
+/// Interval arithmetic evaluates f(\[a,b\]) ⊆ \[c,d\] rigorously.
 pub fn interval_arithmetic_ty() -> Expr {
     arrow(
         fn_ty(real_ty(), real_ty()),
@@ -458,7 +458,7 @@ pub fn interval_arithmetic_ty() -> Expr {
     )
 }
 /// `VerifiedRoot : (Real → Real) → Real → Real → Prop`
-/// There exists a unique root of f in interval [a,b] (interval Newton method certificate).
+/// There exists a unique root of f in interval \[a,b\] (interval Newton method certificate).
 pub fn verified_root_ty() -> Expr {
     arrow(
         fn_ty(real_ty(), real_ty()),
@@ -541,7 +541,7 @@ pub fn tensor_train_approximation_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(real_ty(), prop())))
 }
 /// `CertifiedNumericalComputation : (Real → Real) → Real → Real → Prop`
-/// A computation certifies that f(x) lies in interval [lo, hi] with machine precision.
+/// A computation certifies that f(x) lies in interval \[lo, hi\] with machine precision.
 pub fn certified_numerical_computation_ty() -> Expr {
     arrow(
         fn_ty(real_ty(), real_ty()),
@@ -549,7 +549,7 @@ pub fn certified_numerical_computation_ty() -> Expr {
     )
 }
 /// `ValidatedNumericsEnclosure : (Real → Real) → Real → Real → Real → Prop`
-/// The enclosure algorithm provides verified bounds [a,b] on f(x) with radius ε.
+/// The enclosure algorithm provides verified bounds \[a,b\] on f(x) with radius ε.
 pub fn validated_numerics_enclosure_ty() -> Expr {
     arrow(
         fn_ty(real_ty(), real_ty()),
@@ -757,7 +757,7 @@ pub fn build_numerical_analysis_env(env: &mut Environment) {
         .ok();
     }
 }
-/// Find a root of f in [a, b] using the bisection method.
+/// Find a root of f in \[a, b\] using the bisection method.
 ///
 /// Requires f(a) and f(b) to have opposite signs.
 /// Returns `None` if the sign condition is not met or max_iter is exceeded.

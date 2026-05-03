@@ -277,7 +277,7 @@ impl PureState {
         }
     }
 }
-/// Stabilizer code [[n, k, d]] parameters.
+/// Stabilizer code [\[n, k, d\]] parameters.
 #[derive(Debug, Clone)]
 pub struct StabilizerCode {
     /// Physical qubits.
@@ -300,7 +300,7 @@ impl StabilizerCode {
             generators,
         }
     }
-    /// [[7, 1, 3]] Steane code (CSS code derived from [7,4,3] Hamming code).
+    /// [\[7, 1, 3\]] Steane code (CSS code derived from \[7,4,3\] Hamming code).
     pub fn steane_code() -> Self {
         let h = vec![
             (vec![1, 0, 1, 0, 1, 0, 1], vec![0, 0, 0, 0, 0, 0, 0]),
@@ -312,7 +312,7 @@ impl StabilizerCode {
         ];
         Self::new(7, 1, 3, h)
     }
-    /// [[5, 1, 3]] perfect code.
+    /// [\[5, 1, 3\]] perfect code.
     pub fn perfect_code() -> Self {
         let gens = vec![
             (vec![1, 0, 0, 1, 0], vec![0, 1, 1, 0, 0]),
@@ -1533,7 +1533,7 @@ impl QuantumChannel {
     pub fn is_completely_positive(&self) -> bool {
         true
     }
-    /// Apply the channel to a density matrix (as flat row-major Vec<(f64,f64)>).
+    /// Apply the channel to a density matrix (as flat row-major `Vec<(f64,f64)>`).
     pub fn apply(&self, rho: &[Vec<(f64, f64)>]) -> Vec<Vec<(f64, f64)>> {
         let d = self.dim;
         let mut out = vec![vec![(0.0_f64, 0.0_f64); d]; d];
@@ -1558,5 +1558,173 @@ impl QuantumChannel {
             }
         }
         out
+    }
+}
+
+// ── Additional Quantum Information Types ──────────────────────────────────────
+
+/// Von Neumann entropy S(ρ) = −Tr(ρ log ρ) in nats (using natural log).
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct VonNeumannEntropy(pub f64);
+
+impl VonNeumannEntropy {
+    pub fn new(s: f64) -> Self {
+        VonNeumannEntropy(s)
+    }
+
+    /// S = 0 iff ρ is a pure state.
+    pub fn is_pure_state(&self) -> bool {
+        self.0.abs() < 1e-9
+    }
+
+    /// Value in bits (log base 2).
+    pub fn in_bits(&self) -> f64 {
+        self.0 / std::f64::consts::LN_2
+    }
+}
+
+/// Fidelity F(ρ, σ) ∈ \[0, 1\] between two quantum states.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct Fidelity(pub f64);
+
+impl Fidelity {
+    pub fn new(f: f64) -> Self {
+        Fidelity(f.clamp(0.0, 1.0))
+    }
+
+    /// F = 1 iff ρ = σ.
+    pub fn is_perfect(&self) -> bool {
+        (self.0 - 1.0).abs() < 1e-9
+    }
+
+    /// F = 0 iff ρ and σ have orthogonal support.
+    pub fn is_zero(&self) -> bool {
+        self.0.abs() < 1e-9
+    }
+}
+
+/// The four Bell states of a two-qubit system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BellState {
+    /// |Φ+⟩ = (|00⟩ + |11⟩)/√2.
+    PhiPlus,
+    /// |Φ-⟩ = (|00⟩ − |11⟩)/√2.
+    PhiMinus,
+    /// |Ψ+⟩ = (|01⟩ + |10⟩)/√2.
+    PsiPlus,
+    /// |Ψ-⟩ = (|01⟩ − |10⟩)/√2.
+    PsiMinus,
+}
+
+impl BellState {
+    /// Returns true — all Bell states are maximally entangled.
+    pub fn is_maximally_entangled(&self) -> bool {
+        true
+    }
+
+    /// Name of the Bell state.
+    pub fn name(&self) -> &'static str {
+        match self {
+            BellState::PhiPlus => "Phi+",
+            BellState::PhiMinus => "Phi-",
+            BellState::PsiPlus => "Psi+",
+            BellState::PsiMinus => "Psi-",
+        }
+    }
+
+    /// Amplitudes as (c00, c01, c10, c11) complex coefficients.
+    pub fn amplitudes(&self) -> [(f64, f64); 4] {
+        let s = 1.0 / 2.0_f64.sqrt();
+        match self {
+            BellState::PhiPlus => [(s, 0.0), (0.0, 0.0), (0.0, 0.0), (s, 0.0)],
+            BellState::PhiMinus => [(s, 0.0), (0.0, 0.0), (0.0, 0.0), (-s, 0.0)],
+            BellState::PsiPlus => [(0.0, 0.0), (s, 0.0), (s, 0.0), (0.0, 0.0)],
+            BellState::PsiMinus => [(0.0, 0.0), (s, 0.0), (-s, 0.0), (0.0, 0.0)],
+        }
+    }
+}
+
+/// A quantum state: pure qubit, mixed density matrix, or Bell state.
+#[derive(Debug, Clone)]
+pub enum QuantumState {
+    /// A pure single-qubit state.
+    Pure(Qubit),
+    /// A mixed state represented by a density matrix.
+    Mixed(DensityMatrix),
+    /// One of the four Bell (maximally entangled) states.
+    Bell(BellState),
+}
+
+impl QuantumState {
+    /// Dimension of the Hilbert space (number of computational basis states).
+    pub fn dimension(&self) -> usize {
+        match self {
+            QuantumState::Pure(_) => 2,
+            QuantumState::Mixed(rho) => rho.dim,
+            QuantumState::Bell(_) => 4,
+        }
+    }
+
+    /// True iff the state is a pure Bell state.
+    pub fn is_bell(&self) -> bool {
+        matches!(self, QuantumState::Bell(_))
+    }
+}
+
+/// A generalised quantum measurement (POVM) with outcome labels.
+#[derive(Debug, Clone)]
+pub struct QuantumMeasurement {
+    /// POVM operators M_k (each stored as a d×d complex matrix, row-major).
+    /// Operators are stored as `Vec<Vec<Complex>>` with outer index = row.
+    pub operators: Vec<Vec<Vec<Complex>>>,
+    /// Human-readable outcome labels.
+    pub outcomes: Vec<String>,
+}
+
+impl QuantumMeasurement {
+    /// Construct a measurement with given POVM operators and outcome labels.
+    pub fn new(operators: Vec<Vec<Vec<Complex>>>, outcomes: Vec<String>) -> Self {
+        QuantumMeasurement {
+            operators,
+            outcomes,
+        }
+    }
+
+    /// Standard computational-basis measurement on a qubit (Z measurement).
+    pub fn z_basis() -> Self {
+        let zero_proj = vec![
+            vec![Complex::one(), Complex::zero()],
+            vec![Complex::zero(), Complex::zero()],
+        ];
+        let one_proj = vec![
+            vec![Complex::zero(), Complex::zero()],
+            vec![Complex::zero(), Complex::one()],
+        ];
+        QuantumMeasurement {
+            operators: vec![zero_proj, one_proj],
+            outcomes: vec!["|0⟩".to_string(), "|1⟩".to_string()],
+        }
+    }
+
+    /// Hadamard (X) basis measurement.
+    pub fn x_basis() -> Self {
+        let s = 0.5_f64;
+        let plus_proj = vec![
+            vec![Complex::new(s, 0.0), Complex::new(s, 0.0)],
+            vec![Complex::new(s, 0.0), Complex::new(s, 0.0)],
+        ];
+        let minus_proj = vec![
+            vec![Complex::new(s, 0.0), Complex::new(-s, 0.0)],
+            vec![Complex::new(-s, 0.0), Complex::new(s, 0.0)],
+        ];
+        QuantumMeasurement {
+            operators: vec![plus_proj, minus_proj],
+            outcomes: vec!["|+⟩".to_string(), "|-⟩".to_string()],
+        }
+    }
+
+    /// Number of outcomes.
+    pub fn num_outcomes(&self) -> usize {
+        self.outcomes.len()
     }
 }

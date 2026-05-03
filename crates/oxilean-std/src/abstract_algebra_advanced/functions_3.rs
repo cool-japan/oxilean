@@ -204,7 +204,7 @@ pub fn formality_ty() -> Expr {
 }
 /// `MaurerCartanEquation : ∀ (g : Type), DGLieAlgebra g → g → Prop`
 ///
-/// The Maurer-Cartan equation in a dg Lie algebra g: dα + (1/2)[α, α] = 0.
+/// The Maurer-Cartan equation in a dg Lie algebra g: dα + (1/2)\[α, α\] = 0.
 /// Solutions α are Maurer-Cartan elements controlling deformation problems.
 pub fn maurer_cartan_ty() -> Expr {
     pi(

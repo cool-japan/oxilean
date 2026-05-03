@@ -62,7 +62,7 @@ pub fn add_axiom(
 }
 /// `FormalGroupLaw : Type → Type`
 ///
-/// A formal group law over a ring R: a power series F(x,y) ∈ R[[x,y]]
+/// A formal group law over a ring R: a power series F(x,y) ∈ R[\[x,y\]]
 /// satisfying associativity, commutativity, and identity axioms.
 pub fn formal_group_law_ty() -> Expr {
     arrow(type0(), type0())
@@ -415,7 +415,7 @@ pub fn complex_cobordism_mu_ty() -> Expr {
 /// `BrownPetersonBP : Nat → Type`
 ///
 /// The Brown-Peterson spectrum BP at prime p (encoded as a Nat index).
-/// BP is the direct summand of MU localized at p; π_*(BP) ≅ ℤ_(p)[v_1, v_2, ...].
+/// BP is the direct summand of MU localized at p; π_*(BP) ≅ ℤ_(p)\[v_1, v_2, ...\].
 pub fn brown_peterson_bp_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
@@ -430,7 +430,7 @@ pub fn landweber_exact_functor_ty() -> Expr {
 ///
 /// The Honda formal group H_n at height n over F_{p^n}: the unique (up to
 /// isomorphism) height-n formal group over the algebraic closure of F_p,
-/// with [p]-series x^{p^n}.
+/// with \[p\]-series x^{p^n}.
 pub fn honda_formal_group_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }

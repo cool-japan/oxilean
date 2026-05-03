@@ -1,9 +1,9 @@
 # OxiLean — TODO
 
 > Master task list for the OxiLean project.
-> Last updated: 2026-03-09
+> Last updated: 2026-05-03
 >
-> **Note**: Phases 1-4 are COMPLETE. The project has significantly exceeded initial targets with 11 crates and 1.2M+ lines implemented.
+> **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. The project has significantly exceeded initial targets with 12 crates and 1.35M+ lines implemented.
 
 ---
 
@@ -326,15 +326,15 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 | Phase 4: Tactics | ✅ Complete | ~5,000 | (included in elab) |
 | Phase 5+: Advanced | ✅ Complete | ~120,000+ | ~956,000+ |
 
-**Total Project Lines**: ~1,223,657 lines across 11 crates, 5,367 files
+**Total Project Lines**: ~1,347,650 lines across 12 crates, 5,978 files
 
 ---
 
 ## Project Status: COMPLETE
 
-**All phases complete as of 2026-03-09.**
-- 11 crates, 5,367 files, 1,223,657 lines implemented
-- 29,831 tests passing
+**All phases complete as of 2026-05-03.**
+- 12 crates, 5,978 files, 1,347,650 lines implemented
+- 32,345 tests passing
 - 0 warnings
 - Mathlib4 compatibility: 99.7% parse rate (181,326/181,890 declarations)
 - 320 curated theorem proofs: 100% pass rate

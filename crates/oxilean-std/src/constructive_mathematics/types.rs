@@ -310,7 +310,7 @@ impl InfiniteSequence {
 /// (represented by a function that picks a canonical element), builds the choice function.
 #[derive(Debug, Clone)]
 pub struct CountableChoiceWitness {
-    /// The chosen elements: `choices[n]` is the chosen element from the n-th set.
+    /// The chosen elements: `choices\[n\]` is the chosen element from the n-th set.
     pub choices: Vec<u64>,
 }
 impl CountableChoiceWitness {
@@ -320,7 +320,7 @@ impl CountableChoiceWitness {
             choices: (0..count).map(|n| sel(n)).collect(),
         }
     }
-    /// Verify that the choice function is consistent: `choices[n]` belongs to set `n`.
+    /// Verify that the choice function is consistent: `choices\[n\]` belongs to set `n`.
     /// `membership(n, x)` returns true if x is in set n.
     pub fn verify(&self, membership: impl Fn(usize, u64) -> bool) -> bool {
         self.choices
@@ -398,7 +398,7 @@ pub struct TTEOracle {
     pub name: String,
     /// Maximum precision (in bits) we track in simulation.
     pub max_precision: usize,
-    /// Cached approximations: approx[k] is the k-th dyadic approximation numerator.
+    /// Cached approximations: approx\[k\] is the k-th dyadic approximation numerator.
     pub approx_cache: Vec<i64>,
 }
 impl TTEOracle {
@@ -442,7 +442,7 @@ impl TTEOracle {
 }
 /// A constructive real number as a Cauchy sequence with a modulus.
 pub struct RealNumber {
-    /// Approximations: `cauchy_seq[n]` approximates the real to within 2^{-n}.
+    /// Approximations: `cauchy_seq\[n\]` approximates the real to within 2^{-n}.
     pub cauchy_seq: Vec<f64>,
     /// A description of the modulus of convergence.
     pub modulus: String,
@@ -478,7 +478,7 @@ impl ConTinuousFunction {
         }
     }
     /// The Fan Theorem implies that every function on the Cantor space
-    /// [2^ω] is uniformly continuous.
+    /// \[2^ω\] is uniformly continuous.
     pub fn by_fan_theorem(&self) -> bool {
         self.is_uniformly_continuous
     }

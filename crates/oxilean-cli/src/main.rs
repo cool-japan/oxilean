@@ -50,6 +50,7 @@ mod completions;
 mod config;
 mod diff;
 mod docgen;
+mod error_display;
 mod format;
 mod interactive;
 mod json_export;

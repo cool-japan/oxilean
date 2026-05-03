@@ -381,7 +381,7 @@ impl FixApplier {
             .filter_map(|d| d.fix.as_ref())
             .flat_map(|fix| fix.edits.iter())
             .collect();
-        all_edits.sort_by(|a, b| b.range.start.cmp(&a.range.start));
+        all_edits.sort_by_key(|b| std::cmp::Reverse(b.range.start));
         let mut result = source.to_string();
         let mut last_start = usize::MAX;
         for edit in &all_edits {
@@ -643,7 +643,7 @@ impl AutoFix {
     /// Sort edits in reverse order for safe application.
     pub fn sorted_edits(&self) -> Vec<&TextEdit> {
         let mut edits: Vec<&TextEdit> = self.edits.iter().collect();
-        edits.sort_by(|a, b| b.range.start.cmp(&a.range.start));
+        edits.sort_by_key(|b| std::cmp::Reverse(b.range.start));
         edits
     }
     /// Apply this fix to a source string.

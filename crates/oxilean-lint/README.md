@@ -9,7 +9,7 @@
 
 Because the linter operates on the surface AST produced by `oxilean-parse`, lint diagnostics are advisory: they can never affect kernel soundness. The engine supports auto-fixes, IDE integration, and a plugin system for user-defined rules.
 
-17,600 SLOC -- fully implemented lint engine with built-in rules (121 source files, 315 tests passing).
+17,600 SLOC -- fully implemented lint engine with built-in rules (121 source files, 685 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -92,7 +92,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-lint = "0.1.1"
+oxilean-lint = "0.1.2"
 ```
 
 ### Running the Engine

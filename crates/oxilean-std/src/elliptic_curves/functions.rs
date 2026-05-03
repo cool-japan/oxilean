@@ -69,7 +69,7 @@ pub fn ec_add_affine(p: &ProjectivePoint, q: &ProjectivePoint, _a: i64) -> Proje
         }
     }
 }
-/// Scalar multiplication [n]P using double-and-add.
+/// Scalar multiplication \[n\]P using double-and-add.
 pub fn scalar_mul(n: u64, p: &ProjectivePoint, a: i64) -> ProjectivePoint {
     if n == 0 {
         return ProjectivePoint::Infinity;
@@ -145,12 +145,12 @@ pub fn ec_neg_ty() -> Expr {
 pub fn ec_group_law_ty() -> Expr {
     arrow(cst("EllipticCurve"), prop())
 }
-/// `ECScalarMul : Nat → ECPoint → ECPoint` — scalar multiplication [n]P.
+/// `ECScalarMul : Nat → ECPoint → ECPoint` — scalar multiplication \[n\]P.
 pub fn ec_scalar_mul_ty() -> Expr {
     arrow3(nat_ty(), cst("ECPoint"), cst("ECPoint"))
 }
 /// `TorsionSubgroup : EllipticCurve → Nat → Type`
-/// — n-torsion E[n] = {P : [n]P = O}.
+/// — n-torsion E\[n\] = {P : \[n\]P = O}.
 pub fn torsion_subgroup_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), type0())
 }
@@ -244,12 +244,12 @@ pub fn ecdlp_ty() -> Expr {
     arrow(cst("EllipticCurve"), prop())
 }
 /// `WeilPairing : ECPoint → ECPoint → Nat → Complex`
-/// — Weil pairing e_n : E[n] × E[n] → μ_n.
+/// — Weil pairing e_n : E\[n\] × E\[n\] → μ_n.
 pub fn weil_pairing_ty() -> Expr {
     arrow4(cst("ECPoint"), cst("ECPoint"), nat_ty(), complex_ty())
 }
 /// `TatePairing : ECPoint → ECPoint → Nat → Complex`
-/// — Tate pairing (reduced) on E[n] × E(K)/nE(K).
+/// — Tate pairing (reduced) on E\[n\] × E(K)/nE(K).
 pub fn tate_pairing_ty() -> Expr {
     arrow4(cst("ECPoint"), cst("ECPoint"), nat_ty(), complex_ty())
 }
@@ -277,7 +277,7 @@ pub fn isogeny_ty() -> Expr {
 pub fn isogeny_degree_ty() -> Expr {
     arrow(cst("Isogeny"), nat_ty())
 }
-/// `DualIsogeny : Isogeny → Isogeny` — dual isogeny φ̂ with φ̂ ∘ φ = [deg φ].
+/// `DualIsogeny : Isogeny → Isogeny` — dual isogeny φ̂ with φ̂ ∘ φ = \[deg φ\].
 pub fn dual_isogeny_ty() -> Expr {
     arrow(cst("Isogeny"), cst("Isogeny"))
 }
@@ -401,7 +401,7 @@ pub fn regulator_matrix_ty() -> Expr {
     arrow(cst("EllipticCurve"), type0())
 }
 /// `TamagawaNumber : EllipticCurve → Nat → Nat`
-/// — local Tamagawa number c_p = [E(Q_p) : E_0(Q_p)] at prime p.
+/// — local Tamagawa number c_p = \[E(Q_p) : E_0(Q_p)\] at prime p.
 pub fn tamagawa_number_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), nat_ty())
 }
@@ -646,7 +646,7 @@ pub fn cm_isogeny_ty() -> Expr {
     arrow3(cst("EllipticCurve"), type0(), cst("Isogeny"))
 }
 /// `WeilPairingBilinearity : EllipticCurve → Nat → Prop`
-/// — e_n(P+Q, R) = e_n(P,R)·e_n(Q,R) for all P,Q,R ∈ E[n].
+/// — e_n(P+Q, R) = e_n(P,R)·e_n(Q,R) for all P,Q,R ∈ E\[n\].
 pub fn weil_pairing_bilinearity_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), prop())
 }
@@ -656,7 +656,7 @@ pub fn weil_pairing_non_degeneracy_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), prop())
 }
 /// `WeilPairingAlternating : EllipticCurve → Nat → Prop`
-/// — e_n(P,P) = 1 for all P ∈ E[n] (alternating property).
+/// — e_n(P,P) = 1 for all P ∈ E\[n\] (alternating property).
 pub fn weil_pairing_alternating_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), prop())
 }
@@ -686,12 +686,12 @@ pub fn frobenius_char_poly_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), type0())
 }
 /// `SupersingularCurve : EllipticCurve → Nat → Prop`
-/// — E is supersingular over F_q: E[p] = {O} (trace of Frobenius ≡ 0 mod p).
+/// — E is supersingular over F_q: E\[p\] = {O} (trace of Frobenius ≡ 0 mod p).
 pub fn supersingular_curve_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), prop())
 }
 /// `OrdinaryCurve : EllipticCurve → Nat → Prop`
-/// — E is ordinary over F_q: E[p] ≅ Z/pZ (trace of Frobenius ≢ 0 mod p).
+/// — E is ordinary over F_q: E\[p\] ≅ Z/pZ (trace of Frobenius ≢ 0 mod p).
 pub fn ordinary_curve_ty() -> Expr {
     arrow3(cst("EllipticCurve"), nat_ty(), prop())
 }
@@ -716,7 +716,7 @@ pub fn local_factor_ec_ty() -> Expr {
     arrow4(cst("EllipticCurve"), nat_ty(), complex_ty(), complex_ty())
 }
 /// `FormalGroupLaw_EC : EllipticCurve → Type`
-/// — the formal group Ê(𝔪) associated to E, with group law F(X,Y) ∈ R[[X,Y]].
+/// — the formal group Ê(𝔪) associated to E, with group law F(X,Y) ∈ R[\[X,Y\]].
 pub fn formal_group_law_ec_ty() -> Expr {
     arrow(cst("EllipticCurve"), type0())
 }
@@ -756,7 +756,7 @@ pub fn manin_constant_ty() -> Expr {
     arrow(cst("EllipticCurve"), nat_ty())
 }
 /// `TwoSelmerGroup : EllipticCurve → Type`
-/// — 2-Selmer group Sel^(2)(E/Q) sitting in exact sequence with E(Q)/2E(Q) and Ш[2].
+/// — 2-Selmer group Sel^(2)(E/Q) sitting in exact sequence with E(Q)/2E(Q) and Ш\[2\].
 pub fn two_selmer_group_ty() -> Expr {
     arrow(cst("EllipticCurve"), type0())
 }
@@ -786,7 +786,7 @@ pub fn gross_zagier_formula_ty() -> Expr {
     arrow3(cst("EllipticCurve"), int_ty(), prop())
 }
 /// `HeegnerIndex : EllipticCurve → Int → Nat`
-/// — Heegner index [E(K) : Z·y_K] measuring how far y_K generates E(K).
+/// — Heegner index \[E(K) : Z·y_K\] measuring how far y_K generates E(K).
 pub fn heegner_index_ty() -> Expr {
     arrow3(cst("EllipticCurve"), int_ty(), nat_ty())
 }

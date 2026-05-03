@@ -400,7 +400,7 @@ pub fn double_up_ty() -> Expr {
     game_ty()
 }
 /// `GameAlphaBeta : Game → Nat → Nat → Nat` — alpha-beta pruning score for game G
-/// with window [alpha, beta], returning the minimax value within that window.
+/// with window \[alpha, beta\], returning the minimax value within that window.
 pub fn game_alpha_beta_ty() -> Expr {
     arrow(game_ty(), arrow(nat_ty(), arrow(nat_ty(), nat_ty())))
 }

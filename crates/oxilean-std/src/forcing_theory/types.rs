@@ -3,17 +3,17 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 use super::functions::*;
 
-/// The generic extension M[G] of a ground model M by a generic filter G.
+/// The generic extension M\[G\] of a ground model M by a generic filter G.
 ///
-/// M[G] is the smallest transitive model of ZFC that contains M and G.
-/// It is constructed via P-names: M[G] = {τ[G] | τ ∈ M, τ a P-name}.
+/// M\[G\] is the smallest transitive model of ZFC that contains M and G.
+/// It is constructed via P-names: M\[G\] = {τ\[G\] | τ ∈ M, τ a P-name}.
 pub struct GenericExtension {
     pub ground_model: String,
     pub generic_filter: GenericFilter,
     pub satisfies_zfc: bool,
 }
 impl GenericExtension {
-    /// Construct the generic extension M[G].
+    /// Construct the generic extension M\[G\].
     pub fn new(ground_model: impl Into<String>, filter: GenericFilter) -> Self {
         Self {
             ground_model: ground_model.into(),
@@ -21,7 +21,7 @@ impl GenericExtension {
             satisfies_zfc: true,
         }
     }
-    /// The fundamental theorem of forcing: φ holds in M[G] iff some p ∈ G forces φ.
+    /// The fundamental theorem of forcing: φ holds in M\[G\] iff some p ∈ G forces φ.
     pub fn fundamental_theorem(&self) -> &'static str {
         "M[G] ⊨ φ ↔ ∃ p ∈ G, p ⊩ φ"
     }
@@ -29,11 +29,11 @@ impl GenericExtension {
     pub fn cardinals_preserved_above_ccc(&self) -> bool {
         self.generic_filter.is_generic_over_model
     }
-    /// The ground model is a definable class in M[G] (Laver's theorem).
+    /// The ground model is a definable class in M\[G\] (Laver's theorem).
     pub fn ground_model_definable(&self) -> bool {
         true
     }
-    /// M[G] satisfies the same arithmetic statements as M (Shoenfield absoluteness).
+    /// M\[G\] satisfies the same arithmetic statements as M (Shoenfield absoluteness).
     pub fn shoenfield_absoluteness(&self) -> bool {
         true
     }
@@ -89,7 +89,7 @@ impl CBAForcingPoset {
     pub fn forcing_equivalent(&self, other: &Self) -> bool {
         self.algebra_name == other.algebra_name
     }
-    /// The Boolean value [[φ]]^B for a sentence φ (returned symbolically).
+    /// The Boolean value [\[φ\]]^B for a sentence φ (returned symbolically).
     pub fn boolean_value(&self, phi: &str) -> String {
         format!("[[{}]]_{}", phi, self.algebra_name)
     }
@@ -101,7 +101,7 @@ impl CBAForcingPoset {
 /// A Boolean-valued model V^B where B is a complete Boolean algebra.
 ///
 /// Every ZFC axiom has Boolean value 1 in V^B.
-/// The forcing relation can be read off: p ⊩ φ iff [[φ]]^B ≥ p.
+/// The forcing relation can be read off: p ⊩ φ iff [\[φ\]]^B ≥ p.
 pub struct BooleanValuedModel {
     pub boolean_algebra: String,
     pub is_complete: bool,
@@ -128,11 +128,11 @@ impl BooleanValuedModel {
     pub fn quotient_by_ultrafilter(&self, ultrafilter: &str) -> String {
         format!("{}^{} / {}", "V", self.boolean_algebra, ultrafilter)
     }
-    /// The Boolean value of an equality [[x = y]]^B.
+    /// The Boolean value of an equality [\[x = y\]]^B.
     pub fn boolean_equality_value(&self, x: &str, y: &str) -> String {
         format!("[[{} = {}]]_{}", x, y, self.boolean_algebra)
     }
-    /// The Boolean value of membership [[x ∈ y]]^B.
+    /// The Boolean value of membership [\[x ∈ y\]]^B.
     pub fn boolean_membership_value(&self, x: &str, y: &str) -> String {
         format!("[[{} ∈ {}]]_{}", x, y, self.boolean_algebra)
     }
@@ -291,7 +291,7 @@ impl ForcingPoset {
             is_separative: true,
         }
     }
-    /// Random forcing: Borel subsets of [0,1] of positive measure.
+    /// Random forcing: Borel subsets of \[0,1\] of positive measure.
     pub fn random_forcing() -> Self {
         Self {
             name: "Random(ω)".to_string(),
@@ -395,7 +395,7 @@ impl GenericFilter {
 /// Generic absoluteness theorems: which statements are preserved under forcing.
 pub struct GenericAbsoluteness;
 impl GenericAbsoluteness {
-    /// Shoenfield absoluteness: every Σ¹₂ statement absolute between V and V[G].
+    /// Shoenfield absoluteness: every Σ¹₂ statement absolute between V and V\[G\].
     pub fn shoenfield_absoluteness() -> &'static str {
         "Every Σ¹₂ (or Π¹₂) sentence is absolute between V and any set-generic extension V[G]"
     }
@@ -433,7 +433,7 @@ impl ProperForcing {
         self.is_proper
     }
     /// A forcing is semi-proper if it preserves stationary subsets of
-    /// [ω₁]^ω — proper implies semi-proper.
+    /// \[ω₁\]^ω — proper implies semi-proper.
     pub fn is_semiproper(&self) -> bool {
         self.is_proper
     }
@@ -453,7 +453,7 @@ impl ForcingRelation {
             satisfies_definability: true,
         }
     }
-    /// Truth lemma: if p ⊩ φ and G is P-generic with p ∈ G, then M[G] ⊨ φ.
+    /// Truth lemma: if p ⊩ φ and G is P-generic with p ∈ G, then M\[G\] ⊨ φ.
     pub fn truth_lemma(&self) -> &'static str {
         "p ∈ G ∧ p ⊩ φ → M[G] ⊨ φ"
     }
@@ -610,7 +610,7 @@ impl CoreModel {
 pub struct ForcingPosetExt {
     /// The forcing conditions (strings represent condition names/descriptions).
     pub conditions: Vec<String>,
-    /// The partial order as pairs (i, j) meaning condition[i] ≤ condition[j].
+    /// The partial order as pairs (i, j) meaning condition\[i\] ≤ condition\[j\].
     pub order: Vec<(usize, usize)>,
 }
 impl ForcingPosetExt {
@@ -673,7 +673,7 @@ impl CardinalCollapse {
             lambda: lambda.into(),
         }
     }
-    /// The collapse forcing Col(ω, κ) makes κ countable in M[G].
+    /// The collapse forcing Col(ω, κ) makes κ countable in M\[G\].
     pub fn collapses_to_omega(&self) -> bool {
         self.lambda == "ω" || self.lambda == "omega"
     }
@@ -747,7 +747,7 @@ impl FiniteSupportIteration {
         true
     }
 }
-/// A P-name in forcing — an element of the forcing extension M[G].
+/// A P-name in forcing — an element of the forcing extension M\[G\].
 ///
 /// Each name is a set of pairs (σ, p) where σ is another name and p ∈ P.
 pub struct NameInForcingExt {
@@ -856,7 +856,7 @@ impl SigmaClosedForcingAxiom {
         true
     }
 }
-/// P-name: a hereditarily P-labeled set used to define elements of M[G].
+/// P-name: a hereditarily P-labeled set used to define elements of M\[G\].
 #[derive(Debug, Clone)]
 pub struct PName {
     pub label: String,

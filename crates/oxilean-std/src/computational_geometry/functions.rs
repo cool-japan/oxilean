@@ -373,7 +373,7 @@ pub fn range_tree_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
 /// `RangeTreeQuery : RangeTree -> (Real × Real) -> (Real × Real) -> List Point2D`
-/// Orthogonal range query: report all points in axis-aligned box [x1,x2] × [y1,y2]
+/// Orthogonal range query: report all points in axis-aligned box \[x1,x2\] × \[y1,y2\]
 pub fn range_tree_query_ty() -> Expr {
     arrow(
         type0(),
@@ -1164,7 +1164,7 @@ pub fn build_range_tree_1d(pts: &[(f64, Point2D)]) -> RangeTree1D {
         right: Box::new(build_range_tree_1d(&pts[(mid + 1)..])),
     }
 }
-/// Query a 1D range tree for all points with key in [lo, hi].
+/// Query a 1D range tree for all points with key in \[lo, hi\].
 pub fn query_range_tree_1d(node: &RangeTree1D, lo: f64, hi: f64, result: &mut Vec<Point2D>) {
     match node {
         RangeTree1D::Empty => {}

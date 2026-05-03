@@ -72,7 +72,7 @@ pub fn encryption_scheme_ty() -> Expr {
 }
 /// `PerfectSecrecy : EncryptionScheme → Prop`
 /// M and C are independent: ∀ m, c. Pr[M=m | C=c] = Pr[M=m].
-/// Equivalently: ∀ m, m'. Pr[Enc(K,m)=c] = Pr[Enc(K,m')=c] for all c.
+/// Equivalently: ∀ m, m'. Pr\[Enc(K,m)=c\] = Pr\[Enc(K,m')=c\] for all c.
 pub fn perfect_secrecy_ty() -> Expr {
     arrow(cst("EncryptionScheme"), prop())
 }
@@ -409,7 +409,7 @@ pub fn collision_entropy(probs: &[f64]) -> f64 {
 }
 /// Compute joint entropy H(X,Y) from a joint distribution table.
 ///
-/// `joint[i][j]` = P(X=i, Y=j).
+/// `joint\[i\]\[j\]` = P(X=i, Y=j).
 pub fn joint_entropy(joint: &[Vec<f64>]) -> f64 {
     joint
         .iter()
@@ -787,7 +787,7 @@ pub fn universal_hash_family_ty() -> Expr {
 }
 /// `StronglyUniversal2 : (Nat → Nat → Nat) → Prop`
 /// A hash family is strongly 2-universal if for distinct x₁, x₂ and any y₁, y₂,
-/// Pr[h(x₁)=y₁ ∧ h(x₂)=y₂] = 1/m².
+/// Pr\[h(x₁)=y₁ ∧ h(x₂)=y₂\] = 1/m².
 pub fn strongly_universal_2_ty() -> Expr {
     arrow(arrow(nat_ty(), arrow(nat_ty(), nat_ty())), prop())
 }
@@ -840,7 +840,7 @@ pub fn wiretap_channel_ty() -> Expr {
     type0()
 }
 /// `SecrecyCapacity : WiretapChannel → Real`
-/// Cs = max_{p(x)} [I(X;Y) - I(X;Z)]  where Y is the legitimate channel, Z is the wiretap.
+/// Cs = max_{p(x)} \[I(X;Y) - I(X;Z)\]  where Y is the legitimate channel, Z is the wiretap.
 pub fn secrecy_capacity_ty() -> Expr {
     arrow(cst("WiretapChannel"), real_ty())
 }

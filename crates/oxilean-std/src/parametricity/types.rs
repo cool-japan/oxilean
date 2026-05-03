@@ -123,7 +123,7 @@ impl LogicalRelation {
         }
     }
     /// Build the logical relation for `A → B` from relations for A and B.
-    /// `(f, g) ∈ [A→B]` iff `∀ (a,b) ∈ [A], (f a, g b) ∈ [B]`.
+    /// `(f, g) ∈ \[A→B\]` iff `∀ (a,b) ∈ \[A\], (f a, g b) ∈ \[B\]`.
     pub fn arrow(dom: LogicalRelation, cod: LogicalRelation) -> Self {
         let dom_ty = dom.ty.clone();
         let cod_ty = cod.ty.clone();

@@ -737,11 +737,7 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
                                 None
                             }
                         } else if is_nat_div {
-                            if b != 0 {
-                                Some(a / b)
-                            } else {
-                                None
-                            }
+                            a.checked_div(b)
                         } else if is_nat_mod {
                             if b != 0 {
                                 Some(a % b)
@@ -943,10 +939,14 @@ pub(super) fn parse_simp_only_lemmas(args: &str) -> Vec<String> {
         .collect()
 }
 /// Evaluate a block of tactics in sequence.
-pub fn eval_tactic_block(state: &TacticState, tactics: &[String]) -> TacticResult {
+pub fn eval_tactic_block(
+    state: &TacticState,
+    tactics: &[String],
+    env: &oxilean_kernel::Environment,
+) -> TacticResult {
     let mut current = state.clone();
     for tactic_str in tactics {
-        current = eval_tactic(&current, tactic_str)?;
+        current = eval_tactic(&current, tactic_str, env)?;
     }
     Ok(current)
 }
@@ -1359,7 +1359,8 @@ mod tests {
     fn test_eval_tactic_sorry() {
         let goal = Goal::new(Name::str("g1"), mk_type());
         let state = mk_state_with_goal(goal);
-        let result = eval_tactic(&state, "sorry").expect("tactic should succeed");
+        let env = oxilean_kernel::Environment::new();
+        let result = eval_tactic(&state, "sorry", &env).expect("tactic should succeed");
         assert!(result.is_complete());
     }
     #[test]
@@ -1367,14 +1368,16 @@ mod tests {
         let target = mk_pi("x", mk_type(), mk_prop());
         let goal = Goal::new(Name::str("g1"), target);
         let state = mk_state_with_goal(goal);
-        let result = eval_tactic(&state, "intro x").expect("tactic should succeed");
+        let env = oxilean_kernel::Environment::new();
+        let result = eval_tactic(&state, "intro x", &env).expect("tactic should succeed");
         assert_eq!(result.num_goals(), 1);
     }
     #[test]
     fn test_eval_tactic_unknown() {
         let goal = Goal::new(Name::str("g1"), mk_prop());
         let state = mk_state_with_goal(goal);
-        let result = eval_tactic(&state, "nonexistent");
+        let env = oxilean_kernel::Environment::new();
+        let result = eval_tactic(&state, "nonexistent", &env);
         assert!(matches!(result, Err(TacticError::UnknownTactic(_))));
     }
     #[test]
@@ -1384,14 +1387,16 @@ mod tests {
         goal.tag = Some("test".to_string());
         let state = mk_state_with_goal(goal);
         let tactics = vec!["intro h".to_string(), "sorry".to_string()];
-        let result = eval_tactic_block(&state, &tactics).expect("tactic should succeed");
+        let env = oxilean_kernel::Environment::new();
+        let result = eval_tactic_block(&state, &tactics, &env).expect("tactic should succeed");
         assert!(result.is_complete());
     }
     #[test]
     fn test_eval_tactic_block_empty() {
         let goal = Goal::new(Name::str("g1"), mk_prop());
         let state = mk_state_with_goal(goal);
-        let result = eval_tactic_block(&state, &[]).expect("tactic should succeed");
+        let env = oxilean_kernel::Environment::new();
+        let result = eval_tactic_block(&state, &[], &env).expect("tactic should succeed");
         assert_eq!(result.num_goals(), 1);
     }
     #[test]
@@ -1415,8 +1420,9 @@ mod tests {
         let registry = TacticRegistry::default();
         let goal = Goal::new(Name::str("g1"), mk_prop());
         let state = mk_state_with_goal(goal);
+        let env = oxilean_kernel::Environment::new();
         let result = registry
-            .execute("sorry", &state, &[])
+            .execute("sorry", &state, &[], &env)
             .expect("test operation should succeed");
         assert!(result.is_complete());
     }
@@ -1424,7 +1430,8 @@ mod tests {
     fn test_tactic_registry_execute_unknown() {
         let registry = TacticRegistry::default();
         let state = TacticState::new();
-        let result = registry.execute("nonexistent", &state, &[]);
+        let env = oxilean_kernel::Environment::new();
+        let result = registry.execute("nonexistent", &state, &[], &env);
         assert!(result.is_err());
     }
     #[test]

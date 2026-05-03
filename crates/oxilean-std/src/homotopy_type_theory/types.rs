@@ -487,7 +487,7 @@ pub enum Suspension<A> {
     North,
     /// The south pole S
     South,
-    /// A meridian point (parameterized by a : A and t ∈ [0,1])
+    /// A meridian point (parameterized by a : A and t ∈ \[0,1\])
     Merid(A, f64),
 }
 /// The Blakers-Massey theorem: a connectivity estimate for pushouts.

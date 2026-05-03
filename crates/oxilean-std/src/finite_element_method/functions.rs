@@ -128,7 +128,7 @@ pub fn reference_tetrahedron_ty() -> Expr {
 }
 /// `ReferenceHexahedron : Type`
 ///
-/// The reference hexahedron (cube) K̂ = [-1,1]³. Used for Q1/Q2 elements.
+/// The reference hexahedron (cube) K̂ = \[-1,1\]³. Used for Q1/Q2 elements.
 pub fn reference_hexahedron_ty() -> Expr {
     type0()
 }
@@ -402,15 +402,15 @@ pub fn dg_space_ty() -> Expr {
 ///
 /// The symmetric interior penalty DG (SIPG) bilinear form:
 ///   a_{IP}(u,v) = Σ_K ∫_K ∇u·∇v dx
-///               - Σ_e ∫_e ({∇u}·[v] + {∇v}·[u]) ds
-///               + Σ_e (σ/h_e) ∫_e [u]·[v] ds,
+///               - Σ_e ∫_e ({∇u}·\[v\] + {∇v}·\[u\]) ds
+///               + Σ_e (σ/h_e) ∫_e \[u\]·\[v\] ds,
 /// where {·} and [·] denote averages and jumps across interior edges.
 pub fn interior_penalty_form_ty() -> Expr {
     arrow(type0(), arrow(real_ty(), cst("BilinearForm")))
 }
 /// `DGCoercivity : InteriorPenaltyForm → Real → Prop`
 ///
-/// Coercivity of the IP form in the DG norm ‖v‖²_{DG} = Σ_K ‖∇v‖²_{L²(K)} + Σ_e (σ/h_e) ‖[v]‖²
+/// Coercivity of the IP form in the DG norm ‖v‖²_{DG} = Σ_K ‖∇v‖²_{L²(K)} + Σ_e (σ/h_e) ‖\[v\]‖²
 /// for σ > σ₀ sufficiently large.
 pub fn dg_coercivity_ty() -> Expr {
     arrow(cst("BilinearForm"), arrow(real_ty(), prop()))
@@ -432,7 +432,7 @@ pub fn dg_error_estimate_ty() -> Expr {
 ///
 /// The upwind DG (UWDG) form for convection-dominated problems:
 ///   a_{upw}(u,v) = -∫_Ω u (b·∇v) dx + ∫_{∂Ω_-} (b·n) u_inflow v ds
-///                 + Σ_e ∫_e (b·n_e)^+ [u] {v} ds.
+///                 + Σ_e ∫_e (b·n_e)^+ \[u\] {v} ds.
 pub fn upg_form_ty() -> Expr {
     arrow(type0(), arrow(real_ty(), cst("BilinearForm")))
 }
@@ -495,7 +495,7 @@ pub fn mini_element_ty() -> Expr {
 /// `ResidualEstimator : FiniteElementSpace → H1Space → Real`
 ///
 /// The element residual error estimator η_K:
-///   η²_K = h²_K ‖f + Δu_h‖²_{L²(K)} + Σ_{e ∈ ∂K} h_e ‖[∂_n u_h]‖²_{L²(e)}.
+///   η²_K = h²_K ‖f + Δu_h‖²_{L²(K)} + Σ_{e ∈ ∂K} h_e ‖\[∂_n u_h\]‖²_{L²(e)}.
 pub fn residual_estimator_ty() -> Expr {
     arrow(cst("FiniteElementSpace"), arrow(cst("H1Space"), real_ty()))
 }
@@ -1020,7 +1020,7 @@ pub fn arc_length_method_ty() -> Expr {
 /// `ConsistentLinearization : BilinearForm → H1Space → BilinearForm`
 ///
 /// The consistent linearization of a nonlinear bilinear form at u:
-///   Da(u)[h,v] = lim_{ε→0} (a(u + εh, v) - a(u,v))/ε.
+///   Da(u)\[h,v\] = lim_{ε→0} (a(u + εh, v) - a(u,v))/ε.
 pub fn consistent_linearization_ty() -> Expr {
     arrow(
         cst("BilinearForm"),

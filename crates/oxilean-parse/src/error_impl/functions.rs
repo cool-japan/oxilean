@@ -84,20 +84,15 @@ pub fn recovery_hints(err: &ParseError) -> Vec<RecoveryHint> {
                 "Did you forget a closing `)`, `}`, or `]`?",
             ));
         }
-        ParseErrorKind::InvalidBinder(msg) => {
-            if msg.contains("type") {
-                hints.push(RecoveryHint::new(
-                    "Binders require a type annotation, e.g. `(x : Nat)`",
-                ));
-            }
+        ParseErrorKind::InvalidBinder(msg) if msg.contains("type") => {
+            hints.push(RecoveryHint::new(
+                "Binders require a type annotation, e.g. `(x : Nat)`",
+            ));
         }
-        ParseErrorKind::InvalidSyntax(msg) => {
-            if msg.contains("=>") {
-                hints.push(
-                    RecoveryHint::new("OxiLean uses `->` for arrows, not `=>`")
-                        .with_replacement("->"),
-                );
-            }
+        ParseErrorKind::InvalidSyntax(msg) if msg.contains("=>") => {
+            hints.push(
+                RecoveryHint::new("OxiLean uses `->` for arrows, not `=>`").with_replacement("->"),
+            );
         }
         _ => {}
     }

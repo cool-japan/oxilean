@@ -72,7 +72,7 @@ impl PdlModel {
             }
         }
     }
-    /// Evaluate [α]φ at world `w`: all successors via α satisfy φ.
+    /// Evaluate \[α\]φ at world `w`: all successors via α satisfy φ.
     pub fn box_program(&self, w: usize, prog: &PdlProgram, phi: &ModalFormula) -> bool {
         self.reachable(w, prog)
             .iter()
@@ -525,7 +525,7 @@ impl KripkeModel {
     pub fn model_valid(&self, phi: &ModalFormula) -> bool {
         (0..self.frame.n_worlds).all(|w| self.satisfies(w, phi))
     }
-    /// Compute the extension [[φ]] — the set of worlds satisfying φ.
+    /// Compute the extension [\[φ\]] — the set of worlds satisfying φ.
     pub fn extension(&self, phi: &ModalFormula) -> HashSet<usize> {
         (0..self.frame.n_worlds)
             .filter(|&w| self.satisfies(w, phi))

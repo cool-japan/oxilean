@@ -711,7 +711,7 @@ impl PrefixPool {
             .filter(|(_, interned)| s.starts_with(*interned))
             .map(|(id, interned)| (interned.len(), id))
             .collect();
-        result.sort_by(|a, b| b.0.cmp(&a.0));
+        result.sort_by_key(|b| std::cmp::Reverse(b.0));
         result.into_iter().map(|(_, id)| id).collect()
     }
     /// Resolve an interned string.
@@ -1002,7 +1002,7 @@ impl FrequencyPool {
             .iter()
             .map(|(id, _)| (id, self.frequency(id)))
             .collect();
-        pairs.sort_by(|a, b| b.1.cmp(&a.1));
+        pairs.sort_by_key(|b| std::cmp::Reverse(b.1));
         pairs.truncate(k);
         pairs
     }

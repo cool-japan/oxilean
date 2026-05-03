@@ -15,7 +15,11 @@ use super::types::{NumCmp, SymLinCon, TacticError, TacticState, TypeShape};
 /// Evaluate a single tactic given as a string reference.
 ///
 /// Dispatches tactic names to their implementations.
-pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
+pub fn eval_tactic(
+    state: &TacticState,
+    tactic_ref: &str,
+    env: &oxilean_kernel::Environment,
+) -> TacticResult {
     let trimmed = tactic_ref.trim();
     let parts: Vec<&str> = trimmed.splitn(2, ' ').collect();
     let tactic_name = parts[0];
@@ -164,8 +168,26 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             let hyp_refs: Vec<&str> = hyp_names.iter().map(|s| s.as_str()).collect();
             tactic_simp(state, &hyp_refs)
         }
-        "field_simp" => tactic_simp(state, &[]),
+        "field_simp" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_field_simp(&mut bridge.meta_state, &mut bridge.meta_ctx)
+                    .map(|_| ())
+            }) {
+                return Ok(s);
+            }
+            tactic_simp(state, &[])
+        }
         "aesop" | "tauto" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_aesop(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_tauto(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
             if let Ok(s) = tactic_trivial(state) {
                 return Ok(s);
             }
@@ -181,7 +203,7 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             if let Ok(s) = try_ring_norm(state) {
                 return Ok(s);
             }
-            if let Ok(after_intro) = eval_tactic(state, "intro h_aesop") {
+            if let Ok(after_intro) = eval_tactic(state, "intro h_aesop", env) {
                 if let Ok(s) = tactic_trivial(&after_intro)
                     .or_else(|_| tactic_assumption(&after_intro))
                     .or_else(|_| try_linarith_with_hyps(&after_intro))
@@ -425,6 +447,19 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
         }
         "contrapose" => tactic_contrapose(state),
         "norm_cast" | "exact_mod_cast" | "push_cast" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_norm_cast(&mut bridge.meta_state, &mut bridge.meta_ctx)
+                    .map(|_| ())
+            }) {
+                return Ok(s);
+            }
+            // tac_exact_mod_cast requires a proof term argument; skip direct meta call here
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_push_cast(&mut bridge.meta_state, &mut bridge.meta_ctx)
+                    .map(|_| ())
+            }) {
+                return Ok(s);
+            }
             if let Ok(s) = tactic_refl(state) {
                 return Ok(s);
             }
@@ -432,6 +467,11 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
         }
         "rfl" => tactic_refl(state),
         "omega" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_omega(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
             if let Ok(s) = tactic_trivial(state) {
                 return Ok(s);
             }
@@ -454,6 +494,16 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             tactic_sorry(state)
         }
         "norm_num" | "positivity" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_norm_num(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_positivity(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
             if let Ok(s) = tactic_trivial(state) {
                 return Ok(s);
             }
@@ -563,6 +613,11 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             tactic_fin_cases_impl(state, subject)
         }
         "ring" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_ring(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
             if let Ok(s) = tactic_trivial(state) {
                 return Ok(s);
             }
@@ -601,7 +656,7 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             }
             let mut current = state.clone();
             let mut iterations: u32 = 0;
-            while let Ok(new_state) = eval_tactic(&current, args_str) {
+            while let Ok(new_state) = eval_tactic(&current, args_str, env) {
                 current = new_state;
                 iterations += 1;
                 if iterations > 100 || current.is_complete() {
@@ -617,7 +672,7 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
                 .filter(|s| !s.is_empty())
                 .collect();
             for alt in &alternatives {
-                if let Ok(new_state) = eval_tactic(state, alt) {
+                if let Ok(new_state) = eval_tactic(state, alt, env) {
                     return Ok(new_state);
                 }
             }
@@ -625,7 +680,7 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
                 "first: all alternatives failed".to_string(),
             ))
         }
-        "try" => match eval_tactic(state, args_str) {
+        "try" => match eval_tactic(state, args_str, env) {
             Ok(new_state) => Ok(new_state),
             Err(_) => Ok(state.clone()),
         },
@@ -641,7 +696,7 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
                 if new_state.is_complete() {
                     break;
                 }
-                match eval_tactic(&new_state, args_str) {
+                match eval_tactic(&new_state, args_str, env) {
                     Ok(s) => new_state = s,
                     Err(e) => return Err(e),
                 }
@@ -813,6 +868,11 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             }
         }
         "gcongr" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_gcongr(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
             if let Ok(s) = try_linarith_with_hyps(state) {
                 return Ok(s);
             }
@@ -877,6 +937,12 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             tactic_sorry(state)
         }
         "funext" | "ext" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_ext(&mut bridge.meta_state, &mut bridge.meta_ctx)
+                    .map(|_| ())
+            }) {
+                return Ok(s);
+            }
             let var_name = if args_str.is_empty() {
                 "x"
             } else {
@@ -909,7 +975,21 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             tactic_sorry(state)
         }
         "simp_rw" => {
+            // Try the meta-layer simp_rw with parsed lemma names
             let lemma_strings = parse_simp_only_lemmas(args_str);
+            let lemma_names: Vec<oxilean_kernel::Name> = lemma_strings
+                .iter()
+                .map(oxilean_kernel::Name::str)
+                .collect();
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_simp_rw(
+                    &mut bridge.meta_state,
+                    &mut bridge.meta_ctx,
+                    &lemma_names,
+                )
+            }) {
+                return Ok(s);
+            }
             let lemma_refs: Vec<&str> = lemma_strings.iter().map(|s| s.as_str()).collect();
             tactic_simp(state, &lemma_refs)
         }
@@ -954,12 +1034,20 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             tactic_sorry(state)
         }
         "auto" | "solve_by_elim" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_solve_by_elim(
+                    &mut bridge.meta_state,
+                    &mut bridge.meta_ctx,
+                )
+            }) {
+                return Ok(s);
+            }
             let depth = if args_str.is_empty() {
                 3usize
             } else {
                 args_str.trim().parse::<usize>().unwrap_or(3)
             };
-            auto_search(state, depth).or_else(|_| tactic_sorry(state))
+            auto_search(state, depth, env).or_else(|_| tactic_sorry(state))
         }
         "refine" => {
             if args_str.contains('_') || args_str.contains("?_") {
@@ -1012,7 +1100,7 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             }
             replace_focused(state, vec![new_goal])
         }
-        "<;>" | "focus_all" => eval_tactic(state, &format!("all_goals {}", args_str)),
+        "<;>" | "focus_all" => eval_tactic(state, &format!("all_goals {}", args_str), env),
         "mod_cast" => {
             if let Ok(s) = tactic_refl(state) {
                 return Ok(s);
@@ -1046,7 +1134,7 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
         }
         "with_reducible" | "set_option" | "unhygienic" | "native_decide" => {
             if !args_str.is_empty() {
-                eval_tactic(state, args_str).or_else(|_| tactic_sorry(state))
+                eval_tactic(state, args_str, env).or_else(|_| tactic_sorry(state))
             } else {
                 Ok(state.clone())
             }
@@ -1138,6 +1226,18 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
         }
         "set" => tactic_sorry(state),
         "convert" => {
+            // Try meta tac_convert with parsed target expression
+            if let Ok(target_expr) = parse_simple_expr(args_str) {
+                if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                    oxilean_meta::tactic::tac_convert(
+                        &mut bridge.meta_state,
+                        &mut bridge.meta_ctx,
+                        target_expr.clone(),
+                    )
+                }) {
+                    return Ok(s);
+                }
+            }
             if let Ok(s) = try_ring_norm(state) {
                 return Ok(s);
             }
@@ -1168,11 +1268,95 @@ pub fn eval_tactic(state: &TacticState, tactic_ref: &str) -> TacticResult {
             }
             tactic_refl(state).or_else(|_| tactic_sorry(state))
         }
+        "continuity" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_continuity(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "measurability" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_measurability(
+                    &mut bridge.meta_state,
+                    &mut bridge.meta_ctx,
+                )
+            }) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "mono" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_mono(&mut bridge.meta_state, &mut bridge.meta_ctx)
+                    .map(|_| ())
+            }) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "grind" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_grind(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            if let Ok(s) = tactic_trivial(state) {
+                return Ok(s);
+            }
+            if let Ok(s) = tactic_assumption(state) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "bv_decide" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_bv_decide(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            if let Ok(s) = tactic_trivial(state) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "slim_check" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_slim_check(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "abel" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_abel(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            if let Ok(s) = try_ring_norm(state) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "group" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_group(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
         _ => Err(TacticError::UnknownTactic(tactic_name.to_string())),
     }
 }
 /// Depth-limited proof search (for `auto` tactic).
-fn auto_search(state: &TacticState, depth: usize) -> TacticResult {
+fn auto_search(
+    state: &TacticState,
+    depth: usize,
+    env: &oxilean_kernel::Environment,
+) -> TacticResult {
     if state.is_complete() {
         return Ok(state.clone());
     }
@@ -1193,7 +1377,7 @@ fn auto_search(state: &TacticState, depth: usize) -> TacticResult {
             "auto: depth limit reached".to_string(),
         ));
     }
-    if let Ok(s) = eval_tactic(state, "contradiction") {
+    if let Ok(s) = eval_tactic(state, "contradiction", env) {
         return Ok(s);
     }
     if let Ok(s) = try_ring_norm(state) {
@@ -1208,7 +1392,7 @@ fn auto_search(state: &TacticState, depth: usize) -> TacticResult {
     };
     if matches!(&goal.target, Expr::Pi(_, _, _, _)) {
         if let Ok(after_intro) = tactic_intro(state, Name::str("h_auto")) {
-            if let Ok(s) = auto_search(&after_intro, depth - 1) {
+            if let Ok(s) = auto_search(&after_intro, depth - 1, env) {
                 return Ok(s);
             }
         }
@@ -1216,19 +1400,19 @@ fn auto_search(state: &TacticState, depth: usize) -> TacticResult {
     match analyze_type(&goal.target) {
         TypeShape::And(_, _) | TypeShape::Iff(_, _) | TypeShape::Prod(_, _) => {
             if let Ok(after_ctor) = tactic_constructor(state) {
-                if let Ok(s) = auto_search_all_goals(&after_ctor, depth - 1) {
+                if let Ok(s) = auto_search_all_goals(&after_ctor, depth - 1, env) {
                     return Ok(s);
                 }
             }
         }
         TypeShape::Or(_, _) => {
             if let Ok(after_l) = tactic_left(state) {
-                if let Ok(s) = auto_search(&after_l, depth - 1) {
+                if let Ok(s) = auto_search(&after_l, depth - 1, env) {
                     return Ok(s);
                 }
             }
             if let Ok(after_r) = tactic_right(state) {
-                if let Ok(s) = auto_search(&after_r, depth - 1) {
+                if let Ok(s) = auto_search(&after_r, depth - 1, env) {
                     return Ok(s);
                 }
             }
@@ -1241,7 +1425,7 @@ fn auto_search(state: &TacticState, depth: usize) -> TacticResult {
     let hyps = goal.hypotheses.clone();
     for (_, hyp_ty) in &hyps {
         if let Ok(after_apply) = tactic_apply(state, hyp_ty.clone()) {
-            if let Ok(s) = auto_search_all_goals(&after_apply, depth - 1) {
+            if let Ok(s) = auto_search_all_goals(&after_apply, depth - 1, env) {
                 return Ok(s);
             }
         }
@@ -1249,7 +1433,7 @@ fn auto_search(state: &TacticState, depth: usize) -> TacticResult {
     if depth >= 2 {
         for (hyp_name, _) in &hyps {
             if let Ok(after_cases) = tactic_cases(state, hyp_name) {
-                if let Ok(s) = auto_search_all_goals(&after_cases, depth - 1) {
+                if let Ok(s) = auto_search_all_goals(&after_cases, depth - 1, env) {
                     return Ok(s);
                 }
             }
@@ -1260,14 +1444,18 @@ fn auto_search(state: &TacticState, depth: usize) -> TacticResult {
     ))
 }
 /// Apply auto_search to every open goal in sequence.
-fn auto_search_all_goals(state: &TacticState, depth: usize) -> TacticResult {
+fn auto_search_all_goals(
+    state: &TacticState,
+    depth: usize,
+    env: &oxilean_kernel::Environment,
+) -> TacticResult {
     let mut current = state.clone();
     let num_goals = current.num_goals();
     for _ in 0..num_goals {
         if current.is_complete() {
             break;
         }
-        current = auto_search(&current, depth)?;
+        current = auto_search(&current, depth, env)?;
     }
     Ok(current)
 }
@@ -1502,7 +1690,7 @@ pub(super) fn eval_nat_expr(expr: &Expr) -> Option<u64> {
                     "Nat.div" if args.len() >= 2 => {
                         let lhs = eval_nat_expr(args[args.len() - 2])?;
                         let rhs = eval_nat_expr(args[args.len() - 1])?;
-                        return if rhs == 0 { Some(0) } else { Some(lhs / rhs) };
+                        return Some(lhs.checked_div(rhs).unwrap_or(0));
                     }
                     "Nat.mod" if args.len() >= 2 => {
                         let lhs = eval_nat_expr(args[args.len() - 2])?;
@@ -1535,7 +1723,7 @@ pub(super) fn eval_nat_expr(expr: &Expr) -> Option<u64> {
                     "HDiv.hDiv" if args.len() >= 2 => {
                         let lhs = eval_nat_expr(args[args.len() - 2])?;
                         let rhs = eval_nat_expr(args[args.len() - 1])?;
-                        return if rhs == 0 { Some(0) } else { Some(lhs / rhs) };
+                        return Some(lhs.checked_div(rhs).unwrap_or(0));
                     }
                     "HMod.hMod" if args.len() >= 2 => {
                         let lhs = eval_nat_expr(args[args.len() - 2])?;
@@ -1569,7 +1757,7 @@ pub(super) fn eval_nat_expr(expr: &Expr) -> Option<u64> {
                         let a = eval_nat_expr(args[args.len() - 2])?;
                         let b = eval_nat_expr(args[args.len() - 1])?;
                         let g = nat_gcd(a, b);
-                        return if g == 0 { Some(0) } else { Some(a / g * b) };
+                        return Some(a.checked_div(g).unwrap_or(0).saturating_mul(b));
                     }
                     "Nat.factorial" | "Nat.fact" if !args.is_empty() => {
                         let n = eval_nat_expr(args[args.len() - 1])?;

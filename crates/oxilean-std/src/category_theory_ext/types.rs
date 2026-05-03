@@ -100,7 +100,7 @@ pub struct Category<O, M> {
     pub objects: Vec<O>,
     /// Morphisms as `(domain_idx, codomain_idx, data)`.
     pub morphisms: Vec<(usize, usize, M)>,
-    /// `identity[i]` is the index in `morphisms` of the identity on object `i`.
+    /// `identity\[i\]` is the index in `morphisms` of the identity on object `i`.
     pub identity: Vec<usize>,
 }
 impl<O, M: Clone + PartialEq> Category<O, M> {
@@ -151,11 +151,11 @@ pub struct EInfinityAlgebraOps<T: Clone + PartialEq> {
     pub elements: Vec<T>,
     /// The unit element index.
     pub unit_idx: usize,
-    /// Multiplication table: multiply[i][j] = index of elements[i] * elements[j].
+    /// Multiplication table: multiply\[i\]\[j\] = index of elements\[i\] * elements\[j\].
     pub multiply: Vec<Vec<usize>>,
 }
 impl<T: Clone + PartialEq> EInfinityAlgebraOps<T> {
-    /// Check commutativity: multiply[i][j] == multiply[j][i] for all i, j.
+    /// Check commutativity: multiply\[i\]\[j\] == multiply\[j\]\[i\] for all i, j.
     pub fn is_commutative(&self) -> bool {
         let n = self.elements.len();
         (0..n).all(|i| (0..n).all(|j| self.multiply[i][j] == self.multiply[j][i]))
@@ -233,7 +233,7 @@ impl Adjunction {
 /// A simplicial set X satisfies the Segal condition iff the natural map
 /// X_n → X_1 ×_{X_0} ··· ×_{X_0} X_1 is a bijection for all n ≥ 2.
 pub struct SegalConditionChecker {
-    /// The levels: segal_levels[n] stores the set of n-simplices as Vec<u64>.
+    /// The levels: segal_levels\[n\] stores the set of n-simplices as `Vec<u64>`.
     pub segal_levels: Vec<Vec<Vec<u64>>>,
 }
 impl SegalConditionChecker {
@@ -264,7 +264,7 @@ impl SegalConditionChecker {
 }
 /// A natural transformation between two functors (stored as component morphism indices).
 ///
-/// `components[i]` is the morphism index in the target for the component at object `i`.
+/// `components\[i\]` is the morphism index in the target for the component at object `i`.
 pub struct NatTrans {
     /// Components η_A, one per source object (morphism indices in target).
     pub components: Vec<usize>,
@@ -301,7 +301,7 @@ pub struct QuasiCategoryHorn {
     pub n: usize,
     /// The missing face k (0 < k < n for inner horns).
     pub k: usize,
-    /// The faces of the horn: faces[i] = Some(face_data) for i ≠ k, None for i = k.
+    /// The faces of the horn: faces\[i\] = Some(face_data) for i ≠ k, None for i = k.
     pub faces: Vec<Option<Vec<u64>>>,
 }
 impl QuasiCategoryHorn {
@@ -380,12 +380,12 @@ impl<O1, M1: Clone + PartialEq, O2, M2: Clone + PartialEq> Functor<O1, M1, O2, M
 /// Represents a bounded chain complex C_n (n from lo to hi) with differentials d_n : C_n → C_{n-1}.
 /// The derived category is obtained by inverting quasi-isomorphisms.
 pub struct DerivedCategoryComplex {
-    /// Dimensions of the chain groups (dim[i] = dimension of C_{lo + i}).
+    /// Dimensions of the chain groups (dim\[i\] = dimension of C_{lo + i}).
     pub dimensions: Vec<usize>,
     /// The lowest degree.
     pub lo_degree: i32,
-    /// Differentials as matrices (d[i] is d_{lo+i+1} : C_{lo+i+1} → C_{lo+i}).
-    /// Each matrix is stored row-major with dimensions[i] rows and dimensions[i+1] cols.
+    /// Differentials as matrices (d\[i\] is d_{lo+i+1} : C_{lo+i+1} → C_{lo+i}).
+    /// Each matrix is stored row-major with dimensions\[i\] rows and dimensions[i+1] cols.
     pub differentials: Vec<Vec<Vec<i32>>>,
 }
 impl DerivedCategoryComplex {

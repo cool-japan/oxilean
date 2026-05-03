@@ -68,7 +68,7 @@ pub fn abstract_lattice_ty() -> Expr {
 }
 /// `IntervalDomain : Type`
 ///
-/// The interval domain: elements are pairs [l, u] where l, u ∈ ℤ∪{-∞,+∞}.
+/// The interval domain: elements are pairs \[l, u\] where l, u ∈ ℤ∪{-∞,+∞}.
 /// Provides a sound over-approximation of sets of integers.
 pub fn interval_domain_ty() -> Expr {
     type0()
@@ -134,7 +134,7 @@ pub fn abstract_state_ty() -> Expr {
 }
 /// `AbstractTransformer : AbstractState → AbstractState`
 ///
-/// The abstract transformer [stmt]^#: maps pre-states to post-states.
+/// The abstract transformer \[stmt\]^#: maps pre-states to post-states.
 /// Must be a sound over-approximation of the concrete transformer.
 pub fn abstract_transformer_ty() -> Expr {
     arrow(cst("AbstractState"), cst("AbstractState"))
@@ -158,7 +158,7 @@ pub fn join_semilattice_ty() -> Expr {
 }
 /// `FixpointComputation : TransferFunction → AbstractState → AbstractState`
 ///
-/// Computes lfp([[while P: C]]^#) via Kleene iteration with widening.
+/// Computes lfp([\[while P: C\]]^#) via Kleene iteration with widening.
 /// Terminates because widening accelerates convergence.
 pub fn fixpoint_computation_ty() -> Expr {
     arrow(
@@ -542,7 +542,7 @@ pub fn abstract_distribution_ty() -> Expr {
 }
 /// `AbstractExpectation : AbstractDistribution → (Type → Real) → Real`
 ///
-/// Abstract expected value: an over-approximation of E_μ[f] for abstract μ.
+/// Abstract expected value: an over-approximation of E_μ\[f\] for abstract μ.
 /// Used in abstract interpretation of probabilistic loops.
 pub fn abstract_expectation_ty() -> Expr {
     arrow(

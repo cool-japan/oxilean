@@ -19,6 +19,7 @@ path = "src/lib.rs"
 
 [dependencies]
 oxilean-kernel = { workspace = true }
+oxiz-solver = { workspace = true }
 
 [dev-dependencies]
 

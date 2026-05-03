@@ -81,7 +81,7 @@ pub fn sde_ty() -> Expr {
     )
 }
 /// Optional stopping theorem: if τ is a bounded stopping time and X is a martingale,
-/// then E[X_τ] = E[X_0].
+/// then E\[X_τ\] = E\[X_0\].
 pub fn optional_stopping_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -143,7 +143,7 @@ pub fn brownian_motion_continuous_paths_ty() -> Expr {
     arrow(cst("BrownianMotionProcess"), prop())
 }
 /// `brownian_motion_quadratic_variation : BrownianMotionProcess → Real → Prop`
-/// The quadratic variation of Brownian motion satisfies [B]_t = t.
+/// The quadratic variation of Brownian motion satisfies \[B\]_t = t.
 pub fn brownian_motion_quadratic_variation_ty() -> Expr {
     arrow(cst("BrownianMotionProcess"), arrow(real_ty(), prop()))
 }
@@ -153,7 +153,7 @@ pub fn brownian_motion_zero_at_origin_ty() -> Expr {
     arrow(cst("BrownianMotionProcess"), prop())
 }
 /// `ito_isometry : AdaptedProcess → Real → Prop`
-/// The Itô isometry: E[(∫₀ᵀ H_s dW_s)²] = E[∫₀ᵀ H_s² ds].
+/// The Itô isometry: E\[(∫₀ᵀ H_s dW_s)²\] = E\[∫₀ᵀ H_s² ds\].
 pub fn ito_isometry_ty() -> Expr {
     arrow(cst("AdaptedProcess"), arrow(real_ty(), prop()))
 }
@@ -174,7 +174,7 @@ pub fn stratonovich_integral_ty() -> Expr {
     arrow(cst("AdaptedProcess"), stochastic_process_ty())
 }
 /// `ito_stratonovich_relation : AdaptedProcess → Prop`
-/// ∫ H ∘ dW = ∫ H dW + ½ ∫ [H, W] dt (correction term formula).
+/// ∫ H ∘ dW = ∫ H dW + ½ ∫ \[H, W\] dt (correction term formula).
 pub fn ito_stratonovich_relation_ty() -> Expr {
     arrow(cst("AdaptedProcess"), prop())
 }
@@ -271,7 +271,7 @@ pub fn poisson_process_ty() -> Expr {
     arrow(real_ty(), stochastic_process_ty())
 }
 /// `poisson_process_mean : Real → Real → Prop`
-/// E[N_t] = λt for a Poisson process with rate λ.
+/// E\[N_t\] = λt for a Poisson process with rate λ.
 pub fn poisson_process_mean_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), prop()))
 }
@@ -289,7 +289,7 @@ pub fn compound_poisson_process_ty() -> Expr {
     )
 }
 /// `compound_poisson_mean : Real → (Real → Real) → Real → Prop`
-/// E[Y_t] = λt·E[Z] for a compound Poisson process with rate λ and jump distribution Z.
+/// E\[Y_t\] = λt·E\[Z\] for a compound Poisson process with rate λ and jump distribution Z.
 pub fn compound_poisson_mean_ty() -> Expr {
     arrow(
         real_ty(),
@@ -366,7 +366,7 @@ pub fn optional_sampling_theorem_ty() -> Expr {
     )
 }
 /// `wald_identity : StochasticProcess → Nat → Prop`
-/// Wald's identity: E[X_τ] = E[X_1] · E[τ] for random walks with finite mean stopping time.
+/// Wald's identity: E\[X_τ\] = E\[X_1\] · E\[τ\] for random walks with finite mean stopping time.
 pub fn wald_identity_ty() -> Expr {
     arrow(stochastic_process_ty(), arrow(nat_ty(), prop()))
 }
@@ -385,7 +385,7 @@ pub fn semimartingale_integration_ty() -> Expr {
     )
 }
 /// `quadratic_covariation : StochasticProcess → StochasticProcess → StochasticProcess`
-/// The quadratic covariation [X, Y]_t of two semimartingales.
+/// The quadratic covariation \[X, Y\]_t of two semimartingales.
 pub fn quadratic_covariation_ty() -> Expr {
     arrow(
         stochastic_process_ty(),
@@ -547,7 +547,7 @@ pub fn random_walk(n_steps: u32, seed: u64) -> Vec<f64> {
     }
     path
 }
-/// Brownian motion approximation via a scaled symmetric random walk on [0, t_end].
+/// Brownian motion approximation via a scaled symmetric random walk on \[0, t_end\].
 ///
 /// Returns `(time, value)` pairs with `n_steps + 1` points.  The step size is
 /// `dt = t_end / n_steps`, and each increment is scaled by `√dt` so that the
@@ -649,7 +649,7 @@ pub fn standard_normal_cdf(x: f64) -> f64 {
 /// Black-Scholes call option price.
 ///
 /// C = S·N(d₁) − K·e^{−rT}·N(d₂)
-/// d₁ = [ln(S/K) + (r + σ²/2)T] / (σ√T)
+/// d₁ = \[ln(S/K) + (r + σ²/2)T\] / (σ√T)
 /// d₂ = d₁ − σ√T
 pub fn black_scholes_call(s: f64, k: f64, t: f64, r: f64, sigma: f64) -> f64 {
     if t <= 0.0 {
@@ -721,18 +721,18 @@ pub fn uniformly_integrable_martingale_ty() -> Expr {
     arrow(stochastic_process_ty(), prop())
 }
 /// `optional_stopping_ui : StochasticProcess → Nat → Prop`
-/// Optional stopping for uniformly integrable martingales: E[X_τ] = E[X_0]
+/// Optional stopping for uniformly integrable martingales: E\[X_τ\] = E\[X_0\]
 /// for any stopping time τ (not necessarily bounded).
 pub fn optional_stopping_ui_ty() -> Expr {
     arrow(stochastic_process_ty(), arrow(nat_ty(), prop()))
 }
 /// `doob_maximal_l2 : StochasticProcess → Nat → Prop`
-/// Doob's L² maximal inequality: E[max_{0≤k≤n} X_k²] ≤ 4 E[X_n²].
+/// Doob's L² maximal inequality: E\[max_{0≤k≤n} X_k²\] ≤ 4 E\[X_n²\].
 pub fn doob_maximal_l2_ty() -> Expr {
     arrow(stochastic_process_ty(), arrow(nat_ty(), prop()))
 }
 /// `doob_upcrossing_inequality : StochasticProcess → Real → Real → Prop`
-/// Doob's upcrossing inequality: E[U_n[a,b]] ≤ E[(X_n - a)⁺] / (b - a).
+/// Doob's upcrossing inequality: E[U_n\[a,b\]] ≤ E\[(X_n - a)⁺\] / (b - a).
 pub fn doob_upcrossing_inequality_ty() -> Expr {
     arrow(
         stochastic_process_ty(),
@@ -756,7 +756,7 @@ pub fn optional_sigma_algebra_ty() -> Expr {
 }
 /// `predictable_compensator : StochasticProcess → PredictableProcess → Prop`
 /// The predictable compensator (dual predictable projection): for increasing A,
-/// there exists unique predictable Â with E[∫ H dA] = E[∫ H dÂ] for bounded predictable H.
+/// there exists unique predictable Â with E\[∫ H dA\] = E\[∫ H dÂ\] for bounded predictable H.
 pub fn predictable_compensator_ty() -> Expr {
     arrow(
         stochastic_process_ty(),
@@ -803,7 +803,7 @@ pub fn ito_isometry_general_ty() -> Expr {
 }
 /// `StochasticExponential : StochasticProcess → StochasticProcess`
 /// The stochastic exponential (Doléans-Dade exponential):
-/// ε(X)_t = exp(X_t - X_0 - ½[X]_t) Π_{s≤t} (1 + ΔX_s) e^{-ΔX_s}.
+/// ε(X)_t = exp(X_t - X_0 - ½\[X\]_t) Π_{s≤t} (1 + ΔX_s) e^{-ΔX_s}.
 pub fn stochastic_exponential_ty() -> Expr {
     arrow(stochastic_process_ty(), stochastic_process_ty())
 }
@@ -813,7 +813,7 @@ pub fn stochastic_exponential_martingale_ty() -> Expr {
     arrow(stochastic_process_ty(), prop())
 }
 /// `novikov_condition : AdaptedProcess → Prop`
-/// Novikov's condition: E[exp(½ ∫₀ᵀ θ²_s ds)] < ∞ implies ε(∫ θ dW) is a true martingale.
+/// Novikov's condition: E\[exp(½ ∫₀ᵀ θ²_s ds)\] < ∞ implies ε(∫ θ dW) is a true martingale.
 pub fn novikov_condition_ty() -> Expr {
     arrow(cst("AdaptedProcess"), prop())
 }
@@ -843,7 +843,7 @@ pub fn first_ftam_ty() -> Expr {
     arrow(stochastic_process_ty(), prop())
 }
 /// `MalliavinDerivative : Type`
-/// The Malliavin derivative D: L²(Ω) → L²(Ω × [0,T]) is the gradient on Wiener space.
+/// The Malliavin derivative D: L²(Ω) → L²(Ω × \[0,T\]) is the gradient on Wiener space.
 pub fn malliavin_derivative_ty() -> Expr {
     type0()
 }
@@ -853,7 +853,7 @@ pub fn skorokhod_integral_ty() -> Expr {
     type0()
 }
 /// `malliavin_integration_by_parts : MalliavinDerivative → SkorokhodIntegral → Prop`
-/// Integration by parts: E[F δ(u)] = E[〈DF, u〉_{L²}] for smooth F and u in Dom(δ).
+/// Integration by parts: E\[F δ(u)\] = E\[〈DF, u〉_{L²}\] for smooth F and u in Dom(δ).
 pub fn malliavin_integration_by_parts_ty() -> Expr {
     arrow(
         cst("MalliavinDerivative"),
@@ -861,7 +861,7 @@ pub fn malliavin_integration_by_parts_ty() -> Expr {
     )
 }
 /// `clark_ocone_formula : StochasticProcess → MalliavinDerivative → Prop`
-/// Clark-Ocone formula: F = E[F] + ∫₀ᵀ E[D_t F | F_t] dW_t for F ∈ 𝔻^{1,2}.
+/// Clark-Ocone formula: F = E\[F\] + ∫₀ᵀ E[D_t F | F_t] dW_t for F ∈ 𝔻^{1,2}.
 pub fn clark_ocone_formula_ty() -> Expr {
     arrow(
         stochastic_process_ty(),
@@ -925,7 +925,7 @@ pub fn feller_process_existence_ty() -> Expr {
 }
 /// `kolmogorov_forward_equation : (Real → Real) → (Real → Real) → (Real → Real → Real) → Prop`
 /// Kolmogorov's forward (Fokker-Planck) equation for the density p(t,x) of X_t:
-/// ∂_t p = -(∂_x [μ p]) + ½ ∂_x² [σ² p].
+/// ∂_t p = -(∂_x \[μ p\]) + ½ ∂_x² \[σ² p\].
 pub fn kolmogorov_forward_equation_ty() -> Expr {
     arrow(
         arrow(real_ty(), real_ty()),
@@ -980,7 +980,7 @@ pub fn tanaka_formula_ty() -> Expr {
     arrow(cst("BrownianMotionProcess"), arrow(real_ty(), prop()))
 }
 /// `local_time : BrownianMotionProcess → Real → Real → Prop`
-/// The local time L_t^a satisfies the occupation times formula ∫ f(B_s) d[B]_s = ∫ f(a) L_t^a da.
+/// The local time L_t^a satisfies the occupation times formula ∫ f(B_s) d\[B\]_s = ∫ f(a) L_t^a da.
 pub fn local_time_ty() -> Expr {
     arrow(
         cst("BrownianMotionProcess"),
@@ -1031,148 +1031,7 @@ pub fn subordination_ty() -> Expr {
         arrow(stochastic_process_ty(), stochastic_process_ty()),
     )
 }
-/// `burkholder_davis_gundy : StochasticProcess → Real → Prop`
-/// The Burkholder-Davis-Gundy inequality: for p ≥ 1 and local martingale M,
-/// E[max_{s≤t} |M_s|^p] ≤ C_p E[[M]_t^{p/2}].
-pub fn burkholder_davis_gundy_ty() -> Expr {
-    arrow(stochastic_process_ty(), arrow(real_ty(), prop()))
-}
-/// `exponential_martingale_bound : StochasticProcess → Real → Prop`
-/// Exponential martingale inequality: P(max_{s≤t} M_s ≥ λ, [M]_t ≤ c) ≤ exp(-λ²/(2c)).
-pub fn exponential_martingale_bound_ty() -> Expr {
-    arrow(stochastic_process_ty(), arrow(real_ty(), prop()))
-}
-/// `azuma_hoeffding_martingale : StochasticProcess → Nat → Real → Prop`
-/// Azuma-Hoeffding inequality for martingales with bounded differences.
-pub fn azuma_hoeffding_martingale_ty() -> Expr {
-    arrow(
-        stochastic_process_ty(),
-        arrow(nat_ty(), arrow(real_ty(), prop())),
-    )
-}
-/// Register all extended stochastic process axioms into the kernel environment.
-pub fn register_sp_extended(env: &mut Environment) -> Result<(), String> {
-    let axioms: &[(&str, Expr)] = &[
-        ("martingale_l1_convergence", martingale_l1_convergence_ty()),
-        ("martingale_l2_convergence", martingale_l2_convergence_ty()),
-        ("martingale_as_convergence", martingale_as_convergence_ty()),
-        (
-            "reverse_martingale_convergence",
-            reverse_martingale_convergence_ty(),
-        ),
-        (
-            "uniformly_integrable_martingale",
-            uniformly_integrable_martingale_ty(),
-        ),
-        ("optional_stopping_ui", optional_stopping_ui_ty()),
-        ("doob_maximal_l2", doob_maximal_l2_ty()),
-        (
-            "doob_upcrossing_inequality",
-            doob_upcrossing_inequality_ty(),
-        ),
-        ("PredictableProcess", predictable_process_ty()),
-        ("PredictableSigmaAlgebra", predictable_sigma_algebra_ty()),
-        ("OptionalSigmaAlgebra", optional_sigma_algebra_ty()),
-        ("predictable_compensator", predictable_compensator_ty()),
-        ("natural_filtration", natural_filtration_ty()),
-        (
-            "brownian_filtration_complete",
-            brownian_filtration_complete_ty(),
-        ),
-        (
-            "brownian_increment_independence",
-            brownian_increment_independence_ty(),
-        ),
-        ("brownian_scaling", brownian_scaling_ty()),
-        ("brownian_time_inversion", brownian_time_inversion_ty()),
-        ("brownian_lil", brownian_lil_ty()),
-        ("ito_isometry_general", ito_isometry_general_ty()),
-        ("StochasticExponential", stochastic_exponential_ty()),
-        (
-            "stochastic_exponential_martingale",
-            stochastic_exponential_martingale_ty(),
-        ),
-        ("novikov_condition", novikov_condition_ty()),
-        ("cameron_martin_theorem", cameron_martin_theorem_ty()),
-        ("girsanov_multidim", girsanov_multidim_ty()),
-        (
-            "equivalent_martingale_measure",
-            equivalent_martingale_measure_ty(),
-        ),
-        ("first_ftam", first_ftam_ty()),
-        ("MalliavinDerivative", malliavin_derivative_ty()),
-        ("SkorokhodIntegral", skorokhod_integral_ty()),
-        (
-            "malliavin_integration_by_parts",
-            malliavin_integration_by_parts_ty(),
-        ),
-        ("clark_ocone_formula", clark_ocone_formula_ty()),
-        (
-            "malliavin_smooth_functional",
-            malliavin_smooth_functional_ty(),
-        ),
-        ("RoughPath", rough_path_ty()),
-        ("ControlledRoughPath", controlled_rough_path_ty()),
-        ("rough_path_integral", rough_path_integral_ty()),
-        ("rough_path_continuity", rough_path_continuity_ty()),
-        ("brownian_rough_path", brownian_rough_path_ty()),
-        ("rough_path_rde_solution", rough_path_rde_solution_ty()),
-        ("FellerSemigroup", feller_semigroup_ty()),
-        ("feller_process_existence", feller_process_existence_ty()),
-        (
-            "kolmogorov_forward_equation",
-            kolmogorov_forward_equation_ty(),
-        ),
-        (
-            "kolmogorov_backward_equation",
-            kolmogorov_backward_equation_ty(),
-        ),
-        ("generator_feller", generator_feller_ty()),
-        ("ReflectedBrownianMotion", reflected_brownian_motion_ty()),
-        ("reflected_bm_existence", reflected_bm_existence_ty()),
-        (
-            "skorokhod_reflection_problem",
-            skorokhod_reflection_problem_ty(),
-        ),
-        ("tanaka_formula", tanaka_formula_ty()),
-        ("local_time", local_time_ty()),
-        (
-            "InfinitelyDivisibleDistribution",
-            infinitely_divisible_distribution_ty(),
-        ),
-        (
-            "levy_process_infinitely_divisible",
-            levy_process_infinitely_divisible_ty(),
-        ),
-        ("PoissonRandomMeasure", poisson_random_measure_ty()),
-        (
-            "poisson_random_measure_levy",
-            poisson_random_measure_levy_ty(),
-        ),
-        ("stable_process", stable_process_ty()),
-        ("subordinator", subordinator_ty()),
-        ("subordination", subordination_ty()),
-        ("burkholder_davis_gundy", burkholder_davis_gundy_ty()),
-        (
-            "exponential_martingale_bound",
-            exponential_martingale_bound_ty(),
-        ),
-        (
-            "azuma_hoeffding_martingale",
-            azuma_hoeffding_martingale_ty(),
-        ),
-    ];
-    for (name, ty) in axioms {
-        env.add(Declaration::Axiom {
-            name: Name::str(*name),
-            univ_params: vec![],
-            ty: ty.clone(),
-        })
-        .map_err(|e| format!("Failed to add {name}: {e:?}"))?;
-    }
-    Ok(())
-}
-pub(super) fn sp_ext_gamma_sample(a: f64, b: f64, lcg: &mut Lcg) -> f64 {
+pub(super) fn sp_ext_gamma_sample(a: f64, b: f64, lcg: &mut super::types::Lcg) -> f64 {
     if a <= 0.0 || b <= 0.0 {
         return 0.0;
     }
@@ -1183,222 +1042,4 @@ pub(super) fn sp_ext_gamma_sample(a: f64, b: f64, lcg: &mut Lcg) -> f64 {
         sum += (-u.ln()) / b;
     }
     sum * (a / n as f64)
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_random_walk_length() {
-        for &n in &[0u32, 1, 10, 100] {
-            let path = random_walk(n, 42);
-            assert_eq!(
-                path.len(),
-                n as usize + 1,
-                "random_walk({n}) should have {n}+1 points"
-            );
-        }
-    }
-    #[test]
-    fn test_random_walk_deterministic() {
-        let a = random_walk(50, 12345);
-        let b = random_walk(50, 12345);
-        assert_eq!(a, b, "same seed must produce identical paths");
-    }
-    #[test]
-    fn test_brownian_motion_starts_at_zero() {
-        let path = brownian_motion(1.0, 100, 7);
-        assert_eq!(path.len(), 101);
-        let (t0, x0) = path[0];
-        assert!((t0 - 0.0).abs() < 1e-12, "t_0 should be 0");
-        assert!((x0 - 0.0).abs() < 1e-12, "B_0 should be 0");
-    }
-    #[test]
-    fn test_geometric_brownian_positive() {
-        let path = geometric_brownian_motion(100.0, 0.05, 0.2, 1.0, 252, 99);
-        for &(_, s) in &path {
-            assert!(s > 0.0, "GBM must remain strictly positive, got {s}");
-        }
-    }
-    #[test]
-    fn test_black_scholes_call_positive() {
-        let c = black_scholes_call(100.0, 100.0, 1.0, 0.05, 0.2);
-        assert!(c > 0.0, "call price must be positive, got {c}");
-        assert!(c <= 100.0, "call price must not exceed S, got {c}");
-    }
-    #[test]
-    fn test_black_scholes_put_call_parity() {
-        let (s, k, t, r, sigma) = (100.0, 95.0, 0.5, 0.04, 0.25);
-        let c = black_scholes_call(s, k, t, r, sigma);
-        let p = black_scholes_put(s, k, t, r, sigma);
-        let parity = k * (-r * t).exp() - s;
-        let diff = p - c - parity;
-        assert!(
-            diff.abs() < 1e-10,
-            "put-call parity violated: |P - C - (Ke^{{-rT}} - S)| = {:.2e}",
-            diff.abs()
-        );
-    }
-    #[test]
-    fn test_standard_normal_cdf() {
-        let n0 = standard_normal_cdf(0.0);
-        assert!((n0 - 0.5).abs() < 1e-6, "Φ(0) ≈ 0.5, got {n0}");
-        let ninf = standard_normal_cdf(8.0);
-        assert!((ninf - 1.0).abs() < 1e-6, "Φ(8) ≈ 1, got {ninf}");
-        let nminf = standard_normal_cdf(-8.0);
-        assert!(nminf.abs() < 1e-6, "Φ(-8) ≈ 0, got {nminf}");
-        assert!(standard_normal_cdf(1.0) > standard_normal_cdf(0.0));
-    }
-    #[test]
-    fn test_ct_markov_chain_new() {
-        let states = vec!["A".to_string(), "B".to_string(), "C".to_string()];
-        let q = vec![
-            vec![-2.0, 1.0, 1.0],
-            vec![1.0, -3.0, 2.0],
-            vec![2.0, 1.0, -3.0],
-        ];
-        let chain = CtMarkovChain::new(states.clone(), q.clone());
-        assert_eq!(chain.states.len(), 3);
-        assert_eq!(chain.rate_matrix.len(), 3);
-        let ht = chain.expected_hitting_time(0, 1);
-        assert!((ht - 1.0).abs() < 1e-12, "E[T_{{AB}}] = 1, got {ht}");
-        let sd = chain.stationary_distribution().expect("should converge");
-        let total: f64 = sd.iter().sum();
-        assert!((total - 1.0).abs() < 1e-6, "π sums to 1, got {total}");
-    }
-    #[test]
-    fn test_euler_maruyama_brownian() {
-        let em = EulerMaruyama::new(|_x| 0.0, |_x| 1.0);
-        let path = em.simulate(0.0, 1.0, 100, 42);
-        assert_eq!(path.len(), 101);
-        let (t0, x0) = path[0];
-        assert!((t0).abs() < 1e-12);
-        assert!((x0).abs() < 1e-12);
-    }
-    #[test]
-    fn test_ou_process_stationary_variance() {
-        let ou = OrnsteinUhlenbeckProcess::new(2.0, 0.0, 1.0);
-        assert!((ou.stationary_variance() - 0.25).abs() < 1e-12);
-        assert!((ou.stationary_std() - 0.5).abs() < 1e-12);
-    }
-    #[test]
-    fn test_ou_simulate_length() {
-        let ou = OrnsteinUhlenbeckProcess::new(1.0, 0.0, 0.3);
-        let path = ou.simulate(1.0, 5.0, 200, 7);
-        assert_eq!(path.len(), 201);
-    }
-    #[test]
-    fn test_gbm_expected_value() {
-        let gbm = GeometricBrownianMotionProcess::new(0.1, 0.2);
-        let ev = gbm.expected_value(100.0, 1.0);
-        assert!((ev - 100.0 * (0.1f64).exp()).abs() < 1e-10);
-    }
-    #[test]
-    fn test_gbm_simulate_positive() {
-        let gbm = GeometricBrownianMotionProcess::new(0.05, 0.3);
-        let path = gbm.simulate(50.0, 2.0, 500, 13);
-        for &(_, s) in &path {
-            assert!(s > 0.0, "GBM values must be positive, got {s}");
-        }
-    }
-    #[test]
-    fn test_poisson_arrivals_nonnegative() {
-        let pp = PoissonProcessSimulator::new(5.0);
-        let arrivals = pp.arrival_times(3.0, 77);
-        for &t in &arrivals {
-            assert!(t >= 0.0 && t <= 3.0, "arrival time {t} out of [0,3]");
-        }
-        let expected = pp.expected_count(3.0);
-        assert!((expected - 15.0).abs() < 1e-10);
-    }
-    #[test]
-    fn test_poisson_counting_process_nondecreasing() {
-        let pp = PoissonProcessSimulator::new(3.0);
-        let path = pp.counting_process(5.0, 100, 42);
-        assert_eq!(path.len(), 101);
-        for i in 1..path.len() {
-            assert!(
-                path[i].1 >= path[i - 1].1,
-                "counting process must be non-decreasing"
-            );
-        }
-    }
-    #[test]
-    fn test_black_scholes_pricer_greeks() {
-        let pricer = BlackScholesPricer::new(100.0, 100.0, 1.0, 0.05, 0.2);
-        let delta = pricer.call_delta();
-        assert!(delta > 0.4 && delta < 0.7, "call delta = {delta}");
-        let put_delta = pricer.put_delta();
-        assert!(
-            put_delta < 0.0,
-            "put delta should be negative, got {put_delta}"
-        );
-        let gamma = pricer.gamma();
-        assert!(gamma > 0.0, "gamma should be positive, got {gamma}");
-        let vega = pricer.vega();
-        assert!(vega > 0.0, "vega should be positive, got {vega}");
-    }
-    #[test]
-    fn test_black_scholes_pricer_put_call_parity() {
-        let pricer = BlackScholesPricer::new(100.0, 95.0, 0.5, 0.04, 0.25);
-        let c = pricer.call_price();
-        let p = pricer.put_price();
-        let fwd = pricer.strike * (-pricer.rate * pricer.time_to_expiry).exp();
-        let parity = c - p - (pricer.spot - fwd);
-        assert!(parity.abs() < 1e-10, "put-call parity violated: {parity}");
-    }
-    #[test]
-    fn test_black_scholes_pricer_implied_vol() {
-        let pricer = BlackScholesPricer::new(100.0, 100.0, 1.0, 0.05, 0.2);
-        let call = pricer.call_price();
-        let iv = pricer
-            .implied_volatility_call(call)
-            .expect("IV should converge");
-        assert!(
-            (iv - 0.2).abs() < 1e-5,
-            "recovered IV = {iv:.6}, expected 0.2"
-        );
-    }
-    #[test]
-    fn test_compound_poisson_statistics() {
-        let cpp = CompoundPoissonProcess::new(2.0, 1.0, 0.5);
-        let mean = cpp.expected_value(1.0);
-        assert!((mean - 2.0).abs() < 1e-10);
-        let var = cpp.variance(1.0);
-        assert!((var - 2.5).abs() < 1e-10);
-    }
-    #[test]
-    fn test_compound_poisson_simulate_length() {
-        let cpp = CompoundPoissonProcess::new(1.0, 0.5, 0.2);
-        let path = cpp.simulate(10.0, 100, 42);
-        assert_eq!(path.len(), 101);
-    }
-    #[test]
-    fn test_build_stochastic_processes_env() {
-        let mut env = Environment::new();
-        build_stochastic_processes_env(&mut env);
-        assert!(
-            env.get(&Name::str("brownian_motion_existence")).is_some(),
-            "brownian_motion_existence should be registered"
-        );
-        assert!(
-            env.get(&Name::str("feynman_kac_formula")).is_some(),
-            "feynman_kac_formula should be registered"
-        );
-        assert!(
-            env.get(&Name::str("levy_khintchine_formula")).is_some(),
-            "levy_khintchine_formula should be registered"
-        );
-        assert!(
-            env.get(&Name::str("poisson_superposition")).is_some(),
-            "poisson_superposition should be registered"
-        );
-        assert!(
-            env.get(&Name::str("fokker_planck_equation")).is_some(),
-            "fokker_planck_equation should be registered"
-        );
-        assert!(
-            env.get(&Name::str("semimartingale_integration")).is_some(),
-            "semimartingale_integration should be registered"
-        );
-    }
 }

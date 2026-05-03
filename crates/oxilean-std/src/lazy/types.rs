@@ -284,7 +284,7 @@ impl CoNatRs {
     pub fn is_infinity(&self) -> bool {
         matches!(self, CoNatRs::Infinity)
     }
-    /// Convert to Option<u64>.
+    /// Convert to `Option<u64>`.
     pub fn to_finite(self) -> Option<u64> {
         match self {
             CoNatRs::Finite(n) => Some(n),

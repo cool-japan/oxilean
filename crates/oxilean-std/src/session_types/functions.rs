@@ -802,7 +802,7 @@ pub fn prob_stype_ty() -> Expr {
     type0()
 }
 /// `ProbChoice : SType → SType → Expr`
-/// `S₁ ⊕[p] S₂` — choose S₁ with probability p, S₂ with probability 1-p.
+/// `S₁ ⊕\[p\] S₂` — choose S₁ with probability p, S₂ with probability 1-p.
 pub fn prob_choice_ty() -> Expr {
     arrow(
         cst("SType"),

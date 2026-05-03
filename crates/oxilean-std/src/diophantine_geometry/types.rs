@@ -502,7 +502,7 @@ impl ThueSolver {
     pub fn degree(&self) -> usize {
         self.coeffs.len().saturating_sub(1)
     }
-    /// Evaluate F(x, y): F = sum_{i=0}^{d} coeffs[i] * x^{d-i} * y^i.
+    /// Evaluate F(x, y): F = sum_{i=0}^{d} coeffs\[i\] * x^{d-i} * y^i.
     pub fn evaluate(&self, x: i64, y: i64) -> i64 {
         let d = self.degree();
         let mut result = 0i64;
@@ -531,7 +531,7 @@ impl ThueSolver {
 }
 /// A Weil height function on projective space P^n(Q).
 ///
-/// For P = [x₀ : x₁ : ... : xₙ] with integer coordinates (no common factor),
+/// For P = \[x₀ : x₁ : ... : xₙ\] with integer coordinates (no common factor),
 /// the naive height is H(P) = max |xᵢ|, and the logarithmic height is h(P) = log H(P).
 #[derive(Debug, Clone)]
 pub struct WeilHeight {
@@ -570,7 +570,7 @@ impl WeilHeight {
 pub struct MordellWeilGroup {
     /// The rank r of the free part Z^r.
     pub rank: usize,
-    /// Orders of cyclic factors in the torsion subgroup (e.g., [2, 6] for Z/2 × Z/6).
+    /// Orders of cyclic factors in the torsion subgroup (e.g., \[2, 6\] for Z/2 × Z/6).
     pub torsion_orders: Vec<u32>,
 }
 impl MordellWeilGroup {

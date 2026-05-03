@@ -102,7 +102,7 @@ pub fn deque_ty() -> Expr {
 }
 /// `IntervalTree α : Type 0` — interval tree for overlap queries.
 ///
-/// Stores intervals [lo, hi] with associated values; supports O(log n) overlap queries.
+/// Stores intervals \[lo, hi\] with associated values; supports O(log n) overlap queries.
 pub fn interval_tree_ty() -> Expr {
     arrow(type0(), type0())
 }

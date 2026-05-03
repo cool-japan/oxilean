@@ -12,7 +12,7 @@ use super::functions::*;
 pub struct FundamentalGroupData {
     /// Space name (e.g. "S^1", "T^2", "RP^2").
     pub space: String,
-    /// Generator names (e.g. ["a"], ["a", "b"]).
+    /// Generator names (e.g. ["a"], \["a", "b"\]).
     pub generators: Vec<String>,
     /// Relations as words in the generators (e.g. "aba^{-1}b^{-1} = 1").
     pub relations: Vec<String>,

@@ -612,17 +612,17 @@ impl ColorCodingFPT {
 pub enum WClasses {
     /// Fixed-parameter tractable (lowest complexity).
     FPT,
-    /// W[1]: k-clique-hard problems.
+    /// W\[1\]: k-clique-hard problems.
     W1,
-    /// W[2]: k-dominating-set-hard problems.
+    /// W\[2\]: k-dominating-set-hard problems.
     W2,
-    /// W[P]: W-hierarchy top (bounded above by XP).
+    /// W\[P\]: W-hierarchy top (bounded above by XP).
     WP,
     /// Slice-wise polynomial: polynomial for each fixed k.
     XP,
 }
 impl WClasses {
-    /// Returns a description of the containment chain FPT ⊆ W[1] ⊆ W[2] ⊆ ... ⊆ XP.
+    /// Returns a description of the containment chain FPT ⊆ W\[1\] ⊆ W\[2\] ⊆ ... ⊆ XP.
     pub fn containment_chain(&self) -> String {
         "FPT ⊆ W[1] ⊆ W[2] ⊆ W[P] ⊆ XP".to_string()
     }
@@ -663,7 +663,7 @@ impl TreewidthAlgorithm {
 /// Tree decomposition node: bags of vertex ids.
 #[derive(Debug, Clone)]
 pub struct TreeDecomp {
-    /// bags[i] = set of vertices in bag i
+    /// bags\[i\] = set of vertices in bag i
     pub bags: Vec<Vec<usize>>,
     /// adjacency in the decomposition tree
     pub tree_adj: Vec<Vec<usize>>,

@@ -510,7 +510,7 @@ pub fn bounded_quantification_ty() -> Expr {
         arrow(arrow(simple_type_ty(), simple_type_ty()), simple_type_ty()),
     )
 }
-/// FBoundedPolymorphism: F-bounded quantification ∀ X <: F[X]. U
+/// FBoundedPolymorphism: F-bounded quantification ∀ X <: F\[X\]. U
 pub fn f_bounded_polymorphism_ty() -> Expr {
     arrow(
         arrow(simple_type_ty(), simple_type_ty()),
@@ -789,18 +789,18 @@ pub fn deadlock_freedom_ty() -> Expr {
 pub fn session_type_completeness_ty() -> Expr {
     prop()
 }
-/// RecursiveType: a type μX.F[X] — least fixed point of type functor F
+/// RecursiveType: a type μX.F\[X\] — least fixed point of type functor F
 pub fn recursive_type_ty() -> Expr {
     arrow(arrow(simple_type_ty(), simple_type_ty()), simple_type_ty())
 }
-/// IsoRecursiveFold: fold : F[μX.F] → μX.F
+/// IsoRecursiveFold: fold : F\[μX.F\] → μX.F
 pub fn iso_recursive_fold_ty() -> Expr {
     arrow(
         arrow(simple_type_ty(), simple_type_ty()),
         arrow(simple_type_ty(), simple_type_ty()),
     )
 }
-/// IsoRecursiveUnfold: unfold : μX.F → F[μX.F]
+/// IsoRecursiveUnfold: unfold : μX.F → F\[μX.F\]
 pub fn iso_recursive_unfold_ty() -> Expr {
     arrow(
         arrow(simple_type_ty(), simple_type_ty()),
@@ -811,7 +811,7 @@ pub fn iso_recursive_unfold_ty() -> Expr {
 pub fn equi_recursive_type_ty() -> Expr {
     arrow(arrow(simple_type_ty(), simple_type_ty()), simple_type_ty())
 }
-/// TypeUnrolling: μX.F ≡ F[μX.F] (equi-recursive unrolling)
+/// TypeUnrolling: μX.F ≡ F\[μX.F\] (equi-recursive unrolling)
 pub fn type_unrolling_ty() -> Expr {
     arrow(arrow(simple_type_ty(), simple_type_ty()), prop())
 }
@@ -819,7 +819,7 @@ pub fn type_unrolling_ty() -> Expr {
 pub fn recursive_type_contraction_ty() -> Expr {
     prop()
 }
-/// KindPolymorphism: ∀κ. F[κ] — quantification over kinds
+/// KindPolymorphism: ∀κ. F\[κ\] — quantification over kinds
 pub fn kind_polymorphism_ty() -> Expr {
     arrow(arrow(kind_ty(), kind_ty()), kind_ty())
 }
@@ -889,7 +889,7 @@ pub fn setoid_ty() -> Expr {
 pub fn quotient_type_ty() -> Expr {
     arrow(setoid_ty(), type0())
 }
-/// QuotientIntro: [a] : A / ~ (introduction rule)
+/// QuotientIntro: \[a\] : A / ~ (introduction rule)
 pub fn quotient_intro_ty() -> Expr {
     arrow(setoid_ty(), arrow(setoid_carrier_ty(), quotient_type_ty()))
 }
@@ -903,7 +903,7 @@ pub fn quotient_elim_ty() -> Expr {
         ),
     )
 }
-/// QuotientComputation: [a] elim f = f a
+/// QuotientComputation: \[a\] elim f = f a
 pub fn quotient_computation_ty() -> Expr {
     arrow(setoid_ty(), prop())
 }
@@ -979,7 +979,7 @@ pub fn monadic_type_ty() -> Expr {
         arrow(simple_type_ty(), simple_type_ty()),
     )
 }
-/// MonadicTyping: Γ ⊢ t : M[A] for monad M
+/// MonadicTyping: Γ ⊢ t : M\[A\] for monad M
 pub fn monadic_typing_ty() -> Expr {
     arrow(
         typing_context_ty(),

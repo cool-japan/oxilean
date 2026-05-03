@@ -22,7 +22,7 @@ impl EvictionPolicy for TtlPolicy {
                 alive.push(e);
             }
         }
-        expired.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+        expired.sort_by_key(|a| a.created_at);
         alive.sort_by(|a, b| {
             let rem_a = self.max_age.saturating_sub(a.age());
             let rem_b = self.max_age.saturating_sub(b.age());

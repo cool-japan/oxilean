@@ -310,11 +310,7 @@ impl SpanStats {
     #[allow(dead_code)]
     #[allow(missing_docs)]
     pub fn avg_len(&self) -> usize {
-        if self.count == 0 {
-            0
-        } else {
-            self.total_len / self.count
-        }
+        self.total_len.checked_div(self.count).unwrap_or(0)
     }
 }
 /// Identifies a source file by an integer ID.

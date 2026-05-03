@@ -173,7 +173,7 @@ pub fn normal_bundle_exceptional_ty() -> Expr {
         ),
     )
 }
-/// `blow_up_chow_ring : A*(Bl_Z X) ≅ A*(X)[ξ]/(χ_r + c_1 ξ^{r-1} + … + c_r, ξ^r + j_* s_0 + …)`
+/// `blow_up_chow_ring : A*(Bl_Z X) ≅ A*(X)\[ξ\]/(χ_r + c_1 ξ^{r-1} + … + c_r, ξ^r + j_* s_0 + …)`
 pub fn blow_up_chow_ring_ty() -> Expr {
     arrow(
         cst("Variety"),

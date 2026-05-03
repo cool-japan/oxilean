@@ -64,7 +64,7 @@ pub fn assertion_ty() -> Expr {
 pub fn hoare_triple_ty() -> Expr {
     arrow(prop(), arrow(type0(), arrow(prop(), prop())))
 }
-/// TotalHoareTriple: [P] C [Q] — total Hoare triple (guarantees termination).
+/// TotalHoareTriple: \[P\] C \[Q\] — total Hoare triple (guarantees termination).
 /// Type: Prop → Program → Prop → Prop
 pub fn total_hoare_triple_ty() -> Expr {
     arrow(prop(), arrow(type0(), arrow(prop(), prop())))

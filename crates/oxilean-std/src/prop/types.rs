@@ -236,9 +236,9 @@ pub struct KripkeModel {
     pub num_worlds: usize,
     /// Number of propositional variables.
     pub num_vars: usize,
-    /// Accessibility relation: access[i][j] = world i can see world j.
+    /// Accessibility relation: access\[i\]\[j\] = world i can see world j.
     pub access: Vec<Vec<bool>>,
-    /// Valuation: val[w][p] = atom p is true at world w.
+    /// Valuation: val\[w\]\[p\] = atom p is true at world w.
     pub val: Vec<Vec<bool>>,
 }
 #[allow(dead_code)]

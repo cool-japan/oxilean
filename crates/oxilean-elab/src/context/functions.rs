@@ -451,10 +451,8 @@ pub fn collect_free_vars_in_locals(locals: &[LocalEntry]) -> Vec<FVarId> {
 }
 fn collect_fvars_in_expr(expr: &oxilean_kernel::Expr, acc: &mut Vec<FVarId>) {
     match expr {
-        Expr::FVar(id) => {
-            if !acc.contains(id) {
-                acc.push(*id);
-            }
+        Expr::FVar(id) if !acc.contains(id) => {
+            acc.push(*id);
         }
         Expr::App(f, a) => {
             collect_fvars_in_expr(f, acc);
@@ -630,7 +628,7 @@ pub fn sort_locals_by_depth(entries: &mut Vec<LocalEntry>) {
 #[allow(dead_code)]
 pub fn locals_innermost_first(entries: &[LocalEntry]) -> Vec<&LocalEntry> {
     let mut refs: Vec<&LocalEntry> = entries.iter().collect();
-    refs.sort_by(|a, b| b.depth.cmp(&a.depth));
+    refs.sort_by_key(|b| std::cmp::Reverse(b.depth));
     refs
 }
 /// Find all locals at a specific depth.

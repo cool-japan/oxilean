@@ -343,7 +343,7 @@ pub fn vec_transpose<T: Clone>(matrix: &[Vec<T>]) -> Vec<Vec<T>> {
 }
 /// Produce all combinations of one element from each inner slice.
 ///
-/// E.g. `[[1,2],[3,4]]` → `[[1,3],[1,4],[2,3],[2,4]]`.
+/// E.g. `[\[1,2\],\[3,4\]]` → `[\[1,3\],\[1,4\],\[2,3\],\[2,4\]]`.
 #[allow(dead_code)]
 pub fn vec_cartesian_product<T: Clone>(vecs: &[Vec<T>]) -> Vec<Vec<T>> {
     if vecs.is_empty() {
@@ -969,7 +969,7 @@ pub fn vec_ext_build_functor_map_id(env: &mut Environment) -> std::result::Resul
 pub fn vec_ext_build_functor_map_comp(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall3_axiom("Vec.functor_map_comp", env)
 }
-/// `Vec.monad_left_id : ∀ α β (a : α) (f : α → Vec β), andThen [a] f = f a`
+/// `Vec.monad_left_id : ∀ α β (a : α) (f : α → Vec β), andThen \[a\] f = f a`
 pub fn vec_ext_build_monad_left_id(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.monad_left_id", env)
 }
@@ -985,11 +985,11 @@ pub fn vec_ext_build_monad_assoc(env: &mut Environment) -> std::result::Result<(
 pub fn vec_ext_build_ap_identity(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall1_axiom("Vec.ap_identity", env)
 }
-/// `Vec.ap_homomorphism : ap [f] [v] = [f v]`
+/// `Vec.ap_homomorphism : ap \[f\] \[v\] = \[f v\]`
 pub fn vec_ext_build_ap_homomorphism(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.ap_homomorphism", env)
 }
-/// `Vec.ap_interchange : ap fs [v] = ap [fun f => f v] fs`
+/// `Vec.ap_interchange : ap fs \[v\] = ap \[fun f => f v\] fs`
 pub fn vec_ext_build_ap_interchange(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.ap_interchange", env)
 }
@@ -1017,7 +1017,7 @@ pub fn vec_ext_build_foldl_cons(env: &mut Environment) -> std::result::Result<()
 pub fn vec_ext_build_foldl_foldr_duality(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.foldl_foldr_duality", env)
 }
-/// `Vec.scanl_nil : scanl f z [] = [z]`
+/// `Vec.scanl_nil : scanl f z [] = \[z\]`
 pub fn vec_ext_build_scanl_nil(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.scanl_nil", env)
 }
@@ -1025,7 +1025,7 @@ pub fn vec_ext_build_scanl_nil(env: &mut Environment) -> std::result::Result<(),
 pub fn vec_ext_build_scanl_cons(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.scanl_cons", env)
 }
-/// `Vec.scanr_nil : scanr f z [] = [z]`
+/// `Vec.scanr_nil : scanr f z [] = \[z\]`
 pub fn vec_ext_build_scanr_nil(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.scanr_nil", env)
 }
@@ -1041,7 +1041,7 @@ pub fn vec_ext_build_scanl_last(env: &mut Environment) -> std::result::Result<()
 pub fn vec_ext_build_sort_is_permutation(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall1_axiom("Vec.sort_is_permutation", env)
 }
-/// `Vec.sort_is_sorted : ∀ α [Ord α] xs, isSorted (sort xs)`
+/// `Vec.sort_is_sorted : ∀ α \[Ord α\] xs, isSorted (sort xs)`
 pub fn vec_ext_build_sort_is_sorted(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall1_axiom("Vec.sort_is_sorted", env)
 }
@@ -1069,7 +1069,7 @@ pub fn vec_ext_build_map_filter_fusion(env: &mut Environment) -> std::result::Re
 pub fn vec_ext_build_fold_build_duality(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.fold_build_duality", env)
 }
-/// `Vec.fin_index_get : ∀ {α n} (xs : Vec α n) (i : Fin n), xs[i] is within bounds`
+/// `Vec.fin_index_get : ∀ {α n} (xs : Vec α n) (i : Fin n), xs\[i\] is within bounds`
 pub fn vec_ext_build_fin_index_get(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall2_axiom("Vec.fin_index_get", env)
 }
@@ -1177,7 +1177,7 @@ pub fn vec_ext_build_concat_map_id(env: &mut Environment) -> std::result::Result
 pub fn vec_ext_build_concat_map_assoc(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall3_axiom("Vec.concat_map_assoc", env)
 }
-/// `Vec.flatten_singleton : flatten [[x1], [x2], ...] = [x1, x2, ...]`
+/// `Vec.flatten_singleton : flatten [[x1], [x2], ...] = \[x1, x2, ...\]`
 pub fn vec_ext_build_flatten_singleton(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall1_axiom("Vec.flatten_singleton", env)
 }
@@ -1199,7 +1199,7 @@ pub fn vec_ext_build_partition_reconstruct(
 pub fn vec_ext_build_groupby_flatten(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_forall1_axiom("Vec.groupBy_flatten", env)
 }
-/// `Vec.prefix_sum_correct : prefixSum xs[i] = sum (take (i+1) xs)`
+/// `Vec.prefix_sum_correct : prefixSum xs\[i\] = sum (take (i+1) xs)`
 pub fn vec_ext_build_prefix_sum_correct(env: &mut Environment) -> std::result::Result<(), String> {
     vec_ext_prop_axiom("Vec.prefix_sum_correct", env)
 }

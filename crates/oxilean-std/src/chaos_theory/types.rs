@@ -323,7 +323,7 @@ impl IteratedFunctionSystemExt {
 ///
 /// For r > 3.57 the map is generically chaotic (period-doubling route to chaos).
 pub struct LogisticMap {
-    /// Growth parameter r ∈ [0, 4].
+    /// Growth parameter r ∈ \[0, 4\].
     pub r: f64,
 }
 impl LogisticMap {
@@ -387,7 +387,7 @@ impl EntropyOfMap {
     }
     /// Topological entropy of the logistic map with parameter r.
     ///
-    /// For r ∈ [2, 4]: h(f_r) = max(0, log(r) − log(2)) (Misiurewicz–Szlenk formula).
+    /// For r ∈ \[2, 4\]: h(f_r) = max(0, log(r) − log(2)) (Misiurewicz–Szlenk formula).
     pub fn logistic(r: f64) -> Self {
         let h = if r >= 2.0 {
             (r / 2.0_f64).ln().max(0.0)
@@ -996,7 +996,7 @@ impl LorenzAttractorSimulator {
 }
 /// A bifurcation diagram: maps parameter values to long-time orbit samples.
 pub struct BifurcationDiagram {
-    /// Range of parameter values [r_min, r_max].
+    /// Range of parameter values \[r_min, r_max\].
     pub r_min: f64,
     /// Upper end of parameter range.
     pub r_max: f64,

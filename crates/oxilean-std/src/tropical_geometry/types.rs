@@ -254,7 +254,7 @@ impl TropicalGrassmannianExt {
 /// A square tropical matrix with min-plus arithmetic.
 ///
 /// Entries are `TropicalNumber` values; matrix multiplication uses
-/// tropical arithmetic: `(A ⊗ B)[i][j] = min_k(A[i][k] ⊗ B[k][j])`.
+/// tropical arithmetic: `(A ⊗ B)\[i\]\[j\] = min_k(A\[i\]\[k\] ⊗ B\[k\]\[j\])`.
 #[derive(Debug, Clone)]
 pub struct TropicalMatrix {
     /// Number of rows/columns.
@@ -286,7 +286,7 @@ impl TropicalMatrix {
     pub fn set(&mut self, i: usize, j: usize, v: TropicalNumber) {
         self.data[i * self.n + j] = v;
     }
-    /// Tropical matrix multiplication: `(A ⊗ B)[i][j] = min_k(A[i][k] + B[k][j])`.
+    /// Tropical matrix multiplication: `(A ⊗ B)\[i\]\[j\] = min_k(A\[i\]\[k\] + B\[k\]\[j\])`.
     pub fn trop_mul(&self, other: &Self) -> Self {
         debug_assert_eq!(self.n, other.n, "matrix size mismatch");
         let n = self.n;
@@ -443,7 +443,7 @@ impl ValuatedMatroid {
     }
 }
 /// A tropical hyperplane in ℝⁿ defined by the tropical linear form
-/// `min(normal[0] + x₀, …, normal[n-1] + x_{n-1}, constant)`.
+/// `min(normal\[0\] + x₀, …, normal[n-1] + x_{n-1}, constant)`.
 #[derive(Debug, Clone)]
 pub struct TropicalHyperplane {
     /// Coefficients of the tropical linear form (one per variable).
@@ -458,7 +458,7 @@ impl TropicalHyperplane {
     }
     /// Evaluates the tropical linear form at `point`.
     ///
-    /// Returns `min(normal[i] + point[i] for all i, constant)`.
+    /// Returns `min(normal\[i\] + point\[i\] for all i, constant)`.
     pub fn evaluate_tropical(&self, point: &[f64]) -> f64 {
         let linear_min = self
             .normal
@@ -717,7 +717,7 @@ impl TropicalHypersurfaceExt {
 /// using the Karp algorithm (max-cycle-mean via repeated multiplication).
 ///
 /// The matrix is interpreted with **max-plus** arithmetic:
-/// `(A ⊗ B)[i][j] = max_k(A[i][k] + B[k][j])`.
+/// `(A ⊗ B)\[i\]\[j\] = max_k(A\[i\]\[k\] + B\[k\]\[j\])`.
 ///
 /// Returns `None` if the matrix is empty.
 pub struct TropicalEigenvalueComputer {
@@ -761,7 +761,7 @@ impl TropicalEigenvalueComputer {
         }
         result
     }
-    /// Karp's algorithm: λ* = max_i min_{k=0..n-1} (Aⁿ[j][i] − Aᵏ[j][i]) / (n − k).
+    /// Karp's algorithm: λ* = max_i min_{k=0..n-1} (Aⁿ\[j\]\[i\] − Aᵏ\[j\]\[i\]) / (n − k).
     ///
     /// Returns the max-plus eigenvalue (spectral radius) of the matrix,
     /// or `None` if the matrix is empty or has no finite entry.
@@ -817,7 +817,7 @@ impl TropicalConvexHull {
     ///
     /// A point `z` belongs to the tropical convex hull of `{v₁, …, vₘ}` iff
     /// for every coordinate index `j`, there exists `i` such that
-    /// `z[j] − vᵢ[j] = min_k(z[k] − vᵢ[k])`.
+    /// `z\[j\] − vᵢ\[j\] = min_k(z\[k\] − vᵢ\[k\])`.
     ///
     /// This checks the necessary condition: `z` lies in the row-span of the
     /// point matrix under tropical (min, +) arithmetic.
@@ -1523,7 +1523,7 @@ impl TropicalSegment {
     }
     /// Returns the parametric point on the segment at parameter `t ∈ ℝ`.
     ///
-    /// Computes `min(start[i] + t, end[i])` coordinate-wise, which corresponds
+    /// Computes `min(start\[i\] + t, end\[i\])` coordinate-wise, which corresponds
     /// to the tropical combination `(t ⊗ start) ⊕ (0 ⊗ end)`.
     pub fn parametric_point(&self, t: f64) -> Vec<f64> {
         self.start

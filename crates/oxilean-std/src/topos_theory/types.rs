@@ -225,7 +225,7 @@ impl EffectiveTopos {
 ///
 /// Provides typed lambda calculus with dependent types, where:
 /// - The power type P(A) = A → Ω is the type of "propositions about A"
-/// - The internal hom [A, B] is the exponential object B^A
+/// - The internal hom \[A, B\] is the exponential object B^A
 pub struct MitchellBenabouLanguage {
     pub topos: String,
 }
@@ -236,7 +236,7 @@ impl MitchellBenabouLanguage {
             topos: topos.into(),
         }
     }
-    /// The internal hom type [A, B] = B^A (exponential object).
+    /// The internal hom type \[A, B\] = B^A (exponential object).
     pub fn internal_hom_type(&self) -> String {
         format!("InternalHom(A, B) = B^A in {}", self.topos)
     }
@@ -402,7 +402,7 @@ impl GeometricLogic {
     pub fn is_horn(&self) -> bool {
         false
     }
-    /// Every geometric theory has a classifying Grothendieck topos Set[T].
+    /// Every geometric theory has a classifying Grothendieck topos Set\[T\].
     pub fn classifying_topos(&self) -> String {
         format!("Set[{}]", self.signature)
     }
@@ -413,9 +413,9 @@ impl GeometricLogic {
 /// checks whether F satisfies the sheaf condition for each covering family.
 pub struct SheafConditionExtChecker {
     pub site_name: String,
-    /// The sections of F on each object: sections[u] = F(u).
+    /// The sections of F on each object: sections\[u\] = F(u).
     pub sections: Vec<Vec<u64>>,
-    /// The restriction maps: restrictions[u][v] is a function F(u) → F(v)
+    /// The restriction maps: restrictions\[u\]\[v\] is a function F(u) → F(v)
     /// for each morphism v → u. Stored as index permutations.
     pub restrictions: Vec<Vec<Vec<usize>>>,
 }
@@ -480,8 +480,8 @@ impl PowerObject {
 }
 /// The classifying topos of a geometric theory T.
 ///
-/// For every geometric theory T there is a Grothendieck topos Set[T]
-/// such that geometric morphisms E → Set[T] are in natural bijection
+/// For every geometric theory T there is a Grothendieck topos Set\[T\]
+/// such that geometric morphisms E → Set\[T\] are in natural bijection
 /// with T-models in E.
 pub struct ClassifyingTopos {
     pub geometric_theory: String,
@@ -494,7 +494,7 @@ impl ClassifyingTopos {
         }
     }
     /// The classifying topos classifies models: for any topos E,
-    /// Geom(E, Set[T]) ≅ T-Mod(E) naturally in E.
+    /// Geom(E, Set\[T\]) ≅ T-Mod(E) naturally in E.
     pub fn classifies_models_of_theory(&self) -> bool {
         true
     }
@@ -657,7 +657,7 @@ pub struct FiniteCategory {
     pub num_objects: usize,
     /// Morphisms: each entry is (source, target, label).
     pub morphisms: Vec<(usize, usize, String)>,
-    /// Composition table: compose_table[(f_idx, g_idx)] = h_idx
+    /// Composition table: compose_table\[(f_idx, g_idx)\] = h_idx
     pub compose_table: std::collections::HashMap<(usize, usize), usize>,
 }
 impl FiniteCategory {
@@ -1082,7 +1082,7 @@ pub struct PresheafTopos {
     pub base_category: String,
     /// Number of objects in C (for finite categories).
     pub num_objects: usize,
-    /// Morphism table: morphism_table[i] contains morphisms out of object i.
+    /// Morphism table: morphism_table\[i\] contains morphisms out of object i.
     pub morphism_table: Vec<Vec<(usize, usize, String)>>,
 }
 impl PresheafTopos {
@@ -1174,7 +1174,7 @@ impl HeytingSubobjectLattice {
 /// A Lawvere object: a cartesian closed object in a topos (generalising the internal hom).
 ///
 /// In a cartesian closed category every object A gives rise to an internal
-/// hom functor [A, -] right adjoint to the product functor - × A.
+/// hom functor \[A, -\] right adjoint to the product functor - × A.
 pub struct LawvereObject {
     /// True if the containing category is cartesian closed.
     pub is_cartesian_closed: bool,
@@ -1186,7 +1186,7 @@ impl LawvereObject {
             is_cartesian_closed,
         }
     }
-    /// In a cartesian closed category, the internal hom [A, B] exists for all A, B.
+    /// In a cartesian closed category, the internal hom \[A, B\] exists for all A, B.
     pub fn has_internal_hom(&self) -> bool {
         self.is_cartesian_closed
     }
@@ -1519,11 +1519,222 @@ impl ClassifyingToposExt {
             generic_model: format!("Generic model of {}", theory),
         }
     }
-    /// Universal property: geometric morphisms E → B[T] correspond to T-models in E.
+    /// Universal property: geometric morphisms E → B\[T\] correspond to T-models in E.
     pub fn universal_property() -> &'static str {
         "Hom(E, B[T]) ≅ T-models in E"
     }
     pub fn is_presheaf_topos(theory: &str) -> bool {
         theory.contains("flat")
+    }
+}
+
+// ── Spec-required elementary types ─────────────────────────────────────────
+
+/// An object in an elementary topos.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToposObject {
+    pub id: usize,
+    pub name: String,
+}
+
+impl ToposObject {
+    pub fn new(id: usize, name: impl Into<String>) -> Self {
+        ToposObject {
+            id,
+            name: name.into(),
+        }
+    }
+}
+
+/// A morphism in an elementary topos.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToposMorphism {
+    pub id: usize,
+    pub domain: usize,
+    pub codomain: usize,
+    pub name: String,
+}
+
+impl ToposMorphism {
+    pub fn new(id: usize, domain: usize, codomain: usize, name: impl Into<String>) -> Self {
+        ToposMorphism {
+            id,
+            domain,
+            codomain,
+            name: name.into(),
+        }
+    }
+}
+
+/// Subobject classifier Ω together with the truth morphism true: 1 → Ω.
+#[derive(Debug, Clone)]
+pub struct SpecSubobjectClassifier {
+    pub name: String,
+    pub truth_morphism: ToposMorphism,
+}
+
+impl SpecSubobjectClassifier {
+    pub fn new(name: impl Into<String>, truth_morphism: ToposMorphism) -> Self {
+        SpecSubobjectClassifier {
+            name: name.into(),
+            truth_morphism,
+        }
+    }
+}
+
+/// Power object Ω^A — the internal hom from A to Ω.
+#[derive(Debug, Clone)]
+pub struct SpecPowerObject {
+    /// id of the base object A
+    pub base: usize,
+    /// id of the power object Ω^A
+    pub power: usize,
+    /// evaluation morphism ev: Ω^A × A → Ω
+    pub eval: ToposMorphism,
+}
+
+impl SpecPowerObject {
+    pub fn new(base: usize, power: usize, eval: ToposMorphism) -> Self {
+        SpecPowerObject { base, power, eval }
+    }
+}
+
+/// An elementary topos: objects, morphisms, terminal object, subobject
+/// classifier, power objects, products and pullbacks (stored as morphism triples).
+#[derive(Debug, Clone, Default)]
+pub struct ElementaryToposData {
+    pub objects: Vec<ToposObject>,
+    pub morphisms: Vec<ToposMorphism>,
+    /// id of the terminal object (1)
+    pub terminal: Option<usize>,
+    pub subobject_classifier: Option<SpecSubobjectClassifier>,
+    pub power_objects: Vec<SpecPowerObject>,
+    /// Stored products: (A_id, B_id, product_id)
+    pub products: Vec<(usize, usize, usize)>,
+    /// Stored pullbacks as (pb_obj_id, proj1_morph_id, proj2_morph_id)
+    pub pullbacks: Vec<(usize, usize, usize)>,
+    /// Number of "base" objects that require an explicit power object entry.
+    /// Objects beyond this index are themselves power objects or derived objects
+    /// and are not required to have their own power object entries in this finite
+    /// presentation. A value of 0 (the default) means ALL objects are checked.
+    pub num_base_objects: usize,
+}
+
+impl ElementaryToposData {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_object(&mut self, name: impl Into<String>) -> usize {
+        let id = self.objects.len();
+        self.objects.push(ToposObject::new(id, name));
+        id
+    }
+
+    pub fn add_morphism(
+        &mut self,
+        domain: usize,
+        codomain: usize,
+        name: impl Into<String>,
+    ) -> usize {
+        let id = self.morphisms.len();
+        self.morphisms
+            .push(ToposMorphism::new(id, domain, codomain, name));
+        id
+    }
+
+    pub fn object(&self, id: usize) -> Option<&ToposObject> {
+        self.objects.iter().find(|o| o.id == id)
+    }
+
+    pub fn morphism(&self, id: usize) -> Option<&ToposMorphism> {
+        self.morphisms.iter().find(|m| m.id == id)
+    }
+}
+
+/// Geometric morphism f: E → F consisting of
+/// an inverse-image functor f*: F → E (left exact left adjoint) and
+/// a direct-image functor f_*: E → F (right adjoint).
+#[derive(Debug, Clone)]
+pub struct SpecGeometricMorphism {
+    /// id of the source topos
+    pub source: usize,
+    /// id of the target topos
+    pub target: usize,
+    /// inverse image f*
+    pub inverse_image: ToposMorphism,
+    /// direct image f_*
+    pub direct_image: ToposMorphism,
+}
+
+impl SpecGeometricMorphism {
+    pub fn new(
+        source: usize,
+        target: usize,
+        inverse_image: ToposMorphism,
+        direct_image: ToposMorphism,
+    ) -> Self {
+        SpecGeometricMorphism {
+            source,
+            target,
+            inverse_image,
+            direct_image,
+        }
+    }
+}
+
+/// A sheaf on a site: pairs of (open_id, list_of_section_ids).
+#[derive(Debug, Clone, Default)]
+pub struct SpecSheaf {
+    /// id of the site object
+    pub site: usize,
+    /// presheaf data: (open_id, sections_over_open)
+    pub presheaf_data: Vec<(usize, Vec<usize>)>,
+}
+
+impl SpecSheaf {
+    pub fn new(site: usize) -> Self {
+        SpecSheaf {
+            site,
+            presheaf_data: Vec::new(),
+        }
+    }
+
+    pub fn add_sections(&mut self, open_id: usize, sections: Vec<usize>) {
+        self.presheaf_data.push((open_id, sections));
+    }
+
+    pub fn sections_over(&self, open_id: usize) -> Option<&Vec<usize>> {
+        self.presheaf_data
+            .iter()
+            .find(|(o, _)| *o == open_id)
+            .map(|(_, s)| s)
+    }
+}
+
+/// Sheaf condition variants.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SheafConditionKind {
+    /// Gluing: compatible local sections glue to a unique global section.
+    GlueingAxiom,
+    /// Separation: a section determined by local data is unique.
+    SeparationAxiom,
+    /// Both gluing and separation hold.
+    BothAxioms,
+}
+
+/// Lawvere–Tierney topology: an idempotent closure operator j: Ω → Ω
+/// satisfying j∘true = true, j∘j = j, and j∘∧ = ∧∘(j×j).
+#[derive(Debug, Clone)]
+pub struct LTTopology {
+    /// id of the topos this topology lives in
+    pub topos: usize,
+    /// The j-operator morphism Ω → Ω
+    pub j_operator: ToposMorphism,
+}
+
+impl LTTopology {
+    pub fn new(topos: usize, j_operator: ToposMorphism) -> Self {
+        LTTopology { topos, j_operator }
     }
 }

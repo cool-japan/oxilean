@@ -620,7 +620,7 @@ pub fn six_functor_formalism_ty() -> Expr {
     arrow(app(cst("Sheaf"), type0()), prop())
 }
 /// `CubicalComplex : Type`
-/// A cubical complex: a complex built from elementary intervals [k, k+1] in ℝᵈ.
+/// A cubical complex: a complex built from elementary intervals \[k, k+1\] in ℝᵈ.
 pub fn cubical_complex_ty() -> Expr {
     type0()
 }

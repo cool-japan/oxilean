@@ -110,7 +110,7 @@ impl NewtonRaphsonSolver {
 }
 /// Sparse matrix in Compressed Sparse Row (CSR) format.
 ///
-/// `row_ptr[i]..row_ptr[i+1]` gives the range of column indices/values for row `i`.
+/// `row_ptr\[i\]..row_ptr[i+1]` gives the range of column indices/values for row `i`.
 pub struct SparseMatrix {
     /// Number of rows.
     pub nrows: usize,
@@ -170,7 +170,7 @@ impl SparseMatrix {
         self.values.len()
     }
 }
-/// A closed real interval [lo, hi] used for validated/verified computation.
+/// A closed real interval \[lo, hi\] used for validated/verified computation.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Interval {
@@ -179,23 +179,23 @@ pub struct Interval {
 }
 #[allow(dead_code)]
 impl Interval {
-    /// Construct the interval [lo, hi].  Panics if lo > hi.
+    /// Construct the interval \[lo, hi\].  Panics if lo > hi.
     pub fn new(lo: f64, hi: f64) -> Self {
         assert!(lo <= hi, "Interval::new: lo ({lo}) must be <= hi ({hi})");
         Self { lo, hi }
     }
-    /// Construct a point interval [x, x].
+    /// Construct a point interval \[x, x\].
     pub fn point(x: f64) -> Self {
         Self { lo: x, hi: x }
     }
-    /// Interval addition: [a,b] + [c,d] = [a+c, b+d].
+    /// Interval addition: \[a,b\] + \[c,d\] = \[a+c, b+d\].
     pub fn add(self, other: Self) -> Self {
         Self {
             lo: self.lo + other.lo,
             hi: self.hi + other.hi,
         }
     }
-    /// Interval subtraction: [a,b] - [c,d] = [a-d, b-c].
+    /// Interval subtraction: \[a,b\] - \[c,d\] = \[a-d, b-c\].
     pub fn sub(self, other: Self) -> Self {
         Self {
             lo: self.lo - other.hi,
@@ -222,7 +222,7 @@ impl Interval {
     pub fn mid(self) -> f64 {
         (self.lo + self.hi) / 2.0
     }
-    /// Check whether a real value is contained in [lo, hi].
+    /// Check whether a real value is contained in \[lo, hi\].
     pub fn contains(self, x: f64) -> bool {
         self.lo <= x && x <= self.hi
     }
@@ -368,7 +368,7 @@ impl GradientDescentOptimizer {
     }
 }
 /// Crank-Nicolson finite-difference solver for the 1-D heat equation u_t = κ u_xx
-/// on the spatial domain [0, L] with Dirichlet boundary conditions u(0,t) = u(L,t) = 0.
+/// on the spatial domain \[0, L\] with Dirichlet boundary conditions u(0,t) = u(L,t) = 0.
 ///
 /// The scheme is unconditionally stable (A-stable).
 #[allow(dead_code)]
@@ -446,9 +446,9 @@ impl CrankNicolsonSolver {
         history
     }
 }
-/// Monte Carlo integrator over [a, b] using a control variate to reduce variance.
+/// Monte Carlo integrator over \[a, b\] using a control variate to reduce variance.
 ///
-/// The control variate `cv` must have a known exact integral `cv_integral` over [a,b].
+/// The control variate `cv` must have a known exact integral `cv_integral` over \[a,b\].
 /// Uses a simple pseudo-random sequence via a linear congruential generator (no external deps).
 #[allow(dead_code)]
 pub struct MonteCarloIntegrator {

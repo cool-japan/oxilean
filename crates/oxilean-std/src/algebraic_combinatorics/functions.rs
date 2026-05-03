@@ -135,7 +135,7 @@ pub fn lr_coefficient_ty() -> Expr {
     )
 }
 /// `PlethysticSubstitution : SymmetricFunction → SymmetricFunction → SymmetricFunction`
-/// f[g] plethystic substitution.
+/// f\[g\] plethystic substitution.
 pub fn plethystic_substitution_ty() -> Expr {
     arrow(
         cst("SymmetricFunction"),
@@ -169,7 +169,7 @@ pub fn character_table_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
 /// `FrobeniusCharacterMap : SymmetricFunction → SymmetricFunction`
-/// Characteristic map ch: Z[S_n] → Λ_n sending S^λ to s_λ.
+/// Characteristic map ch: Z\[S_n\] → Λ_n sending S^λ to s_λ.
 pub fn frobenius_character_map_ty() -> Expr {
     arrow(cst("SymmetricFunction"), cst("SymmetricFunction"))
 }
@@ -905,7 +905,7 @@ pub fn alg_comb_ext_sym_function_ring_ty() -> Expr {
     type0()
 }
 /// `PlethysmOfSchur : YoungDiagram → YoungDiagram → SymmetricFunction`
-/// Plethysm s_λ[s_μ] of two Schur functions.
+/// Plethysm s_λ\[s_μ\] of two Schur functions.
 pub fn alg_comb_ext_plethysm_of_schur_ty() -> Expr {
     arrow(
         cst("YoungDiagram"),

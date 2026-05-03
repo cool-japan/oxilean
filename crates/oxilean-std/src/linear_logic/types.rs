@@ -735,7 +735,7 @@ impl GameSemantics {
 pub struct CoherenceSpace {
     /// Number of tokens (web size).
     pub n_tokens: usize,
-    /// Coherence matrix: coh[i][j] = true iff i and j are coherent (or equal).
+    /// Coherence matrix: coh\[i\]\[j\] = true iff i and j are coherent (or equal).
     pub coh: Vec<Vec<bool>>,
 }
 impl CoherenceSpace {
@@ -847,7 +847,7 @@ impl ExponentialRules {
 pub struct PhaseSpace {
     /// Elements of the monoid (indices 0..n).
     pub n: usize,
-    /// Multiplication table: mul[i][j] = i · j.
+    /// Multiplication table: mul\[i\]\[j\] = i · j.
     pub mul: Vec<Vec<usize>>,
     /// Identity element.
     pub identity: usize,

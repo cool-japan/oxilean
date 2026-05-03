@@ -235,7 +235,7 @@ pub fn simplify_add_mul_pow(poly: &Polynomial) -> Polynomial {
             .filter(|(_, exp)| *exp > 0)
             .cloned()
             .collect();
-        canon.sort_by(|(a, _), (b, _)| a.to_string().cmp(&b.to_string()));
+        canon.sort_by_key(|(a, _)| a.to_string());
         if let Some(entry) = combined.iter_mut().find(|(key, _)| key == &canon) {
             let (en, ed) = entry.1;
             let (cn, cd) = (*num, *den);

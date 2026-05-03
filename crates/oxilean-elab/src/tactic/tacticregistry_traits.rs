@@ -85,6 +85,24 @@ impl Default for TacticRegistry {
             ("apply?", "Apply with suggestion", Some(0)),
             ("simp?", "Simp with suggestion", Some(0)),
             ("rw?", "Rewrite with suggestion", Some(0)),
+            ("continuity", "Prove continuity of a function", Some(0)),
+            (
+                "measurability",
+                "Prove measurability of a function",
+                Some(0),
+            ),
+            ("mono", "Monotonicity", Some(0)),
+            ("grind", "E-matching congruence closure", Some(0)),
+            ("bv_decide", "Bit-vector decision procedure", Some(0)),
+            ("slim_check", "Random counterexample finder", Some(0)),
+            ("simp_rw", "Rewrite then simplify", Some(1)),
+            (
+                "convert",
+                "Change goal to defeq form with subgoals",
+                Some(1),
+            ),
+            ("abel", "Abelian group normalization", Some(0)),
+            ("group", "Group normalization", Some(0)),
         ];
         for (name, desc, arity) in tactics_data {
             registry.register_with_arity(

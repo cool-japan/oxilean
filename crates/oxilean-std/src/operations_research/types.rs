@@ -30,7 +30,7 @@ impl BellmanFord {
     }
     /// Run Bellman-Ford from `source`.
     ///
-    /// Returns `Ok(dist)` where `dist[v]` is the shortest distance to `v`
+    /// Returns `Ok(dist)` where `dist\[v\]` is the shortest distance to `v`
     /// (`i64::MAX` means unreachable), or `Err(())` if a negative cycle exists.
     #[allow(clippy::result_unit_err)]
     pub fn shortest_paths(&self, source: usize) -> Result<Vec<i64>, ()> {
@@ -63,9 +63,9 @@ pub struct MdpSolver {
     pub num_actions: usize,
     /// Discount factor γ ∈ [0, 1).
     pub discount: f64,
-    /// Reward matrix R[s][a].
+    /// Reward matrix R\[s\]\[a\].
     pub rewards: Vec<Vec<f64>>,
-    /// Transition probabilities P[s][a][s'].
+    /// Transition probabilities P\[s\]\[a\][s'].
     pub transitions: Vec<Vec<Vec<f64>>>,
 }
 impl MdpSolver {
@@ -103,7 +103,7 @@ impl MdpSolver {
     }
     /// Run value iteration until convergence.
     ///
-    /// Returns (V*, iterations) where V*[s] is the optimal value of state s.
+    /// Returns (V*, iterations) where V*\[s\] is the optimal value of state s.
     pub fn value_iteration(&self, tol: f64, max_iter: usize) -> (Vec<f64>, usize) {
         let mut v = vec![0.0_f64; self.num_states];
         for iter in 0..max_iter {
@@ -122,7 +122,7 @@ impl MdpSolver {
     }
     /// Extract greedy policy from value function V.
     ///
-    /// Returns policy[s] = argmax_a [R(s,a) + γ Σ P(s'|s,a) V(s')].
+    /// Returns policy\[s\] = argmax_a [R(s,a) + γ Σ P(s'|s,a) V(s')].
     pub fn extract_policy(&self, v: &[f64]) -> Vec<usize> {
         (0..self.num_states)
             .map(|s| {
@@ -290,7 +290,7 @@ impl DynamicProgramming {
     }
     /// Minimum number of scalar multiplications to compute a chain of matrices.
     ///
-    /// `dims` has length n+1 where the i-th matrix is dims[i] × dims[i+1].
+    /// `dims` has length n+1 where the i-th matrix is dims\[i\] × dims[i+1].
     pub fn matrix_chain_order(dims: &[usize]) -> usize {
         let n = dims.len().saturating_sub(1);
         if n == 0 {
@@ -435,7 +435,7 @@ impl JobScheduler {
 pub struct PrimMst {
     /// Number of vertices.
     pub n: usize,
-    /// Adjacency matrix; `cost[i][j] = i64::MAX` means no edge.
+    /// Adjacency matrix; `cost\[i\]\[j\] = i64::MAX` means no edge.
     pub cost: Vec<Vec<i64>>,
 }
 impl PrimMst {
@@ -486,7 +486,7 @@ impl PrimMst {
 /// Reliability calculations for series and parallel systems.
 #[derive(Debug, Clone)]
 pub struct ReliabilitySystem {
-    /// Component reliabilities (probabilities of success in [0, 1]).
+    /// Component reliabilities (probabilities of success in \[0, 1\]).
     pub components: Vec<f64>,
 }
 impl ReliabilitySystem {
@@ -505,7 +505,7 @@ impl ReliabilitySystem {
     /// k-out-of-n system reliability (exact binomial sum).
     ///
     /// Returns the probability that at least `k` out of `n` components succeed,
-    /// assuming all components have the same reliability `p = components[0]`.
+    /// assuming all components have the same reliability `p = components\[0\]`.
     pub fn k_out_of_n_reliability(&self, k: usize) -> f64 {
         let n = self.components.len();
         let p = if n == 0 {
@@ -653,7 +653,7 @@ impl MultiArmedBanditUcb {
 }
 /// Two-stage stochastic linear program.
 ///
-/// Stage 1: min cᵀx + E_ξ[Q(x, ξ)]  s.t. Ax = b, x ≥ 0
+/// Stage 1: min cᵀx + E_ξ\[Q(x, ξ)\]  s.t. Ax = b, x ≥ 0
 /// Stage 2: Q(x, ξ) = min qᵀy  s.t. Wy = h - Tx, y ≥ 0
 #[allow(dead_code)]
 pub struct TwoStageStochasticLP {
@@ -687,7 +687,7 @@ impl TwoStageStochasticLP {
     }
     /// Expected recourse cost given stage-2 decisions y_s per scenario.
     ///
-    /// E[qᵀy] = Σ_s p_s * qᵀy_s
+    /// E\[qᵀy\] = Σ_s p_s * qᵀy_s
     pub fn expected_recourse_cost(&self, stage2_decisions: &[Vec<f64>]) -> f64 {
         self.probabilities
             .iter()
@@ -805,7 +805,7 @@ impl InventoryModel {
 pub struct FloydWarshall {
     /// Number of vertices.
     pub n: usize,
-    /// Distance matrix; `dist[i][j] = i64::MAX/2` means no direct edge.
+    /// Distance matrix; `dist\[i\]\[j\] = i64::MAX/2` means no direct edge.
     pub dist: Vec<Vec<i64>>,
 }
 impl FloydWarshall {
@@ -866,7 +866,7 @@ impl HungarianSolver {
     }
     /// Solve the assignment problem.
     ///
-    /// Returns `(min_cost, assignment)` where `assignment[i]` is the task
+    /// Returns `(min_cost, assignment)` where `assignment\[i\]` is the task
     /// assigned to agent `i`.
     pub fn solve(&self) -> (i64, Vec<usize>) {
         let n = self.cost.len();
@@ -934,7 +934,7 @@ impl HungarianSolver {
 }
 /// The newsvendor (critical fractile) inventory model.
 ///
-/// Demand is assumed uniform on [demand_lo, demand_hi].
+/// Demand is assumed uniform on \[demand_lo, demand_hi\].
 #[derive(Debug, Clone)]
 pub struct NewsvendorModel {
     /// Lower bound of uniform demand.
@@ -1068,7 +1068,7 @@ impl LagrangianRelaxationSolver {
     }
     /// Subgradient update: λ_{k+1} = max(0, λ_k + t_k * g(x_k))
     ///
-    /// `subgradient[i]` = g_i(x_k) (constraint violation of current solution).
+    /// `subgradient\[i\]` = g_i(x_k) (constraint violation of current solution).
     /// `step_size` is the current step t_k.
     pub fn subgradient_update(&mut self, subgradient: &[f64], step: f64) {
         for (lambda, &sg) in self.multipliers.iter_mut().zip(subgradient.iter()) {
@@ -1196,7 +1196,7 @@ impl SimplexSolver {
 pub struct Dijkstra {
     /// Number of vertices.
     pub n: usize,
-    /// Adjacency list: adj[u] = Vec<(v, weight)>.
+    /// Adjacency list: adj\[u\] = `Vec<(v, weight)>`.
     pub adj: Vec<Vec<(usize, u64)>>,
 }
 impl Dijkstra {
@@ -1213,7 +1213,7 @@ impl Dijkstra {
     }
     /// Compute shortest distances from `source` to all vertices.
     ///
-    /// Returns `dist` where `dist[v] = u64::MAX` means unreachable.
+    /// Returns `dist` where `dist\[v\] = u64::MAX` means unreachable.
     pub fn shortest_paths(&self, source: usize) -> Vec<u64> {
         let mut dist = vec![u64::MAX; self.n];
         dist[source] = 0;

@@ -46,6 +46,7 @@ fn tactic_cases_or_elimination() {
     let left_result = eval_tactic_block(
         &left_state,
         &["right".to_string(), "assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("right; assumption on left branch");
     assert!(left_result.is_complete(), "left branch should be proved");
@@ -54,6 +55,7 @@ fn tactic_cases_or_elimination() {
     let right_result = eval_tactic_block(
         &right_state,
         &["left".to_string(), "assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("left; assumption on right branch");
     assert!(right_result.is_complete(), "right branch should be proved");
@@ -66,8 +68,12 @@ fn tactic_constructor_and_correct_goals() {
     let and_target = mk_and(a.clone(), b.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), and_target));
-    let result = eval_tactic_block(&state, &["constructor".to_string()])
-        .expect("constructor on And should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["constructor".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("constructor on And should succeed");
     assert_eq!(result.num_goals(), 2, "And constructor should give 2 goals");
     let targets: Vec<_> = result.goals().iter().map(|g| &g.target).cloned().collect();
     assert!(
@@ -96,6 +102,7 @@ fn tactic_constructor_and_from_hypotheses() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("constructor; assumption; assumption should prove A ∧ B");
     assert!(
@@ -115,8 +122,12 @@ fn tactic_eval_apply_dispatch() {
     let mut goal = Goal::new(Name::str("main"), b.clone());
     goal.add_hypothesis(Name::str("h"), a_to_b.clone());
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["apply h".to_string()])
-        .expect("apply dispatch should not error");
+    let result = eval_tactic_block(
+        &state,
+        &["apply h".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("apply dispatch should not error");
     assert_eq!(
         result.num_goals(),
         1,
@@ -136,8 +147,12 @@ fn tactic_eval_exists_dispatch() {
     let mut state = TacticState::new();
     let goal = Goal::new(Name::str("main"), exists_target);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["exists 0".to_string()])
-        .expect("exists dispatch should not error");
+    let result = eval_tactic_block(
+        &state,
+        &["exists 0".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("exists dispatch should not error");
     assert_eq!(
         result.num_goals(),
         1,
@@ -155,8 +170,12 @@ fn tactic_eval_use_dispatch() {
     let mut state = TacticState::new();
     let goal = Goal::new(Name::str("main"), exists_target);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["use 42".to_string()])
-        .expect("use (synonym for exists) should not error");
+    let result = eval_tactic_block(
+        &state,
+        &["use 42".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("use (synonym for exists) should not error");
     assert_eq!(result.num_goals(), 1, "use should reduce to 1 subgoal");
 }
 /// Test: `have h : T` creates two subgoals: one for T, one for the continuation.
@@ -167,8 +186,12 @@ fn tactic_eval_have_dispatch() {
     let mut state = TacticState::new();
     let goal = Goal::new(Name::str("main"), goal_ty.clone());
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["have h : Lemma".to_string()])
-        .expect("have dispatch should not error");
+    let result = eval_tactic_block(
+        &state,
+        &["have h : Lemma".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("have dispatch should not error");
     assert_eq!(
         result.num_goals(),
         2,
@@ -194,8 +217,12 @@ fn tactic_eval_show_dispatch() {
     let mut state = TacticState::new();
     let goal = Goal::new(Name::str("main"), original_ty.clone());
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["show NewGoal".to_string()])
-        .expect("show dispatch should not error");
+    let result = eval_tactic_block(
+        &state,
+        &["show NewGoal".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("show dispatch should not error");
     assert_eq!(result.num_goals(), 1, "show should keep 1 goal");
     assert_eq!(
         result.goals()[0].target,
@@ -223,7 +250,11 @@ fn tactic_simp_true_and_p() {
     let target = mk_and(true_e, p.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `True ∧ P` should not error");
     let new_state = result.unwrap();
     if !new_state.is_complete() {
@@ -242,7 +273,11 @@ fn tactic_simp_p_and_true() {
     let target = mk_and(p.clone(), true_e);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `P ∧ True` should not error");
     let new_state = result.unwrap();
     if !new_state.is_complete() {
@@ -261,7 +296,11 @@ fn tactic_simp_false_or_p() {
     let target = mk_or_expr(false_e, p.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `False ∨ P` should not error");
     let new_state = result.unwrap();
     if !new_state.is_complete() {
@@ -280,7 +319,11 @@ fn tactic_simp_p_or_false() {
     let target = mk_or_expr(p.clone(), false_e);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `P ∨ False` should not error");
     let new_state = result.unwrap();
     if !new_state.is_complete() {
@@ -299,7 +342,11 @@ fn tactic_simp_true_or_p() {
     let target = mk_or_expr(true_e, p);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `True ∨ P` should not error");
     let new_state = result.unwrap();
     assert!(
@@ -315,7 +362,11 @@ fn tactic_simp_p_or_true() {
     let target = mk_or_expr(p, true_e);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `P ∨ True` should not error");
     let new_state = result.unwrap();
     assert!(
@@ -332,7 +383,11 @@ fn tactic_simp_false_and_p() {
     let target = mk_and(false_e.clone(), p);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `False ∧ P` should not error");
     let new_state = result.unwrap();
     if !new_state.is_complete() {
@@ -350,7 +405,11 @@ fn tactic_simp_not_false() {
     let target = mk_not(false_e);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `¬ False` should not error");
     let new_state = result.unwrap();
     assert!(
@@ -365,7 +424,11 @@ fn tactic_simp_not_true() {
     let target = mk_not(true_e);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `¬ True` should not error");
     let _ = result.unwrap();
 }
@@ -377,7 +440,11 @@ fn tactic_simp_refl() {
     let target = mk_eq_expr(nat_ty, x.clone(), x);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `x = x` should not error");
     let new_state = result.unwrap();
     assert!(
@@ -398,7 +465,11 @@ fn tactic_simp_true_implies_p() {
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `True → P` should not error");
     let new_state = result.unwrap();
     if !new_state.is_complete() {
@@ -422,7 +493,11 @@ fn tactic_simp_p_implies_true() {
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["simp".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "simp on `P → True` should not error");
     let new_state = result.unwrap();
     assert!(
@@ -490,7 +565,11 @@ fn tactic_rw_at_hypothesis() {
     goal.add_hypothesis(Name::str("eq_h"), eq_h);
     goal.add_hypothesis(Name::str("p_h"), p_h.clone());
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["rw [eq_h] at p_h".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["rw [eq_h] at p_h".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "rw [eq_h] at p_h should succeed");
     let new_state = result.unwrap();
     let expected_p_h = Expr::App(
@@ -524,7 +603,11 @@ fn tactic_obtain_dispatch() {
     let mut goal = Goal::new(Name::str("main"), c.clone());
     goal.add_hypothesis(Name::str("h"), and_h);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["obtain ⟨ha, hb⟩ := h".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["obtain ⟨ha, hb⟩ := h".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(result.is_ok(), "obtain on And hypothesis should succeed");
     let new_state = result.unwrap();
     assert_eq!(
@@ -684,6 +767,7 @@ fn tactic_prove_and_intro_pattern() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("constructor; assumption; assumption should succeed");
     assert!(result.is_complete(), "proof of A ∧ B should be complete");
@@ -698,8 +782,12 @@ fn tactic_prove_and_elim_left() {
     let mut goal = Goal::new(Name::str("main"), a.clone());
     goal.add_hypothesis(Name::str("h"), and_ab);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["cases h".to_string(), "assumption".to_string()])
-        .expect("cases h; assumption should succeed for And elim left");
+    let result = eval_tactic_block(
+        &state,
+        &["cases h".to_string(), "assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("cases h; assumption should succeed for And elim left");
     assert!(
         result.is_complete(),
         "proof of A ∧ B → A should be complete after cases + assumption"
@@ -713,8 +801,12 @@ fn tactic_prove_identity() {
     let mut goal = Goal::new(Name::str("main"), p.clone());
     goal.add_hypothesis(Name::str("hp"), p.clone());
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["assumption".to_string()])
-        .expect("assumption should close goal P with hp : P");
+    let result = eval_tactic_block(
+        &state,
+        &["assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("assumption should close goal P with hp : P");
     assert!(result.is_complete(), "proof of P → P should be complete");
 }
 /// Test: prove `∀ n : Nat, n = n` via intro + refl
@@ -727,7 +819,12 @@ fn tactic_prove_nat_refl() {
     let mut goal = Goal::new(Name::str("main"), target);
     goal.add_hypothesis(Name::str("n"), nat_ty);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["refl".to_string()]).expect("refl should close n = n");
+    let result = eval_tactic_block(
+        &state,
+        &["refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("refl should close n = n");
     assert!(
         result.is_complete(),
         "proof of n = n should be complete via refl"
@@ -743,8 +840,12 @@ fn tactic_prove_or_intro_left() {
     let mut goal = Goal::new(Name::str("main"), or_ab);
     goal.add_hypothesis(Name::str("ha"), a.clone());
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["left".to_string(), "assumption".to_string()])
-        .expect("left; assumption should succeed for Or intro left");
+    let result = eval_tactic_block(
+        &state,
+        &["left".to_string(), "assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("left; assumption should succeed for Or intro left");
     assert!(
         result.is_complete(),
         "proof of A ∨ B via left + assumption should be complete"
@@ -876,7 +977,11 @@ fn tactic_decide_closes_refl() {
     let mut state = TacticState::new();
     let goal = Goal::new(Name::str("main"), eq_0_0);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["decide".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["decide".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(
         result.is_ok(),
         "decide should close 0 = 0 goal: {:?}",
@@ -1072,7 +1177,11 @@ fn tactic_norm_cast_closes_refl() {
     let mut state = TacticState::new();
     let goal = Goal::new(Name::str("main"), eq_0_0);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["norm_cast".to_string()]);
+    let result = eval_tactic_block(
+        &state,
+        &["norm_cast".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    );
     assert!(
         result.is_ok(),
         "norm_cast should succeed: {:?}",
@@ -1101,6 +1210,7 @@ fn tactic_prove_and_comm() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("And commutativity proof should succeed");
     assert!(result.is_complete(), "A ∧ B → B ∧ A should be fully proved");
@@ -1128,6 +1238,7 @@ fn tactic_prove_or_comm() {
             "left".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("Or commutativity proof should succeed");
     assert!(result.is_complete(), "A ∨ B → B ∨ A should be fully proved");
@@ -1148,6 +1259,7 @@ fn tactic_prove_and_self() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("A → A ∧ A proof should succeed");
     assert!(result.is_complete(), "A → A ∧ A should be fully proved");
@@ -1168,6 +1280,7 @@ fn tactic_prove_and_fst() {
             "cases h".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("A ∧ B → A proof should succeed");
     assert!(result.is_complete(), "A ∧ B → A should be fully proved");
@@ -1189,6 +1302,7 @@ fn tactic_prove_and_snd() {
             "cases h".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("A ∧ B → B proof should succeed");
     assert!(result.is_complete(), "A ∧ B → B should be fully proved");
@@ -1216,6 +1330,7 @@ fn tactic_prove_impl_trans() {
             "apply hab".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("implication transitivity proof should succeed");
     assert!(
@@ -1252,6 +1367,7 @@ fn tactic_prove_and_or_distrib() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("A ∧ (B ∨ C) → (A ∧ B) ∨ (A ∧ C) proof should succeed");
     assert!(
@@ -1267,8 +1383,12 @@ fn tactic_prove_zero_eq_zero() {
     let target = mk_eq(nat_ty, zero.clone(), zero);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result =
-        eval_tactic_block(&state, &["refl".to_string()]).expect("0 = 0 by refl should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("0 = 0 by refl should succeed");
     assert!(result.is_complete(), "0 = 0 should be proved by refl");
 }
 /// Prove: ∀ n : Nat, n = n via intro + refl (using BVar(0))
@@ -1282,8 +1402,12 @@ fn tactic_prove_nat_eq_refl_after_intro() {
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["intro n".to_string(), "refl".to_string()])
-        .expect("∀ n, n = n by intro + refl should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["intro n".to_string(), "refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("∀ n, n = n by intro + refl should succeed");
     assert!(
         result.is_complete(),
         "∀ n : Nat, n = n should be fully proved"
@@ -1300,8 +1424,12 @@ fn tactic_prove_eq_by_simp_hyp() {
     let mut goal = Goal::new(Name::str("main"), eq_aa.clone());
     goal.add_hypothesis(Name::str("h"), eq_aa);
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["simp only [h]".to_string()])
-        .expect("simp [h] on a = a should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["simp only [h]".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("simp [h] on a = a should succeed");
     assert!(result.is_complete(), "simp [h] should close a = a goal");
 }
 /// Prove: rw [h] changes goal lhs to rhs when h : a = b
@@ -1319,15 +1447,23 @@ fn tactic_prove_rw_changes_goal() {
     let mut goal = Goal::new(Name::str("main"), eq_ab.clone());
     goal.add_hypothesis(Name::str("h"), eq_ab.clone());
     state.add_goal(goal);
-    let after_rw = eval_tactic_block(&state, &["rw [h]".to_string()])
-        .expect("rw [h] should succeed when h : a = b and target contains a");
+    let after_rw = eval_tactic_block(
+        &state,
+        &["rw [h]".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("rw [h] should succeed when h : a = b and target contains a");
     assert_eq!(
         after_rw.goals()[0].target,
         eq_bb,
         "after rw [h], target should be b = b"
     );
-    let final_result = eval_tactic_block(&after_rw, &["refl".to_string()])
-        .expect("refl should close b = b after rw");
+    let final_result = eval_tactic_block(
+        &after_rw,
+        &["refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("refl should close b = b after rw");
     assert!(
         final_result.is_complete(),
         "rw [h]; refl should fully close the goal"
@@ -1342,8 +1478,12 @@ fn tactic_prove_exfalso_from_false() {
     let mut goal = Goal::new(Name::str("main"), complex_target);
     goal.add_hypothesis(Name::str("hf"), false_ty.clone());
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["exfalso".to_string(), "cases hf".to_string()])
-        .expect("exfalso; cases hf should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["exfalso".to_string(), "cases hf".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("exfalso; cases hf should succeed");
     assert!(
         result.is_complete(),
         "False in context should close any goal"
@@ -1359,16 +1499,24 @@ fn tactic_prove_induction_trivial_zero() {
     let pi_target = mk_pi("n", nat_ty.clone(), target_body);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), pi_target));
-    let after_intro =
-        eval_tactic_block(&state, &["intro n".to_string()]).expect("intro n should succeed");
+    let after_intro = eval_tactic_block(
+        &state,
+        &["intro n".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("intro n should succeed");
     let after_ind =
         tactic_induction(&after_intro, &Name::str("n")).expect("induction n should succeed");
     assert_eq!(after_ind.num_goals(), 2, "induction should produce 2 goals");
     for goal in after_ind.goals().to_vec() {
         let mut s = TacticState::new();
         s.add_goal(goal);
-        let r = eval_tactic_block(&s, &["refl".to_string()])
-            .expect("each induction case should close by refl");
+        let r = eval_tactic_block(
+            &s,
+            &["refl".to_string()],
+            &oxilean_kernel::env::Environment::new(),
+        )
+        .expect("each induction case should close by refl");
         assert!(r.is_complete(), "induction case should be complete by refl");
     }
 }
@@ -1380,8 +1528,12 @@ fn tactic_induction_succ_uses_ih() {
     let pi_target = mk_pi("n", nat_ty.clone(), true_const.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), pi_target));
-    let after_intro =
-        eval_tactic_block(&state, &["intro n".to_string()]).expect("intro n should succeed");
+    let after_intro = eval_tactic_block(
+        &state,
+        &["intro n".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("intro n should succeed");
     let after_ind =
         tactic_induction(&after_intro, &Name::str("n")).expect("induction n should succeed");
     assert_eq!(after_ind.num_goals(), 2, "should have 2 induction goals");
@@ -1421,8 +1573,12 @@ fn tactic_cases_nat_zero_by_refl() {
     );
     let mut zero_state = TacticState::new();
     zero_state.add_goal(zero_goal.clone());
-    let zero_result = eval_tactic_block(&zero_state, &["refl".to_string()])
-        .expect("zero case should close by refl");
+    let zero_result = eval_tactic_block(
+        &zero_state,
+        &["refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("zero case should close by refl");
     assert!(
         zero_result.is_complete(),
         "0 = 0 should be proved by refl in zero case"
@@ -1436,15 +1592,23 @@ fn tactic_simp_closes_induction_goal() {
     let pi_target = mk_pi("n", nat_ty.clone(), true_const.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), pi_target));
-    let after_intro =
-        eval_tactic_block(&state, &["intro n".to_string()]).expect("intro n should succeed");
+    let after_intro = eval_tactic_block(
+        &state,
+        &["intro n".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("intro n should succeed");
     let after_ind =
         tactic_induction(&after_intro, &Name::str("n")).expect("induction n should succeed");
     for goal in after_ind.goals().to_vec() {
         let mut s = TacticState::new();
         s.add_goal(goal);
-        let r = eval_tactic_block(&s, &["trivial".to_string()])
-            .expect("trivial should close True goal in induction case");
+        let r = eval_tactic_block(
+            &s,
+            &["trivial".to_string()],
+            &oxilean_kernel::env::Environment::new(),
+        )
+        .expect("trivial should close True goal in induction case");
         assert!(
             r.is_complete(),
             "True should be proved by trivial in each induction case"
@@ -1493,8 +1657,12 @@ fn tactic_prove_false_elim() {
     let target = mk_pi("hf", false_ty.clone(), p.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["intro hf".to_string(), "cases hf".to_string()])
-        .expect("False → P proof should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["intro hf".to_string(), "cases hf".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("False → P proof should succeed");
     assert!(result.is_complete(), "False → P should be fully proved");
 }
 /// Prove: True (trivially closed by `trivial`)
@@ -1503,8 +1671,12 @@ fn tactic_prove_true() {
     let true_ty = Expr::Const(Name::str("True"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), true_ty));
-    let result = eval_tactic_block(&state, &["trivial".to_string()])
-        .expect("True should be proved by trivial");
+    let result = eval_tactic_block(
+        &state,
+        &["trivial".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("True should be proved by trivial");
     assert!(
         result.is_complete(),
         "True should be fully proved by trivial"
@@ -1526,6 +1698,7 @@ fn tactic_prove_const_combinator() {
             "intro hb".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("K combinator proof should succeed");
     assert!(result.is_complete(), "A → B → A should be fully proved");
@@ -1554,6 +1727,7 @@ fn tactic_prove_and_assoc_lr() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("And associativity proof should succeed");
     assert!(
@@ -1577,6 +1751,7 @@ fn tactic_prove_or_idem_elim() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("Or A A → A proof should succeed");
     assert!(result.is_complete(), "A ∨ A → A should be fully proved");
@@ -1589,8 +1764,12 @@ fn tactic_prove_impl_self() {
     let target = mk_pi("ha", a.clone(), a.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["intro ha".to_string(), "assumption".to_string()])
-        .expect("A → A proof should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["intro ha".to_string(), "assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("A → A proof should succeed");
     assert!(result.is_complete(), "A → A should be fully proved");
 }
 /// Helper: build And(a, b)
@@ -1616,8 +1795,12 @@ fn tactic_repeat_closes_multiple_goals() {
     let mut state = TacticState::new();
     state.add_goal(goal1);
     state.add_goal(goal2);
-    let result = eval_tactic_block(&state, &["repeat assumption".to_string()])
-        .expect("repeat assumption should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["repeat assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("repeat assumption should succeed");
     assert!(
         result.is_complete(),
         "repeat assumption should close all goals with matching hyps"
@@ -1632,14 +1815,22 @@ fn tactic_try_is_safe() {
     let refl_target = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), refl_target));
-    let result = eval_tactic_block(&state, &["try refl".to_string()])
-        .expect("try refl on refl goal should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["try refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("try refl on refl goal should succeed");
     assert!(result.is_complete(), "try refl should close refl goal");
     let a = Expr::Const(Name::str("A"), vec![]);
     let mut state2 = TacticState::new();
     state2.add_goal(Goal::new(Name::str("main2"), a.clone()));
-    let result2 = eval_tactic_block(&state2, &["try refl".to_string()])
-        .expect("try refl on non-refl goal should not fail");
+    let result2 = eval_tactic_block(
+        &state2,
+        &["try refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("try refl on non-refl goal should not fail");
     assert_eq!(
         result2.num_goals(),
         1,
@@ -1655,8 +1846,12 @@ fn tactic_first_picks_refl() {
     let refl_target = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), refl_target));
-    let result = eval_tactic_block(&state, &["first | refl | assumption".to_string()])
-        .expect("first | refl | assumption should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["first | refl | assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("first | refl | assumption should succeed");
     assert!(
         result.is_complete(),
         "first should use refl to close the goal"
@@ -1668,8 +1863,12 @@ fn tactic_first_fallback_sorry() {
     let a = Expr::Const(Name::str("A"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), a));
-    let result = eval_tactic_block(&state, &["first | exact? | sorry".to_string()])
-        .expect("first | exact? | sorry should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["first | exact? | sorry".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("first | exact? | sorry should succeed");
     assert!(result.is_complete(), "first should close goal via fallback");
 }
 /// Test: `all_goals assumption` closes two goals each with a matching hypothesis.
@@ -1684,8 +1883,12 @@ fn tactic_all_goals_assumption() {
     let mut state = TacticState::new();
     state.add_goal(goal1);
     state.add_goal(goal2);
-    let result = eval_tactic_block(&state, &["all_goals assumption".to_string()])
-        .expect("all_goals assumption should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["all_goals assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("all_goals assumption should succeed");
     assert!(
         result.is_complete(),
         "all_goals assumption should close both goals"
@@ -1706,8 +1909,12 @@ fn tactic_simp_all_with_hyps() {
     );
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["simp_all".to_string()])
-        .expect("simp_all should succeed on eq_1_1");
+    let result = eval_tactic_block(
+        &state,
+        &["simp_all".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("simp_all should succeed on eq_1_1");
     assert!(result.is_complete(), "simp_all should close 1 = 1 goal");
 }
 /// Test: `field_simp` works as a simplified simp.
@@ -1716,8 +1923,12 @@ fn tactic_field_simp_closes_trivial() {
     let true_goal = Expr::Const(Name::str("True"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), true_goal));
-    let result = eval_tactic_block(&state, &["field_simp".to_string()])
-        .expect("field_simp should close True goal");
+    let result = eval_tactic_block(
+        &state,
+        &["field_simp".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("field_simp should close True goal");
     assert!(result.is_complete(), "field_simp should close True");
 }
 /// Test: `rfl` (alias for refl) closes a reflexivity goal.
@@ -1729,8 +1940,12 @@ fn tactic_rfl_alias_works() {
     let target = mk_eq(nat_ty, two.clone(), two);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["rfl".to_string()])
-        .expect("rfl should close a reflexivity goal");
+    let result = eval_tactic_block(
+        &state,
+        &["rfl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("rfl should close a reflexivity goal");
     assert!(result.is_complete(), "rfl should close 2 = 2");
 }
 /// Test: `ring` closes a reflexivity equality (improved ring tactic).
@@ -1742,7 +1957,12 @@ fn tactic_ring_closes_refl() {
     let target = mk_eq(nat_ty, five.clone(), five);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["ring".to_string()]).expect("ring should close 5 = 5");
+    let result = eval_tactic_block(
+        &state,
+        &["ring".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("ring should close 5 = 5");
     assert!(result.is_complete(), "ring should close 5 = 5");
 }
 /// Test: `linarith` closes a goal when it's directly an assumption.
@@ -1753,8 +1973,12 @@ fn tactic_linarith_closes_assumption() {
     goal.add_hypothesis(Name::str("ha"), a.clone());
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["linarith".to_string()])
-        .expect("linarith should close goal via assumption");
+    let result = eval_tactic_block(
+        &state,
+        &["linarith".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("linarith should close goal via assumption");
     assert!(
         result.is_complete(),
         "linarith should close goal when target is in hypotheses"
@@ -1766,8 +1990,12 @@ fn tactic_nlinarith_closes_refl() {
     let prop = Expr::Sort(Level::zero());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), prop));
-    let result = eval_tactic_block(&state, &["nlinarith".to_string()])
-        .expect("nlinarith should close trivial goal");
+    let result = eval_tactic_block(
+        &state,
+        &["nlinarith".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("nlinarith should close trivial goal");
     assert!(result.is_complete(), "nlinarith should close trivial goal");
 }
 /// Test: `exact?` closes the goal (suggestion mode).
@@ -1776,8 +2004,12 @@ fn tactic_exact_question_closes() {
     let a = Expr::Const(Name::str("A"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), a));
-    let result =
-        eval_tactic_block(&state, &["exact?".to_string()]).expect("exact? should close goal");
+    let result = eval_tactic_block(
+        &state,
+        &["exact?".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("exact? should close goal");
     assert!(
         result.is_complete(),
         "exact? should close goal in suggestion mode"
@@ -1789,8 +2021,12 @@ fn tactic_try_never_fails() {
     let a = Expr::Const(Name::str("ComplexProp"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), a));
-    let result =
-        eval_tactic_block(&state, &["try refl".to_string()]).expect("try refl should never fail");
+    let result = eval_tactic_block(
+        &state,
+        &["try refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("try refl should never fail");
     assert_eq!(
         result.num_goals(),
         1,
@@ -1828,6 +2064,7 @@ fn tactic_repeat_constructor() {
             "constructor".to_string(),
             "all_goals assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("constructor; assumption; constructor; all_goals assumption should succeed");
     assert!(
@@ -1844,8 +2081,12 @@ fn tactic_first_multiple_options() {
     let target = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["first | refl | assumption | sorry".to_string()])
-        .expect("first | refl | assumption | sorry should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["first | refl | assumption | sorry".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("first | refl | assumption | sorry should succeed");
     assert!(
         result.is_complete(),
         "first should pick refl and close 0 = 0"
@@ -1859,8 +2100,12 @@ fn tactic_try_then_assumption() {
     goal.add_hypothesis(Name::str("ha"), a.clone());
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["try refl".to_string(), "assumption".to_string()])
-        .expect("try refl; assumption should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["try refl".to_string(), "assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("try refl; assumption should succeed");
     assert!(
         result.is_complete(),
         "try refl (no-op) then assumption should close goal"
@@ -1879,6 +2124,7 @@ fn tactic_all_goals_refl() {
     let result = eval_tactic_block(
         &state,
         &["constructor".to_string(), "all_goals refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("constructor; all_goals refl should succeed");
     assert!(
@@ -1902,8 +2148,12 @@ fn tactic_repeat_assumption_many_goals() {
     state.add_goal(g1);
     state.add_goal(g2);
     state.add_goal(g3);
-    let result = eval_tactic_block(&state, &["repeat assumption".to_string()])
-        .expect("repeat assumption should succeed on 3 goals");
+    let result = eval_tactic_block(
+        &state,
+        &["repeat assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("repeat assumption should succeed on 3 goals");
     assert!(
         result.is_complete(),
         "repeat assumption should close all 3 goals"
@@ -1917,8 +2167,12 @@ fn tactic_nested_combinators() {
     goal.add_hypothesis(Name::str("h"), a.clone());
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["first | refl | assumption".to_string()])
-        .expect("first | refl | assumption should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["first | refl | assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("first | refl | assumption should succeed");
     assert!(
         result.is_complete(),
         "nested combinators should close goal via assumption"
@@ -1936,8 +2190,12 @@ fn tactic_all_goals_try_assumption() {
     let mut state = TacticState::new();
     state.add_goal(g1);
     state.add_goal(g2);
-    let result = eval_tactic_block(&state, &["all_goals assumption".to_string()])
-        .expect("all_goals assumption should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["all_goals assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("all_goals assumption should succeed");
     assert!(
         result.is_complete(),
         "all_goals assumption should close both goals"
@@ -1950,8 +2208,12 @@ fn tactic_repeat_try_assumption() {
     let goal = Goal::new(Name::str("main"), a.clone());
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["repeat (try assumption)".to_string()])
-        .expect("repeat (try assumption) should terminate");
+    let result = eval_tactic_block(
+        &state,
+        &["repeat (try assumption)".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("repeat (try assumption) should terminate");
     let _ = result.num_goals();
 }
 /// Helper for group B: build `Not p` expression.
@@ -1987,6 +2249,7 @@ fn tactic_push_neg_or_then_prove() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("push_neg + constructor + assumption*2 should succeed");
     assert!(

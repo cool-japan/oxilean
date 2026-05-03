@@ -156,13 +156,8 @@ pub fn count_free_vars(expr: &ErasedExprExt) -> usize {
 }
 fn count_fv_rec(expr: &ErasedExprExt, depth: u32) -> usize {
     match expr {
-        ErasedExprExt::BVar(i) => {
-            if *i >= depth {
-                1
-            } else {
-                0
-            }
-        }
+        ErasedExprExt::BVar(i) if *i >= depth => 1,
+        ErasedExprExt::BVar(_) => 0,
         ErasedExprExt::FVar(_) => 1,
         ErasedExprExt::Lam(b) => count_fv_rec(b, depth + 1),
         ErasedExprExt::App(f, x) => count_fv_rec(f, depth) + count_fv_rec(x, depth),
@@ -179,11 +174,10 @@ pub fn collect_consts(expr: &ErasedExprExt) -> Vec<String> {
 }
 pub(super) fn collect_consts_rec(expr: &ErasedExprExt, out: &mut Vec<String>) {
     match expr {
-        ErasedExprExt::Const(name) => {
-            if !out.contains(name) {
-                out.push(name.clone());
-            }
+        ErasedExprExt::Const(name) if !out.contains(name) => {
+            out.push(name.clone());
         }
+        ErasedExprExt::Const(_) => {}
         ErasedExprExt::Lam(b) => collect_consts_rec(b, out),
         ErasedExprExt::App(f, x) => {
             collect_consts_rec(f, out);

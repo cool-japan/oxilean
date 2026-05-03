@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc b6db55b9c432125bb3edc2e254de82f3a313099ed6e32b078ce900b0c7d32a96 # shrinks to name = Anonymous
+cc f2d812c299827565c9c2d0ad2a1836fac4747dd433abfb226210a0d257576e8f # shrinks to l = Max(Succ(Max(Zero, Param(Str(Anonymous, "x")))), Param(Str(Anonymous, "x")))
+cc 5dbd7f299b429cf957823db96941b218a295793458df1915492d7e3b4925ce8b # shrinks to l = Succ(IMax(Zero, Succ(Max(Param(Str(Anonymous, "x")), Zero))))
+cc ed953d773723fd5d6d39cf3896b616c5d0f5f9806dbed09d34707869e7a8b383 # shrinks to l = Max(Succ(IMax(Zero, Max(Param(Str(Anonymous, "x")), Zero))), Zero)

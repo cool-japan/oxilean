@@ -1288,8 +1288,7 @@ impl SourceMapBuilder {
                 a_size.cmp(&b_size)
             })
         });
-        self.semantic_tokens
-            .sort_by(|a, b| a.span.start.cmp(&b.span.start));
+        self.semantic_tokens.sort_by_key(|a| a.span.start);
         let line_offsets = SourceMap::compute_line_offsets(&self.source);
         SourceMap {
             entries: self.entries,

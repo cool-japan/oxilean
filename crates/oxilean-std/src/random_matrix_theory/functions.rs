@@ -137,7 +137,7 @@ pub fn free_random_variable_ty() -> Expr {
     arrow(type0(), type0())
 }
 /// `FreeCumulant : (List Real) -> Nat -> Real`
-/// Free cumulant κ_n[a] of a noncommutative distribution
+/// Free cumulant κ_n\[a\] of a noncommutative distribution
 pub fn free_cumulant_ty() -> Expr {
     arrow(vec_ty(), arrow(nat_ty(), real_ty()))
 }

@@ -12,7 +12,7 @@ use super::functions::*;
 /// correlated equilibrium constraints.
 pub struct CorrelatedEquilibriumSolver {
     /// Payoff matrices for each player.
-    /// `payoff_a[i][j]` = payoff to player A when (A plays i, B plays j).
+    /// `payoff_a\[i\]\[j\]` = payoff to player A when (A plays i, B plays j).
     pub payoff_a: Vec<Vec<f64>>,
     pub payoff_b: Vec<Vec<f64>>,
 }
@@ -20,7 +20,7 @@ impl CorrelatedEquilibriumSolver {
     pub fn new(payoff_a: Vec<Vec<f64>>, payoff_b: Vec<Vec<f64>>) -> Self {
         Self { payoff_a, payoff_b }
     }
-    /// Check whether `sigma[i][j]` is a correlated equilibrium.
+    /// Check whether `sigma\[i\]\[j\]` is a correlated equilibrium.
     ///
     /// Verifies:
     /// - σ is a valid distribution (non-negative, sums to 1).
@@ -98,7 +98,7 @@ impl CorrelatedEquilibriumSolver {
 /// An evolutionary game defined by a payoff matrix between strategies.
 ///
 /// The population state is a probability vector over strategies.
-/// `payoff_matrix[i][j]` is the payoff that strategy `i` receives when
+/// `payoff_matrix\[i\]\[j\]` is the payoff that strategy `i` receives when
 /// meeting strategy `j`.
 pub struct EvolutionaryGame {
     pub payoff_matrix: Vec<Vec<f64>>,
@@ -236,14 +236,14 @@ impl ESSChecker {
 /// Gale-Shapley deferred acceptance algorithm.
 ///
 /// Finds a stable matching between two sets of `n` agents.
-/// `proposer_prefs[i]` is agent `i`'s preference list over acceptors
+/// `proposer_prefs\[i\]` is agent `i`'s preference list over acceptors
 /// (most preferred first).
-/// `acceptor_prefs[j]` is acceptor `j`'s preference list over proposers.
+/// `acceptor_prefs\[j\]` is acceptor `j`'s preference list over proposers.
 pub struct GaleShapleyAlgorithm {
     pub n: usize,
-    /// `proposer_prefs[i][k]` = k-th choice of proposer `i`.
+    /// `proposer_prefs\[i\]\[k\]` = k-th choice of proposer `i`.
     pub proposer_prefs: Vec<Vec<usize>>,
-    /// `acceptor_prefs[j][k]` = k-th choice of acceptor `j`.
+    /// `acceptor_prefs\[j\]\[k\]` = k-th choice of acceptor `j`.
     pub acceptor_prefs: Vec<Vec<usize>>,
 }
 impl GaleShapleyAlgorithm {
@@ -256,7 +256,7 @@ impl GaleShapleyAlgorithm {
     }
     /// Run the proposer-optimal Gale-Shapley algorithm.
     ///
-    /// Returns `matching[i]` = the acceptor matched to proposer `i`,
+    /// Returns `matching\[i\]` = the acceptor matched to proposer `i`,
     /// or `n` if unmatched.
     pub fn run(&self) -> Vec<usize> {
         let n = self.n;
@@ -350,10 +350,10 @@ impl GaleShapleyAlgorithm {
 /// conditions for a direct mechanism.
 ///
 /// A direct mechanism is a pair `(q, t)` where:
-/// - `q[i]` = allocation rule probability for agent `i`
-/// - `t[i]` = transfer (payment) for agent `i`
+/// - `q\[i\]` = allocation rule probability for agent `i`
+/// - `t\[i\]` = transfer (payment) for agent `i`
 ///
-/// Given reported type `v[i]` (valuation), agent `i`'s utility is:
+/// Given reported type `v\[i\]` (valuation), agent `i`'s utility is:
 ///   `u(v, q, t) = v * q - t`
 pub struct MechanismDesignChecker {
     /// Valuations (types) of each agent.
@@ -414,7 +414,7 @@ impl MechanismDesignChecker {
 /// A cooperative (transferable-utility) game in characteristic form.
 ///
 /// `players` lists the player names.
-/// `characteristic_fn[S]` is the worth `v(S)` of coalition `S`
+/// `characteristic_fn\[S\]` is the worth `v(S)` of coalition `S`
 /// encoded as a bitmask: `S = 0b101` means {player 0, player 2}.
 /// The vector has length `2^n`.
 pub struct CooperativeGame {
@@ -440,7 +440,7 @@ impl CooperativeGame {
     }
     /// Compute the Shapley value for all players.
     ///
-    /// φ_i(v) = Σ_{S ⊆ N \ {i}} [|S|! (n - |S| - 1)! / n!] [v(S ∪ {i}) - v(S)]
+    /// φ_i(v) = Σ_{S ⊆ N \ {i}} [|S|! (n - |S| - 1)! / n!] \[v(S ∪ {i}) - v(S)\]
     pub fn shapley_value(&self) -> Vec<f64> {
         let n = self.n();
         let mut phi = vec![0.0f64; n];
@@ -543,7 +543,7 @@ impl CooperativeGame {
 }
 /// An auction with multiple bidders.
 ///
-/// `valuations[i]` is bidder `i`'s private valuation.
+/// `valuations\[i\]` is bidder `i`'s private valuation.
 pub struct AuctionGame {
     pub num_bidders: usize,
     pub valuations: Vec<f64>,
@@ -573,7 +573,7 @@ impl AuctionGame {
     }
     /// First-price auction Bayes-Nash equilibrium bid function.
     ///
-    /// With uniform private valuations on [0,1] and `n` bidders, the
+    /// With uniform private valuations on \[0,1\] and `n` bidders, the
     /// symmetric BNE bid for a bidder with valuation `v` is:
     ///   b(v) = v * (n-1) / n
     ///
@@ -584,7 +584,7 @@ impl AuctionGame {
     }
     /// All-pay auction equilibrium bids.
     ///
-    /// In an all-pay auction with uniform valuations on [0,1] and `n` bidders,
+    /// In an all-pay auction with uniform valuations on \[0,1\] and `n` bidders,
     /// the symmetric BNE bid for valuation `v` is:
     ///   b(v) = v^n * (n-1)/n  (approximate: integral formula)
     ///
@@ -600,12 +600,12 @@ impl AuctionGame {
 /// Solver for symmetric congestion games via an exact potential function.
 ///
 /// In a congestion game, players share resources.  The cost to a player using
-/// resource `r` when `k` players use it is `cost[r][k-1]` (1-indexed count).
-/// The exact potential Φ(x) = Σ_r Σ_{k=1}^{x_r} cost[r][k-1].
+/// resource `r` when `k` players use it is `cost\[r\][k-1]` (1-indexed count).
+/// The exact potential Φ(x) = Σ_r Σ_{k=1}^{x_r} cost\[r\][k-1].
 ///
 /// A pure Nash equilibrium minimises Φ (for cost-minimising players).
 pub struct CongestionGameSolver {
-    /// `cost[r][k]` = cost of resource `r` when `k+1` players use it.
+    /// `cost\[r\]\[k\]` = cost of resource `r` when `k+1` players use it.
     pub cost: Vec<Vec<f64>>,
     pub num_resources: usize,
     pub num_players: usize,
@@ -620,7 +620,7 @@ impl CongestionGameSolver {
             num_players,
         }
     }
-    /// Potential of a load vector `load[r]` = number of players on resource `r`.
+    /// Potential of a load vector `load\[r\]` = number of players on resource `r`.
     pub fn potential(&self, load: &[usize]) -> f64 {
         load.iter()
             .enumerate()
@@ -685,7 +685,7 @@ impl CongestionGameSolver {
 ///
 /// Simulates continuous-time replicator dynamics using Euler integration.
 pub struct ReplicatorDynamics {
-    /// Payoff matrix: `payoff[i][j]` = payoff to strategy `i` vs strategy `j`.
+    /// Payoff matrix: `payoff\[i\]\[j\]` = payoff to strategy `i` vs strategy `j`.
     pub payoff: Vec<Vec<f64>>,
 }
 impl ReplicatorDynamics {
@@ -890,9 +890,9 @@ impl RubinsteinBargainingSolver {
 ///
 /// This struct iterates the best-response map to convergence.
 pub struct QuantalResponseEquilibrium {
-    /// Payoff matrix for player A: `payoff_a[i][j]`.
+    /// Payoff matrix for player A: `payoff_a\[i\]\[j\]`.
     pub payoff_a: Vec<Vec<f64>>,
-    /// Payoff matrix for player B: `payoff_b[i][j]`.
+    /// Payoff matrix for player B: `payoff_b\[i\]\[j\]`.
     pub payoff_b: Vec<Vec<f64>>,
     /// Precision (rationality) parameter λ.
     pub lambda: f64,
@@ -986,7 +986,7 @@ pub struct StackelbergGameExt {
     pub leader_strategies: usize,
     /// Follower's strategy space size.
     pub follower_strategies: usize,
-    /// Leader's payoff matrix: leader_payoff[i][j] = payoff when leader plays i, follower plays j.
+    /// Leader's payoff matrix: leader_payoff\[i\]\[j\] = payoff when leader plays i, follower plays j.
     pub leader_payoff: Vec<Vec<f64>>,
     /// Follower's payoff matrix.
     pub follower_payoff: Vec<Vec<f64>>,
@@ -1048,7 +1048,7 @@ impl StackelbergGameExt {
 /// Checks pairwise stability of a network in a network formation game.
 ///
 /// A network is a set of bilateral links between players.
-/// `benefit[i][j]` = benefit to player `i` from a direct link with `j`.
+/// `benefit\[i\]\[j\]` = benefit to player `i` from a direct link with `j`.
 /// `cost_link` = symmetric cost of forming any link.
 ///
 /// A network is pairwise stable if:
@@ -1205,7 +1205,7 @@ impl RepeatedGame {
 /// Population state x = (x_1, ..., x_n) where x_i = frequency of strategy i.
 #[allow(dead_code)]
 pub struct ReplicatorDynamicsEvo {
-    /// The n×n payoff matrix A where A[i][j] = payoff to strategy i against j.
+    /// The n×n payoff matrix A where A\[i\]\[j\] = payoff to strategy i against j.
     pub payoff_matrix: Vec<Vec<f64>>,
     /// Number of strategies.
     pub n: usize,
@@ -1266,7 +1266,7 @@ impl ReplicatorDynamicsEvo {
     }
     /// Check if x is an evolutionarily stable strategy (ESS).
     /// x* is ESS if: for all y ≠ x*, f(x*, x*) > f(y, x*) OR
-    /// [f(x*, x*) = f(y, x*) AND f(x*, y) > f(y, y)].
+    /// \[f(x*, x*) = f(y, x*) AND f(x*, y) > f(y, y)\].
     pub fn is_ess(&self, x_star: &[f64], epsilon: f64) -> bool {
         let n = self.n;
         for i in 0..n {
@@ -1358,8 +1358,8 @@ impl CorrelatedEquilibrium {
 }
 /// A Stackelberg game with a leader and a follower.
 ///
-/// `leader_payoffs[i][j]` = leader payoff when leader plays i, follower plays j.
-/// `follower_payoffs[i][j]` = follower payoff when leader plays i, follower plays j.
+/// `leader_payoffs\[i\]\[j\]` = leader payoff when leader plays i, follower plays j.
+/// `follower_payoffs\[i\]\[j\]` = follower payoff when leader plays i, follower plays j.
 pub struct StackelbergGame {
     pub leader_strategies: Vec<String>,
     pub follower_strategies: Vec<String>,

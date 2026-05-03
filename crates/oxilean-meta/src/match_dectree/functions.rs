@@ -175,29 +175,27 @@ pub(super) fn specialize_matrix(
             .cloned()
             .unwrap_or(MetaPattern::Wildcard);
         match &pat {
-            MetaPattern::Constructor(name, subpats) => {
-                if name == ctor_name {
-                    let mut new_pats = Vec::new();
-                    for i in 0..col {
-                        if let Some(p) = row.patterns.get(i) {
-                            new_pats.push(p.clone());
-                        }
+            MetaPattern::Constructor(name, subpats) if name == ctor_name => {
+                let mut new_pats = Vec::new();
+                for i in 0..col {
+                    if let Some(p) = row.patterns.get(i) {
+                        new_pats.push(p.clone());
                     }
-                    new_pats.extend(subpats.iter().cloned());
-                    while new_pats.len() < col + num_fields as usize {
-                        new_pats.push(MetaPattern::Wildcard);
-                    }
-                    for i in (col + 1)..row.patterns.len() {
-                        if let Some(p) = row.patterns.get(i) {
-                            new_pats.push(p.clone());
-                        }
-                    }
-                    result.push(PatRow {
-                        patterns: new_pats,
-                        arm_idx: row.arm_idx,
-                        rhs: row.rhs.clone(),
-                    });
                 }
+                new_pats.extend(subpats.iter().cloned());
+                while new_pats.len() < col + num_fields as usize {
+                    new_pats.push(MetaPattern::Wildcard);
+                }
+                for i in (col + 1)..row.patterns.len() {
+                    if let Some(p) = row.patterns.get(i) {
+                        new_pats.push(p.clone());
+                    }
+                }
+                result.push(PatRow {
+                    patterns: new_pats,
+                    arm_idx: row.arm_idx,
+                    rhs: row.rhs.clone(),
+                });
             }
             MetaPattern::Wildcard | MetaPattern::Var(_) => {
                 let mut new_pats = Vec::new();

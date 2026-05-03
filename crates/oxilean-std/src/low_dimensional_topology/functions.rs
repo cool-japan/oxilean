@@ -397,7 +397,7 @@ pub fn link_surgery_ty() -> Expr {
 }
 /// `KnotConcordance : Knot → Knot → Prop`
 /// Two knots K₀ and K₁ are concordant if there is a smoothly embedded annulus
-/// in S³ × [0,1] with boundary K₀ × {0} ∪ K₁ × {1}.
+/// in S³ × \[0,1\] with boundary K₀ × {0} ∪ K₁ × {1}.
 pub fn knot_concordance_ty() -> Expr {
     arrow(knot_ty(), arrow(knot_ty(), prop()))
 }
@@ -454,7 +454,7 @@ pub fn tau_invariant_ty() -> Expr {
     arrow(knot_ty(), int_ty())
 }
 /// `AlexanderPolynomial : Knot → Type`
-/// Δ_K(t) ∈ Z[t, t⁻¹]: the Alexander polynomial of K, computed from HFK.
+/// Δ_K(t) ∈ Z\[t, t⁻¹\]: the Alexander polynomial of K, computed from HFK.
 pub fn alexander_polynomial_ty() -> Expr {
     arrow(knot_ty(), type0())
 }
@@ -469,7 +469,7 @@ pub fn hf_hat_ty() -> Expr {
     arrow(manifold_ty(), type0())
 }
 /// `HFPlus : Manifold → Type`
-/// HF⁺(Y): the plus version (uses chain complex over F_2[U]).
+/// HF⁺(Y): the plus version (uses chain complex over F_2\[U\]).
 pub fn hf_plus_ty() -> Expr {
     arrow(manifold_ty(), type0())
 }

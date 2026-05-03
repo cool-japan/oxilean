@@ -10,6 +10,10 @@ use super::types::{
     TacticDecideAnalysisPass, TacticDecideConfig, TacticDecideConfigValue, TacticDecideDiagnostics,
     TacticDecideDiff, TacticDecidePipeline, TacticDecideResult,
 };
+#[allow(unused_imports)]
+use crate::basic::{MVarId, MetaContext};
+use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::{Expr, Name};
 
 /// Find the first occurrence of `op` in `s` at parenthesis depth 0.
 pub(super) fn find_binary_op(s: &str, op: &str) -> Option<usize> {
@@ -903,5 +907,41 @@ mod decide_ext_tests_900 {
         let l = DecideExtConfigVal900::List(vec!["a".to_string(), "b".to_string()]);
         assert_eq!(l.type_name(), "list");
         assert_eq!(l.as_list().map(|v| v.len()), Some(2));
+    }
+}
+
+/// `decide` — evaluate decidable propositions by computation.
+///
+/// Converts the current goal's target to a string and runs it through
+/// [`DecideTactic::evaluate`], which handles `Nat` comparisons (`=`, `<`, `≤`),
+/// boolean operations (`&&`, `||`, `!`), and the literals `true` / `false`.
+/// If the proposition evaluates to `true`, the goal is closed with a synthetic
+/// proof constant; if it evaluates to `false` the tactic fails; if the decision
+/// procedure returns `Unknown` it also fails, as the proposition is not in the
+/// decidable fragment recognised by this kernel.
+pub fn tac_decide(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal = state.current_goal()?;
+    let target = ctx
+        .get_mvar_type(goal)
+        .cloned()
+        .ok_or_else(|| TacticError::Internal("decide: goal has no type".into()))?;
+    let target = ctx.instantiate_mvars(&target);
+    let target_str = target.to_string();
+
+    let tac = DecideTactic::new();
+    match tac.evaluate(&target_str) {
+        DecideResult::True => {
+            let proof = Expr::Const(Name::str("decide.isTrue"), vec![]);
+            state.close_goal(proof, ctx)?;
+            Ok(())
+        }
+        DecideResult::False => Err(TacticError::Failed(format!(
+            "decide: proposition `{}` evaluates to false",
+            target_str
+        ))),
+        DecideResult::Unknown => Err(TacticError::Failed(format!(
+            "decide: proposition `{}` is not in the decidable fragment",
+            target_str
+        ))),
     }
 }

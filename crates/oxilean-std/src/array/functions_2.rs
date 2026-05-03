@@ -8,8 +8,8 @@ use super::functions::*;
 
 /// `Array.prefix_sum_correct : ∀ {n}, Array Nat n → Prop`
 ///
-/// Correctness of prefix sums: for all valid ranges [l, r],
-/// the range sum equals prefix[r] - prefix[l-1].
+/// Correctness of prefix sums: for all valid ranges \[l, r\],
+/// the range sum equals prefix\[r\] - prefix[l-1].
 #[allow(dead_code)]
 pub fn arr_ext_prefix_sum_correct_ty() -> Expr {
     implicit_pi(
@@ -20,8 +20,8 @@ pub fn arr_ext_prefix_sum_correct_ty() -> Expr {
 }
 /// `Array.diff_array : {α : Type} → {n : Nat} → Array α n → Array α n`
 ///
-/// Difference array: for an array a, define d where d[0] = a[0],
-/// d[i] = a[i] - a[i-1]. Supports O(1) range update, O(n) reconstruction.
+/// Difference array: for an array a, define d where d\[0\] = a\[0\],
+/// d\[i\] = a\[i\] - a[i-1]. Supports O(1) range update, O(n) reconstruction.
 #[allow(dead_code)]
 pub fn arr_ext_diff_array_ty() -> Expr {
     implicit_pi(
@@ -38,7 +38,7 @@ pub fn arr_ext_diff_array_ty() -> Expr {
         ),
     )
 }
-/// `Array.sparse_table : {α : Type} → {n : Nat} → [Ord α] → Array α n → Type`
+/// `Array.sparse_table : {α : Type} → {n : Nat} → \[Ord α\] → Array α n → Type`
 ///
 /// Sparse table for range-minimum queries (RMQ): precomputes answers for all
 /// power-of-2 length intervals in O(n log n) time, enabling O(1) RMQ.
@@ -58,7 +58,7 @@ pub fn arr_ext_sparse_table_ty() -> Expr {
         ),
     )
 }
-/// `Array.rmq_correct : ∀ {α n}, [Ord α] → Array α n → Prop`
+/// `Array.rmq_correct : ∀ {α n}, \[Ord α\] → Array α n → Prop`
 ///
 /// Range minimum query correctness: the sparse table answers RMQ queries
 /// correctly, returning the minimum element in the queried range.
@@ -205,7 +205,7 @@ pub fn arr_ext_suffix_array_ty() -> Expr {
 /// `Array.suffix_array_correct : ∀ {n}, Array Nat n → Prop`
 ///
 /// Suffix array correctness: the suffix array SA is a permutation of [0..n)
-/// such that the suffixes str[SA[i]..] are in strictly increasing lexicographic order.
+/// such that the suffixes str[SA\[i\]..] are in strictly increasing lexicographic order.
 #[allow(dead_code)]
 pub fn arr_ext_suffix_array_correct_ty() -> Expr {
     implicit_pi(
@@ -441,7 +441,7 @@ pub fn arr_ext_par_reduce_ty() -> Expr {
 /// `Array.scan_left : {α β : Type} → {n : Nat} → (β → α → β) → β → Array α n → Array β (n+1)`
 ///
 /// Left scan (prefix scan): produces an array of prefix reductions.
-/// `scan_left f z [a0, a1, ..., an-1] = [z, f z a0, f (f z a0) a1, ...]`.
+/// `scan_left f z \[a0, a1, ..., an-1\] = \[z, f z a0, f (f z a0) a1, ...\]`.
 #[allow(dead_code)]
 pub fn arr_ext_scan_left_ty() -> Expr {
     implicit_pi(

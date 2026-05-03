@@ -787,7 +787,7 @@ mod tests {
         sc.add_simplex(vec![0, 1, 2]);
         assert_eq!(sc.euler_characteristic(), 1);
     }
-    /// S¹ (circle = triangle boundary) has Betti numbers [1, 1]:
+    /// S¹ (circle = triangle boundary) has Betti numbers \[1, 1\]:
     /// β₀ = 1 (connected), β₁ = 1 (one 1-cycle).
     #[test]
     fn test_betti_circle() {
@@ -841,7 +841,7 @@ mod tests {
             );
         }
     }
-    /// MetricSpace: a regular 4-point grid on [0,3].
+    /// MetricSpace: a regular 4-point grid on \[0,3\].
     ///
     /// Any finite metric space is totally bounded for any ε > 0 because we can
     /// place every point in its own singleton ball.  We verify this, and also

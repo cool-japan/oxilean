@@ -443,11 +443,10 @@ pub fn collect_loose_bvar_indices(expr: &Expr) -> Vec<u32> {
 }
 fn collect_loose_bvar_impl(expr: &Expr, depth: u32, result: &mut Vec<u32>) {
     match expr {
-        Expr::BVar(n) => {
-            if *n >= depth {
-                result.push(*n - depth);
-            }
+        Expr::BVar(n) if *n >= depth => {
+            result.push(*n - depth);
         }
+        Expr::BVar(_) => {}
         Expr::App(f, a) => {
             collect_loose_bvar_impl(f, depth, result);
             collect_loose_bvar_impl(a, depth, result);

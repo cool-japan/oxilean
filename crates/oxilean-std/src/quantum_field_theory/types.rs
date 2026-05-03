@@ -108,7 +108,7 @@ impl BRSTData {
 pub struct BrstComplex {
     /// Cochains at each ghost number grading.
     pub cochains: Vec<Vec<f64>>,
-    /// The differential s: cochain[k] → cochain[k+1].
+    /// The differential s: cochain\[k\] → cochain[k+1].
     /// Stored as a sequence of matrices.
     pub differentials: Vec<Vec<Vec<f64>>>,
 }
@@ -197,8 +197,8 @@ impl FeynmanDiagram {
         }
     }
 }
-/// Computes the Virasoro algebra commutator [L_m, L_n].
-/// [L_m, L_n] = (m-n) L_{m+n} + (c/12) m(m²-1) δ_{m+n,0}
+/// Computes the Virasoro algebra commutator \[L_m, L_n\].
+/// \[L_m, L_n\] = (m-n) L_{m+n} + (c/12) m(m²-1) δ_{m+n,0}
 #[derive(Debug, Clone, Copy)]
 pub struct VirasoroCommutator {
     /// Central charge c.
@@ -208,7 +208,7 @@ impl VirasoroCommutator {
     pub fn new(central_charge: f64) -> Self {
         VirasoroCommutator { central_charge }
     }
-    /// Compute [L_m, L_n] expressed as: (coeff_of_L, index_of_L, anomaly_term).
+    /// Compute \[L_m, L_n\] expressed as: (coeff_of_L, index_of_L, anomaly_term).
     /// Returns (coefficient of L_{m+n}, anomaly = c/12 m(m²-1) δ_{m+n,0}).
     pub fn commutator(&self, m: i64, n: i64) -> (f64, i64, f64) {
         let coeff = (m - n) as f64;
@@ -221,7 +221,7 @@ impl VirasoroCommutator {
         (coeff, l_index, anomaly)
     }
     /// Check the Jacobi identity for L_m, L_n, L_p:
-    /// [L_m,[L_n,L_p]] + [L_n,[L_p,L_m]] + [L_p,[L_m,L_n]] = 0.
+    /// [L_m,\[L_n,L_p\]] + [L_n,\[L_p,L_m\]] + [L_p,\[L_m,L_n\]] = 0.
     /// Here we check only the coefficient of L_{m+n+p} vanishes.
     pub fn check_jacobi(&self, m: i64, n: i64, p: i64) -> bool {
         let a = (m - n) * (m + n - p);
@@ -229,7 +229,7 @@ impl VirasoroCommutator {
         let c = (p - m) * (p + m - n);
         a + b + c == 0
     }
-    /// Witt algebra limit (c=0): [L_m, L_n] = (m-n) L_{m+n}.
+    /// Witt algebra limit (c=0): \[L_m, L_n\] = (m-n) L_{m+n}.
     pub fn witt_commutator(m: i64, n: i64) -> (f64, i64) {
         ((m - n) as f64, m + n)
     }
@@ -353,7 +353,7 @@ impl CorrelationFunctionLattice {
             spins: vec![vec![1i32; size]; size],
         }
     }
-    /// Compute the energy E = -J Σ_{<ij>} s_i s_j (with J=1).
+    /// Compute the energy E = -J Σ_{ij} s_i s_j (with J=1).
     pub fn energy(&self) -> f64 {
         let n = self.size;
         let mut e = 0.0;
@@ -554,7 +554,7 @@ impl KleinGordonField {
             pi: vec![0.0; n_sites],
         }
     }
-    /// Compute the Hamiltonian H = Σ_i [½ π_i² + ½((φ_{i+1}-φ_i)/dx)² + ½m²φ_i²].
+    /// Compute the Hamiltonian H = Σ_i \[½ π_i² + ½((φ_{i+1}-φ_i)/dx)² + ½m²φ_i²\].
     pub fn hamiltonian(&self) -> f64 {
         let mut h = 0.0;
         for i in 0..self.n_sites {
@@ -748,7 +748,7 @@ impl PathIntegralData {
     pub fn add_coupling(&mut self, name: &str, val: f64) {
         self.couplings.push((name.to_string(), val));
     }
-    /// Partition function Z = ∫ Dφ e^{-S[φ]} (formal description).
+    /// Partition function Z = ∫ Dφ e^{-S\[φ\]} (formal description).
     pub fn partition_function_description(&self) -> String {
         format!("Z = ∫ Dφ exp(-S_{{{}}}[φ])", self.action_name)
     }

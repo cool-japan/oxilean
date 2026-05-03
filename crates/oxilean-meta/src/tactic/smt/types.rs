@@ -1194,8 +1194,11 @@ impl SmtTacticResult {
 }
 /// SMT query context — collects declarations and assertions
 pub struct SmtContext {
+    /// The solver backend preference (advisory — OxiZ is always used as backend).
     pub solver: SmtSolver,
     pub(super) declarations: Vec<(String, SmtSort)>,
+    /// Function declarations: (name, arg_sorts, return_sort).
+    pub(super) fun_declarations: Vec<(String, Vec<SmtSort>, SmtSort)>,
     pub(super) assertions: Vec<SmtTerm>,
     pub(super) options: Vec<(String, String)>,
     pub(super) stack: Vec<SmtSnapshot>,
@@ -1205,6 +1208,7 @@ impl SmtContext {
         SmtContext {
             solver,
             declarations: Vec::new(),
+            fun_declarations: Vec::new(),
             assertions: Vec::new(),
             options: Vec::new(),
             stack: Vec::new(),
@@ -1212,6 +1216,20 @@ impl SmtContext {
     }
     pub fn declare_const(&mut self, name: &str, sort: SmtSort) -> &mut Self {
         self.declarations.push((name.to_string(), sort));
+        self
+    }
+    /// Declare an uninterpreted function.
+    ///
+    /// Use this for functions with one or more arguments. For nullary
+    /// functions (constants), use `declare_const` instead.
+    pub fn declare_fun(
+        &mut self,
+        name: &str,
+        arg_sorts: Vec<SmtSort>,
+        ret_sort: SmtSort,
+    ) -> &mut Self {
+        self.fun_declarations
+            .push((name.to_string(), arg_sorts, ret_sort));
         self
     }
     pub fn assert(&mut self, term: SmtTerm) -> &mut Self {
@@ -1232,15 +1250,50 @@ impl SmtContext {
         for (name, sort) in &self.declarations {
             out.push_str(&format!("(declare-const {} {})\n", name, sort));
         }
+        for (name, arg_sorts, ret_sort) in &self.fun_declarations {
+            let args: Vec<String> = arg_sorts.iter().map(|s| s.to_string()).collect();
+            out.push_str(&format!(
+                "(declare-fun {} ({}) {})\n",
+                name,
+                args.join(" "),
+                ret_sort
+            ));
+        }
         for term in &self.assertions {
             out.push_str(&format!("(assert {})\n", term.to_smtlib()));
         }
         out.push_str("(check-sat)\n");
         out
     }
-    /// Stub: always returns Unknown (no actual solver call)
+    /// Invoke the OxiZ SMT solver on the current assertions and return
+    /// `Sat`, `Unsat`, or `Unknown`.
+    ///
+    /// The `solver` field on this context is advisory; OxiZ is always used
+    /// as the solving backend.  Any script-level parse error from OxiZ is
+    /// returned as `SmtResult::Error(...)` rather than silently mapped to
+    /// `Unknown`.
     pub fn check_sat(&self) -> SmtResult {
-        SmtResult::Unknown
+        let script = self.emit_smtlib2();
+        let mut ctx = oxiz_solver::Context::new();
+        match ctx.execute_script(&script) {
+            Err(e) => SmtResult::Error(format!("OxiZ parse error: {}", e)),
+            Ok(output) => {
+                // Find the last non-empty line that is a recognised verdict.
+                let verdict = output.iter().rev().find_map(|line| {
+                    let trimmed = line.trim();
+                    match trimmed {
+                        "sat" | "unsat" | "unknown" => Some(trimmed),
+                        _ => None,
+                    }
+                });
+                match verdict {
+                    Some("sat") => SmtResult::Sat,
+                    Some("unsat") => SmtResult::Unsat,
+                    Some("unknown") => SmtResult::Unknown,
+                    _ => SmtResult::Unknown,
+                }
+            }
+        }
     }
     /// Returns true if check_sat is Unsat
     pub fn check_unsat(&self) -> bool {
@@ -1248,6 +1301,7 @@ impl SmtContext {
     }
     pub fn reset(&mut self) {
         self.declarations.clear();
+        self.fun_declarations.clear();
         self.assertions.clear();
         self.options.clear();
         self.stack.clear();
@@ -1257,6 +1311,10 @@ impl SmtContext {
     }
     pub fn decl_count(&self) -> usize {
         self.declarations.len()
+    }
+    /// Number of declared uninterpreted functions.
+    pub fn fun_decl_count(&self) -> usize {
+        self.fun_declarations.len()
     }
     /// Push assertion stack (saves current declarations and assertions)
     pub fn push(&mut self) {

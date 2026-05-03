@@ -41,7 +41,7 @@ pub struct CsrMatrix {
     pub nrows: usize,
     /// Number of columns.
     pub ncols: usize,
-    /// Row pointer array (`row_ptr[i]..row_ptr[i+1]` gives the range of entries for row i).
+    /// Row pointer array (`row_ptr\[i\]..row_ptr[i+1]` gives the range of entries for row i).
     pub row_ptr: Vec<usize>,
     /// Column indices (length nnz).
     pub col_idx: Vec<usize>,
@@ -365,7 +365,7 @@ impl CooMatrix {
 /// Result of LU decomposition with partial pivoting.
 ///
 /// Stores L (lower triangular, unit diagonal), U (upper triangular),
-/// and the permutation vector `piv` such that piv[i] = j means row i
+/// and the permutation vector `piv` such that piv\[i\] = j means row i
 /// was swapped with row j during factorisation.
 #[derive(Debug, Clone)]
 pub struct LUResult {
@@ -413,7 +413,7 @@ impl CirculantMatrixFFT {
     /// Compute the DFT of `c` (unnormalized) for use in eigenvalue analysis.
     ///
     /// The eigenvalues of a circulant matrix are exactly the DFT of its
-    /// first row: λ_k = Σ_j c[j] ω^{jk}, ω = e^{-2πi/n}.
+    /// first row: λ_k = Σ_j c\[j\] ω^{jk}, ω = e^{-2πi/n}.
     ///
     /// Returns the real and imaginary parts as separate vectors.
     pub fn dft_eigenvalues(&self) -> (Vec<f64>, Vec<f64>) {

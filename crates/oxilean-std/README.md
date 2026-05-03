@@ -9,7 +9,7 @@ The OxiLean standard library provides essential inductive types, type classes, a
 
 The library is organized into primitive types (`Nat`, `Bool`, `List`, `Option`, `Result`), algebraic type classes (`Eq`, `Ord`, `Functor`, `Monad`, `Monoid`), and core theorems covering equality, logic, arithmetic, and ordering.
 
-416,133 SLOC -- the largest crate in the OxiLean workspace, providing comprehensive standard library coverage (1,105 source files, 6,929 tests passing).
+416,133 SLOC -- the largest crate in the OxiLean workspace, providing comprehensive standard library coverage (1,105 source files, 7,977 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -71,7 +71,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-std = "0.1.1"
+oxilean-std = "0.1.2"
 ```
 
 Example OxiLean proof using standard library theorems:

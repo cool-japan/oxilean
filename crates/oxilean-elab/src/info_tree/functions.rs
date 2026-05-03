@@ -182,10 +182,8 @@ pub fn hover_info(tree: &InfoTree, pos: usize) -> Option<HoverInfo> {
     hover = hover.with_local_context(lctx);
     for info in &infos {
         match info {
-            InfoData::TermInfo { expr, type_ } => {
-                if hover.expr.is_none() {
-                    hover = hover.with_expr(expr.clone()).with_type(type_.clone());
-                }
+            InfoData::TermInfo { expr, type_ } if hover.expr.is_none() => {
+                hover = hover.with_expr(expr.clone()).with_type(type_.clone());
             }
             InfoData::RefInfo { name, ty, doc } => {
                 hover = hover.with_name(name.clone());

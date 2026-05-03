@@ -136,14 +136,14 @@ pub fn ctl_af_ty() -> Expr {
 pub fn ctl_ag_ty() -> Expr {
     arrow(cst("CtlFormula"), cst("CtlFormula"))
 }
-/// CTL EU: E[φ U ψ]
+/// CTL EU: E\[φ U ψ\]
 pub fn ctl_eu_ty() -> Expr {
     arrow(
         cst("CtlFormula"),
         arrow(cst("CtlFormula"), cst("CtlFormula")),
     )
 }
-/// CTL AU: A[φ U ψ]
+/// CTL AU: A\[φ U ψ\]
 pub fn ctl_au_ty() -> Expr {
     arrow(
         cst("CtlFormula"),
@@ -346,7 +346,7 @@ pub fn atl_coop_g_ty() -> Expr {
         arrow(cst("AtlFormula"), cst("AtlFormula")),
     )
 }
-/// AtlCoopU: ⟪A⟫[φ U ψ] — coalition A can enforce φ U ψ
+/// AtlCoopU: ⟪A⟫\[φ U ψ\] — coalition A can enforce φ U ψ
 pub fn atl_coop_u_ty() -> Expr {
     arrow(
         cst("AgentCoalition"),
@@ -601,14 +601,14 @@ mod tests {
 pub fn tctl_formula_ty() -> Expr {
     type0()
 }
-/// TctlEFBounded: EF_[a,b] φ — exists path reaching φ within interval [a,b]
+/// TctlEFBounded: EF_\[a,b\] φ — exists path reaching φ within interval \[a,b\]
 pub fn tl_ext_tctl_ef_bounded_ty() -> Expr {
     arrow(
         nat_ty(),
         arrow(nat_ty(), arrow(cst("TctlFormula"), cst("TctlFormula"))),
     )
 }
-/// TctlAGBounded: AG_[a,b] φ — all paths satisfy φ throughout interval [a,b]
+/// TctlAGBounded: AG_\[a,b\] φ — all paths satisfy φ throughout interval \[a,b\]
 pub fn tl_ext_tctl_ag_bounded_ty() -> Expr {
     arrow(
         nat_ty(),
@@ -629,7 +629,7 @@ pub fn tl_ext_tctl_sat_ty() -> Expr {
 pub fn mtl_formula_ty() -> Expr {
     type0()
 }
-/// MtlUntilBounded: φ U_[a,b] ψ — metric bounded until
+/// MtlUntilBounded: φ U_\[a,b\] ψ — metric bounded until
 pub fn tl_ext_mtl_until_bounded_ty() -> Expr {
     arrow(
         cst("MtlFormula"),
@@ -639,14 +639,14 @@ pub fn tl_ext_mtl_until_bounded_ty() -> Expr {
         ),
     )
 }
-/// MtlFinally: F_[a,b] φ — metric finally
+/// MtlFinally: F_\[a,b\] φ — metric finally
 pub fn tl_ext_mtl_finally_bounded_ty() -> Expr {
     arrow(
         nat_ty(),
         arrow(nat_ty(), arrow(cst("MtlFormula"), cst("MtlFormula"))),
     )
 }
-/// MtlGlobally: G_[a,b] φ — metric globally
+/// MtlGlobally: G_\[a,b\] φ — metric globally
 pub fn tl_ext_mtl_globally_bounded_ty() -> Expr {
     arrow(
         nat_ty(),
@@ -690,7 +690,7 @@ pub fn tl_ext_itl_chop_ty() -> Expr {
 pub fn tl_ext_itl_projection_ty() -> Expr {
     arrow(cst("ItlFormula"), cst("ItlFormula"))
 }
-/// ItlSat: [i,j] ⊨ φ — interval [i,j] satisfies φ
+/// ItlSat: \[i,j\] ⊨ φ — interval \[i,j\] satisfies φ
 pub fn tl_ext_itl_sat_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(cst("ItlFormula"), prop())))
 }

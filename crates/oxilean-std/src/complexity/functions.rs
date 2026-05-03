@@ -546,11 +546,11 @@ pub fn clique_inapprox_ty() -> Expr {
 pub fn fpt_ty() -> Expr {
     arrow(language_ty(), prop())
 }
-/// W[1] : Language → Prop — first level of W-hierarchy (parameterized complexity)
+/// W\[1\] : Language → Prop — first level of W-hierarchy (parameterized complexity)
 pub fn w1_ty() -> Expr {
     arrow(language_ty(), prop())
 }
-/// CLIQUE (parameterized by clique size) is W[1]-complete
+/// CLIQUE (parameterized by clique size) is W\[1\]-complete
 pub fn clique_w1_complete_ty() -> Expr {
     app(cst("W1Complete"), cst("ParameterizedCLIQUE"))
 }
@@ -1098,7 +1098,7 @@ pub fn fpt_algorithm_ty() -> Expr {
         ),
     )
 }
-/// W-hierarchy: W[1] ⊆ W[2] ⊆ ... ⊆ W[P]
+/// W-hierarchy: W\[1\] ⊆ W\[2\] ⊆ ... ⊆ W\[P\]
 pub fn w_hierarchy_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1149,7 +1149,7 @@ pub fn fpt_subset_xp_ty() -> Expr {
         arrow(app(cst("FPT"), bvar(0)), app(cst("XP"), bvar(1))),
     )
 }
-/// CLIQUE parameterized by k is W[1]-complete (parameterized version)
+/// CLIQUE parameterized by k is W\[1\]-complete (parameterized version)
 pub fn param_clique_w1_complete_ty() -> Expr {
     app2(
         cst("And"),

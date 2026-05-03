@@ -457,7 +457,7 @@ pub fn truncation_in_ty() -> Expr {
 /// `Quotient : ∀ (A : Type), (A → A → Prop) → Type`
 ///
 /// The set quotient A/R by an equivalence relation R:
-/// a HIT with constructor [_] : A → A/R and path quot : ∀ a b, R a b → [a] = [b].
+/// a HIT with constructor \[_\] : A → A/R and path quot : ∀ a b, R a b → \[a\] = \[b\].
 pub fn quotient_ty() -> Expr {
     impl_pi(
         "A",

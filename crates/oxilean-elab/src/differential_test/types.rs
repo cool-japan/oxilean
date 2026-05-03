@@ -600,7 +600,8 @@ impl DiffTestScheduler {
     }
     /// Run all tests in priority order (highest priority first).
     pub fn run(&mut self) -> Vec<(String, DiffTestResult)> {
-        self.scheduled.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.scheduled
+            .sort_by_key(|b| std::cmp::Reverse(b.priority));
         self.scheduled
             .iter()
             .map(|st| {

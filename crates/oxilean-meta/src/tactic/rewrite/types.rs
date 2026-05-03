@@ -30,7 +30,7 @@ impl RewriteHintDb {
     }
     /// Sort by priority (highest first).
     pub fn sort_by_priority(&mut self) {
-        self.hints.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.hints.sort_by_key(|b| std::cmp::Reverse(b.priority));
     }
     /// Get all hint names.
     pub fn names(&self) -> Vec<&Name> {

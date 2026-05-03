@@ -433,7 +433,7 @@ pub fn measure_transport_exists_ty() -> Expr {
 /// the supremum of Lipschitz-1 functions.
 ///
 /// `ot_kantorovich : ∀ (mu nu : ProbMeasure X),
-///   W1 mu nu = sup_{f : 1-Lip} (E_mu[f] - E_nu[f])`
+///   W1 mu nu = sup_{f : 1-Lip} (E_mu\[f\] - E_nu\[f\])`
 pub fn ot_kantorovich_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -457,10 +457,10 @@ pub fn ot_kantorovich_ty() -> Expr {
     )
 }
 /// **Stein Identity**: for any smooth function h and score function s_p = ∇ log p,
-/// E_p[∇ h(x) + h(x) s_p(x)] = 0.
+/// E_p\[∇ h(x) + h(x) s_p(x)\] = 0.
 ///
 /// `stein_identity : ∀ (p : SmoothMeasure X) (h : X → Real),
-///   SmoothTestFn h → E_p[SteinOp p h] = 0`
+///   SmoothTestFn h → E_p\[SteinOp p h\] = 0`
 pub fn stein_identity_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -856,7 +856,7 @@ pub fn stein_disc_zero_iff_ty() -> Expr {
 /// in expectation.
 ///
 /// `smc_feynman_kac : ∀ (fk : FeynmanKacModel X) (N : Nat),
-///   E[SMCNormConst fk N] = FeynmanKacNormConst fk`
+///   E\[SMCNormConst fk N\] = FeynmanKacNormConst fk`
 pub fn smc_feynman_kac_ty() -> Expr {
     pi(
         BinderInfo::Default,

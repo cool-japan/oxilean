@@ -79,8 +79,8 @@ pub struct LeslieMatrix {
 impl LeslieMatrix {
     /// Construct a Leslie matrix from fecundities (first row) and survival probabilities.
     ///
-    /// `fecundities[i]` = per-capita offspring produced by age class i.
-    /// `survivals[i]` = probability of surviving from age class i to i+1.
+    /// `fecundities\[i\]` = per-capita offspring produced by age class i.
+    /// `survivals\[i\]` = probability of surviving from age class i to i+1.
     pub fn new(fecundities: Vec<f64>, survivals: Vec<f64>) -> Self {
         let n = fecundities.len();
         let mut matrix = vec![vec![0.0; n]; n];
@@ -576,7 +576,7 @@ pub struct ResourceCompetition {
     /// Consumer species names.
     pub consumers: Vec<String>,
     /// R* values: minimum resource requirement of each consumer for each resource.
-    /// Indexed as R_star[consumer][resource].
+    /// Indexed as R_star\[consumer\]\[resource\].
     pub r_star: Vec<f64>,
 }
 impl ResourceCompetition {
@@ -622,7 +622,7 @@ impl ResourceCompetition {
 /// Symmetric evolutionary game with payoff matrix.
 #[derive(Debug, Clone)]
 pub struct EvolutionaryGame {
-    /// Payoff matrix A: A[i][j] = payoff to strategy i when playing against strategy j.
+    /// Payoff matrix A: A\[i\]\[j\] = payoff to strategy i when playing against strategy j.
     pub payoff_matrix: Vec<Vec<f64>>,
     /// Strategy names.
     pub strategies: Vec<String>,
@@ -681,7 +681,7 @@ impl EvolutionaryGame {
     /// Check if strategy `s` is an ESS.
     ///
     /// σ* = strategy s is ESS if for all j ≠ s:
-    ///   A[s][s] > A[j][s], or (A[s][s] = A[j][s] and A[s][j] > A[j][j]).
+    ///   A\[s\]\[s\] > A\[j\]\[s\], or (A\[s\]\[s\] = A\[j\]\[s\] and A\[s\]\[j\] > A\[j\]\[j\]).
     pub fn is_ess(&self, s: usize) -> bool {
         let n = self.payoff_matrix.len();
         for j in 0..n {
@@ -705,7 +705,7 @@ impl EvolutionaryGame {
 /// Turing pattern analysis for the two-component activator-inhibitor system.
 ///
 /// Linearization at (u*, v*) gives Jacobian:
-///   J = [[a, b], [c, d]]
+///   J = [\[a, b\], \[c, d\]]
 /// with diffusion coefficients D_u, D_v.
 ///
 /// Turing instability occurs when diffusion destabilizes the uniform steady state.
@@ -891,7 +891,7 @@ impl MetapopulationModel {
         }
     }
     /// Simulate patch occupancy using Levins model (Euler integration).
-    /// Returns trajectory as Vec<(t, p)>.
+    /// Returns trajectory as `Vec<(t, p)>`.
     pub fn levins_model(&self, p0: f64, dt: f64, steps: usize) -> Vec<(f64, f64)> {
         let mut traj = Vec::with_capacity(steps + 1);
         let mut p = p0.clamp(0.0, 1.0);
@@ -1258,7 +1258,7 @@ impl NeutralBiodiversityModel {
         }
     }
     /// Expected local species richness under the unified neutral theory.
-    /// Approximation: E[S] ≈ θ · ln(1 + J / θ).
+    /// Approximation: E\[S\] ≈ θ · ln(1 + J / θ).
     pub fn expected_richness(&self) -> f64 {
         let j = self.local_community_size as f64;
         self.theta * (1.0 + j / self.theta).ln()

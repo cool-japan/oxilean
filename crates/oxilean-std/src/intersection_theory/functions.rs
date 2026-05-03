@@ -92,7 +92,7 @@ pub fn pullback_cycle_ty() -> Expr {
     arrow(cst("Morphism"), arrow(cst("ChowGroup"), cst("ChowGroup")))
 }
 /// `FundamentalClass : Scheme → ChowGroup X 0`
-/// The fundamental class [X] ∈ A_d(X) (or A^0(X)).
+/// The fundamental class \[X\] ∈ A_d(X) (or A^0(X)).
 pub fn fundamental_class_ty() -> Expr {
     arrow(cst("Scheme"), cst("ChowGroup"))
 }
@@ -110,7 +110,7 @@ pub fn bezout_theorem_ty() -> Expr {
     )
 }
 /// `ExcessIntersectionFormula : ∀ (i : Morphism) (Z : Scheme),
-///   i_* [Z] = e(E) ∩ [Z]` where E is the excess bundle.
+///   i_* \[Z\] = e(E) ∩ \[Z\]` where E is the excess bundle.
 pub fn excess_intersection_formula_ty() -> Expr {
     arrow(
         cst("Morphism"),
@@ -159,7 +159,7 @@ pub fn segre_class_ty() -> Expr {
     arrow(cst("Subscheme"), arrow(cst("Scheme"), cst("ChowGroup")))
 }
 /// `SelfIntersectionFormula : ∀ (i : Morphism) (Z : Scheme),
-///   i* i_* [Z] = c_top(N_{Z/X}) ∩ [Z]`
+///   i* i_* \[Z\] = c_top(N_{Z/X}) ∩ \[Z\]`
 /// where N_{Z/X} is the normal bundle.
 pub fn self_intersection_formula_ty() -> Expr {
     arrow(
@@ -345,7 +345,7 @@ pub fn schubert_variety_ty() -> Expr {
     arrow(cst("Grassmannian"), arrow(cst("Partition"), cst("Scheme")))
 }
 /// `SchubertClass : Grassmannian → Partition → ChowGroup`
-/// The Schubert class [X_λ] ∈ A^{|λ|}(G(k,n)).
+/// The Schubert class \[X_λ\] ∈ A^{|λ|}(G(k,n)).
 pub fn schubert_class_ty() -> Expr {
     arrow(
         cst("Grassmannian"),
@@ -371,7 +371,7 @@ pub fn littlewood_richardson_ty() -> Expr {
     )
 }
 /// `GrassmannianChowRing : Nat → Nat → Type`
-/// A^*(G(k,n)) = Z[σ_1,…,σ_k] / (Schubert relations).
+/// A^*(G(k,n)) = Z\[σ_1,…,σ_k\] / (Schubert relations).
 pub fn grassmannian_chow_ring_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
@@ -381,7 +381,7 @@ pub fn flag_variety_ty() -> Expr {
     arrow(list_ty(nat_ty()), type0())
 }
 /// `SchubertPolynomial : Permutation → Polynomial`
-/// Schubert polynomial S_w(x_1,…,x_n) representing [X_w] ∈ A*(FL(n)).
+/// Schubert polynomial S_w(x_1,…,x_n) representing \[X_w\] ∈ A*(FL(n)).
 pub fn schubert_polynomial_ty() -> Expr {
     arrow(cst("Permutation"), cst("Polynomial"))
 }
@@ -396,7 +396,7 @@ pub fn exceptional_divisor_ty() -> Expr {
     arrow(cst("BlowupScheme"), cst("Divisor"))
 }
 /// `BlowupChowRingMap : Scheme → Subscheme → ChowRing`
-/// `A*(Bl_Z X) = A*(X)[e] / (relations involving e and A*(Z))`
+/// `A*(Bl_Z X) = A*(X)\[e\] / (relations involving e and A*(Z))`
 pub fn blowup_chow_ring_map_ty() -> Expr {
     arrow(cst("Scheme"), arrow(cst("Subscheme"), cst("ChowRing")))
 }
@@ -421,7 +421,7 @@ pub fn blowup_formula_ty() -> Expr {
 pub fn degeneracy_locus_ty() -> Expr {
     arrow(cst("BundleMap"), arrow(nat_ty(), cst("Scheme")))
 }
-/// `ThomPorteousFormula : ∀ (φ : BundleMap E F), [D_k(φ)] = Δ_{λ}(c(F-E))`
+/// `ThomPorteousFormula : ∀ (φ : BundleMap E F), \[D_k(φ)\] = Δ_{λ}(c(F-E))`
 /// where Δ_λ is the Schur determinant in Chern classes.
 pub fn thom_porteous_formula_ty() -> Expr {
     arrow(cst("BundleMap"), arrow(cst("Partition"), cst("ChowGroup")))
@@ -432,7 +432,7 @@ pub fn euler_class_ty() -> Expr {
     arrow(cst("VectorBundle"), cst("ChowGroup"))
 }
 /// `euler_class_zero_locus : ∀ (E : VectorBundle) (s : BundleSection),
-///   [Z(s)] = e(E) ∩ [X]`
+///   [Z(s)] = e(E) ∩ \[X\]`
 pub fn euler_class_zero_locus_ty() -> Expr {
     arrow(
         cst("VectorBundle"),
@@ -740,7 +740,7 @@ pub fn euler_characteristic_from_betti(betti: &[i64]) -> i64 {
 }
 /// Compute the degree of a line bundle on P^n.
 ///
-/// The Chow ring of P^n is Z[H]/(H^{n+1}), and a line bundle O(d) has degree d.
+/// The Chow ring of P^n is Z\[H\]/(H^{n+1}), and a line bundle O(d) has degree d.
 pub fn projective_line_bundle_degree(n: usize, power: u64) -> u64 {
     if power == n as u64 {
         1
@@ -792,7 +792,7 @@ pub fn dt_partition_function_coeff(euler_char: i64, degree: usize) -> f64 {
 }
 /// Todd class coefficients of P^n.
 ///
-/// td(TP^n) = ((H)/(1 - e^{-H}))^{n+1} in the Chow ring Q[H]/(H^{n+1}).
+/// td(TP^n) = ((H)/(1 - e^{-H}))^{n+1} in the Chow ring Q\[H\]/(H^{n+1}).
 /// Returns the coefficients td_0, td_1, …, td_n.
 pub fn todd_class_projective_space(n: usize) -> Vec<f64> {
     let n1 = (n + 1) as f64;
@@ -1189,7 +1189,7 @@ pub fn it_ext_grassmann_bundle_formula_ty() -> Expr {
         arrow(cst("VectorBundle"), arrow(nat_ty(), cst("ChowRing"))),
     )
 }
-/// `ProjectiveBundleFormula : A*(P(E)) = A*(X)[ξ] / (∑ (-1)^k c_k(E) ξ^{r-k})`
+/// `ProjectiveBundleFormula : A*(P(E)) = A*(X)\[ξ\] / (∑ (-1)^k c_k(E) ξ^{r-k})`
 /// Chow ring of a projective bundle P(E) over X.
 pub fn it_ext_projective_bundle_formula_ty() -> Expr {
     arrow(cst("Scheme"), arrow(cst("VectorBundle"), cst("ChowRing")))
@@ -1279,7 +1279,7 @@ pub fn register_intersection_theory_extended(env: &mut Environment) -> Result<()
 /// Kontsevich recursive formula for the number of rational curves in P^2.
 ///
 /// N_d = number of rational degree-d curves through 3d-1 generic points.
-/// Kontsevich's recursion: N_d = ∑_{d1+d2=d} N_{d1} N_{d2} [d1^2 d2^2 C(3d-4, 3d1-2) - d1^3 d2 C(3d-4, 3d1-1)]
+/// Kontsevich's recursion: N_d = ∑_{d1+d2=d} N_{d1} N_{d2} \[d1^2 d2^2 C(3d-4, 3d1-2) - d1^3 d2 C(3d-4, 3d1-1)\]
 pub fn kontsevich_nd(d: usize) -> u64 {
     if d == 1 {
         return 1;
@@ -1328,7 +1328,7 @@ pub fn binomial_u64(n: i64, k: i64) -> u64 {
 }
 /// Compute the total Chern class of a direct sum using the Whitney sum formula.
 ///
-/// Given Chern classes c(E) = [1, c1_E, c2_E, …] and c(F) = [1, c1_F, c2_F, …],
+/// Given Chern classes c(E) = \[1, c1_E, c2_E, …\] and c(F) = \[1, c1_F, c2_F, …\],
 /// returns c(E ⊕ F) = c(E) · c(F) (polynomial multiplication).
 pub fn whitney_sum_chern(c_e: &[i64], c_f: &[i64]) -> Vec<i64> {
     let deg = c_e.len() + c_f.len() - 1;

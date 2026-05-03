@@ -58,7 +58,7 @@ impl MoravaKTheory {
     pub fn periodicity(&self) -> u64 {
         2 * (self.prime.pow(self.height as u32) - 1)
     }
-    /// K(n) is a field spectrum: K(n)_*(K(n)) ≅ K(n)_*[τ, τ^{-1}].
+    /// K(n) is a field spectrum: K(n)_*(K(n)) ≅ K(n)_*\[τ, τ^{-1}\].
     pub fn is_field_spectrum(&self) -> bool {
         true
     }
@@ -423,7 +423,7 @@ impl LubinTateSpaceData {
 }
 /// The Brown-Peterson spectrum BP at a prime p.
 ///
-/// π_*(BP) = ℤ_(p)[v_1, v_2, ...] where |v_n| = 2(p^n - 1).
+/// π_*(BP) = ℤ_(p)\[v_1, v_2, ...\] where |v_n| = 2(p^n - 1).
 pub struct BrownPetersonBP {
     /// The prime p.
     pub prime: u64,
@@ -496,7 +496,7 @@ impl WittVectorRing {
 }
 /// A formal group law F(x, y) over a coefficient ring.
 ///
-/// Coefficients `a[i][j]` give the degree-(i+j) piece of F.
+/// Coefficients `a\[i\]\[j\]` give the degree-(i+j) piece of F.
 /// We store only finitely many terms up to a given truncation degree.
 pub struct FormalGroupLaw {
     /// Coefficients a_{i,j} of x^i y^j, truncated to degree `truncation`.
@@ -636,7 +636,7 @@ pub struct MoravaKData {
     pub height: usize,
     /// Prime.
     pub prime: usize,
-    /// Coefficient ring description: K(n)_* = F_p[v_n, v_n^{-1}].
+    /// Coefficient ring description: K(n)_* = F_p\[v_n, v_n^{-1}\].
     pub coeff_ring: String,
 }
 #[allow(dead_code)]
@@ -689,7 +689,7 @@ impl MoravaKData {
 pub struct ChromaticComplexityData {
     /// The spectrum X (by name).
     pub spectrum: String,
-    /// Acyclicity flags: acyclic_below[n] = true means K(n)_*(X) = 0.
+    /// Acyclicity flags: acyclic_below\[n\] = true means K(n)_*(X) = 0.
     pub acyclic_below: Vec<bool>,
 }
 impl ChromaticComplexityData {
@@ -902,7 +902,7 @@ impl MoravaStabilizerGroupData {
 }
 /// The spectrum tmf of topological modular forms.
 ///
-/// π_*(tmf) ≅ ℤ[c_4, c_6, Δ] / (c_4^3 - c_6^2 = 1728 Δ).
+/// π_*(tmf) ≅ ℤ\[c_4, c_6, Δ\] / (c_4^3 - c_6^2 = 1728 Δ).
 pub struct TopologicalModularForms {
     /// Whether this is the connective version (tmf) or periodic (TMF).
     pub is_connective: bool,
@@ -1028,7 +1028,7 @@ impl MoravaETheory {
 }
 /// The Honda formal group H_n of height n over F_{p^n}.
 ///
-/// H_n is determined (up to isomorphism) by its [p]-series [p](x) = x^{p^n}.
+/// H_n is determined (up to isomorphism) by its \[p\]-series \[p\](x) = x^{p^n}.
 pub struct HondaFormalGroup {
     /// The height n.
     pub height: usize,
@@ -1040,7 +1040,7 @@ impl HondaFormalGroup {
     pub fn new(height: usize, prime: u64) -> Self {
         HondaFormalGroup { height, prime }
     }
-    /// The degree of the [p]-series is p^n.
+    /// The degree of the \[p\]-series is p^n.
     pub fn p_series_degree(&self) -> u64 {
         self.prime.pow(self.height as u32)
     }
@@ -1173,7 +1173,7 @@ impl FglArithmetic {
             self.coeffs.insert((i, j), val);
         }
     }
-    /// Computes the p-series [p](x) = F(x, F(x, ... F(x, x)...)) (p times), truncated.
+    /// Computes the p-series \[p\](x) = F(x, F(x, ... F(x, x)...)) (p times), truncated.
     pub fn p_series(&self, p: usize, x: f64) -> f64 {
         if p == 0 {
             return 0.0;

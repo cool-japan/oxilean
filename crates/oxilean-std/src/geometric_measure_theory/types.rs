@@ -98,14 +98,14 @@ impl CompactnessTheorem {
         true
     }
 }
-/// A piecewise-linear Lipschitz map f : [0, 1] → [0, 1] defined on a uniform grid.
+/// A piecewise-linear Lipschitz map f : \[0, 1\] → \[0, 1\] defined on a uniform grid.
 #[derive(Debug, Clone)]
 pub struct PiecewiseLinearMap {
     /// Values at grid points 0/n, 1/n, …, n/n.
     pub values: Vec<f64>,
 }
 impl PiecewiseLinearMap {
-    /// Create from a list of n+1 values on [0,1].
+    /// Create from a list of n+1 values on \[0,1\].
     pub fn new(values: Vec<f64>) -> Self {
         Self { values }
     }
@@ -176,7 +176,7 @@ impl HausdorffMeasureEstimator {
         }
         total
     }
-    /// Estimate Hausdorff dimension by binary search over s ∈ [0, 2].
+    /// Estimate Hausdorff dimension by binary search over s ∈ \[0, 2\].
     ///
     /// Finds the critical exponent where H^s content transitions from large to small.
     pub fn estimate_dimension(&self, delta: f64) -> f64 {
@@ -208,7 +208,7 @@ impl HausdorffMeasureEstimator {
 }
 /// Solves a discrete minimal surface problem via variational relaxation.
 ///
-/// Minimises the area functional A(u) = ∫ √(1 + |∇u|²) dx over u : [0,1]² → ℝ
+/// Minimises the area functional A(u) = ∫ √(1 + |∇u|²) dx over u : \[0,1\]² → ℝ
 /// with prescribed Dirichlet boundary data, using gradient descent.
 #[derive(Debug, Clone)]
 pub struct MinimalSurfaceRelaxation {
@@ -531,9 +531,9 @@ impl RectifiableSet {
         1.0
     }
 }
-/// Numerically computes the co-area formula for a Lipschitz function f : [0,1]² → ℝ.
+/// Numerically computes the co-area formula for a Lipschitz function f : \[0,1\]² → ℝ.
 ///
-/// Co-area formula: ∫_{[0,1]²} g(x) |∇f(x)| dx = ∫_{-∞}^{∞} (∫_{f=t} g dH¹) dt.
+/// Co-area formula: ∫_{\[0,1\]²} g(x) |∇f(x)| dx = ∫_{-∞}^{∞} (∫_{f=t} g dH¹) dt.
 ///
 /// We approximate the left side via finite differences on an n×n grid.
 #[derive(Debug, Clone)]
@@ -577,7 +577,7 @@ impl CoAreaComputer {
     /// Approximate the right-hand side via histogram: group grid cells by f-level
     /// and sum g * H¹_approx({f ≈ t}) for each level bin.
     ///
-    /// Uses `num_bins` level bins covering the range [f_min, f_max].
+    /// Uses `num_bins` level bins covering the range \[f_min, f_max\].
     pub fn rhs_integral(&self, num_bins: usize) -> f64 {
         let n = self.n;
         let h = 1.0 / n as f64;
@@ -627,7 +627,7 @@ impl CoAreaComputer {
 pub struct DiscreteSet2D {
     /// Grid size (n × n).
     pub n: usize,
-    /// Membership: `mask[i * n + j]` is true iff (i, j) ∈ E.
+    /// Membership: `mask\[i * n + j\]` is true iff (i, j) ∈ E.
     pub mask: Vec<bool>,
 }
 impl DiscreteSet2D {
@@ -866,14 +866,14 @@ impl PlateauProblem {
 }
 /// Approximates the perimeter of a set defined by a level-set function on a 2D grid.
 ///
-/// Given a smooth function u : [0,1]² → ℝ (discretised on an n×n grid),
+/// Given a smooth function u : \[0,1\]² → ℝ (discretised on an n×n grid),
 /// approximates Per({u > 0}) via the co-area formula:
 ///   Per({u > 0}) ≈ ∫_{ℝ} H^{n-1}({u = t}) dt evaluated at t = 0.
 #[derive(Debug, Clone)]
 pub struct PerimeterApprox {
     /// Grid size (n × n).
     pub n: usize,
-    /// Values of u at grid points; row-major order (u[i * n + j]).
+    /// Values of u at grid points; row-major order (u\[i * n + j\]).
     pub values: Vec<f64>,
 }
 impl PerimeterApprox {

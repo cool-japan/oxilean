@@ -3,6 +3,7 @@
 pub mod completer_traits;
 pub mod errorrecovery_traits;
 pub mod functions;
+pub mod history_search;
 pub mod history_traits;
 pub mod inputbuffer_traits;
 pub mod repl_traits;

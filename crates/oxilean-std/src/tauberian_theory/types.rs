@@ -590,7 +590,7 @@ impl CesaroSummability {
 /// for small ranges.
 #[derive(Debug, Clone)]
 pub struct PrimeSieve {
-    /// is_prime[n] = true if n is prime.
+    /// is_prime\[n\] = true if n is prime.
     pub is_prime: Vec<bool>,
     /// Upper bound N of the sieve.
     pub limit: usize,

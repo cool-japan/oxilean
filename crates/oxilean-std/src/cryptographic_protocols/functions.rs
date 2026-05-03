@@ -478,7 +478,7 @@ pub fn yao_garbled_privacy_ty() -> Expr {
 /// `KZGCommitment : Type`
 ///
 /// KZG (Kate-Zaverucha-Goldberg) polynomial commitment scheme:
-/// - Commit to a polynomial f ∈ F_p[X] of degree ≤ d
+/// - Commit to a polynomial f ∈ F_p\[X\] of degree ≤ d
 /// - Open at any point z with a short proof π
 /// - Verification: pairing check e(C - f(z)·G, H) = e(π, (τ-z)·H)
 pub fn kzg_commitment_ty() -> Expr {

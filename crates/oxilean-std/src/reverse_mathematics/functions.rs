@@ -239,7 +239,7 @@ pub fn konig_lemma_ty() -> Expr {
     )
 }
 /// RamseyN2K: Ramsey's theorem for n-tuples with k colors.
-/// Ramsey(n, k) : Prop — every k-coloring of [ℕ]^n has an infinite homogeneous set.
+/// Ramsey(n, k) : Prop — every k-coloring of \[ℕ\]^n has an infinite homogeneous set.
 pub fn ramsey_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), prop()))
 }
@@ -597,8 +597,8 @@ pub fn hausdorff_scattered_ty() -> Expr {
         ),
     )
 }
-/// ThinSetTheorem: for every f : [ℕ]² → k, there is an infinite set S
-/// such that f omits at least one color on [S]².
+/// ThinSetTheorem: for every f : \[ℕ\]² → k, there is an infinite set S
+/// such that f omits at least one color on \[S\]².
 /// Strength: strictly between SRT²_2 and RT²_2.
 pub fn thin_set_theorem_ty() -> Expr {
     arrow(
@@ -610,7 +610,7 @@ pub fn thin_set_theorem_ty() -> Expr {
         ),
     )
 }
-/// FreeSetTheorem: for every f : [ℕ]² → ℕ, there is an infinite set S
+/// FreeSetTheorem: for every f : \[ℕ\]² → ℕ, there is an infinite set S
 /// such that f(x,y) ∉ S for all x,y ∈ S with x ≠ y.
 /// Equivalent to RT²_2 over RCA₀ (Cholak–Giusto–Hirst–Jockusch).
 pub fn free_set_theorem_ty() -> Expr {

@@ -1135,13 +1135,11 @@ impl ProofScript {
                         if let ProofStep::Sequence { .. } = alt {}
                     }
                 }
-                ProofStep::Calc { entries } => {
-                    if entries.is_empty() {
-                        return Err(ReplayError::InvalidStructure(format!(
-                            "Calc at index {} has no entries",
-                            idx
-                        )));
-                    }
+                ProofStep::Calc { entries } if entries.is_empty() => {
+                    return Err(ReplayError::InvalidStructure(format!(
+                        "Calc at index {} has no entries",
+                        idx
+                    )));
                 }
                 _ => {}
             }

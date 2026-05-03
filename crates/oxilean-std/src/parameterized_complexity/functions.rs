@@ -79,12 +79,12 @@ pub fn is_in_xp_ty() -> Expr {
     arrow(parameterized_problem_ty(), prop())
 }
 /// `IsWHard : Nat → ParameterizedProblem → Prop`
-/// The problem is W[i]-hard (for the given level i of W-hierarchy).
+/// The problem is W\[i\]-hard (for the given level i of W-hierarchy).
 pub fn is_w_hard_ty() -> Expr {
     arrow(nat_ty(), arrow(parameterized_problem_ty(), prop()))
 }
 /// `IsWComplete : Nat → ParameterizedProblem → Prop`
-/// The problem is W[i]-complete.
+/// The problem is W\[i\]-complete.
 pub fn is_w_complete_ty() -> Expr {
     arrow(nat_ty(), arrow(parameterized_problem_ty(), prop()))
 }
@@ -100,23 +100,23 @@ pub fn fpt_reducible_ty() -> Expr {
 pub fn w_hierarchy_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
-/// `W1 : Type` — the class W[1] (contains k-clique, k-independent set).
+/// `W1 : Type` — the class W\[1\] (contains k-clique, k-independent set).
 pub fn w1_ty() -> Expr {
     type0()
 }
-/// `W2 : Type` — the class W[2] (contains k-dominating set, k-set cover).
+/// `W2 : Type` — the class W\[2\] (contains k-dominating set, k-set cover).
 pub fn w2_ty() -> Expr {
     type0()
 }
-/// `WP : Type` — the class W[P] (contains weighted circuit satisfiability).
+/// `WP : Type` — the class W\[P\] (contains weighted circuit satisfiability).
 pub fn wp_ty() -> Expr {
     type0()
 }
-/// `AW : Type` — the class AW[*] (alternating W hierarchy).
+/// `AW : Type` — the class AW\[*\] (alternating W hierarchy).
 pub fn aw_ty() -> Expr {
     type0()
 }
-/// `FPT_subset_W1 : FPT ⊆ W[1]`
+/// `FPT_subset_W1 : FPT ⊆ W\[1\]`
 pub fn fpt_subset_w1_ty() -> Expr {
     arrow(
         arrow(parameterized_problem_ty(), cst("IsInFPT")),
@@ -220,8 +220,8 @@ pub fn color_coding_fpt_ty() -> Expr {
     prop()
 }
 /// `PerfectHashFamily : Nat → Nat → Type`
-/// An (n,k)-perfect hash family: a set of functions [n]→[k] such that
-/// for every k-subset S ⊆ [n], some function is injective on S.
+/// An (n,k)-perfect hash family: a set of functions \[n\]→\[k\] such that
+/// for every k-subset S ⊆ \[n\], some function is injective on S.
 pub fn perfect_hash_family_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
@@ -299,7 +299,7 @@ pub fn fpt_subset_xp_ty() -> Expr {
         arrow(app(cst("IsInFPT"), bvar(0)), app(cst("IsInXP"), bvar(0))),
     )
 }
-/// `W1_in_XP : W[1] ⊆ XP (assuming W[1] ≠ FPT)`
+/// `W1_in_XP : W\[1\] ⊆ XP (assuming W\[1\] ≠ FPT)`
 pub fn w1_in_xp_ty() -> Expr {
     prop()
 }
@@ -308,7 +308,7 @@ pub fn w1_in_xp_ty() -> Expr {
 pub fn eth_hardness_ty() -> Expr {
     arrow(parameterized_problem_ty(), prop())
 }
-/// `W1Hard_implies_ETH_hard : W[1]-hard implies no f(k)·n^g(1) FPT unless W[1]=FPT`
+/// `W1Hard_implies_ETH_hard : W\[1\]-hard implies no f(k)·n^g(1) FPT unless W\[1\]=FPT`
 pub fn w1_hard_eth_hard_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -320,15 +320,15 @@ pub fn w1_hard_eth_hard_ty() -> Expr {
         ),
     )
 }
-/// `kCliqueW1Hard : k-Clique is W[1]-complete`
+/// `kCliqueW1Hard : k-Clique is W\[1\]-complete`
 pub fn k_clique_w1_hard_ty() -> Expr {
     prop()
 }
-/// `kIndependentSetW1Hard : k-IndependentSet is W[1]-complete`
+/// `kIndependentSetW1Hard : k-IndependentSet is W\[1\]-complete`
 pub fn k_independent_set_w1_hard_ty() -> Expr {
     prop()
 }
-/// `kDomSetW2Hard : k-DominatingSet is W[2]-complete`
+/// `kDomSetW2Hard : k-DominatingSet is W\[2\]-complete`
 pub fn k_dom_set_w2_hard_ty() -> Expr {
     prop()
 }
@@ -677,8 +677,8 @@ pub fn compression_algorithm_ty() -> Expr {
     arrow(parameterized_problem_ty(), arrow(nat_ty(), prop()))
 }
 /// `UniversalSet : Nat → Nat → Type`
-/// An (n,k)-universal set: a family F of functions [n]→{0,1} such that for
-/// every k-subset S ⊆ [n], F restricted to S contains all 2^k patterns.
+/// An (n,k)-universal set: a family F of functions \[n\]→{0,1} such that for
+/// every k-subset S ⊆ \[n\], F restricted to S contains all 2^k patterns.
 pub fn universal_set_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), type0()))
 }
@@ -731,7 +731,7 @@ pub fn seese_s_theorem_ty() -> Expr {
 pub fn clique_width_ty() -> Expr {
     arrow(cst("Graph"), nat_ty())
 }
-/// `W1HardnessReduction : Problem → k-Clique` — reduction from k-clique showing W[1]-hardness.
+/// `W1HardnessReduction : Problem → k-Clique` — reduction from k-clique showing W\[1\]-hardness.
 pub fn w1_hardness_reduction_ty() -> Expr {
     arrow(parameterized_problem_ty(), prop())
 }
@@ -739,15 +739,15 @@ pub fn w1_hardness_reduction_ty() -> Expr {
 pub fn w2_hardness_reduction_ty() -> Expr {
     arrow(parameterized_problem_ty(), prop())
 }
-/// `MulticoloredCliqueW1Hard : Multicolored k-Clique is W[1]-complete`
+/// `MulticoloredCliqueW1Hard : Multicolored k-Clique is W\[1\]-complete`
 pub fn multicolored_clique_w1_hard_ty() -> Expr {
     prop()
 }
-/// `kSetCoverW2Hard : k-SetCover is W[2]-complete`
+/// `kSetCoverW2Hard : k-SetCover is W\[2\]-complete`
 pub fn k_set_cover_w2_hard_ty() -> Expr {
     prop()
 }
-/// `kHittingSetW2Hard : k-HittingSet is W[2]-complete`
+/// `kHittingSetW2Hard : k-HittingSet is W\[2\]-complete`
 pub fn k_hitting_set_w2_hard_ty() -> Expr {
     prop()
 }
@@ -844,23 +844,23 @@ pub fn combined_parameter_ty() -> Expr {
 pub fn counting_fpt_ty() -> Expr {
     arrow(parameterized_problem_ty(), prop())
 }
-/// `SharpW1 : Type` — the class #W[1] (parameterized counting analogue of W[1]).
+/// `SharpW1 : Type` — the class #W\[1\] (parameterized counting analogue of W\[1\]).
 pub fn sharp_w1_ty() -> Expr {
     type0()
 }
-/// `SharpW2 : Type` — the class #W[2].
+/// `SharpW2 : Type` — the class #W\[2\].
 pub fn sharp_w2_ty() -> Expr {
     type0()
 }
-/// `CountingCliquesSharpW1Hard : counting k-cliques is #W[1]-complete`
+/// `CountingCliquesSharpW1Hard : counting k-cliques is #W\[1\]-complete`
 pub fn counting_cliques_sharp_w1_hard_ty() -> Expr {
     prop()
 }
-/// `CountingMatchingsSharpW1Hard : counting perfect matchings is #W[1]-hard`
+/// `CountingMatchingsSharpW1Hard : counting perfect matchings is #W\[1\]-hard`
 pub fn counting_matchings_sharp_w1_hard_ty() -> Expr {
     prop()
 }
-/// `CountingHomomorphismsSharpW1 : counting graph homomorphisms is #W[1]-complete`
+/// `CountingHomomorphismsSharpW1 : counting graph homomorphisms is #W\[1\]-complete`
 pub fn counting_homomorphisms_sharp_w1_ty() -> Expr {
     prop()
 }

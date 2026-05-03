@@ -220,10 +220,10 @@ impl ExhaustivenessInfo {
         let mut has_wildcard = false;
         for arm in arms {
             match arm.patterns.get(col) {
-                Some(crate::match_basic::MetaPattern::Constructor(name, _)) => {
-                    if !seen.contains(name) {
-                        seen.push(name.clone());
-                    }
+                Some(crate::match_basic::MetaPattern::Constructor(name, _))
+                    if !seen.contains(name) =>
+                {
+                    seen.push(name.clone());
                 }
                 Some(crate::match_basic::MetaPattern::Wildcard)
                 | Some(crate::match_basic::MetaPattern::Var(_)) => {

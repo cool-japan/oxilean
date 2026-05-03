@@ -1041,7 +1041,7 @@ pub fn traverse_indent_tree(source: &str, unit: usize) -> Vec<(usize, usize, Str
         .filter(|(_, l)| !l.trim().is_empty())
         .map(|(i, l)| {
             let indent = l.len() - l.trim_start().len();
-            let depth = if unit == 0 { 0 } else { indent / unit };
+            let depth = indent.checked_div(unit).unwrap_or(0);
             (depth, i, l.trim().to_string())
         })
         .collect()

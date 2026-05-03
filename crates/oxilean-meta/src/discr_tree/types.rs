@@ -557,7 +557,7 @@ impl SimpLemmaIndex {
     #[allow(dead_code)]
     pub fn find_applicable(&self, expr: &Expr) -> Vec<&SimpLemmaEntry> {
         let mut results = self.tree.find(expr);
-        results.sort_by(|a, b| b.priority.cmp(&a.priority));
+        results.sort_by_key(|b| std::cmp::Reverse(b.priority));
         results
     }
     /// Number of total lemmas.
@@ -603,7 +603,7 @@ impl InstanceIndex {
     #[allow(dead_code)]
     pub fn find(&self, ty: &Expr) -> Vec<&InstanceEntry> {
         let mut results = self.tree.find(ty);
-        results.sort_by(|a, b| b.priority.cmp(&a.priority));
+        results.sort_by_key(|b| std::cmp::Reverse(b.priority));
         results
     }
     /// Total instances registered.
@@ -639,7 +639,7 @@ impl<T: Clone + PartialEq> PriorityDiscrTree<T> {
             .into_iter()
             .map(|(v, s)| (v.clone(), *s))
             .collect();
-        results.sort_by(|a, b| b.1.cmp(&a.1));
+        results.sort_by_key(|b| std::cmp::Reverse(b.1));
         results.into_iter().map(|(v, _)| v).collect()
     }
     /// Get the best (highest-score) match.

@@ -388,23 +388,21 @@ impl SimplifiableExprRule {
                     }
                 }
             }
-            SurfaceExpr::Lam(binders, body) => {
-                if binders.len() == 1 {
-                    if let SurfaceExpr::App(f, arg) = &body.value {
-                        if let SurfaceExpr::Var(arg_name) = &arg.value {
-                            if arg_name == &binders[0].name {
-                                let refs = collect_var_refs(&f.value);
-                                if !refs.contains(&binders[0].name) {
-                                    ctx.emit(
-                                        LintDiagnostic::new(
-                                            self.id(),
-                                            Severity::Hint,
-                                            "lambda can be eta-reduced",
-                                            SourceRange::from_span(&expr.span),
-                                        )
-                                        .with_note("consider replacing `fun x => f x` with `f`"),
-                                    );
-                                }
+            SurfaceExpr::Lam(binders, body) if binders.len() == 1 => {
+                if let SurfaceExpr::App(f, arg) = &body.value {
+                    if let SurfaceExpr::Var(arg_name) = &arg.value {
+                        if arg_name == &binders[0].name {
+                            let refs = collect_var_refs(&f.value);
+                            if !refs.contains(&binders[0].name) {
+                                ctx.emit(
+                                    LintDiagnostic::new(
+                                        self.id(),
+                                        Severity::Hint,
+                                        "lambda can be eta-reduced",
+                                        SourceRange::from_span(&expr.span),
+                                    )
+                                    .with_note("consider replacing `fun x => f x` with `f`"),
+                                );
                             }
                         }
                     }
@@ -1169,35 +1167,31 @@ impl UnusedVariableRule {
             SurfaceExpr::Lam(binders, body) => {
                 self.check_binders_in_body(ctx, binders, body, &expr.span);
             }
-            SurfaceExpr::Let(name, _ty, _val, body) => {
-                if !name.starts_with('_') && name != "_" {
-                    let refs = collect_var_refs(&body.value);
-                    if !refs.contains(name) {
-                        let range = SourceRange::from_span(&expr.span);
-                        ctx.emit(
-                            LintDiagnostic::new(
-                                self.id(),
-                                Severity::Warning,
-                                format!("unused let binding `{}`", name),
-                                range,
-                            )
-                            .with_note("if this is intentional, prefix the name with `_`"),
-                        );
-                    }
-                }
-            }
-            SurfaceExpr::Have(name, _ty, _proof, body) => {
-                if !name.starts_with('_') && name != "_" {
-                    let refs = collect_var_refs(&body.value);
-                    if !refs.contains(name) {
-                        let range = SourceRange::from_span(&expr.span);
-                        ctx.emit(LintDiagnostic::new(
+            SurfaceExpr::Let(name, _ty, _val, body) if !name.starts_with('_') && name != "_" => {
+                let refs = collect_var_refs(&body.value);
+                if !refs.contains(name) {
+                    let range = SourceRange::from_span(&expr.span);
+                    ctx.emit(
+                        LintDiagnostic::new(
                             self.id(),
                             Severity::Warning,
-                            format!("unused `have` binding `{}`", name),
+                            format!("unused let binding `{}`", name),
                             range,
-                        ));
-                    }
+                        )
+                        .with_note("if this is intentional, prefix the name with `_`"),
+                    );
+                }
+            }
+            SurfaceExpr::Have(name, _ty, _proof, body) if !name.starts_with('_') && name != "_" => {
+                let refs = collect_var_refs(&body.value);
+                if !refs.contains(name) {
+                    let range = SourceRange::from_span(&expr.span);
+                    ctx.emit(LintDiagnostic::new(
+                        self.id(),
+                        Severity::Warning,
+                        format!("unused `have` binding `{}`", name),
+                        range,
+                    ));
                 }
             }
             _ => {}

@@ -810,10 +810,8 @@ pub(super) fn collect_constants(expr: &Expr) -> Vec<Name> {
 }
 pub(super) fn collect_constants_impl(expr: &Expr, out: &mut Vec<Name>) {
     match expr {
-        Expr::Const(name, _) => {
-            if !out.contains(name) {
-                out.push(name.clone());
-            }
+        Expr::Const(name, _) if !out.contains(name) => {
+            out.push(name.clone());
         }
         Expr::App(f, a) => {
             collect_constants_impl(f, out);
@@ -843,10 +841,8 @@ pub(super) fn collect_fvar_ids(expr: &Expr) -> Vec<u64> {
 }
 pub(super) fn collect_fvar_ids_impl(expr: &Expr, out: &mut Vec<u64>) {
     match expr {
-        Expr::FVar(fid) => {
-            if !out.contains(&fid.0) {
-                out.push(fid.0);
-            }
+        Expr::FVar(fid) if !out.contains(&fid.0) => {
+            out.push(fid.0);
         }
         Expr::App(f, a) => {
             collect_fvar_ids_impl(f, out);

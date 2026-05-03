@@ -23,10 +23,11 @@ pub(super) fn find_eq_at_depth0(s: &str) -> Option<usize> {
         match bytes[i] {
             b'(' => depth += 1,
             b')' => depth -= 1,
-            b' ' if depth == 0 => {
-                if bytes.get(i + 1) == Some(&b'=') && bytes.get(i + 2) == Some(&b' ') {
-                    return Some(i);
-                }
+            b' ' if depth == 0
+                && bytes.get(i + 1) == Some(&b'=')
+                && bytes.get(i + 2) == Some(&b' ') =>
+            {
+                return Some(i);
             }
             _ => {}
         }

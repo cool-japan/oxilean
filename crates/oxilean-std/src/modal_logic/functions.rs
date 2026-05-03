@@ -291,14 +291,14 @@ pub fn gl_fixed_point_ty() -> Expr {
 pub fn gl_frame_class_ty() -> Expr {
     prop()
 }
-/// PublicAnnouncement: [!φ] ψ — after public announcement of φ, ψ holds
+/// PublicAnnouncement: \[!φ\] ψ — after public announcement of φ, ψ holds
 pub fn public_announcement_ty() -> Expr {
     arrow(
         cst("ModalFormula"),
         arrow(cst("ModalFormula"), cst("ModalFormula")),
     )
 }
-/// AnnouncementLaw: [!φ] K_i ψ ↔ (φ → K_i (φ → [!φ] ψ))
+/// AnnouncementLaw: \[!φ\] K_i ψ ↔ (φ → K_i (φ → \[!φ\] ψ))
 pub fn announcement_knowledge_law_ty() -> Expr {
     arrow(
         nat_ty(),
@@ -377,7 +377,7 @@ pub fn s4_fmp_ty() -> Expr {
 pub fn pdl_program_ty() -> Expr {
     type0()
 }
-/// PDL Box: [α]φ — after every execution of program α, φ holds
+/// PDL Box: \[α\]φ — after every execution of program α, φ holds
 pub fn pdl_box_ty() -> Expr {
     arrow(
         cst("PDLProgram"),
@@ -395,21 +395,21 @@ pub fn pdl_diamond_ty() -> Expr {
 pub fn pdl_test_ty() -> Expr {
     arrow(cst("ModalFormula"), cst("PDLProgram"))
 }
-/// PDL axiom: [α;β]φ ↔ [α][β]φ (sequence)
+/// PDL axiom: \[α;β\]φ ↔ \[α\]\[β\]φ (sequence)
 pub fn pdl_sequence_axiom_ty() -> Expr {
     arrow(
         cst("PDLProgram"),
         arrow(cst("PDLProgram"), arrow(cst("ModalFormula"), prop())),
     )
 }
-/// PDL axiom: [α∪β]φ ↔ [α]φ ∧ [β]φ (choice)
+/// PDL axiom: \[α∪β\]φ ↔ \[α\]φ ∧ \[β\]φ (choice)
 pub fn pdl_choice_axiom_ty() -> Expr {
     arrow(
         cst("PDLProgram"),
         arrow(cst("PDLProgram"), arrow(cst("ModalFormula"), prop())),
     )
 }
-/// PDL iteration axiom: [α*]φ ↔ φ ∧ [α][α*]φ
+/// PDL iteration axiom: \[α*\]φ ↔ φ ∧ \[α\]\[α*\]φ
 pub fn pdl_iteration_axiom_ty() -> Expr {
     arrow(cst("PDLProgram"), arrow(cst("ModalFormula"), prop()))
 }
@@ -417,7 +417,7 @@ pub fn pdl_iteration_axiom_ty() -> Expr {
 pub fn game_logic_diamond_ty() -> Expr {
     arrow(cst("Game"), arrow(cst("ModalFormula"), cst("ModalFormula")))
 }
-/// Game Logic: [γ]φ — player II has a strategy in game γ to ensure φ
+/// Game Logic: \[γ\]φ — player II has a strategy in game γ to ensure φ
 pub fn game_logic_box_ty() -> Expr {
     arrow(cst("Game"), arrow(cst("ModalFormula"), cst("ModalFormula")))
 }
@@ -452,14 +452,14 @@ pub fn ctl_ex_ty() -> Expr {
 pub fn ctl_ax_ty() -> Expr {
     arrow(cst("ModalFormula"), cst("ModalFormula"))
 }
-/// CTL: E[φ U ψ] — exists a path where φ until ψ
+/// CTL: E\[φ U ψ\] — exists a path where φ until ψ
 pub fn ctl_eu_ty() -> Expr {
     arrow(
         cst("ModalFormula"),
         arrow(cst("ModalFormula"), cst("ModalFormula")),
     )
 }
-/// CTL: A[φ U ψ] — all paths, φ until ψ
+/// CTL: A\[φ U ψ\] — all paths, φ until ψ
 pub fn ctl_au_ty() -> Expr {
     arrow(
         cst("ModalFormula"),
@@ -507,7 +507,7 @@ pub fn hybrid_paste_axiom_ty() -> Expr {
 pub fn neighborhood_fn_ty() -> Expr {
     arrow(cst("World"), type0())
 }
-/// Classical modal logic: □φ valid iff [[φ]] is in the neighborhood
+/// Classical modal logic: □φ valid iff [\[φ\]] is in the neighborhood
 pub fn classical_modal_box_ty() -> Expr {
     arrow(cst("ModalFormula"), cst("ModalFormula"))
 }
@@ -617,7 +617,7 @@ pub fn two_dim_satisfaction_ty() -> Expr {
         ),
     )
 }
-/// Kaplan's dthat: [[dthat φ]]^{c,w} = [[φ]]^{c,c}
+/// Kaplan's dthat: [\[dthat φ\]]^{c,w} = [\[φ\]]^{c,c}
 pub fn kaplan_dthat_ty() -> Expr {
     arrow(cst("ModalFormula"), cst("ModalFormula"))
 }
@@ -712,15 +712,15 @@ pub fn regular_modal_logic_ty() -> Expr {
 pub fn congruence_rule_ty() -> Expr {
     arrow(cst("ModalFormula"), arrow(cst("ModalFormula"), prop()))
 }
-/// STIT operator: [i stit: φ]
+/// STIT operator: \[i stit: φ\]
 pub fn stit_op_ty() -> Expr {
     arrow(nat_ty(), arrow(cst("ModalFormula"), cst("ModalFormula")))
 }
-/// Deliberative STIT: [i dstit: φ]
+/// Deliberative STIT: \[i dstit: φ\]
 pub fn deliberative_stit_ty() -> Expr {
     arrow(nat_ty(), arrow(cst("ModalFormula"), cst("ModalFormula")))
 }
-/// Achievement STIT: [i astit: φ]
+/// Achievement STIT: \[i astit: φ\]
 pub fn achievement_stit_ty() -> Expr {
     arrow(nat_ty(), arrow(cst("ModalFormula"), cst("ModalFormula")))
 }

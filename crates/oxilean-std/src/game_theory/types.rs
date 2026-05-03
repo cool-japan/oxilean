@@ -165,7 +165,7 @@ impl CooperativeGameImpl {
 #[allow(dead_code)]
 pub struct BanzhafIndex {
     pub n_players: usize,
-    /// coalition_value[mask] = value of coalition encoded by bitmask.
+    /// coalition_value\[mask\] = value of coalition encoded by bitmask.
     pub coalition_value: Vec<f64>,
 }
 impl BanzhafIndex {
@@ -253,7 +253,7 @@ pub struct NPlayerGame {
     pub n_strategies: Vec<usize>,
     /// Payoffs indexed by strategy profile (flattened).
     /// For a profile (s_0, s_1, ..., s_{n-1}), the flat index is computed
-    /// as s_0 * prod_{k>0} n_strategies[k] + s_1 * prod_{k>1} n_strategies[k] + ...
+    /// as s_0 * prod_{k>0} n_strategies\[k\] + s_1 * prod_{k>1} n_strategies\[k\] + ...
     pub payoffs: Vec<Vec<f64>>,
 }
 impl NPlayerGame {

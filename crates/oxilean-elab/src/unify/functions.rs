@@ -962,10 +962,8 @@ pub fn level_free_params(l: &Level) -> Vec<Name> {
 }
 fn collect_level_params(l: &Level, acc: &mut Vec<Name>) {
     match l {
-        Level::Param(n) => {
-            if !acc.contains(n) {
-                acc.push(n.clone());
-            }
+        Level::Param(n) if !acc.contains(n) => {
+            acc.push(n.clone());
         }
         Level::Succ(inner) => collect_level_params(inner, acc),
         Level::Max(a, b) | Level::IMax(a, b) => {

@@ -116,9 +116,9 @@ impl VPRS {
 }
 /// Fuzzy rough set membership function using Łukasiewicz t-norm.
 pub struct RoughFuzzyMembership {
-    /// Fuzzy membership of each object in the target set (values in [0,1]).
+    /// Fuzzy membership of each object in the target set (values in \[0,1\]).
     pub membership: Vec<f64>,
-    /// Similarity matrix: sim[i][j] ∈ [0,1].
+    /// Similarity matrix: sim\[i\]\[j\] ∈ \[0,1\].
     pub similarity: Vec<Vec<f64>>,
 }
 impl RoughFuzzyMembership {
@@ -268,7 +268,7 @@ impl AttributeReduct {
 /// A full discernibility matrix with helper methods.
 pub struct DiscernibilityMatrix {
     pub n_objects: usize,
-    /// matrix[i][j] = set of attributes distinguishing i from j (decision-wise).
+    /// matrix\[i\]\[j\] = set of attributes distinguishing i from j (decision-wise).
     pub matrix: Vec<Vec<HashSet<usize>>>,
 }
 impl DiscernibilityMatrix {
@@ -423,7 +423,7 @@ impl BayesianRoughSet {
         assert!((0.0..0.5).contains(&beta));
         BayesianRoughSet { alpha, beta }
     }
-    /// Compute conditional probability P(X | [x]_B) for object x.
+    /// Compute conditional probability P(X | \[x\]_B) for object x.
     pub fn conditional_prob(cls: &HashSet<usize>, target: &HashSet<usize>) -> f64 {
         if cls.is_empty() {
             return 0.0;
@@ -455,7 +455,7 @@ impl BayesianRoughSet {
     }
 }
 /// Variable precision rough set approximation with precision l (0 ≤ l < 0.5).
-/// Lower_l(X) = { o | rel_overlap([o]_B, X) ≤ l } where rel_overlap = |[o]∩X^c|/|[o]|.
+/// Lower_l(X) = { o | rel_overlap(\[o\]_B, X) ≤ l } where rel_overlap = |\[o\]∩X^c|/|\[o\]|.
 #[derive(Debug, Clone)]
 pub struct VPRSApproximation {
     pub precision: f64,
@@ -533,7 +533,7 @@ impl Granule {
 #[derive(Debug, Clone)]
 pub struct NeighborhoodSystem {
     pub n_objects: usize,
-    /// neighborhoods[x] = set of objects in the neighborhood of x.
+    /// neighborhoods\[x\] = set of objects in the neighborhood of x.
     pub neighborhoods: Vec<HashSet<usize>>,
 }
 impl NeighborhoodSystem {
@@ -780,7 +780,7 @@ impl InformationSystem {
         classes
     }
     /// Lower approximation of a target set X w.r.t. attributes.
-    /// Lower(X) = { o | [o]_B ⊆ X }
+    /// Lower(X) = { o | \[o\]_B ⊆ X }
     pub fn lower_approximation(&self, attrs: &[usize], target: &HashSet<usize>) -> HashSet<usize> {
         let classes = self.indiscernibility_classes(attrs);
         let mut result = HashSet::new();
@@ -794,7 +794,7 @@ impl InformationSystem {
         result
     }
     /// Upper approximation of a target set X w.r.t. attributes.
-    /// Upper(X) = { o | [o]_B ∩ X ≠ ∅ }
+    /// Upper(X) = { o | \[o\]_B ∩ X ≠ ∅ }
     pub fn upper_approximation(&self, attrs: &[usize], target: &HashSet<usize>) -> HashSet<usize> {
         let classes = self.indiscernibility_classes(attrs);
         let mut result = HashSet::new();

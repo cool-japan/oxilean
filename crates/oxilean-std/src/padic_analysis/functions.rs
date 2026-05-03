@@ -28,7 +28,7 @@ pub fn ostrowski_theorem_statement() -> &'static str {
 }
 /// Hensel lifting: given f and a simple root `root` mod p, lift to precision `p^precision`.
 ///
-/// Returns `Some(digits)` where `digits[k]` is the k-th digit in the p-adic expansion of the
+/// Returns `Some(digits)` where `digits\[k\]` is the k-th digit in the p-adic expansion of the
 /// lifted root, or `None` if lifting fails (e.g. f'(root) ≡ 0 mod p).
 pub fn hensel_lift(f: &PolynomialMod, root: i64, p: u64, precision: u32) -> Option<Vec<i64>> {
     let fp = f.derivative();
@@ -123,7 +123,7 @@ pub fn krasners_lemma_statement() -> &'static str {
      This implies the irreducibility criterion: if β is very close to α, f is still \
      irreducible over K(β)."
 }
-/// Statement that the p-adic power series ring ℤ_p[[T]] is a UFD.
+/// Statement that the p-adic power series ring ℤ_p[\[T\]] is a UFD.
 pub fn power_series_ring_ufd_statement() -> &'static str {
     "The power series ring ℤ_p[[T]] is a UFD: the irreducible elements are p and \
      the Weierstrass polynomials with coefficients in pℤ_p except for leading coefficient 1. \

@@ -10,10 +10,10 @@ use std::collections::{HashMap, HashSet};
 pub struct FirstFollowSets<'a> {
     /// The grammar.
     pub grammar: &'a ContextFreeGrammar,
-    /// FIRST sets: nonterminal index → set of (Option<terminal_index>)
+    /// FIRST sets: nonterminal index → set of (`Option<terminal_index>`)
     /// None represents ε.
     pub first: Vec<HashSet<Option<usize>>>,
-    /// FOLLOW sets: nonterminal index → set of (Option<terminal_index>)
+    /// FOLLOW sets: nonterminal index → set of (`Option<terminal_index>`)
     /// None represents end-of-input ($).
     pub follow: Vec<HashSet<Option<usize>>>,
 }

@@ -608,7 +608,7 @@ impl CombinedPolicy {
             .enumerate()
             .map(|(i, e)| (i, e.last_access))
             .collect();
-        recency_ranked.sort_by(|a, b| a.1.cmp(&b.1));
+        recency_ranked.sort_by_key(|a| a.1);
         let mut recency_rank = vec![0.0f64; n];
         for (rank, &(idx, _)) in recency_ranked.iter().enumerate() {
             recency_rank[idx] = (n - 1 - rank) as f64;
@@ -618,7 +618,7 @@ impl CombinedPolicy {
             .enumerate()
             .map(|(i, e)| (i, e.access_count))
             .collect();
-        freq_ranked.sort_by(|a, b| a.1.cmp(&b.1));
+        freq_ranked.sort_by_key(|a| a.1);
         let mut freq_rank = vec![0.0f64; n];
         for (rank, &(idx, _)) in freq_ranked.iter().enumerate() {
             freq_rank[idx] = (n - 1 - rank) as f64;
@@ -628,7 +628,7 @@ impl CombinedPolicy {
             .enumerate()
             .map(|(i, e)| (i, e.size_bytes))
             .collect();
-        size_ranked.sort_by(|a, b| b.1.cmp(&a.1));
+        size_ranked.sort_by_key(|b| std::cmp::Reverse(b.1));
         let mut size_rank = vec![0.0f64; n];
         for (rank, &(idx, _)) in size_ranked.iter().enumerate() {
             size_rank[idx] = (n - 1 - rank) as f64;
@@ -638,7 +638,7 @@ impl CombinedPolicy {
             .enumerate()
             .map(|(i, e)| (i, e.created_at))
             .collect();
-        age_ranked.sort_by(|a, b| a.1.cmp(&b.1));
+        age_ranked.sort_by_key(|a| a.1);
         let mut age_rank = vec![0.0f64; n];
         for (rank, &(idx, _)) in age_ranked.iter().enumerate() {
             age_rank[idx] = (n - 1 - rank) as f64;
@@ -799,7 +799,7 @@ impl CacheWarmupPlan {
     }
     /// Sort entries by priority descending (highest priority warmed up first).
     pub fn sort_by_priority(&mut self) {
-        self.entries.sort_by(|a, b| b.priority.cmp(&a.priority));
+        self.entries.sort_by_key(|b| std::cmp::Reverse(b.priority));
     }
     /// Execute the warmup plan: insert entries into the cache manager.
     /// Returns the count of successfully inserted entries.

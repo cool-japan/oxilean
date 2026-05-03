@@ -15,7 +15,7 @@ pub struct ToggleSwitchOde {
     pub gamma: f64,
 }
 impl ToggleSwitchOde {
-    /// Compute derivatives [du/dt, dv/dt] at state [u, v].
+    /// Compute derivatives \[du/dt, dv/dt\] at state \[u, v\].
     pub fn derivatives(&self, state: &[f64]) -> [f64; 2] {
         let u = state[0];
         let v = state[1];
@@ -111,11 +111,11 @@ pub struct SIRState {
 pub struct BooleanGeneNetwork {
     /// Number of genes/nodes.
     pub n_genes: usize,
-    /// Adjacency matrix: `regulation[i][j] = Some(true)` means gene j activates gene i,
+    /// Adjacency matrix: `regulation\[i\]\[j\] = Some(true)` means gene j activates gene i,
     /// `Some(false)` means repression, `None` means no edge.
     pub regulation: Vec<Vec<Option<bool>>>,
     /// Threshold for each gene: gene i is ON iff
-    /// (sum of active activators) - (sum of active repressors) >= threshold[i].
+    /// (sum of active activators) - (sum of active repressors) >= threshold\[i\].
     pub threshold: Vec<i32>,
 }
 impl BooleanGeneNetwork {
@@ -640,7 +640,7 @@ impl LotkaVolterraSimulation {
             delta,
         }
     }
-    /// Compute derivatives [dx/dt, dy/dt] (prey x, predator y).
+    /// Compute derivatives \[dx/dt, dy/dt\] (prey x, predator y).
     pub fn derivatives(&self, prey: f64, pred: f64) -> (f64, f64) {
         let dxdt = self.alpha * prey - self.beta * prey * pred;
         let dydt = self.delta * prey * pred - self.gamma * pred;
@@ -703,7 +703,7 @@ impl ReactionNetwork {
     }
     /// Build the stoichiometric matrix N (species × reactions).
     ///
-    /// N[i][j] = net stoichiometric coefficient of species i in reaction j.
+    /// N\[i\]\[j\] = net stoichiometric coefficient of species i in reaction j.
     pub fn stoichiometric_matrix(&self) -> Vec<Vec<i32>> {
         let m = self.species.len();
         let n = self.reactions.len();
@@ -790,7 +790,7 @@ impl SIREpidemicModel {
     pub fn r0(&self) -> f64 {
         self.beta / self.gamma
     }
-    /// Compute the time derivative [dS/dt, dI/dt, dR/dt].
+    /// Compute the time derivative \[dS/dt, dI/dt, dR/dt\].
     pub fn derivatives(&self, state: SIRState) -> SIRState {
         let n = self.population;
         let dsdt = -self.beta * state.s * state.i / n;

@@ -9,7 +9,7 @@
 
 The design is intentionally analogous to Cargo: OxiLean projects declare their dependencies in a manifest file, and `oxilean-build` resolves, fetches, and compiles them in the correct order.
 
-26,070 SLOC -- fully implemented build system (199 source files, 632 tests passing).
+26,070 SLOC -- fully implemented build system (199 source files, 854 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -81,7 +81,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-build = "0.1.1"
+oxilean-build = "0.1.2"
 ```
 
 ### Running a Build

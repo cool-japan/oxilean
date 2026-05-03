@@ -43,7 +43,7 @@ pub fn bvar(n: u32) -> Expr {
     Expr::BVar(n)
 }
 /// Compute the discernibility matrix for a decision table.
-/// disc[i][j] = set of attributes that distinguish objects i and j
+/// disc\[i\]\[j\] = set of attributes that distinguish objects i and j
 /// w.r.t. the decision attribute.
 pub fn discernibility_matrix(dt: &DecisionTable) -> Vec<Vec<HashSet<usize>>> {
     let n = dt.info.n_objects;
@@ -106,7 +106,7 @@ pub fn indiscern_ty() -> Expr {
         ),
     )
 }
-/// Lower approximation type: Lower B X = { x | [x]_B ⊆ X }.
+/// Lower approximation type: Lower B X = { x | \[x\]_B ⊆ X }.
 pub fn lower_approx_ty() -> Expr {
     impl_pi(
         "U",
@@ -118,7 +118,7 @@ pub fn lower_approx_ty() -> Expr {
         ),
     )
 }
-/// Upper approximation type: Upper B X = { x | [x]_B ∩ X ≠ ∅ }.
+/// Upper approximation type: Upper B X = { x | \[x\]_B ∩ X ≠ ∅ }.
 pub fn upper_approx_ty() -> Expr {
     impl_pi(
         "U",

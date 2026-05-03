@@ -119,9 +119,9 @@ pub fn quillen_localization_ty() -> Expr {
         ),
     )
 }
-/// Bass's fundamental theorem: K_n(R[t, t^{-1}]) ≅ K_n(R) ⊕ K_{n-1}(R).
+/// Bass's fundamental theorem: K_n(R\[t, t^{-1}\]) ≅ K_n(R) ⊕ K_{n-1}(R).
 ///
-/// `∀ (R : CommRing) (n : Nat), Iso (K R[t,t^{-1}] n) (Prod (K R n) (K R (n-1)))`
+/// `∀ (R : CommRing) (n : Nat), Iso (K R\[t,t^{-1}\] n) (Prod (K R n) (K R (n-1)))`
 pub fn bass_fundamental_theorem_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -844,19 +844,19 @@ pub fn build_env(env: &mut Environment) {
         .ok();
     }
 }
-/// Compute the rank of K_0(k[x_1,...,x_n]) for a field k.
+/// Compute the rank of K_0(k\[x_1,...,x_n\]) for a field k.
 ///
 /// K_0 of a polynomial ring over a field equals ℤ (rank 1).
 pub fn k0_polynomial_ring_rank() -> usize {
     1
 }
-/// Degree of the algebraic cycle [V] of a hypersurface V ⊂ P^n of degree d.
+/// Degree of the algebraic cycle \[V\] of a hypersurface V ⊂ P^n of degree d.
 pub fn hypersurface_cycle_degree(d: i64) -> i64 {
     d
 }
 /// Euler characteristic of motivic cohomology H^{*,*}(P^n, ℤ).
 ///
-/// The Chow ring of P^n is ℤ[H]/(H^{n+1}), so Σ rank CH^p(P^n) = n+1.
+/// The Chow ring of P^n is ℤ\[H\]/(H^{n+1}), so Σ rank CH^p(P^n) = n+1.
 pub fn projective_space_chow_rank(n: usize) -> usize {
     n + 1
 }
@@ -1164,7 +1164,7 @@ pub fn mc_ext_chern_class_map_ty() -> Expr {
 }
 /// Projective bundle formula for oriented cohomology.
 ///
-/// `∀ (E : VectorBundle X r), h(P(E)) ≅ h(X)[ξ]/(ξ^r + c_1(E)ξ^{r-1} + ... + c_r(E))`
+/// `∀ (E : VectorBundle X r), h(P(E)) ≅ h(X)\[ξ\]/(ξ^r + c_1(E)ξ^{r-1} + ... + c_r(E))`
 pub fn mc_ext_projective_bundle_formula_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1247,7 +1247,7 @@ pub fn mc_ext_slice_cofiber_ty() -> Expr {
 }
 /// Voevodsky's conjecture on slices of the sphere spectrum.
 ///
-/// `s_n(S) ≅ MZ[n] ∧ T^∧n` where MZ is the motivic Eilenberg-MacLane spectrum.
+/// `s_n(S) ≅ MZ\[n\] ∧ T^∧n` where MZ is the motivic Eilenberg-MacLane spectrum.
 pub fn mc_ext_voevodsky_slices_conjecture_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1289,7 +1289,7 @@ pub fn mc_ext_motivic_eml_spectrum_ty() -> Expr {
 }
 /// Representability of motivic cohomology.
 ///
-/// `∀ (X : Scheme) (p q : Nat), H^{p,q}(X, A) ≅ [X, K(A, p, q)]_A1`
+/// `∀ (X : Scheme) (p q : Nat), H^{p,q}(X, A) ≅ \[X, K(A, p, q)\]_A1`
 pub fn mc_ext_motivic_cohomology_representability_ty() -> Expr {
     pi(
         BinderInfo::Default,

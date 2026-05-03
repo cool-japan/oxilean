@@ -453,11 +453,10 @@ pub fn collect_fvars(expr: &Expr) -> Vec<FVarId> {
 }
 pub(super) fn collect_fvars_helper(expr: &Expr, acc: &mut Vec<FVarId>) {
     match expr {
-        Expr::FVar(id) => {
-            if !acc.contains(id) {
-                acc.push(*id);
-            }
+        Expr::FVar(id) if !acc.contains(id) => {
+            acc.push(*id);
         }
+        Expr::FVar(_) => {}
         Expr::App(f, a) => {
             collect_fvars_helper(f, acc);
             collect_fvars_helper(a, acc);
@@ -478,13 +477,8 @@ pub(super) fn collect_fvars_helper(expr: &Expr, acc: &mut Vec<FVarId>) {
 #[allow(dead_code)]
 pub fn count_fvar(expr: &Expr, fvar: FVarId) -> usize {
     match expr {
-        Expr::FVar(id) => {
-            if *id == fvar {
-                1
-            } else {
-                0
-            }
-        }
+        Expr::FVar(id) if *id == fvar => 1,
+        Expr::FVar(_) => 0,
         Expr::App(f, a) => count_fvar(f, fvar) + count_fvar(a, fvar),
         Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
             count_fvar(ty, fvar) + count_fvar(body, fvar)

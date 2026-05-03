@@ -300,7 +300,7 @@ impl LexOrder {
     /// Verify that a concrete sequence of `(before, after)` pairs is
     /// lexicographically decreasing using the given values for each component.
     ///
-    /// `values_before[i]` and `values_after[i]` are `u64` values of component `i`.
+    /// `values_before\[i\]` and `values_after\[i\]` are `u64` values of component `i`.
     #[allow(dead_code)]
     pub fn check_decrease(&self, values_before: &[u64], values_after: &[u64]) -> bool {
         let n = self

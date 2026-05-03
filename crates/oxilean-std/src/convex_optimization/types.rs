@@ -159,7 +159,7 @@ impl MirrorDescentSolver {
         (best_x, best_f, iters)
     }
     /// Compute the Bregman divergence D_h(x, y) for h = negative entropy:
-    ///   D_h(x,y) = sum_i [ x_i * log(x_i / y_i) - x_i + y_i ]  (KL divergence).
+    ///   D_h(x,y) = sum_i \[ x_i * log(x_i / y_i) - x_i + y_i \]  (KL divergence).
     pub fn bregman_kl(x: &[f64], y: &[f64]) -> f64 {
         x.iter()
             .zip(y)
@@ -919,7 +919,7 @@ impl ProjectedGradient {
             ub,
         }
     }
-    /// Project `x` onto the box [lb, ub].
+    /// Project `x` onto the box \[lb, ub\].
     pub fn project(&self, x: &[f64]) -> Vec<f64> {
         x.iter()
             .enumerate()

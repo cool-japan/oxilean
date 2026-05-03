@@ -116,7 +116,7 @@ impl ZonotopeData {
             .to_string()
     }
 }
-/// Zonotope: Minkowski sum of line segments {c + Σ λ_i g_i : λ_i ∈ [-1,1]}.
+/// Zonotope: Minkowski sum of line segments {c + Σ λ_i g_i : λ_i ∈ \[-1,1\]}.
 #[derive(Debug, Clone)]
 pub struct Zonotope {
     /// Centre c.
@@ -129,7 +129,7 @@ impl Zonotope {
     pub fn new(centre: Vec<f64>, generators: Vec<Vec<f64>>) -> Self {
         Self { centre, generators }
     }
-    /// Check membership: x ∈ Z iff x - c = Σ λ_i g_i with λ_i ∈ [-1,1].
+    /// Check membership: x ∈ Z iff x - c = Σ λ_i g_i with λ_i ∈ \[-1,1\].
     /// Uses a greedy interval check (exact only for orthogonal generators).
     pub fn contains_approx(&self, x: &[f64]) -> bool {
         let d = self.centre.len();
@@ -145,7 +145,7 @@ impl Zonotope {
             .zip(sum_abs.iter())
             .all(|(di, &si)| di.abs() <= si + 1e-10)
     }
-    /// Volume of the zonotope: 2^m * |det([g_{i1},...,g_{id}])| summed over all d-subsets.
+    /// Volume of the zonotope: 2^m * |det(\[g_{i1},...,g_{id}\])| summed over all d-subsets.
     /// For 2D: V = Σ_{i<j} |g_i × g_j|.
     pub fn volume_2d(&self) -> f64 {
         if self.generators.len() < 2 {
@@ -216,7 +216,7 @@ impl ConvexFunction {
     pub fn new(dim: usize) -> Self {
         Self { dim }
     }
-    /// Check Jensen's inequality numerically at two points x, y with λ ∈ [0,1].
+    /// Check Jensen's inequality numerically at two points x, y with λ ∈ \[0,1\].
     pub fn check_convexity<F>(&self, f: F, x: &[f64], y: &[f64], lambda: f64) -> bool
     where
         F: Fn(&[f64]) -> f64,
@@ -246,7 +246,7 @@ impl ConvexFunction {
 /// Face poset of a polytope.
 #[derive(Debug, Clone)]
 pub struct FacePoset {
-    /// f-vector: `f_vec[k]` = number of k-dimensional faces.
+    /// f-vector: `f_vec\[k\]` = number of k-dimensional faces.
     pub f_vec: Vec<usize>,
 }
 impl FacePoset {
@@ -307,7 +307,7 @@ impl TilingTheory {
 pub struct HellyTheoremChecker {
     /// Ambient dimension.
     pub dim: usize,
-    /// Convex sets represented as axis-aligned boxes [lo, hi]^d.
+    /// Convex sets represented as axis-aligned boxes \[lo, hi\]^d.
     pub boxes: Vec<(Vec<f64>, Vec<f64>)>,
 }
 impl HellyTheoremChecker {
@@ -318,11 +318,11 @@ impl HellyTheoremChecker {
             boxes: Vec::new(),
         }
     }
-    /// Add a convex set represented as an axis-aligned box [lo, hi].
+    /// Add a convex set represented as an axis-aligned box \[lo, hi\].
     pub fn add_box(&mut self, lo: Vec<f64>, hi: Vec<f64>) {
         self.boxes.push((lo, hi));
     }
-    /// Check if two boxes [lo_i, hi_i] and [lo_j, hi_j] intersect.
+    /// Check if two boxes \[lo_i, hi_i\] and \[lo_j, hi_j\] intersect.
     fn boxes_intersect(lo1: &[f64], hi1: &[f64], lo2: &[f64], hi2: &[f64]) -> bool {
         lo1.iter()
             .zip(hi1.iter())
@@ -390,7 +390,7 @@ impl HellyTheoremChecker {
     /// Radon partition check (simplified 2D): do the given points have a Radon partition?
     /// Radon's theorem: any d+2 points in ℝ^d have a Radon partition.
     /// For d=1: any 3 points {a,b,c} with a ≤ b ≤ c: {b} and {a,c} is a partition
-    /// (b ∈ [a,c]).
+    /// (b ∈ \[a,c\]).
     pub fn has_radon_partition_1d(points: &[f64]) -> bool {
         if points.len() < 3 {
             return false;
@@ -925,7 +925,7 @@ impl PowerDiagram {
             .unwrap_or(0)
     }
 }
-/// Cross polytope in ℝ^n: {x : Σ|x_i| ≤ 1}, the dual of the hypercube [−1,1]^n.
+/// Cross polytope in ℝ^n: {x : Σ|x_i| ≤ 1}, the dual of the hypercube \[−1,1\]^n.
 #[derive(Debug, Clone)]
 pub struct CrossPolytope {
     /// Dimension.
@@ -988,7 +988,7 @@ impl MixedVolumeEstimator {
     /// Estimate the j-th intrinsic volume V_j(K) of a polytope via inclusion-exclusion
     /// on face counts. For a simplex of dim d: V_j = C(d+1, j+1) / C(d, j) * ... (approximation).
     ///
-    /// Here we use the simple formula for a box [0,1]^d: V_j = C(d, j).
+    /// Here we use the simple formula for a box \[0,1\]^d: V_j = C(d, j).
     pub fn intrinsic_volume_hypercube(&self, j: usize) -> f64 {
         if j > self.dim {
             return 0.0;
@@ -1001,7 +1001,7 @@ impl MixedVolumeEstimator {
         self.intrinsic_volume_hypercube(j)
     }
     /// Mean width estimate w(K) ≈ 2 * V_{n-1}(K) / (n * κ_{n-1}/κ_n).
-    /// For the unit hypercube [0,1]^n: V_{n-1} = n (number of (n-1)-faces / 2 scaled).
+    /// For the unit hypercube \[0,1\]^n: V_{n-1} = n (number of (n-1)-faces / 2 scaled).
     pub fn mean_width_hypercube(&self) -> f64 {
         if self.dim == 0 {
             return 0.0;
@@ -1009,7 +1009,7 @@ impl MixedVolumeEstimator {
         (self.dim as f64).sqrt()
     }
     /// Steiner polynomial: Vol(K + t*B) ≈ Σ_j C(d,j) V_j(K) t^{d-j} for unit ball.
-    /// Returns coefficients [V_d, V_{d-1}, ..., V_0] in decreasing order.
+    /// Returns coefficients \[V_d, V_{d-1}, ..., V_0\] in decreasing order.
     pub fn steiner_coefficients_hypercube(&self) -> Vec<f64> {
         (0..=self.dim)
             .rev()

@@ -58,7 +58,7 @@ impl LovaszLocalLemma {
         self.prob_denominator as i64 - lhs
     }
 }
-/// A polynomial over i64 stored as coefficient vector: `poly[i]` = coefficient of x^i.
+/// A polynomial over i64 stored as coefficient vector: `poly\[i\]` = coefficient of x^i.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Poly(pub Vec<i64>);
 impl Poly {
@@ -188,7 +188,7 @@ impl TuranDensityComputer {
 pub struct MatroidIntersectionSolver {
     /// Ground set size |E|.
     pub ground_set_size: usize,
-    /// Block assignments: block[i] = block index for element i.
+    /// Block assignments: block\[i\] = block index for element i.
     pub block_assignment_1: Vec<usize>,
     /// Rank bounds for matroid 1 (indexed by block).
     pub rank_bounds_1: Vec<usize>,
@@ -268,7 +268,7 @@ impl MatroidIntersectionSolver {
 /// Represents the cycle index polynomial Z(G; x₁, …, xₙ) of a permutation group.
 ///
 /// The cycle index is stored as a list of monomials, where each monomial
-/// is represented as a vector of exponents (e[i] = exponent of x_{i+1}).
+/// is represented as a vector of exponents (e\[i\] = exponent of x_{i+1}).
 #[derive(Debug, Clone)]
 pub struct CycleIndexPolynomial {
     /// Group name (for display).
@@ -300,7 +300,7 @@ impl CycleIndexPolynomial {
     /// Apply Burnside's lemma: the number of distinct colorings with k colors
     /// is Z(G; k, k, …, k).
     ///
-    /// Each term `(coeff, exps)` contributes `coeff * ∏_i k^{exps[i]}` = `coeff * k^{∑ exps[i]}`.
+    /// Each term `(coeff, exps)` contributes `coeff * ∏_i k^{exps\[i\]}` = `coeff * k^{∑ exps\[i\]}`.
     pub fn burnside_count(&self, k: u64) -> u64 {
         let total: u64 = self
             .terms

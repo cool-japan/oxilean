@@ -1261,34 +1261,14 @@ pub(super) fn count_recursive_fields(
     let ind_str = format!("{}", inductive_name);
     let ctor_str = format!("{}", ctor_name);
     match ind_str.as_str() {
-        "Nat" => {
-            if ctor_str.contains("succ") {
-                1
-            } else {
-                0
-            }
-        }
-        "List" => {
-            if ctor_str.contains("cons") {
-                1
-            } else {
-                0
-            }
-        }
-        "Vector" => {
-            if ctor_str.contains("cons") {
-                1
-            } else {
-                0
-            }
-        }
-        "Fin" => {
-            if ctor_str.contains("succ") {
-                1
-            } else {
-                0
-            }
-        }
+        "Nat" if ctor_str.contains("succ") => 1,
+        "Nat" => 0,
+        "List" if ctor_str.contains("cons") => 1,
+        "List" => 0,
+        "Vector" if ctor_str.contains("cons") => 1,
+        "Vector" => 0,
+        "Fin" if ctor_str.contains("succ") => 1,
+        "Fin" => 0,
         _ => 0,
     }
 }

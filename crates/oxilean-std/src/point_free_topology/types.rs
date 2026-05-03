@@ -23,7 +23,7 @@ impl LocalicReals {
             is_regular: true,
         }
     }
-    /// The closed unit interval [0,1] as a locale: compact and regular.
+    /// The closed unit interval \[0,1\] as a locale: compact and regular.
     pub fn unit_interval() -> Self {
         Self {
             is_compact: true,
@@ -35,7 +35,7 @@ impl LocalicReals {
     pub fn agrees_with_classical(&self) -> bool {
         self.is_regular
     }
-    /// Heine-Borel theorem holds locally: [a,b] is compact as a locale.
+    /// Heine-Borel theorem holds locally: \[a,b\] is compact as a locale.
     pub fn heine_borel_locally(&self) -> &'static str {
         "Every closed bounded interval [a,b] in ℝ_loc is compact as a locale"
     }
@@ -136,7 +136,7 @@ pub enum ValuationType {
     Probability,
     /// Subprobability valuation: ν(top) ≤ 1.
     Subprobability,
-    /// General extended valuation: ν: L → [0,∞].
+    /// General extended valuation: ν: L → \[0,∞\].
     Extended,
 }
 /// A frame homomorphism f: L → M preserves finite meets and all joins.
@@ -882,7 +882,7 @@ impl CompactRegularLocale {
             is_second_countable: false,
         }
     }
-    /// The locale [0,1]: compact, regular, second-countable.
+    /// The locale \[0,1\]: compact, regular, second-countable.
     pub fn unit_interval() -> Self {
         Self {
             name: "[0,1]_loc".to_string(),
@@ -1097,7 +1097,7 @@ impl IsbellAdjunction {
          (surjection locale ℕ ↠ ℝ) has no points, hence is non-spatial"
     }
 }
-/// A valuation on a locale L is a Scott-continuous map ν: L → [0,∞]
+/// A valuation on a locale L is a Scott-continuous map ν: L → \[0,∞\]
 /// satisfying: ν(0) = 0 and the modular law ν(a) + ν(b) = ν(a∨b) + ν(a∧b).
 ///
 /// Valuations are the pointfree analogue of probability measures.

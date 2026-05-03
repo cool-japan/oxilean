@@ -264,7 +264,7 @@ pub fn birkhoff_ergodic_theorem_ty() -> Expr {
     prop()
 }
 /// Optional stopping theorem: OptionalStoppingTheorem : Prop
-/// For a martingale (Mₙ) and a bounded stopping time τ, E[M_τ] = E[M₀].
+/// For a martingale (Mₙ) and a bounded stopping time τ, E\[M_τ\] = E\[M₀\].
 pub fn optional_stopping_theorem_ty() -> Expr {
     prop()
 }
@@ -287,7 +287,7 @@ pub fn gaussian_measure_ty() -> Expr {
     arrow(type0(), type0())
 }
 /// Wiener measure: WienerMeasure : Type
-/// The unique probability measure on C([0,1]) representing standard Brownian motion.
+/// The unique probability measure on C(\[0,1\]) representing standard Brownian motion.
 pub fn wiener_measure_ty() -> Expr {
     type0()
 }

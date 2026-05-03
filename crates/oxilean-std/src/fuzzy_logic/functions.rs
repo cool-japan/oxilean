@@ -44,7 +44,7 @@ pub fn bvar(n: u32) -> Expr {
 pub fn de_morgan_dual_conorm(t: TNorm, a: f64, b: f64) -> f64 {
     1.0 - t.eval(1.0 - a, 1.0 - b)
 }
-/// Triangular membership function: zero outside [a, c], peak 1 at b.
+/// Triangular membership function: zero outside \[a, c\], peak 1 at b.
 pub fn triangular_mf(x: f64, a: f64, b: f64, c: f64) -> f64 {
     if x <= a || x >= c {
         0.0
@@ -54,7 +54,7 @@ pub fn triangular_mf(x: f64, a: f64, b: f64, c: f64) -> f64 {
         (c - x) / (c - b)
     }
 }
-/// Trapezoidal membership function: 1 on [b, c], ramps on [a,b] and [c,d].
+/// Trapezoidal membership function: 1 on \[b, c\], ramps on \[a,b\] and \[c,d\].
 pub fn trapezoidal_mf(x: f64, a: f64, b: f64, c: f64, d: f64) -> f64 {
     if x <= a || x >= d {
         0.0
@@ -190,11 +190,11 @@ pub fn defuzzify(fuzzy: &FuzzySet, domain: &[f64], method: DefuzzMethod) -> f64 
         }
     }
 }
-/// FuzzySet type: FuzzySet A = A → [0,1] (represented as A → Real).
+/// FuzzySet type: FuzzySet A = A → \[0,1\] (represented as A → Real).
 pub fn fuzzy_set_ty() -> Expr {
     impl_pi("A", type0(), arrow(bvar(0), cst("Real")))
 }
-/// Membership function type: MembershipFn A = A → [0,1].
+/// Membership function type: MembershipFn A = A → \[0,1\].
 pub fn membership_fn_ty() -> Expr {
     impl_pi("A", type0(), arrow(bvar(0), cst("Real")))
 }
@@ -629,7 +629,7 @@ pub fn nilpotent_tnorm_ty() -> Expr {
 pub fn strict_tnorm_ty() -> Expr {
     arrow(tnorm_ty(), prop())
 }
-/// Frank t-norm family: F_s(a,b) indexed by s ∈ [0,∞].
+/// Frank t-norm family: F_s(a,b) indexed by s ∈ \[0,∞\].
 pub fn frank_tnorm_ty() -> Expr {
     arrow(real_ty(), tnorm_ty())
 }
@@ -653,7 +653,7 @@ pub fn necessity_measure_ty() -> Expr {
 pub fn maxitivity_ty() -> Expr {
     arrow(arrow(prop(), real_ty()), prop())
 }
-/// Possibility distribution: π: U → [0,1] with sup π(u) = 1.
+/// Possibility distribution: π: U → \[0,1\] with sup π(u) = 1.
 pub fn possibility_distribution_ty() -> Expr {
     arrow(real_ty(), real_ty())
 }
@@ -661,11 +661,11 @@ pub fn possibility_distribution_ty() -> Expr {
 pub fn qualitative_possibility_ty() -> Expr {
     prop()
 }
-/// Lower approximation: POS(X) = {x : [x]_R ⊆ X}.
+/// Lower approximation: POS(X) = {x : \[x\]_R ⊆ X}.
 pub fn lower_approximation_ty() -> Expr {
     arrow(prop(), arrow(prop(), prop()))
 }
-/// Upper approximation: NEG(X) = {x : [x]_R ∩ X ≠ ∅}.
+/// Upper approximation: NEG(X) = {x : \[x\]_R ∩ X ≠ ∅}.
 pub fn upper_approximation_ty() -> Expr {
     arrow(prop(), arrow(prop(), prop()))
 }
@@ -791,7 +791,7 @@ pub fn intuitionistic_fuzzy_set_ty() -> Expr {
         arrow(arrow(real_ty(), real_ty()), prop()),
     )
 }
-/// Bipolar fuzzy set: positive and negative membership on [−1,1].
+/// Bipolar fuzzy set: positive and negative membership on \[−1,1\].
 pub fn bipolar_fuzzy_set_ty() -> Expr {
     arrow(
         arrow(real_ty(), real_ty()),
@@ -813,7 +813,7 @@ pub fn hesitant_fuzzy_set_ty() -> Expr {
 pub fn q_rung_orthopair_ty() -> Expr {
     arrow(nat_ty(), arrow(prop(), prop()))
 }
-/// Neutrosophic set: truth T, indeterminacy I, falsity F ∈ [0,1].
+/// Neutrosophic set: truth T, indeterminacy I, falsity F ∈ \[0,1\].
 pub fn neutrosophic_set_ty() -> Expr {
     arrow(
         arrow(real_ty(), real_ty()),
@@ -823,7 +823,7 @@ pub fn neutrosophic_set_ty() -> Expr {
         ),
     )
 }
-/// Single-valued neutrosophic set: T, I, F ∈ [0,1], T+I+F ≤ 3.
+/// Single-valued neutrosophic set: T, I, F ∈ \[0,1\], T+I+F ≤ 3.
 pub fn single_valued_neutrosophic_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), arrow(real_ty(), prop())))
 }
@@ -835,7 +835,7 @@ pub fn neutrosophic_conjunction_ty() -> Expr {
 pub fn neutrosophic_disjunction_ty() -> Expr {
     arrow(prop(), arrow(prop(), prop()))
 }
-/// Interval neutrosophic set: T, I, F are sub-intervals of [0,1].
+/// Interval neutrosophic set: T, I, F are sub-intervals of \[0,1\].
 pub fn interval_neutrosophic_ty() -> Expr {
     arrow(prop(), prop())
 }

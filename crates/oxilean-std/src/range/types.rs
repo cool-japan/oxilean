@@ -51,11 +51,11 @@ impl FloatInterval {
     pub fn contains(self, x: f64) -> bool {
         x >= self.lo && x <= self.hi
     }
-    /// Moore addition: `[a,b] + [c,d] = [a+c, b+d]`.
+    /// Moore addition: `[a,b] + \[c,d\] = \[a+c, b+d\]`.
     pub fn add(self, other: Self) -> Self {
         Self::new(self.lo + other.lo, self.hi + other.hi)
     }
-    /// Moore subtraction: `[a,b] - [c,d] = [a-d, b-c]`.
+    /// Moore subtraction: `[a,b] - \[c,d\] = \[a-d, b-c\]`.
     pub fn sub(self, other: Self) -> Self {
         Self::new(self.lo - other.hi, self.hi - other.lo)
     }
@@ -71,7 +71,7 @@ impl FloatInterval {
         let hi = products.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         Self::new(lo, hi)
     }
-    /// Interval negation: `-[a,b] = [-b, -a]`.
+    /// Interval negation: `-\[a,b\] = \[-b, -a\]`.
     pub fn neg(self) -> Self {
         Self::new(-self.hi, -self.lo)
     }
@@ -89,7 +89,7 @@ impl FloatInterval {
     pub fn is_subset_of(self, other: Self) -> bool {
         other.lo <= self.lo && self.hi <= other.hi
     }
-    /// Absolute value interval: `|[a,b]|`.
+    /// Absolute value interval: `|\[a,b\]|`.
     pub fn abs(self) -> Self {
         if self.lo >= 0.0 {
             self
@@ -103,7 +103,7 @@ impl FloatInterval {
     pub fn square(self) -> Self {
         self.mul(self)
     }
-    /// Mignitude: `min |x|` for `x ∈ [lo, hi]`.
+    /// Mignitude: `min |x|` for `x ∈ \[lo, hi\]`.
     pub fn mignitude(self) -> f64 {
         if self.lo >= 0.0 {
             self.lo
@@ -113,7 +113,7 @@ impl FloatInterval {
             0.0
         }
     }
-    /// Magnitude: `max |x|` for `x ∈ [lo, hi]`.
+    /// Magnitude: `max |x|` for `x ∈ \[lo, hi\]`.
     pub fn magnitude(self) -> f64 {
         f64::max(self.lo.abs(), self.hi.abs())
     }

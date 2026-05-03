@@ -415,7 +415,7 @@ impl OpcodeProfile {
     /// Return a sorted (descending by count) list of `(kind, count)` pairs.
     pub fn top_opcodes(&self) -> Vec<(String, u64)> {
         let mut v: Vec<_> = self.counts.iter().map(|(k, v)| (k.clone(), *v)).collect();
-        v.sort_by(|a, b| b.1.cmp(&a.1));
+        v.sort_by_key(|b| std::cmp::Reverse(b.1));
         v
     }
     /// Reset all counts.

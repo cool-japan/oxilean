@@ -56,7 +56,7 @@ impl KVVanishingData {
 pub struct LogPair {
     /// The underlying variety.
     pub variety: String,
-    /// Coefficients of the boundary divisor Δ = ∑ a_i D_i (each a_i ∈ [0, 1]).
+    /// Coefficients of the boundary divisor Δ = ∑ a_i D_i (each a_i ∈ \[0, 1\]).
     pub boundary_coeffs: Vec<f64>,
     /// Names of the boundary divisors.
     pub boundary_components: Vec<String>,
@@ -70,7 +70,7 @@ impl LogPair {
             boundary_components: vec![],
         }
     }
-    /// Add a boundary component with coefficient a ∈ [0, 1].
+    /// Add a boundary component with coefficient a ∈ \[0, 1\].
     pub fn with_boundary(mut self, name: impl Into<String>, coeff: f64) -> Self {
         assert!(
             (0.0..=1.0).contains(&coeff),

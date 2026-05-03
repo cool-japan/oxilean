@@ -960,7 +960,7 @@ pub struct Gate2x2 {
     pub name: String,
 }
 impl Gate2x2 {
-    /// Pauli-X (NOT) gate: [[0,1],[1,0]].
+    /// Pauli-X (NOT) gate: [\[0,1\],\[1,0\]].
     pub fn pauli_x() -> Self {
         Gate2x2 {
             name: "X".to_string(),
@@ -970,7 +970,7 @@ impl Gate2x2 {
             ],
         }
     }
-    /// Pauli-Y gate: [[0,−i],[i,0]].
+    /// Pauli-Y gate: [\[0,−i\],\[i,0\]].
     pub fn pauli_y() -> Self {
         Gate2x2 {
             name: "Y".to_string(),
@@ -980,7 +980,7 @@ impl Gate2x2 {
             ],
         }
     }
-    /// Pauli-Z gate: [[1,0],[0,−1]].
+    /// Pauli-Z gate: [\[1,0\],\[0,−1\]].
     pub fn pauli_z() -> Self {
         Gate2x2 {
             name: "Z".to_string(),
@@ -990,7 +990,7 @@ impl Gate2x2 {
             ],
         }
     }
-    /// Hadamard gate: H = 1/√2 [[1,1],[1,−1]].
+    /// Hadamard gate: H = 1/√2 [\[1,1\],\[1,−1\]].
     pub fn hadamard() -> Self {
         let v = Complex::new(1.0 / 2.0f64.sqrt(), 0.0);
         let neg_v = Complex::new(-1.0 / 2.0f64.sqrt(), 0.0);
@@ -999,7 +999,7 @@ impl Gate2x2 {
             matrix: [[v, v], [v, neg_v]],
         }
     }
-    /// Phase gate: [[1,0],[0,e^{iθ}]].
+    /// Phase gate: [\[1,0\],\[0,e^{iθ}\]].
     pub fn phase(theta: f64) -> Self {
         Gate2x2 {
             name: format!("P({theta:.4})"),

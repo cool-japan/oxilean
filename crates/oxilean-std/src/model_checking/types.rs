@@ -104,7 +104,7 @@ pub struct KripkeStructure {
     pub num_states: usize,
     /// Initial states.
     pub initial_states: Vec<usize>,
-    /// Transition relation: transition_relation[s] = successors of s.
+    /// Transition relation: transition_relation\[s\] = successors of s.
     pub transition_relation: Vec<Vec<usize>>,
     /// Labeling function.
     pub labeling: Vec<StateLabel>,
@@ -359,9 +359,9 @@ pub enum CtlStarFormula {
     And(Box<CtlStarFormula>, Box<CtlStarFormula>),
     /// State formula: disjunction.
     Or(Box<CtlStarFormula>, Box<CtlStarFormula>),
-    /// Existential path quantifier E[path].
+    /// Existential path quantifier E\[path\].
     E(Box<CtlStarFormula>),
-    /// Universal path quantifier A[path].
+    /// Universal path quantifier A\[path\].
     A(Box<CtlStarFormula>),
     /// Path formula: Next.
     Next(Box<CtlStarFormula>),
@@ -979,7 +979,7 @@ pub struct ProbabilisticMCVerifier {
     /// Number of states.
     pub num_states: usize,
     /// Transition matrix: row s = probability distribution over successors.
-    /// transitions[s] = list of (target, probability) pairs, summing to 1.
+    /// transitions\[s\] = list of (target, probability) pairs, summing to 1.
     pub transitions: Vec<Vec<(usize, f64)>>,
     /// Labeling: for each state, which propositions hold.
     pub labeling: Vec<HashSet<String>>,
@@ -1042,7 +1042,7 @@ impl ProbabilisticMCVerifier {
         }
         prob
     }
-    /// Check PCTL property P≥threshold[F target]: probability of reaching `target`
+    /// Check PCTL property P≥threshold\[F target\]: probability of reaching `target`
     /// from each initial state is at least `threshold`.
     pub fn check_prob_reach(&self, target_prop: &str, threshold: f64) -> bool {
         let target: HashSet<usize> = (0..self.num_states)
@@ -1279,7 +1279,7 @@ pub enum MuFormula {
     Or(Box<MuFormula>, Box<MuFormula>),
     /// Diamond modality ⟨a⟩φ (exists successor satisfying φ).
     Diamond(Box<MuFormula>),
-    /// Box modality [a]φ (all successors satisfy φ).
+    /// Box modality \[a\]φ (all successors satisfy φ).
     Box_(Box<MuFormula>),
     /// Least fixpoint μX.φ(X).
     Mu(String, Box<MuFormula>),
@@ -1295,7 +1295,7 @@ pub struct BuchiAutomaton {
     pub num_states: usize,
     /// Alphabet (atomic propositions as strings).
     pub alphabet: Vec<String>,
-    /// Transition function: transitions[q] = list of (label_set, target) pairs.
+    /// Transition function: transitions\[q\] = list of (label_set, target) pairs.
     pub transitions: Vec<Vec<(HashSet<String>, usize)>>,
     /// Initial state.
     pub initial_state: usize,

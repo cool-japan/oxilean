@@ -18,7 +18,7 @@ pub enum ChannelKind {
 /// This struct computes the corner points of the Slepian-Wolf rate region
 /// from a joint distribution table.
 pub struct SlepianWolfCoder {
-    /// Joint distribution table: joint[i][j] = P(X=i, Y=j).
+    /// Joint distribution table: joint\[i\]\[j\] = P(X=i, Y=j).
     pub joint: Vec<Vec<f64>>,
 }
 impl SlepianWolfCoder {
@@ -76,14 +76,14 @@ impl SlepianWolfCoder {
 /// Wiretap channel secrecy capacity computation.
 ///
 /// For the degraded wiretap channel (X → Y → Z), the secrecy capacity is:
-///   C_s = max_{p(x)} [I(X;Y) - I(X;Z)]
+///   C_s = max_{p(x)} \[I(X;Y) - I(X;Z)\]
 ///
 /// This implementation evaluates secrecy rate for a fixed input distribution
 /// over both the legitimate channel W_Y and the eavesdropper channel W_Z.
 pub struct WiretapChannel {
-    /// Legitimate channel transition matrix: wy[x][y] = P(Y=y|X=x).
+    /// Legitimate channel transition matrix: wy\[x\]\[y\] = P(Y=y|X=x).
     pub wy: Vec<Vec<f64>>,
-    /// Eavesdropper channel transition matrix: wz[x][z] = P(Z=z|X=x).
+    /// Eavesdropper channel transition matrix: wz\[x\]\[z\] = P(Z=z|X=x).
     pub wz: Vec<Vec<f64>>,
 }
 impl WiretapChannel {
@@ -220,7 +220,7 @@ pub enum DistortionMeasure {
 }
 /// Huffman code: maps symbol indices to binary codewords.
 pub struct HuffmanCode {
-    /// Codeword for each symbol (as a Vec<bool>, false=0, true=1).
+    /// Codeword for each symbol (as a `Vec<bool>`, false=0, true=1).
     pub codewords: Vec<Vec<bool>>,
     /// Average bits per symbol under the source distribution.
     pub avg_bits: f64,
@@ -392,7 +392,7 @@ impl KolmogorovComplexity {
 pub struct ArithmeticCoder {
     /// Symbol probabilities (must sum to 1).
     pub probs: Vec<f64>,
-    /// Cumulative probabilities: cum_probs[i] = Σ_{j<i} probs[j].
+    /// Cumulative probabilities: cum_probs\[i\] = Σ_{j<i} probs\[j\].
     pub cum_probs: Vec<f64>,
 }
 impl ArithmeticCoder {
@@ -410,7 +410,7 @@ impl ArithmeticCoder {
     }
     /// Return the interval (low, high) assigned to a symbol in arithmetic coding.
     ///
-    /// Interval for symbol `s` is [cum_probs[s], cum_probs[s] + probs[s]).
+    /// Interval for symbol `s` is [cum_probs\[s\], cum_probs\[s\] + probs\[s\]).
     pub fn encode_symbol(&self, symbol: usize) -> (f64, f64) {
         let low = self.cum_probs[symbol];
         let high = low + self.probs[symbol];
@@ -575,7 +575,7 @@ impl ChernoffInformationCalc {
             })
             .sum()
     }
-    /// Compute the Chernoff information C(P, Q) via line search over t ∈ [0,1].
+    /// Compute the Chernoff information C(P, Q) via line search over t ∈ \[0,1\].
     ///
     /// Uses a ternary search to minimize B(t), then returns -log2(min B(t)).
     pub fn compute(p: &[f64], q: &[f64]) -> f64 {
@@ -654,7 +654,7 @@ impl EntropyEstimator {
 /// - Update output distribution: r(y) = Σ_x q(x) W(y|x)
 /// - Update input distribution: q(x) ∝ exp(Σ_y W(y|x) log(W(y|x)/r(y)))
 pub struct BlahutArimoto {
-    /// Channel transition matrix W[x][y] = P(Y=y | X=x).
+    /// Channel transition matrix W\[x\]\[y\] = P(Y=y | X=x).
     pub channel: Vec<Vec<f64>>,
     /// Maximum number of iterations.
     pub max_iter: usize,
@@ -773,6 +773,215 @@ impl LempelZivComplexity {
         c * (n as f64).log2() / n as f64
     }
 }
+/// A probability distribution over a finite alphabet of size `n`.
+///
+/// `probs\[i\]` = P(X = i). Must satisfy Σ probs\[i\] = 1 and probs\[i\] ≥ 0.
+#[derive(Debug, Clone)]
+pub struct Distribution {
+    /// Probability of each symbol.
+    pub probs: Vec<f64>,
+}
+
+impl Distribution {
+    /// Create a new Distribution, normalizing if necessary.
+    ///
+    /// Returns `None` if `probs` is empty or contains negative values.
+    pub fn new(probs: Vec<f64>) -> Option<Self> {
+        if probs.is_empty() {
+            return None;
+        }
+        if probs.iter().any(|&p| p < 0.0) {
+            return None;
+        }
+        let sum: f64 = probs.iter().sum();
+        if sum <= 0.0 {
+            return None;
+        }
+        let normalized = probs.iter().map(|&p| p / sum).collect();
+        Some(Distribution { probs: normalized })
+    }
+
+    /// Return the alphabet size.
+    pub fn alphabet_size(&self) -> usize {
+        self.probs.len()
+    }
+
+    /// Shannon entropy H(X) in bits.
+    pub fn entropy(&self) -> f64 {
+        self.probs
+            .iter()
+            .filter(|&&p| p > 0.0)
+            .map(|&p| -p * p.log2())
+            .sum()
+    }
+}
+
+/// A discrete memoryless channel P(Y|X): transition matrix.
+///
+/// `matrix\[x\]\[y\]` = P(Y = y | X = x).
+#[derive(Debug, Clone)]
+pub struct Channel {
+    /// Transition matrix: `matrix\[x\]` is the output distribution when input is `x`.
+    pub matrix: Vec<Vec<f64>>,
+    /// Input alphabet size.
+    pub input_size: usize,
+    /// Output alphabet size.
+    pub output_size: usize,
+}
+
+impl Channel {
+    /// Create a Channel from a transition matrix.
+    ///
+    /// Returns `None` if the matrix is empty or rows have inconsistent lengths.
+    pub fn new(matrix: Vec<Vec<f64>>) -> Option<Self> {
+        if matrix.is_empty() {
+            return None;
+        }
+        let output_size = matrix[0].len();
+        if output_size == 0 {
+            return None;
+        }
+        if matrix.iter().any(|row| row.len() != output_size) {
+            return None;
+        }
+        let input_size = matrix.len();
+        Some(Channel {
+            matrix,
+            input_size,
+            output_size,
+        })
+    }
+
+    /// Compute the output distribution P(Y) for a given input distribution P(X).
+    pub fn output_distribution(&self, px: &Distribution) -> Distribution {
+        let mut py = vec![0.0f64; self.output_size];
+        for x in 0..self.input_size {
+            for y in 0..self.output_size {
+                py[y] += px.probs.get(x).copied().unwrap_or(0.0) * self.matrix[x][y];
+            }
+        }
+        Distribution { probs: py }
+    }
+}
+
+/// Information measure computed over distributions.
+#[derive(Debug, Clone, PartialEq)]
+pub enum InformationMeasure {
+    /// Shannon entropy H(X).
+    Entropy,
+    /// Joint entropy H(X, Y).
+    JointEntropy,
+    /// Conditional entropy H(Y|X).
+    ConditionalEntropy,
+    /// Mutual information I(X;Y).
+    MutualInfo,
+    /// KL divergence D_KL(P‖Q).
+    RelativeEntropy,
+    /// Channel capacity C = max_{P(X)} I(X;Y).
+    ChannelCapacity,
+}
+
+/// A binary codeword as a sequence of bits (false = 0, true = 1).
+pub type CodeWord = Vec<bool>;
+
+/// A node in a Huffman tree.
+#[derive(Debug, Clone)]
+pub enum HuffmanNode {
+    /// Leaf node holding the symbol index and its probability.
+    Leaf { symbol: usize, prob: f64 },
+    /// Internal node with a combined probability and two children.
+    Internal {
+        prob: f64,
+        left: Box<HuffmanNode>,
+        right: Box<HuffmanNode>,
+    },
+}
+
+impl HuffmanNode {
+    /// Probability associated with this node.
+    pub fn prob(&self) -> f64 {
+        match self {
+            HuffmanNode::Leaf { prob, .. } => *prob,
+            HuffmanNode::Internal { prob, .. } => *prob,
+        }
+    }
+
+    /// Recursively collect codewords from the Huffman tree.
+    ///
+    /// `prefix` accumulates the bit path from root to current node.
+    pub fn collect_codewords(&self, prefix: Vec<bool>, codes: &mut Vec<(usize, CodeWord)>) {
+        match self {
+            HuffmanNode::Leaf { symbol, .. } => {
+                let cw = if prefix.is_empty() {
+                    vec![false]
+                } else {
+                    prefix
+                };
+                codes.push((*symbol, cw));
+            }
+            HuffmanNode::Internal { left, right, .. } => {
+                let mut left_prefix = prefix.clone();
+                left_prefix.push(false);
+                left.collect_codewords(left_prefix, codes);
+
+                let mut right_prefix = prefix;
+                right_prefix.push(true);
+                right.collect_codewords(right_prefix, codes);
+            }
+        }
+    }
+}
+
+/// State of an arithmetic encoder/decoder.
+#[derive(Debug, Clone)]
+pub struct ArithmeticCodeState {
+    /// Current lower bound of the encoding interval [low, high).
+    pub low: f64,
+    /// Current upper bound of the encoding interval [low, high).
+    pub high: f64,
+    /// Cumulative distribution (CDF) of the source alphabet.
+    pub cdf: Vec<f64>,
+}
+
+impl ArithmeticCodeState {
+    /// Initialize state for arithmetic coding given a distribution.
+    pub fn new(dist: &Distribution) -> Self {
+        let n = dist.probs.len();
+        let mut cdf = vec![0.0f64; n + 1];
+        for i in 0..n {
+            cdf[i + 1] = cdf[i] + dist.probs[i];
+        }
+        ArithmeticCodeState {
+            low: 0.0,
+            high: 1.0,
+            cdf,
+        }
+    }
+
+    /// Narrow the interval for encoding symbol `s`.
+    pub fn encode_symbol(&mut self, s: usize) {
+        let range = self.high - self.low;
+        let new_high = self.low + range * self.cdf[s + 1];
+        let new_low = self.low + range * self.cdf[s];
+        self.low = new_low;
+        self.high = new_high;
+    }
+
+    /// Find which symbol the value `v` falls into.
+    pub fn decode_symbol(&self, v: f64) -> Option<usize> {
+        let range = self.high - self.low;
+        if range <= 0.0 {
+            return None;
+        }
+        let scaled = (v - self.low) / range;
+        self.cdf
+            .windows(2)
+            .enumerate()
+            .find(|(_, w)| scaled >= w[0] && scaled < w[1])
+            .map(|(i, _)| i)
+    }
+}
+
 /// Output symbol for a BEC (0, 1, or erased).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BecOutput {
@@ -826,7 +1035,7 @@ impl MutualInformation {
         }
         mi
     }
-    /// Normalized MI in [0, 1].
+    /// Normalized MI in \[0, 1\].
     pub fn normalized(&self) -> f64 {
         let mi = self.compute();
         let hx = shannon_entropy(&self.marginal_x());

@@ -913,19 +913,15 @@ impl<'a> TokenClassifier<'a> {
                 ctx.expect_decl_name = true;
                 ctx.in_tactic = false;
             }
-            TokenKind::Ident(name) => {
-                if ctx.expect_decl_name {
-                    ctx.local_defs.insert(name.clone(), OxiTokenType::Function);
-                    ctx.expect_decl_name = false;
-                }
+            TokenKind::Ident(name) if ctx.expect_decl_name => {
+                ctx.local_defs.insert(name.clone(), OxiTokenType::Function);
+                ctx.expect_decl_name = false;
             }
             TokenKind::By => {
                 ctx.in_tactic = true;
             }
-            TokenKind::Colon => {
-                if !ctx.in_tactic {
-                    ctx.in_type = true;
-                }
+            TokenKind::Colon if !ctx.in_tactic => {
+                ctx.in_type = true;
             }
             TokenKind::Assign | TokenKind::Where => {
                 ctx.in_type = false;

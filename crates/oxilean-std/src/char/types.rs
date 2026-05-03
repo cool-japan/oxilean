@@ -161,7 +161,7 @@ impl CharPredicateTable {
         self.entries.iter().map(|(n, _)| *n).collect()
     }
 }
-/// A compact char range: all code points in [start, end] (inclusive).
+/// A compact char range: all code points in \[start, end\] (inclusive).
 ///
 /// Used to describe Unicode blocks or script ranges.
 #[allow(dead_code)]

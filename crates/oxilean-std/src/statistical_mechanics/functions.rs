@@ -549,7 +549,7 @@ pub fn epsilon_expansion_ty() -> Expr {
 pub fn virasoro_central_charge_ty() -> Expr {
     real_ty()
 }
-/// Virasoro algebra: [L_m, L_n] = (m-n) L_{m+n} + c/12 m(m²-1) δ_{m+n,0}
+/// Virasoro algebra: \[L_m, L_n\] = (m-n) L_{m+n} + c/12 m(m²-1) δ_{m+n,0}
 /// Type: Prop
 pub fn virasoro_algebra_ty() -> Expr {
     prop()
@@ -579,7 +579,7 @@ pub fn minimal_model_central_charge_ty() -> Expr {
 pub fn transfer_matrix_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), type0()))
 }
-/// Onsager exact free energy: f = -k_BT[ln(2) + (1/2π)∫ ln(cosh²2βJ - sinh2βJ cos k) dk]
+/// Onsager exact free energy: f = -k_BT\[ln(2) + (1/2π)∫ ln(cosh²2βJ - sinh2βJ cos k) dk\]
 /// Type: Real → Real  (β → free energy per site)
 pub fn onsager_exact_free_energy_ty() -> Expr {
     arrow(real_ty(), real_ty())

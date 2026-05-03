@@ -767,7 +767,7 @@ pub enum CCSProcess {
     Parallel(Box<CCSProcess>, Box<CCSProcess>),
     /// P\L: restriction — hide channel set L
     Restriction(String, Box<CCSProcess>),
-    /// P[f]: relabeling by function f
+    /// P\[f\]: relabeling by function f
     Relabeling(Box<CCSProcess>, HashMap<String, String>),
     /// X: recursive variable reference
     RecVar(String),
@@ -787,7 +787,7 @@ pub enum CSPProcess {
     Choice(Box<CSPProcess>, Box<CSPProcess>),
     /// P |~| Q: internal (nondeterministic) choice
     IntChoice(Box<CSPProcess>, Box<CSPProcess>),
-    /// P |[A]| Q: parallel composition synchronising on A
+    /// P |\[A\]| Q: parallel composition synchronising on A
     Parallel(Box<CSPProcess>, Box<CSPProcess>, Vec<Event>),
     /// P ; Q: sequential composition
     Sequential(Box<CSPProcess>, Box<CSPProcess>),

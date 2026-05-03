@@ -132,7 +132,7 @@ pub fn eigenvector_ty() -> Expr {
     arrow(matrix_ty(), arrow(real_ty(), arrow(vector_ty(), prop())))
 }
 /// `SpectrumBound : Matrix → Real → Real → Prop`
-/// All eigenvalues of A lie in [lo, hi].
+/// All eigenvalues of A lie in \[lo, hi\].
 pub fn spectrum_bound_ty() -> Expr {
     arrow(matrix_ty(), arrow(real_ty(), arrow(real_ty(), prop())))
 }
@@ -1002,8 +1002,8 @@ pub fn qr_eigenvalues(a: &[Vec<f64>], max_iter: usize, tol: f64) -> Vec<f64> {
 }
 /// Lanczos algorithm: compute k-step tridiagonal reduction of symmetric A.
 ///
-/// Returns `(alpha, beta)` where alpha[i] are the diagonal entries and
-/// beta[i] are the sub-diagonal entries of the tridiagonal matrix T_k.
+/// Returns `(alpha, beta)` where alpha\[i\] are the diagonal entries and
+/// beta\[i\] are the sub-diagonal entries of the tridiagonal matrix T_k.
 pub fn lanczos(a: &[Vec<f64>], k: usize) -> (Vec<f64>, Vec<f64>) {
     let n = a.len();
     let k = k.min(n);

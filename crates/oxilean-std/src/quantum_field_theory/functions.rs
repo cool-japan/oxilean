@@ -77,7 +77,7 @@ pub fn annihilation_op_ty() -> Expr {
 pub fn number_op_ty() -> Expr {
     arrow(cst("Mode"), arrow(cst("FockSpace"), cst("FockSpace")))
 }
-/// CanonicalCommutationRelation : [a_i, a†_j] = δ_{ij}
+/// CanonicalCommutationRelation : \[a_i, a†_j\] = δ_{ij}
 /// CCR : Mode → Mode → Prop
 pub fn ccr_ty() -> Expr {
     arrow(cst("Mode"), arrow(cst("Mode"), prop()))
@@ -114,7 +114,7 @@ pub fn momentum_mode_ty() -> Expr {
     arrow(cst("FourMomentum"), cst("Mode"))
 }
 /// FieldExpansion : ScalarField → Integral(Mode × (CreationOp + AnnihilationOp))
-/// φ(x) = ∫ d³p/(2π)³ 1/√(2ωp) [a_p e^{ipx} + a†_p e^{-ipx}]
+/// φ(x) = ∫ d³p/(2π)³ 1/√(2ωp) \[a_p e^{ipx} + a†_p e^{-ipx}\]
 pub fn field_expansion_ty() -> Expr {
     arrow(arrow(cst("Spacetime"), real_ty()), prop())
 }
@@ -129,7 +129,7 @@ pub fn time_ordering_ty() -> Expr {
     arrow(cst("FockSpace"), arrow(cst("FockSpace"), cst("FockSpace")))
 }
 /// PathIntegral : Action → Observable → Complex
-/// Z[J] = ∫ Dφ exp(i S[φ] + i ∫J φ)
+/// Z\[J\] = ∫ Dφ exp(i S\[φ\] + i ∫J φ)
 pub fn path_integral_ty() -> Expr {
     arrow(
         arrow(arrow(cst("Spacetime"), real_ty()), real_ty()),
@@ -137,7 +137,7 @@ pub fn path_integral_ty() -> Expr {
     )
 }
 /// GeneratingFunctional : (Spacetime → ℝ) → Complex
-/// Z[J] = ⟨0|0⟩_J
+/// Z\[J\] = ⟨0|0⟩_J
 pub fn generating_functional_ty() -> Expr {
     arrow(arrow(cst("Spacetime"), real_ty()), complex_ty())
 }
@@ -146,7 +146,7 @@ pub fn generating_functional_ty() -> Expr {
 pub fn connected_green_fn_ty() -> Expr {
     arrow(nat_ty(), arrow(list_ty(cst("Spacetime")), complex_ty()))
 }
-/// LatticePathIntegral : lattice discretization of Z[J].
+/// LatticePathIntegral : lattice discretization of Z\[J\].
 pub fn lattice_path_integral_ty() -> Expr {
     arrow(nat_ty(), arrow(real_ty(), complex_ty()))
 }
@@ -156,7 +156,7 @@ pub fn wick_rotation_ty() -> Expr {
     arrow(cst("Spacetime"), cst("Spacetime"))
 }
 /// EuclideanAction : ScalarField → ℝ
-/// S_E[φ] = ∫ dτ d³x [½(∂φ)² + ½m²φ² + V(φ)]
+/// S_E\[φ\] = ∫ dτ d³x \[½(∂φ)² + ½m²φ² + V(φ)\]
 pub fn euclidean_action_ty() -> Expr {
     arrow(arrow(cst("Spacetime"), real_ty()), real_ty())
 }
@@ -260,7 +260,7 @@ pub fn gauge_field_ty() -> Expr {
     arrow(cst("Spacetime"), cst("LieAlgebra"))
 }
 /// FieldStrength : GaugeField → (Spacetime → Spacetime → LieAlgebra)
-/// F_μν = ∂_μ A_ν − ∂_ν A_μ + [A_μ, A_ν]
+/// F_μν = ∂_μ A_ν − ∂_ν A_μ + \[A_μ, A_ν\]
 pub fn field_strength_ty() -> Expr {
     arrow(
         arrow(cst("Spacetime"), cst("LieAlgebra")),
@@ -419,7 +419,7 @@ pub fn poincare_covariance_ty() -> Expr {
     arrow(arrow(cst("Spacetime"), cst("HilbertOp")), prop())
 }
 /// WightmanLocality : WightmanField → WightmanField → Prop
-/// [φ(x), φ(y)] = 0 for spacelike separated x,y.
+/// \[φ(x), φ(y)\] = 0 for spacelike separated x,y.
 pub fn wightman_locality_ty() -> Expr {
     arrow(
         arrow(cst("Spacetime"), cst("HilbertOp")),
@@ -458,7 +458,7 @@ pub fn isotony_ty() -> Expr {
     arrow(arrow(cst("SpacetimeRegion"), cst("CStarAlgebra")), prop())
 }
 /// HaagKastlerCausality : LocalAlgebra → Prop
-/// O₁ ⊥ O₂ (spacelike) ⇒ [A(O₁), A(O₂)] = 0.
+/// O₁ ⊥ O₂ (spacelike) ⇒ \[A(O₁), A(O₂)\] = 0.
 pub fn haag_kastler_causality_ty() -> Expr {
     arrow(arrow(cst("SpacetimeRegion"), cst("CStarAlgebra")), prop())
 }
@@ -594,7 +594,7 @@ pub fn virasoro_generator_ty() -> Expr {
     arrow(int_ty(), arrow(cst("FockSpace"), cst("FockSpace")))
 }
 /// VirasoroAlgebraRelation : ℤ → ℤ → ℝ → Prop
-/// [L_m, L_n] = (m-n)L_{m+n} + c/12 m(m²-1) δ_{m+n,0}.
+/// \[L_m, L_n\] = (m-n)L_{m+n} + c/12 m(m²-1) δ_{m+n,0}.
 pub fn virasoro_algebra_relation_ty() -> Expr {
     arrow(int_ty(), arrow(int_ty(), arrow(real_ty(), prop())))
 }
@@ -618,7 +618,7 @@ pub fn conformal_bootstrap_ty() -> Expr {
     arrow(real_ty(), prop())
 }
 /// ChernSimonsAction : GaugeField → ℝ → ℝ
-/// S_CS[A] = (k/4π) ∫ Tr(A ∧ dA + 2/3 A ∧ A ∧ A).
+/// S_CS\[A\] = (k/4π) ∫ Tr(A ∧ dA + 2/3 A ∧ A ∧ A).
 pub fn chern_simons_action_ty() -> Expr {
     arrow(
         arrow(cst("Spacetime"), cst("LieAlgebra")),
@@ -626,7 +626,7 @@ pub fn chern_simons_action_ty() -> Expr {
     )
 }
 /// BFAction : GaugeField → (Spacetime → LieAlgebra) → ℝ
-/// S_BF[A,B] = ∫ Tr(B ∧ F[A]).
+/// S_BF\[A,B\] = ∫ Tr(B ∧ F\[A\]).
 pub fn bf_action_ty() -> Expr {
     arrow(
         arrow(cst("Spacetime"), cst("LieAlgebra")),
@@ -649,7 +649,7 @@ pub fn jones_polynomial_ty() -> Expr {
     arrow(cst("Path"), arrow(int_ty(), complex_ty()))
 }
 /// LatticeAction : ℕ → ℝ → ℝ
-/// Wilson action S_lat[U] on a lattice of size N with coupling β.
+/// Wilson action S_lat\[U\] on a lattice of size N with coupling β.
 pub fn lattice_action_ty() -> Expr {
     arrow(nat_ty(), arrow(real_ty(), real_ty()))
 }
@@ -869,7 +869,7 @@ pub fn check_ward_identity(k: &[f64; 4], amplitude: &[QftComplex; 4]) -> f64 {
     k_mu.abs()
 }
 /// Check if a Hamiltonian matrix commutes with a discrete symmetry (CPT check).
-/// H = 2×2 complex matrix represented as [[a,b],[c,d]].
+/// H = 2×2 complex matrix represented as [\[a,b\],\[c,d\]].
 pub fn check_cpt_invariance(h: &[[QftComplex; 2]; 2], theta: &[[QftComplex; 2]; 2]) -> bool {
     let mut th = [[QftComplex::zero(); 2]; 2];
     let mut ht = [[QftComplex::zero(); 2]; 2];

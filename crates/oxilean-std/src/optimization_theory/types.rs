@@ -455,7 +455,7 @@ pub struct RobustOptimizationProblem {
     pub dim_x: usize,
     /// Dimension of uncertainty parameter u.
     pub dim_u: usize,
-    /// Box uncertainty: uncertainty set U = [-delta, delta]^dim_u.
+    /// Box uncertainty: uncertainty set U = \[-delta, delta\]^dim_u.
     pub box_delta: f64,
     /// Nominal cost coefficients c (linear objective f(x, u) = c^T x + u^T x).
     pub nominal_cost: Vec<f64>,
@@ -472,7 +472,7 @@ impl RobustOptimizationProblem {
         }
     }
     /// Worst-case cost for a given x under box uncertainty:
-    /// max_{u in [-delta,delta]^dim_u} c^T x + u^T x = c^T x + delta * ||x||_1
+    /// max_{u in \[-delta,delta\]^dim_u} c^T x + u^T x = c^T x + delta * ||x||_1
     pub fn worst_case_cost(&self, x: &[f64]) -> f64 {
         let nominal: f64 = self
             .nominal_cost
@@ -575,7 +575,7 @@ impl BinaryIntegerProgram {
     }
 }
 /// Two-stage stochastic program:
-/// min c^T x + E_ξ[Q(x, ξ)] s.t. Ax = b, x ≥ 0.
+/// min c^T x + E_ξ\[Q(x, ξ)\] s.t. Ax = b, x ≥ 0.
 /// Q(x, ξ) = min q^T y s.t. Wy = h(ξ) - Tx, y ≥ 0.
 #[allow(dead_code)]
 pub struct TwoStageStochasticProgram {
@@ -604,7 +604,7 @@ impl TwoStageStochasticProgram {
             second_stage_costs,
         }
     }
-    /// Expected second-stage cost: E[Q] = Σ_s p_s Q_s.
+    /// Expected second-stage cost: E\[Q\] = Σ_s p_s Q_s.
     pub fn expected_second_stage(&self, x: &[f64]) -> f64 {
         let _x = x;
         self.scenario_probs

@@ -236,7 +236,7 @@ impl RegisterAllocation {
     /// Builds an interference graph (two variables interfere if their live ranges
     /// overlap), then greedily colors it with `num_regs` colors.
     ///
-    /// Returns `Some(coloring)` where `coloring[i]` is the register for variable `i`,
+    /// Returns `Some(coloring)` where `coloring\[i\]` is the register for variable `i`,
     /// or `None` if coloring fails (spilling needed).
     pub fn graph_color(&self) -> Option<Vec<usize>> {
         let n = self.variables.len();
@@ -524,7 +524,7 @@ impl RegisterColoringSimple {
     }
     /// Try to color the interference graph.
     ///
-    /// Returns `Some(coloring)` where `coloring[i]` is the register for variable `i`,
+    /// Returns `Some(coloring)` where `coloring\[i\]` is the register for variable `i`,
     /// or `None` if the graph is not `num_regs`-colorable (spilling required).
     pub fn color(&self) -> Option<Vec<usize>> {
         let n = self.num_vars;
@@ -704,7 +704,7 @@ impl AbstractInterpreter {
 #[derive(Debug, Clone)]
 pub struct DataflowSolver {
     pub num_nodes: usize,
-    /// Successor edges: `succ[n]` = list of successors of `n`.
+    /// Successor edges: `succ\[n\]` = list of successors of `n`.
     pub succ: Vec<Vec<usize>>,
     /// Gen sets per node.
     pub gen: Vec<HashSet<usize>>,
@@ -727,8 +727,8 @@ impl DataflowSolver {
     }
     /// Run a forward may-analysis (reaching definitions style):
     ///
-    /// `out[n] = gen[n] ∪ (in[n] \ kill[n])`
-    /// `in[n]  = ∪ { out[pred] | pred → n }`
+    /// `out\[n\] = gen\[n\] ∪ (in\[n\] \ kill\[n\])`
+    /// `in\[n\]  = ∪ { out[pred] | pred → n }`
     ///
     /// Returns `(in_sets, out_sets)` at fixpoint.
     pub fn solve_forward(&self) -> (Vec<HashSet<usize>>, Vec<HashSet<usize>>) {
@@ -769,8 +769,8 @@ impl DataflowSolver {
     }
     /// Run a backward must-analysis (live variables style):
     ///
-    /// `in[n]  = use[n] ∪ (out[n] \ def[n])`  (using gen=use, kill=def)
-    /// `out[n] = ∩ { in[succ] | n → succ }` (must) — simplified as union for may-analysis
+    /// `in\[n\]  = use\[n\] ∪ (out\[n\] \ def\[n\])`  (using gen=use, kill=def)
+    /// `out\[n\] = ∩ { in[succ] | n → succ }` (must) — simplified as union for may-analysis
     ///
     /// Returns `(in_sets, out_sets)` at fixpoint.
     pub fn solve_backward(&self) -> (Vec<HashSet<usize>>, Vec<HashSet<usize>>) {
@@ -963,9 +963,9 @@ impl TypedLambdaCalculus {
 #[derive(Debug, Clone)]
 pub struct LRParser {
     pub states: usize,
-    /// action_table[state][terminal_index] = action string (e.g. "s3", "r2", "acc", "")
+    /// action_table\[state\]\[terminal_index\] = action string (e.g. "s3", "r2", "acc", "")
     pub action_table: Vec<Vec<String>>,
-    /// goto_table[state][nonterminal_index] = next_state
+    /// goto_table\[state\]\[nonterminal_index\] = next_state
     pub goto_table: Vec<Vec<usize>>,
 }
 impl LRParser {

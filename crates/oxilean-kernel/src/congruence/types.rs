@@ -112,7 +112,7 @@ impl EGraph {
         }
         let (small_id, large_id) = if id1 < id2 { (id2, id1) } else { (id1, id2) };
         let small = self.nodes.remove(small_id);
-        for (m, p) in small.members.into_iter().zip(small.proofs.into_iter()) {
+        for (m, p) in small.members.into_iter().zip(small.proofs) {
             let proof_for = proof.clone().or(p);
             self.nodes[large_id].add_member(m, proof_for);
         }

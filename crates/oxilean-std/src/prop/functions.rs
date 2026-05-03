@@ -39,7 +39,7 @@ pub fn mk_decidable_eq(ty: Expr) -> Expr {
 }
 /// Create `@ite cond then_branch else_branch`.
 ///
-/// The full signature is `ite : {a : Sort u} -> (c : Prop) -> [Decidable c] -> a -> a -> a`
+/// The full signature is `ite : {a : Sort u} -> (c : Prop) -> \[Decidable c\] -> a -> a -> a`
 /// but we build the simplified application `ite cond then_branch else_branch`.
 #[allow(dead_code)]
 pub fn mk_ite(cond: Expr, then_branch: Expr, else_branch: Expr) -> Expr {
@@ -1337,7 +1337,7 @@ pub fn axiom_heyting_algebra_ty() -> Expr {
     prp_ext_arrow(type1(), Expr::Sort(Level::succ(Level::succ(Level::zero()))))
 }
 /// Type of `HeytingAlgebra.implication`: the relative pseudo-complement (implication) in a Heyting algebra.
-/// `HeytingAlgebra.implication : ∀ {H : Type} [HeytingAlgebra H], H → H → H`
+/// `HeytingAlgebra.implication : ∀ {H : Type} \[HeytingAlgebra H\], H → H → H`
 #[allow(dead_code)]
 pub fn axiom_heyting_implication_ty() -> Expr {
     Expr::Pi(

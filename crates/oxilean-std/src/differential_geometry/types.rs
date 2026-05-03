@@ -181,11 +181,11 @@ impl LorentzianMetric2D {
     pub fn minkowski() -> Self {
         Self { c_sq: 1.0 }
     }
-    /// Metric tensor g_ij: g[0][0]=-c², g[0][1]=g[1][0]=0, g[1][1]=1.
+    /// Metric tensor g_ij: g\[0\]\[0\]=-c², g\[0\]\[1\]=g\[1\]\[0\]=0, g\[1\]\[1\]=1.
     pub fn metric_tensor(&self) -> [[f64; 2]; 2] {
         [[-self.c_sq, 0.0], [0.0, 1.0]]
     }
-    /// Inner product g(u, v) = -c² u[0]v[0] + u[1]v[1].
+    /// Inner product g(u, v) = -c² u\[0\]v\[0\] + u\[1\]v\[1\].
     pub fn inner_product(&self, u: &[f64; 2], v: &[f64; 2]) -> f64 {
         -self.c_sq * u[0] * v[0] + u[1] * v[1]
     }
@@ -492,7 +492,7 @@ impl CurvatureTensor {
 /// A 2-plane spanned by (u, v) is calibrated if φ(u,v) = Area(u,v) = |u×v|.
 #[allow(dead_code)]
 pub struct CalibrationChecker {
-    /// The calibration 2-form stored as skew-symmetric matrix: φ_ij with φ(e_i, e_j) = mat[i][j]
+    /// The calibration 2-form stored as skew-symmetric matrix: φ_ij with φ(e_i, e_j) = mat\[i\]\[j\]
     pub form: [[f64; 3]; 3],
 }
 #[allow(dead_code)]
@@ -537,7 +537,7 @@ impl CalibrationChecker {
 ///
 /// A p-form in R^n is represented as a list of (coefficient, sorted index list) pairs.
 /// For example, in R^3:
-///   2 dx^0 ∧ dx^1 + 3 dx^1 ∧ dx^2 is `[(2.0, vec![0,1]), (3.0, vec![1,2])]`
+///   2 dx^0 ∧ dx^1 + 3 dx^1 ∧ dx^2 is `[(2.0, vec!\[0,1\]), (3.0, vec!\[1,2\])]`
 #[derive(Clone, Debug)]
 pub struct DifferentialFormWedge {
     /// List of (coefficient, sorted basis indices)
@@ -755,7 +755,7 @@ impl LieGroupSO3 {
             matrix: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
         }
     }
-    /// Rodrigues' rotation formula: R(ω) = I + sin(θ)/θ [ω]× + (1-cos(θ))/θ² [ω]×²
+    /// Rodrigues' rotation formula: R(ω) = I + sin(θ)/θ \[ω\]× + (1-cos(θ))/θ² \[ω\]×²
     ///
     /// where ω is the rotation axis-angle vector (|ω| = θ).
     pub fn from_axis_angle(omega: &[f64; 3]) -> Self {
@@ -902,7 +902,7 @@ impl Geodesic {
 }
 /// A 3D Riemannian metric g_{ij}(x) given as a symmetric 3×3 matrix.
 pub struct RiemannianMetric3D {
-    /// Symmetric 3×3 metric tensor g[i][j]
+    /// Symmetric 3×3 metric tensor g\[i\]\[j\]
     pub g: [[f64; 3]; 3],
 }
 impl RiemannianMetric3D {
@@ -941,9 +941,9 @@ impl RiemannianMetric3D {
         inv[2][2] = (g[0][0] * g[1][1] - g[0][1] * g[1][0]) / d;
         inv
     }
-    /// Christoffel symbols Γ^k_ij given metric partial derivatives dg[i][j][k] = ∂_k g_{ij}.
+    /// Christoffel symbols Γ^k_ij given metric partial derivatives dg\[i\]\[j\]\[k\] = ∂_k g_{ij}.
     ///
-    /// Returns gamma[k][i][j] = (1/2) g^{kl} (∂_i g_{jl} + ∂_j g_{il} - ∂_l g_{ij}).
+    /// Returns gamma\[k\]\[i\]\[j\] = (1/2) g^{kl} (∂_i g_{jl} + ∂_j g_{il} - ∂_l g_{ij}).
     pub fn christoffel(&self, dg: &[[[f64; 3]; 3]; 3]) -> [[[f64; 3]; 3]; 3] {
         let g_inv = self.inverse();
         let mut gamma = [[[0.0f64; 3]; 3]; 3];
@@ -1021,7 +1021,7 @@ impl DifferentialForm {
 /// for a 2D manifold with Gaussian curvature K.
 #[allow(dead_code)]
 pub struct HolonomyComputer {
-    /// Christoffel symbols Γ[k][i][j] at the base point
+    /// Christoffel symbols Γ\[k\]\[i\]\[j\] at the base point
     pub christoffel: [[[f64; 2]; 2]; 2],
 }
 #[allow(dead_code)]
@@ -1069,7 +1069,7 @@ impl HolonomyComputer {
 }
 /// A 2D Riemannian metric g_ij(u,v) given by coefficient functions.
 ///
-/// The metric tensor g = [[g00, g01], [g10, g11]] with g10 = g01.
+/// The metric tensor g = [\[g00, g01\], \[g10, g11\]] with g10 = g01.
 /// Used to compute Christoffel symbols Γ^k_ij and geodesic acceleration.
 pub struct RiemannianMetric2D {
     /// g_00 component
@@ -1101,8 +1101,8 @@ impl RiemannianMetric2D {
     }
     /// Christoffel symbols Γ^k_ij from finite-difference perturbation of the metric.
     ///
-    /// This version accepts partial derivatives of g_ij: dg[i][j][k] = ∂_k g_ij.
-    /// Returns Γ[k][i][j] = (1/2) g^{kl} (∂_i g_{jl} + ∂_j g_{il} - ∂_l g_{ij}).
+    /// This version accepts partial derivatives of g_ij: dg\[i\]\[j\]\[k\] = ∂_k g_ij.
+    /// Returns Γ\[k\]\[i\]\[j\] = (1/2) g^{kl} (∂_i g_{jl} + ∂_j g_{il} - ∂_l g_{ij}).
     pub fn christoffel(&self, dg: &[[[f64; 2]; 2]; 2]) -> [[[f64; 2]; 2]; 2] {
         let g_inv = self.inverse();
         let mut gamma = [[[0.0f64; 2]; 2]; 2];

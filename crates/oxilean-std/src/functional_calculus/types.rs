@@ -97,11 +97,11 @@ impl BoundedPerturbation {
 /// approximated by sampling at discrete points.
 #[derive(Debug, Clone)]
 pub struct FunctionAlgebraElement {
-    /// Sampled function values at equally-spaced points in [0, 1].
+    /// Sampled function values at equally-spaced points in \[0, 1\].
     pub values: Vec<f64>,
 }
 impl FunctionAlgebraElement {
-    /// Create from a Rust closure, sampling at `n` equally-spaced points in [0,1].
+    /// Create from a Rust closure, sampling at `n` equally-spaced points in \[0,1\].
     pub fn from_fn<F: Fn(f64) -> f64>(f: F, n: usize) -> Self {
         let values = (0..n)
             .map(|i| {
@@ -163,7 +163,7 @@ impl FunctionAlgebraElement {
     /// Composition: (f o g)(x) = f(g(x)).
     ///
     /// Since we store sampled values, we interpolate g's output to find f's value.
-    /// Clamps g's output to [0, 1] for lookups.
+    /// Clamps g's output to \[0, 1\] for lookups.
     pub fn compose(&self, g: &FunctionAlgebraElement) -> FunctionAlgebraElement {
         let n = self.values.len();
         if n <= 1 {
@@ -195,13 +195,13 @@ impl FunctionAlgebraElement {
         }
     }
 }
-/// A polynomial p(z) = coeffs[0] + coeffs[1]*z + coeffs[2]*z^2 + ...
+/// A polynomial p(z) = coeffs\[0\] + coeffs\[1\]*z + coeffs\[2\]*z^2 + ...
 ///
 /// Used to represent continuous functions on the spectrum for the continuous
 /// functional calculus (by density of polynomials in C(K)).
 #[derive(Debug, Clone)]
 pub struct Polynomial {
-    /// Coefficients in ascending degree order: `coeffs[i]` is the coefficient of z^i.
+    /// Coefficients in ascending degree order: `coeffs\[i\]` is the coefficient of z^i.
     pub coeffs: Vec<f64>,
 }
 impl Polynomial {

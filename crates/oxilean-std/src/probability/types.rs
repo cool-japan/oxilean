@@ -150,7 +150,7 @@ impl StoppingTime {
             is_finite_as: false,
         }
     }
-    /// Optional stopping theorem: E[M_tau] = E[M_0] under UI conditions.
+    /// Optional stopping theorem: E\[M_tau\] = E\[M_0\] under UI conditions.
     pub fn optional_stopping_description(&self) -> String {
         format!(
             "Optional stopping at {} (filtration {}): E[M_tau] = E[M_0] under UI",
@@ -178,11 +178,11 @@ impl ExponentialDistribution {
     pub fn cdf(&self, x: f64) -> f64 {
         exponential_cdf(x, self.lambda)
     }
-    /// Mean E[X] = 1/λ.
+    /// Mean E\[X\] = 1/λ.
     pub fn mean(&self) -> f64 {
         1.0 / self.lambda
     }
-    /// Variance Var[X] = 1/λ².
+    /// Variance Var\[X\] = 1/λ².
     pub fn variance(&self) -> f64 {
         1.0 / (self.lambda * self.lambda)
     }
@@ -313,7 +313,7 @@ impl KernelDensityEstimator {
             .sum();
         sum / (n as f64 * self.bandwidth)
     }
-    /// Evaluates the KDE over a grid of `m` equally spaced points in [lo, hi].
+    /// Evaluates the KDE over a grid of `m` equally spaced points in \[lo, hi\].
     pub fn density_grid(&self, lo: f64, hi: f64, m: usize) -> Vec<(f64, f64)> {
         if m == 0 || lo >= hi {
             return vec![];
@@ -607,8 +607,8 @@ impl GaussianProcess {
 /// Concentration bounds for sums of independent bounded random variables.
 pub struct ConcentrationBound;
 impl ConcentrationBound {
-    /// Hoeffding's inequality: returns the upper bound on P(S_n - E[S_n] ≥ t)
-    /// for n summands each bounded in [a_i, b_i].
+    /// Hoeffding's inequality: returns the upper bound on P(S_n - E\[S_n\] ≥ t)
+    /// for n summands each bounded in \[a_i, b_i\].
     ///
     /// Bound: exp(-2t² / Σ(b_i - a_i)²).
     pub fn hoeffding(t: f64, intervals: &[(f64, f64)]) -> f64 {
@@ -618,7 +618,7 @@ impl ConcentrationBound {
         }
         (-2.0 * t * t / sum_sq).exp()
     }
-    /// Markov inequality: P(X ≥ a) ≤ E[X] / a for non-negative X.
+    /// Markov inequality: P(X ≥ a) ≤ E\[X\] / a for non-negative X.
     pub fn markov(expectation: f64, a: f64) -> f64 {
         if a <= 0.0 {
             return 1.0;
@@ -954,7 +954,7 @@ impl DiscreteDistribution {
         }
         self.pmf.len().saturating_sub(1)
     }
-    /// Computes the mean (E[X]).
+    /// Computes the mean (E\[X\]).
     pub fn mean(&self) -> f64 {
         self.pmf
             .iter()
@@ -962,7 +962,7 @@ impl DiscreteDistribution {
             .map(|(i, &p)| i as f64 * p)
             .sum()
     }
-    /// Computes the variance (Var[X]).
+    /// Computes the variance (Var\[X\]).
     pub fn variance(&self) -> f64 {
         let mu = self.mean();
         self.pmf
@@ -994,7 +994,7 @@ impl PoissonProcess {
     pub fn new(lambda: f64) -> Self {
         PoissonProcess { lambda }
     }
-    /// Expected number of arrivals in [0, t]: E[N(t)] = λ t.
+    /// Expected number of arrivals in \[0, t\]: E[N(t)] = λ t.
     pub fn expected_count(&self, t: f64) -> f64 {
         self.lambda * t
     }
@@ -1007,7 +1007,7 @@ impl PoissonProcess {
         self.lambda * t
     }
     /// Generates inter-arrival times up to total time `t_max` using an LCG.
-    /// Returns the vector of arrival times within [0, t_max].
+    /// Returns the vector of arrival times within \[0, t_max\].
     pub fn simulate_arrivals(&self, t_max: f64, lcg: &mut Lcg) -> Vec<f64> {
         let exp_dist = ExponentialDistribution::new(self.lambda);
         let mut arrivals = Vec::new();
@@ -1024,7 +1024,7 @@ impl PoissonProcess {
         }
         arrivals
     }
-    /// Compound Poisson process: E[Σ Y_i] = λ t E[Y] for i.i.d. jumps Y.
+    /// Compound Poisson process: E\[Σ Y_i\] = λ t E\[Y\] for i.i.d. jumps Y.
     pub fn compound_expected(&self, t: f64, jump_mean: f64) -> f64 {
         self.lambda * t * jump_mean
     }
@@ -1064,7 +1064,7 @@ impl BetaRV {
 pub struct MarkovChain {
     /// Number of states.
     pub states: usize,
-    /// Row-stochastic transition matrix: `transition[i][j]` = P(i → j).
+    /// Row-stochastic transition matrix: `transition\[i\]\[j\]` = P(i → j).
     pub transition: Vec<Vec<f64>>,
 }
 impl MarkovChain {
@@ -1365,7 +1365,7 @@ impl EmpiricalCdf {
         }
         max_diff
     }
-    /// Returns the empirical quantile at level p ∈ [0,1].
+    /// Returns the empirical quantile at level p ∈ \[0,1\].
     pub fn quantile(&self, p: f64) -> f64 {
         let n = self.sorted.len();
         if n == 0 {
@@ -1477,7 +1477,7 @@ impl Copula {
             u * v
         }
     }
-    /// Evaluate Gumbel copula C(u,v) = exp(-[(-ln u)^theta+(-ln v)^theta]^(1/theta)).
+    /// Evaluate Gumbel copula C(u,v) = exp(-\[(-ln u)^theta+(-ln v)^theta\]^(1/theta)).
     pub fn evaluate_gumbel(&self, u: f64, v: f64) -> f64 {
         if let CopulaKind::Gumbel { theta } = self.kind {
             let a = (-u.ln()).powf(theta);

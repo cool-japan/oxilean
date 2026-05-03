@@ -251,7 +251,7 @@ impl EtaleSheavesLAdicAlgebra {
         }
     }
 }
-/// A formal group law over a commutative ring R: F(x, y) ∈ R[[x, y]].
+/// A formal group law over a commutative ring R: F(x, y) ∈ R[\[x, y\]].
 ///
 /// Represents the formal power series up to a chosen truncation degree,
 /// capturing the first Chern class formula c_1(L ⊗ L') = F(c_1(L), c_1(L')).
@@ -467,14 +467,14 @@ impl MilnorConjecture {
 }
 /// Adams operation ψ^k on K_0(R), represented by its action on generators.
 ///
-/// On K_0, ψ^k([E]) = [E^{⊗k}] where E^{⊗k} is the k-th tensor power.
+/// On K_0, ψ^k(\[E\]) = [E^{⊗k}] where E^{⊗k} is the k-th tensor power.
 /// On complex K-theory, ψ^k acts on line bundles by L ↦ L^k.
 #[allow(dead_code)]
 pub struct AdamsOperation {
     /// The Adams degree k.
     pub degree: usize,
     /// Action table: for each generator index, the image as a linear combination.
-    /// `action[i]` = list of (generator_index, coefficient) pairs.
+    /// `action\[i\]` = list of (generator_index, coefficient) pairs.
     pub action: Vec<Vec<(usize, i64)>>,
 }
 impl AdamsOperation {

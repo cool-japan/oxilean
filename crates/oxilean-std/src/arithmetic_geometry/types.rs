@@ -131,7 +131,7 @@ pub struct AbsoluteHeight {
 impl AbsoluteHeight {
     /// Compute the absolute height of a rational number p/q in lowest terms.
     ///
-    /// H(p/q) = max(|p|, |q|) for [p:q] ∈ P^1(ℚ).
+    /// H(p/q) = max(|p|, |q|) for \[p:q\] ∈ P^1(ℚ).
     pub fn of_rational(p: i64, q: u64) -> Self {
         let value = (p.unsigned_abs()).max(q) as f64;
         Self {
@@ -318,7 +318,7 @@ impl LogarithmicHeight {
     pub fn from_absolute(h: AbsoluteHeight) -> Self {
         Self { absolute: h }
     }
-    /// Compute h(p/q) = log max(|p|, |q|) for [p:q] ∈ P^1(ℚ).
+    /// Compute h(p/q) = log max(|p|, |q|) for \[p:q\] ∈ P^1(ℚ).
     pub fn of_rational(p: i64, q: u64) -> Self {
         Self::from_absolute(AbsoluteHeight::of_rational(p, q))
     }
@@ -348,7 +348,7 @@ impl CondensedAbelianGroup {
             is_discrete: true,
         }
     }
-    /// The solid abelian group Z[S] for a profinite set S.
+    /// The solid abelian group Z\[S\] for a profinite set S.
     pub fn solid_free(profinite_set: impl Into<String>) -> Self {
         Self {
             label: format!("Z[{}]^solid", profinite_set.into()),
@@ -688,7 +688,7 @@ impl Isogeny {
             degree,
         }
     }
-    /// The multiplication-by-n map [n]: E → E (isogeny of degree n²).
+    /// The multiplication-by-n map \[n\]: E → E (isogeny of degree n²).
     pub fn multiplication_by_n(curve: impl Into<String>, n: u64) -> Self {
         let c = curve.into();
         Self {
@@ -866,14 +866,14 @@ impl TolimaniConjecture {
         }
     }
 }
-/// The n-torsion subgroup E[n] ⊂ E.
+/// The n-torsion subgroup E\[n\] ⊂ E.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TorsionPoint {
     /// The elliptic curve.
     pub curve: String,
     /// The torsion order n.
     pub n: u64,
-    /// Structure: over an algebraically closed field of char 0, E[n] ≅ (ℤ/nℤ)².
+    /// Structure: over an algebraically closed field of char 0, E\[n\] ≅ (ℤ/nℤ)².
     pub is_full_n_torsion: bool,
 }
 impl TorsionPoint {
@@ -885,7 +885,7 @@ impl TorsionPoint {
             is_full_n_torsion: true,
         }
     }
-    /// Size of the n-torsion group: |E[n]| = n² (over alg. closed field, char 0).
+    /// Size of the n-torsion group: |E\[n\]| = n² (over alg. closed field, char 0).
     pub fn size(&self) -> u64 {
         if self.is_full_n_torsion {
             self.n * self.n

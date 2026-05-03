@@ -508,13 +508,7 @@ pub fn eval_nat_binop(op: &str, lhs: u64, rhs: u64) -> Option<u64> {
         "Nat.add" => Some(lhs + rhs),
         "Nat.sub" => Some(lhs.saturating_sub(rhs)),
         "Nat.mul" => Some(lhs * rhs),
-        "Nat.div" => {
-            if rhs == 0 {
-                Some(0)
-            } else {
-                Some(lhs / rhs)
-            }
-        }
+        "Nat.div" => Some(lhs.checked_div(rhs).unwrap_or(0)),
         "Nat.mod" => {
             if rhs == 0 {
                 Some(lhs)

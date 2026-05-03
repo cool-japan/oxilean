@@ -446,10 +446,8 @@ impl<'a> CompletionEngine<'a> {
             score += 50;
         }
         match context {
-            CompletionContext::InTactic => {
-                if item.kind == CompletionItemKind::Method {
-                    score += 80;
-                }
+            CompletionContext::InTactic if item.kind == CompletionItemKind::Method => {
+                score += 80;
             }
             CompletionContext::InCommand => {
                 if item.kind == CompletionItemKind::Keyword {
@@ -459,13 +457,12 @@ impl<'a> CompletionEngine<'a> {
                     score += 60;
                 }
             }
-            CompletionContext::InType => {
-                if item.kind == CompletionItemKind::Class
+            CompletionContext::InType
+                if (item.kind == CompletionItemKind::Class
                     || item.kind == CompletionItemKind::Interface
-                    || item.kind == CompletionItemKind::Constructor
-                {
-                    score += 80;
-                }
+                    || item.kind == CompletionItemKind::Constructor) =>
+            {
+                score += 80;
             }
             _ => {}
         }

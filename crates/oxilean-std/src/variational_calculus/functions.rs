@@ -127,7 +127,7 @@ pub fn euler_lagrange_op_ty() -> Expr {
     )
 }
 /// `SecondVariationPositive : Functional → Extremal → Prop`
-/// The second variation δ²F[q₀; ·] is a positive quadratic form.
+/// The second variation δ²F\[q₀; ·\] is a positive quadratic form.
 pub fn second_variation_positive_ty() -> Expr {
     arrow(cst("Functional"), arrow(cst("Extremal"), prop()))
 }
@@ -175,7 +175,7 @@ pub fn isoperimetric_constraint_ty() -> Expr {
     arrow(arrow(real_ty(), real_ty()), arrow(real_ty(), prop()))
 }
 /// `LagrangeMultiplierInfiniteDim : Functional → Functional → Real → Prop`
-/// F'[u] = λ G'[u] at a constrained critical point.
+/// F'\[u\] = λ G'\[u\] at a constrained critical point.
 pub fn lagrange_multiplier_inf_dim_ty() -> Expr {
     arrow(
         cst("Functional"),
@@ -496,7 +496,7 @@ pub fn vc_ext_dirichlet_principle_ty() -> Expr {
     )
 }
 /// `DirichletEnergy : (Real → Real) → Real`
-/// E[u] = (1/2) ∫_Ω |∇u|² dx.
+/// E\[u\] = (1/2) ∫_Ω |∇u|² dx.
 pub fn vc_ext_dirichlet_energy_ty() -> Expr {
     arrow(arrow(real_ty(), real_ty()), real_ty())
 }
@@ -599,7 +599,7 @@ pub fn vc_ext_mountain_pass_theorem_ty() -> Expr {
     arrow(cst("Functional"), arrow(cst("SobolevSpace"), prop()))
 }
 /// `MountainPassLevel : Functional → Real`
-/// c = inf_{γ ∈ Γ} max_{t ∈ [0,1]} F(γ(t)) — the mountain-pass critical value.
+/// c = inf_{γ ∈ Γ} max_{t ∈ \[0,1\]} F(γ(t)) — the mountain-pass critical value.
 pub fn vc_ext_mountain_pass_level_ty() -> Expr {
     arrow(cst("Functional"), real_ty())
 }
@@ -731,7 +731,7 @@ pub fn vc_ext_isoperimetric_inequality_ty() -> Expr {
     arrow(real_ty(), arrow(real_ty(), prop()))
 }
 /// `ConstrainedEulerLagrange : Functional → Functional → Real → Prop`
-/// Constrained E-L equation: F'[u] = λ G'[u] at a constrained critical point.
+/// Constrained E-L equation: F'\[u\] = λ G'\[u\] at a constrained critical point.
 pub fn vc_ext_constrained_euler_lagrange_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -781,7 +781,7 @@ pub fn vc_ext_cut_locus_ty() -> Expr {
     )
 }
 /// `IndexFormBilinear : Manifold → (Real → Real) → (Real → Real) → Real`
-/// Index form I(V, W) = ∫_0^1 [⟨∇_γ V, ∇_γ W⟩ − R(V, γ', γ', W)] dt.
+/// Index form I(V, W) = ∫_0^1 \[⟨∇_γ V, ∇_γ W⟩ − R(V, γ', γ', W)\] dt.
 pub fn vc_ext_index_form_bilinear_ty() -> Expr {
     pi(
         BinderInfo::Default,

@@ -903,9 +903,9 @@ impl HomologyGroup {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CWComplex {
-    /// Number of n-cells: cells[n] = count of n-cells.
+    /// Number of n-cells: cells\[n\] = count of n-cells.
     pub cells: Vec<usize>,
-    /// Attaching map degrees: degrees[n][i] = degree of i-th attaching map in dimension n+1.
+    /// Attaching map degrees: degrees\[n\]\[i\] = degree of i-th attaching map in dimension n+1.
     pub attaching_degrees: Vec<Vec<i32>>,
 }
 #[allow(dead_code)]
@@ -925,7 +925,7 @@ impl CWComplex {
             .map(|(k, &c)| if k % 2 == 0 { c as i64 } else { -(c as i64) })
             .sum()
     }
-    /// Tight Betti bound: β_k <= cells[k].
+    /// Tight Betti bound: β_k <= cells\[k\].
     pub fn betti_upper_bound(&self) -> Vec<usize> {
         self.cells.clone()
     }
@@ -1263,7 +1263,7 @@ impl DeRhamCohomology {
 }
 /// A chain complex C_• with integer boundary matrices.
 ///
-/// `groups[i]` = C_i, `boundaries[i]` = d_{i+1}: C_{i+1} → C_i.
+/// `groups\[i\]` = C_i, `boundaries\[i\]` = d_{i+1}: C_{i+1} → C_i.
 #[derive(Debug, Clone, Default)]
 pub struct ChainComplex {
     /// The chain groups.
@@ -1469,9 +1469,9 @@ impl SpectralSequencePage {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ChainCplxExt {
-    /// chain_groups[k] = rank of C_k (free abelian group).
+    /// chain_groups\[k\] = rank of C_k (free abelian group).
     pub chain_groups: Vec<usize>,
-    /// boundary_ranks[k] = rank of d_k : C_k -> C_{k-1}.
+    /// boundary_ranks\[k\] = rank of d_k : C_k -> C_{k-1}.
     pub boundary_ranks: Vec<usize>,
 }
 #[allow(dead_code)]

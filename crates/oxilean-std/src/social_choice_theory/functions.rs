@@ -223,7 +223,7 @@ pub fn borda_count(profile: &PreferenceProfile) -> Vec<(usize, usize)> {
         }
     }
     let mut result: Vec<(usize, usize)> = scores.into_iter().enumerate().collect();
-    result.sort_by(|a, b| b.1.cmp(&a.1));
+    result.sort_by_key(|b| std::cmp::Reverse(b.1));
     result
 }
 /// Return the Borda count winner.
@@ -1667,7 +1667,7 @@ pub fn copeland_scores(profile: &PreferenceProfile) -> Vec<(usize, i64)> {
         }
     }
     let mut result: Vec<(usize, i64)> = scores.into_iter().enumerate().collect();
-    result.sort_by(|a, b| b.1.cmp(&a.1));
+    result.sort_by_key(|b| std::cmp::Reverse(b.1));
     result
 }
 /// Return the Copeland winner (highest Copeland score).

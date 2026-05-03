@@ -1089,7 +1089,7 @@ pub fn mk_has_equiv(alpha: Expr) -> Expr {
     app(cst("HasEquiv"), alpha)
 }
 /// Quotient.elimType: the type of the eliminator for quotient types.
-/// QuotientElimType : (α : Type) → [Setoid α] → (C : Quotient → Type) → Type
+/// QuotientElimType : (α : Type) → \[Setoid α\] → (C : Quotient → Type) → Type
 pub fn qt_ext_quotient_elim_type_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1109,7 +1109,7 @@ pub fn qt_ext_quotient_elim_type_ty() -> Expr {
     )
 }
 /// Quotient.inductionOn: induction principle stated in "on" form.
-/// InductionOn : {α : Type} → [Setoid α] → (q : Quotient) →
+/// InductionOn : {α : Type} → \[Setoid α\] → (q : Quotient) →
 ///   (motive : Quotient → Prop) → (∀ a, motive (Quotient.mk a)) → motive q
 pub fn qt_ext_quotient_induction_on_ty() -> Expr {
     pi(
@@ -1145,7 +1145,7 @@ pub fn qt_ext_quotient_induction_on_ty() -> Expr {
     )
 }
 /// Quotient.surjective: every element of Quotient is of the form Quotient.mk a.
-/// QuotientSurjective : {α : Type} → [Setoid α] → ∀ q : Quotient, ∃ a : α, Quotient.mk a = q
+/// QuotientSurjective : {α : Type} → \[Setoid α\] → ∀ q : Quotient, ∃ a : α, Quotient.mk a = q
 pub fn qt_ext_quotient_surjective_ty() -> Expr {
     pi(
         BinderInfo::Implicit,
@@ -1183,7 +1183,7 @@ pub fn qt_ext_quotient_functor_ty() -> Expr {
     )
 }
 /// Quotient.monad_pure: monad unit for the quotient monad.
-/// QuotientPure : (α : Type) → [Setoid α] → α → Quotient
+/// QuotientPure : (α : Type) → \[Setoid α\] → α → Quotient
 pub fn qt_ext_quotient_monad_pure_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1198,7 +1198,7 @@ pub fn qt_ext_quotient_monad_pure_ty() -> Expr {
     )
 }
 /// Quotient.monad_bind: monadic bind for the quotient monad.
-/// QuotientBind : (α β : Type) → [Setoid α] → [Setoid β] →
+/// QuotientBind : (α β : Type) → \[Setoid α\] → \[Setoid β\] →
 ///   Quotient → (α → Quotient) → Quotient
 pub fn qt_ext_quotient_monad_bind_ty() -> Expr {
     pi(
@@ -1232,7 +1232,7 @@ pub fn qt_ext_setoid_model_ty() -> Expr {
     arrow(type0(), type1())
 }
 /// EffectiveQuotient: a quotient is effective if the kernel pair equals the relation.
-/// EffectiveQuotient : (α : Type) → [Setoid α] → Prop
+/// EffectiveQuotient : (α : Type) → \[Setoid α\] → Prop
 pub fn qt_ext_effective_quotient_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1257,7 +1257,7 @@ pub fn qt_ext_setoid_functor_ty() -> Expr {
     arrow(type1(), arrow(type1(), type1()))
 }
 /// SetoidProduct: the product of two setoids.
-/// SetoidProduct : (α β : Type) → [Setoid α] → [Setoid β] → Type
+/// SetoidProduct : (α β : Type) → \[Setoid α\] → \[Setoid β\] → Type
 pub fn qt_ext_setoid_product_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1282,7 +1282,7 @@ pub fn qt_ext_setoid_product_ty() -> Expr {
     )
 }
 /// SetoidCoproduct: the coproduct (disjoint union) of two setoids.
-/// SetoidCoproduct : (α β : Type) → [Setoid α] → [Setoid β] → Type
+/// SetoidCoproduct : (α β : Type) → \[Setoid α\] → \[Setoid β\] → Type
 pub fn qt_ext_setoid_coproduct_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1307,7 +1307,7 @@ pub fn qt_ext_setoid_coproduct_ty() -> Expr {
     )
 }
 /// SetoidExponential: the function-setoid (exponential object).
-/// SetoidExponential : (α β : Type) → [Setoid α] → [Setoid β] → Type
+/// SetoidExponential : (α β : Type) → \[Setoid α\] → \[Setoid β\] → Type
 pub fn qt_ext_setoid_exponential_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1606,7 +1606,7 @@ pub fn qt_ext_partiality_bind_ty() -> Expr {
     )
 }
 /// SetoidMorphism: a function respecting setoid relations.
-/// SetoidMorphism : (α β : Type) → [Setoid α] → [Setoid β] → Type
+/// SetoidMorphism : (α β : Type) → \[Setoid α\] → \[Setoid β\] → Type
 pub fn qt_ext_setoid_morphism_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1631,7 +1631,7 @@ pub fn qt_ext_setoid_morphism_ty() -> Expr {
     )
 }
 /// SetoidIso: an isomorphism of setoids.
-/// SetoidIso : (α β : Type) → [Setoid α] → [Setoid β] → Prop
+/// SetoidIso : (α β : Type) → \[Setoid α\] → \[Setoid β\] → Prop
 pub fn qt_ext_setoid_iso_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -1656,7 +1656,7 @@ pub fn qt_ext_setoid_iso_ty() -> Expr {
     )
 }
 /// Setoid.quotientSetoid: the quotient of a setoid by a sub-relation.
-/// SetoidQuotientSetoid : (α : Type) → [Setoid α] → (α → α → Prop) → Setoid (Quotient)
+/// SetoidQuotientSetoid : (α : Type) → \[Setoid α\] → (α → α → Prop) → Setoid (Quotient)
 pub fn qt_ext_quotient_setoid_ty() -> Expr {
     pi(
         BinderInfo::Default,

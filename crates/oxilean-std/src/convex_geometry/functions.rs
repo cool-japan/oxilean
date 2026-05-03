@@ -66,7 +66,7 @@ pub fn convex_set_ty() -> Expr {
     arrow(fn_ty(vec_ty(), prop()), prop())
 }
 /// `ConvexFunction : (List Real -> Real) -> Prop`
-/// f: ℝ^n → ℝ satisfying f(λx+(1-λ)y) ≤ λf(x)+(1-λ)f(y) for all λ ∈ [0,1].
+/// f: ℝ^n → ℝ satisfying f(λx+(1-λ)y) ≤ λf(x)+(1-λ)f(y) for all λ ∈ \[0,1\].
 pub fn convex_function_ty() -> Expr {
     arrow(fn_ty(vec_ty(), real_ty()), prop())
 }
@@ -205,7 +205,7 @@ pub fn cross_polytope_ty() -> Expr {
     arrow(nat_ty(), fn_ty(vec_ty(), prop()))
 }
 /// `Zonotope : List (List Real) -> (List Real -> Prop)`
-/// Minkowski sum of line segments {c + Σ λ_i g_i : λ_i ∈ [-1,1]}.
+/// Minkowski sum of line segments {c + Σ λ_i g_i : λ_i ∈ \[-1,1\]}.
 pub fn zonotope_ty() -> Expr {
     arrow(mat_ty(), fn_ty(vec_ty(), prop()))
 }

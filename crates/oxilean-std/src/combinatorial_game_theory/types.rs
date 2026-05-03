@@ -239,9 +239,9 @@ impl NimValue {
 pub struct LoopyGameGraph {
     /// Number of positions.
     pub num_positions: usize,
-    /// Left moves: `left_moves[i]` = set of positions Left can move to from i.
+    /// Left moves: `left_moves\[i\]` = set of positions Left can move to from i.
     pub left_moves: Vec<Vec<usize>>,
-    /// Right moves: `right_moves[i]` = set of positions Right can move to from i.
+    /// Right moves: `right_moves\[i\]` = set of positions Right can move to from i.
     pub right_moves: Vec<Vec<usize>>,
 }
 impl LoopyGameGraph {
@@ -586,10 +586,10 @@ pub struct GrundySequenceCache {
 impl GrundySequenceCache {
     /// Create a new cache with the given octal code.
     ///
-    /// `code[k]` is the digit for heaps of size `k+1` (1-indexed).
-    /// Bit 0 of `code[k]`: may remove entire heap (leaving 0).
-    /// Bit 1 of `code[k]`: may split into two non-empty heaps summing to k-1.
-    /// Bit 2 of `code[k]`: may remove to any size 0..k-1 (normal Nim move).
+    /// `code\[k\]` is the digit for heaps of size `k+1` (1-indexed).
+    /// Bit 0 of `code\[k\]`: may remove entire heap (leaving 0).
+    /// Bit 1 of `code\[k\]`: may split into two non-empty heaps summing to k-1.
+    /// Bit 2 of `code\[k\]`: may remove to any size 0..k-1 (normal Nim move).
     pub fn new(code: Vec<u8>) -> Self {
         GrundySequenceCache {
             code,

@@ -513,7 +513,7 @@ pub fn topological_sort(n: usize, edges: &[(usize, usize)]) -> Result<Vec<usize>
 }
 /// Assign dense ranks to a slice of comparable values.
 ///
-/// Returns a `Vec<usize>` where the `i`-th entry is the rank of `v[i]`
+/// Returns a `Vec<usize>` where the `i`-th entry is the rank of `v\[i\]`
 /// (0 = smallest). Equal values receive the same rank.
 pub fn dense_rank<T: Ord>(v: &[T]) -> Vec<usize> {
     let mut indexed: Vec<(usize, &T)> = v.iter().enumerate().collect();
@@ -565,7 +565,7 @@ pub trait OrdExt: Ord + Sized {
     }
 }
 impl<T: Ord> OrdExt for T {}
-/// Build `Ord.min : {α : Type} → [Ord α] → α → α → α`.
+/// Build `Ord.min : {α : Type} → \[Ord α\] → α → α → α`.
 pub fn build_ord_min(env: &mut Environment) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo, Declaration, Expr, Level, Name};
     let type1 = Expr::Sort(Level::succ(Level::zero()));
@@ -600,7 +600,7 @@ pub fn build_ord_min(env: &mut Environment) -> Result<(), String> {
     })
     .map_err(|e| e.to_string())
 }
-/// Build `Ord.max : {α : Type} → [Ord α] → α → α → α`.
+/// Build `Ord.max : {α : Type} → \[Ord α\] → α → α → α`.
 pub fn build_ord_max(env: &mut Environment) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo, Declaration, Expr, Level, Name};
     let type1 = Expr::Sort(Level::succ(Level::zero()));
@@ -832,7 +832,7 @@ pub fn axiom_ord_cat_ty() -> Expr {
 pub fn axiom_ord_cat_obj_ty() -> Expr {
     ord_e_arrow(Expr::Const(Name::str("OrdCat"), vec![]), ord_e_type1())
 }
-/// `MonotoneMap : {α β : Type} → [Ord α] → [Ord β] → Type` — monotone maps.
+/// `MonotoneMap : {α β : Type} → \[Ord α\] → \[Ord β\] → Type` — monotone maps.
 pub fn axiom_monotone_map_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -878,7 +878,7 @@ pub fn axiom_monotone_map_mk_ty() -> Expr {
 pub fn axiom_monotone_maps_form_cat_ty() -> Expr {
     ord_e_prop()
 }
-/// `GaloisConnection : {α β : Type} → [Ord α] → [Ord β] → (α → β) → (β → α) → Prop`
+/// `GaloisConnection : {α β : Type} → \[Ord α\] → \[Ord β\] → (α → β) → (β → α) → Prop`
 pub fn axiom_galois_connection_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -912,7 +912,7 @@ pub fn axiom_galois_adjoint_iff_ty() -> Expr {
 pub fn axiom_ord_enriched_cat_ty() -> Expr {
     ord_e_type2()
 }
-/// `FixpointExists : {α : Type} → [Ord α] → (α → α) → Prop` — Knaster-Tarski fixpoint.
+/// `FixpointExists : {α : Type} → \[Ord α\] → (α → α) → Prop` — Knaster-Tarski fixpoint.
 pub fn axiom_fixpoint_exists_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -929,7 +929,7 @@ pub fn axiom_fixpoint_exists_ty() -> Expr {
         ),
     )
 }
-/// `KnasterTarski : {α : Type} → [CompleteLattice α] → (α → α) → α` — least fixpoint.
+/// `KnasterTarski : {α : Type} → \[CompleteLattice α\] → (α → α) → α` — least fixpoint.
 pub fn axiom_knaster_tarski_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -953,7 +953,7 @@ pub fn axiom_knaster_tarski_ty() -> Expr {
 pub fn axiom_knaster_tarski_least_ty() -> Expr {
     ord_e_prop()
 }
-/// `ScottContinuous : {α β : Type} → [Ord α] → [Ord β] → (α → β) → Prop`.
+/// `ScottContinuous : {α β : Type} → \[Ord α\] → \[Ord β\] → (α → β) → Prop`.
 pub fn axiom_scott_continuous_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1032,7 +1032,7 @@ pub fn axiom_omega_cpo_chain_limit_ty() -> Expr {
         ),
     )
 }
-/// `LazyEvalOrd : {α : Type} → [Ord α] → Thunk α → Thunk α → Ordering` — lazy comparison.
+/// `LazyEvalOrd : {α : Type} → \[Ord α\] → Thunk α → Thunk α → Ordering` — lazy comparison.
 pub fn axiom_lazy_eval_ord_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1072,7 +1072,7 @@ pub fn axiom_sorting_network_correct_ty() -> Expr {
 pub fn axiom_comparison_sort_lower_bound_ty() -> Expr {
     ord_e_prop()
 }
-/// `BTreeInvariant : {α : Type} → [Ord α] → (t : BTree α) → Prop`.
+/// `BTreeInvariant : {α : Type} → \[Ord α\] → (t : BTree α) → Prop`.
 pub fn axiom_btree_invariant_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1089,7 +1089,7 @@ pub fn axiom_btree_invariant_ty() -> Expr {
         ),
     )
 }
-/// `RedBlackBalance : {α : Type} → [Ord α] → (t : RBTree α) → Prop`.
+/// `RedBlackBalance : {α : Type} → \[Ord α\] → (t : RBTree α) → Prop`.
 pub fn axiom_red_black_balance_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1106,7 +1106,7 @@ pub fn axiom_red_black_balance_ty() -> Expr {
         ),
     )
 }
-/// `WellFounded.lt : {α : Type} → [Ord α] → WellFounded (· < ·)` — well-foundedness.
+/// `WellFounded.lt : {α : Type} → \[Ord α\] → WellFounded (· < ·)` — well-foundedness.
 pub fn axiom_well_founded_lt_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1122,7 +1122,7 @@ pub fn axiom_well_founded_lt_ty() -> Expr {
         ),
     )
 }
-/// `Antisymm : {α : Type} → [Ord α] → ∀ a b, a ≤ b → b ≤ a → a = b`.
+/// `Antisymm : {α : Type} → \[Ord α\] → ∀ a b, a ≤ b → b ≤ a → a = b`.
 pub fn axiom_antisymm_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1151,7 +1151,7 @@ pub fn axiom_antisymm_ty() -> Expr {
         ),
     )
 }
-/// `Transitivity : {α : Type} → [Ord α] → ∀ a b c, a ≤ b → b ≤ c → a ≤ c`.
+/// `Transitivity : {α : Type} → \[Ord α\] → ∀ a b c, a ≤ b → b ≤ c → a ≤ c`.
 pub fn axiom_transitivity_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1184,7 +1184,7 @@ pub fn axiom_transitivity_ty() -> Expr {
         ),
     )
 }
-/// `Totality : {α : Type} → [Ord α] → ∀ a b, a ≤ b ∨ b ≤ a`.
+/// `Totality : {α : Type} → \[Ord α\] → ∀ a b, a ≤ b ∨ b ≤ a`.
 pub fn axiom_totality_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1209,7 +1209,7 @@ pub fn axiom_totality_ty() -> Expr {
         ),
     )
 }
-/// `Reflexivity : {α : Type} → [Ord α] → ∀ a, a ≤ a`.
+/// `Reflexivity : {α : Type} → \[Ord α\] → ∀ a, a ≤ a`.
 pub fn axiom_reflexivity_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1226,7 +1226,7 @@ pub fn axiom_reflexivity_ty() -> Expr {
         ),
     )
 }
-/// `Monotone : {α β : Type} → [Ord α] → [Ord β] → (α → β) → Prop`.
+/// `Monotone : {α β : Type} → \[Ord α\] → \[Ord β\] → (α → β) → Prop`.
 pub fn axiom_monotone_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1252,7 +1252,7 @@ pub fn axiom_monotone_ty() -> Expr {
         ),
     )
 }
-/// `StrictMono : {α β : Type} → [Ord α] → [Ord β] → (α → β) → Prop`.
+/// `StrictMono : {α β : Type} → \[Ord α\] → \[Ord β\] → (α → β) → Prop`.
 pub fn axiom_strict_mono_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1282,7 +1282,7 @@ pub fn axiom_strict_mono_ty() -> Expr {
 pub fn axiom_complete_lattice_ty() -> Expr {
     ord_e_arrow(ord_e_type1(), ord_e_type2())
 }
-/// `CompleteLattice.sSup : {α : Type} → [CompleteLattice α] → Set α → α`.
+/// `CompleteLattice.sSup : {α : Type} → \[CompleteLattice α\] → Set α → α`.
 pub fn axiom_complete_lattice_ssup_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1302,7 +1302,7 @@ pub fn axiom_complete_lattice_ssup_ty() -> Expr {
         ),
     )
 }
-/// `CompleteLattice.sInf : {α : Type} → [CompleteLattice α] → Set α → α`.
+/// `CompleteLattice.sInf : {α : Type} → \[CompleteLattice α\] → Set α → α`.
 pub fn axiom_complete_lattice_sinf_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1322,7 +1322,7 @@ pub fn axiom_complete_lattice_sinf_ty() -> Expr {
         ),
     )
 }
-/// `UpperBound : {α : Type} → [Ord α] → Set α → α → Prop`.
+/// `UpperBound : {α : Type} → \[Ord α\] → Set α → α → Prop`.
 pub fn axiom_upper_bound_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1339,7 +1339,7 @@ pub fn axiom_upper_bound_ty() -> Expr {
         ),
     )
 }
-/// `LowerBound : {α : Type} → [Ord α] → Set α → α → Prop`.
+/// `LowerBound : {α : Type} → \[Ord α\] → Set α → α → Prop`.
 pub fn axiom_lower_bound_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1356,7 +1356,7 @@ pub fn axiom_lower_bound_ty() -> Expr {
         ),
     )
 }
-/// `IsLUB : {α : Type} → [Ord α] → Set α → α → Prop` — least upper bound predicate.
+/// `IsLUB : {α : Type} → \[Ord α\] → Set α → α → Prop` — least upper bound predicate.
 pub fn axiom_is_lub_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1373,7 +1373,7 @@ pub fn axiom_is_lub_ty() -> Expr {
         ),
     )
 }
-/// `IsGLB : {α : Type} → [Ord α] → Set α → α → Prop` — greatest lower bound predicate.
+/// `IsGLB : {α : Type} → \[Ord α\] → Set α → α → Prop` — greatest lower bound predicate.
 pub fn axiom_is_glb_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1390,7 +1390,7 @@ pub fn axiom_is_glb_ty() -> Expr {
         ),
     )
 }
-/// `OrderIso : {α β : Type} → [Ord α] → [Ord β] → Type` — order isomorphisms.
+/// `OrderIso : {α β : Type} → \[Ord α\] → \[Ord β\] → Type` — order isomorphisms.
 pub fn axiom_order_iso_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1412,7 +1412,7 @@ pub fn axiom_order_iso_ty() -> Expr {
         ),
     )
 }
-/// `OrderEmbedding : {α β : Type} → [Ord α] → [Ord β] → Type` — order embeddings.
+/// `OrderEmbedding : {α β : Type} → \[Ord α\] → \[Ord β\] → Type` — order embeddings.
 pub fn axiom_order_embedding_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1434,7 +1434,7 @@ pub fn axiom_order_embedding_ty() -> Expr {
         ),
     )
 }
-/// `Antichain : {α : Type} → [Ord α] → Set α → Prop` — an antichain in a partial order.
+/// `Antichain : {α : Type} → \[Ord α\] → Set α → Prop` — an antichain in a partial order.
 pub fn axiom_antichain_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1459,7 +1459,7 @@ pub fn axiom_dilworth_theorem_ty() -> Expr {
 pub fn axiom_mirskys_theorem_ty() -> Expr {
     ord_e_prop()
 }
-/// `OrdCompare.compare_eq_iff : {α : Type} → [Ord α] → ∀ a b, compare a b = Ordering.eq ↔ a = b`.
+/// `OrdCompare.compare_eq_iff : {α : Type} → \[Ord α\] → ∀ a b, compare a b = Ordering.eq ↔ a = b`.
 pub fn axiom_compare_eq_iff_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1491,7 +1491,7 @@ pub fn axiom_compare_eq_iff_ty() -> Expr {
         ),
     )
 }
-/// `OrdCompare.compare_swap : {α : Type} → [Ord α] → ∀ a b, compare a b = (compare b a).swap`.
+/// `OrdCompare.compare_swap : {α : Type} → \[Ord α\] → ∀ a b, compare a b = (compare b a).swap`.
 pub fn axiom_compare_swap_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1535,7 +1535,7 @@ pub fn axiom_bool_ord_ty() -> Expr {
 pub fn axiom_nat_ord_ty() -> Expr {
     ord_e_ord_inst(ord_e_nat())
 }
-/// `ProdOrd : {α β : Type} → [Ord α] → [Ord β] → Ord (α × β)` — lexicographic product order.
+/// `ProdOrd : {α β : Type} → \[Ord α\] → \[Ord β\] → Ord (α × β)` — lexicographic product order.
 pub fn axiom_prod_ord_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1561,7 +1561,7 @@ pub fn axiom_prod_ord_ty() -> Expr {
         ),
     )
 }
-/// `ListOrd : {α : Type} → [Ord α] → Ord (List α)` — lexicographic list order.
+/// `ListOrd : {α : Type} → \[Ord α\] → Ord (List α)` — lexicographic list order.
 pub fn axiom_list_ord_ty() -> Expr {
     ord_e_ipi(
         "α",
@@ -1577,7 +1577,7 @@ pub fn axiom_list_ord_ty() -> Expr {
         ),
     )
 }
-/// `OptionOrd : {α : Type} → [Ord α] → Ord (Option α)` — option order (None is least).
+/// `OptionOrd : {α : Type} → \[Ord α\] → Ord (Option α)` — option order (None is least).
 pub fn axiom_option_ord_ty() -> Expr {
     ord_e_ipi(
         "α",

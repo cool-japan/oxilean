@@ -84,7 +84,7 @@ pub fn prob_measure_ty() -> Expr {
     arrow(sigma_algebra_ty(), type0())
 }
 /// `Covariance : (Ω → Real) → (Ω → Real) → Real`
-/// — the covariance E[(X - EX)(Y - EY)] of two random variables.
+/// — the covariance E\[(X - EX)(Y - EY)\] of two random variables.
 pub fn covariance_ty() -> Expr {
     arrow(
         arrow(type0(), real_ty()),
@@ -140,7 +140,7 @@ pub fn martingale_ty() -> Expr {
     arrow(stochastic_process_ty(), prop())
 }
 /// `SubGaussian : (Ω → Real) → Real → Prop`
-/// — X is σ-sub-Gaussian: E[exp(λX)] ≤ exp(λ²σ²/2) for all λ.
+/// — X is σ-sub-Gaussian: E\[exp(λX)\] ≤ exp(λ²σ²/2) for all λ.
 pub fn sub_gaussian_ty() -> Expr {
     arrow(arrow(type0(), real_ty()), arrow(real_ty(), prop()))
 }
@@ -208,7 +208,7 @@ pub fn berry_esseen_ty() -> Expr {
     prop()
 }
 /// `HoeffdingInequality : Prop`
-/// — P(S_n - E[S_n] ≥ t) ≤ exp(-2t²/Σ(b_i-a_i)²) for bounded summands.
+/// — P(S_n - E\[S_n\] ≥ t) ≤ exp(-2t²/Σ(b_i-a_i)²) for bounded summands.
 pub fn hoeffding_inequality_ty() -> Expr {
     prop()
 }
@@ -233,7 +233,7 @@ pub fn sanov_ldp_ty() -> Expr {
     prop()
 }
 /// `DoobOptionalSampling : Prop`
-/// — E[M_τ] = E[M_0] for a uniformly integrable martingale stopped at τ.
+/// — E\[M_τ\] = E\[M_0\] for a uniformly integrable martingale stopped at τ.
 pub fn doob_optional_sampling_ty() -> Expr {
     prop()
 }
@@ -243,7 +243,7 @@ pub fn azuma_hoeffding_ty() -> Expr {
     prop()
 }
 /// `RenewalReward : Prop`
-/// — the renewal reward theorem: long-run average reward = E[reward]/E[inter-arrival].
+/// — the renewal reward theorem: long-run average reward = E\[reward\]/E[inter-arrival].
 pub fn renewal_reward_ty() -> Expr {
     prop()
 }
@@ -274,7 +274,7 @@ pub fn bayes_theorem_ty() -> Expr {
         ),
     )
 }
-/// `MarkovInequality : Prop` — P(X ≥ a) ≤ E[X] / a for non-negative X and a > 0.
+/// `MarkovInequality : Prop` — P(X ≥ a) ≤ E\[X\] / a for non-negative X and a > 0.
 pub fn markov_inequality_ty() -> Expr {
     prop()
 }
@@ -728,12 +728,12 @@ pub fn ldp_ty() -> Expr {
     )
 }
 /// `GartnerEllis : Prop`
-/// — the Gärtner–Ellis theorem: LDP from the limit of (1/n) log E[e^{nλX_n}].
+/// — the Gärtner–Ellis theorem: LDP from the limit of (1/n) log E\[e^{nλX_n}\].
 pub fn gartner_ellis_ty() -> Expr {
     prop()
 }
 /// `LogMGF : (Ω → Real) → Real → Real`
-/// — the log moment generating function Λ(λ) = log E[e^{λX}].
+/// — the log moment generating function Λ(λ) = log E\[e^{λX}\].
 pub fn log_mgf_ty() -> Expr {
     arrow(arrow(type0(), real_ty()), arrow(real_ty(), real_ty()))
 }
@@ -808,7 +808,7 @@ pub fn dirichlet_process_ty() -> Expr {
     arrow(real_ty(), arrow(distribution_ty(), distribution_ty()))
 }
 /// `CRP : Real → Nat → Distribution`
-/// — the Chinese Restaurant Process: CRP(α, n) gives distribution over partitions of [n].
+/// — the Chinese Restaurant Process: CRP(α, n) gives distribution over partitions of \[n\].
 pub fn crp_ty() -> Expr {
     arrow(real_ty(), arrow(nat_ty(), distribution_ty()))
 }

@@ -128,7 +128,7 @@ impl LorenzKnotData {
     }
 }
 /// Alexander polynomial represented by integer coefficients.
-/// coefficients[i] is the coefficient of t^i (starting from the lowest power).
+/// coefficients\[i\] is the coefficient of t^i (starting from the lowest power).
 #[derive(Debug, Clone)]
 pub struct AlexanderPolynomial {
     pub coefficients: Vec<i64>,
@@ -219,7 +219,7 @@ impl KnotCobordism {
 /// Represents and computes invariants from a Seifert matrix V.
 #[derive(Debug, Clone)]
 pub struct SeifertMatrixComputer {
-    /// The Seifert matrix V (stored as row-major Vec<Vec<i64>>).
+    /// The Seifert matrix V (stored as row-major `Vec<Vec<i64>`>).
     pub matrix: Vec<Vec<i64>>,
     /// Size of the matrix (2g × 2g for a genus-g surface).
     pub size: usize,
@@ -231,12 +231,12 @@ impl SeifertMatrixComputer {
         SeifertMatrixComputer { matrix, size }
     }
     /// Standard Seifert matrix for the trefoil knot:
-    /// V = [[-1, 0], [1, -1]].
+    /// V = [\[-1, 0\], \[1, -1\]].
     pub fn trefoil() -> Self {
         Self::new(vec![vec![-1, 0], vec![1, -1]])
     }
     /// Standard Seifert matrix for the figure-eight knot:
-    /// V = [[-1, 1], [0, 1]].
+    /// V = [\[-1, 1\], \[0, 1\]].
     pub fn figure_eight() -> Self {
         Self::new(vec![vec![-1, 1], vec![0, 1]])
     }
@@ -405,7 +405,7 @@ pub struct CrossingData {
     pub label: usize,
     /// Sign (+1 or -1).
     pub sign: CrossingSignVal,
-    /// The four arc indices at this crossing: [over_in, over_out, under_in, under_out].
+    /// The four arc indices at this crossing: \[over_in, over_out, under_in, under_out\].
     pub arcs: [usize; 4],
 }
 impl CrossingData {
@@ -469,7 +469,7 @@ impl RationalTangle {
     }
 }
 /// A Laurent polynomial in one variable with integer coefficients.
-/// Represented as (min_exp, coefficients) where coefficients[k] is the
+/// Represented as (min_exp, coefficients) where coefficients\[k\] is the
 /// coefficient of t^{min_exp + k}.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaurentPoly {

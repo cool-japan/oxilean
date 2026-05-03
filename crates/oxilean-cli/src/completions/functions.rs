@@ -399,7 +399,7 @@ pub fn fuzzy_sort_candidates(
         .into_iter()
         .filter_map(|c| fuzzy_match_score(pattern, &c.text).map(|score| (score, c)))
         .collect();
-    scored.sort_by(|a, b| b.0.cmp(&a.0));
+    scored.sort_by_key(|b| std::cmp::Reverse(b.0));
     scored.into_iter().map(|(_, c)| c).collect()
 }
 /// Render completion candidates in a given output format.

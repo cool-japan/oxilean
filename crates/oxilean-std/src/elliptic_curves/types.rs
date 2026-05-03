@@ -69,7 +69,7 @@ impl ProjectivePoint {
         matches!(self, ProjectivePoint::Infinity)
     }
 }
-/// The n-torsion subgroup E[n] and pairing theory on it.
+/// The n-torsion subgroup E\[n\] and pairing theory on it.
 pub struct TorsionPoints {
     /// String description of the curve.
     pub curve: String,
@@ -83,8 +83,8 @@ impl TorsionPoints {
     }
     /// Compute the structure of the n-torsion subgroup.
     ///
-    /// Over an algebraically closed field: E[n] ≅ Z/nZ × Z/nZ (for gcd(n,char)=1).
-    /// Over a finite field F_q: E[n](F_q) ≅ Z/dZ × Z/(nd/d)Z for some d | n.
+    /// Over an algebraically closed field: E\[n\] ≅ Z/nZ × Z/nZ (for gcd(n,char)=1).
+    /// Over a finite field F_q: E\[n\](F_q) ≅ Z/dZ × Z/(nd/d)Z for some d | n.
     pub fn n_torsion_structure(&self) -> String {
         format!(
             "E[{}] on {}: over k̄ (char ∤ {}), E[n] ≅ ℤ/{}ℤ × ℤ/{}ℤ; \
@@ -92,9 +92,9 @@ impl TorsionPoints {
             self.n, self.curve, self.n, self.n, self.n
         )
     }
-    /// Compute the Weil pairing restricted to E[n].
+    /// Compute the Weil pairing restricted to E\[n\].
     ///
-    /// e_n: E[n] × E[n] → μ_n is bilinear, alternating, and non-degenerate.
+    /// e_n: E\[n\] × E\[n\] → μ_n is bilinear, alternating, and non-degenerate.
     pub fn weil_pairing_on_torsion(&self) -> String {
         format!(
             "Weil pairing on E[{}] of {}: e_{}: E[{}] × E[{}] → μ_{} ⊂ k*; \
@@ -317,7 +317,7 @@ impl ECCrypto {
     }
     /// ECDSA signature: sign a message hash e with private key d.
     ///
-    /// Choose random k ∈ [1, n-1]; compute (x_1, _) = k·G; r = x_1 mod n;
+    /// Choose random k ∈ \[1, n-1\]; compute (x_1, _) = k·G; r = x_1 mod n;
     /// s = k^{-1}(e + dr) mod n.
     pub fn ecdsa_sign(&self) -> String {
         format!(
@@ -758,7 +758,7 @@ impl PairingE2E {
     pub fn new(curve: String) -> Self {
         Self { curve }
     }
-    /// Compute the Weil pairing e: E[n] × E[n] → μ_n.
+    /// Compute the Weil pairing e: E\[n\] × E\[n\] → μ_n.
     ///
     /// The Weil pairing is bilinear, alternating (e(P,P)=1), and non-degenerate.
     /// Computed via Miller's algorithm.
@@ -769,7 +769,7 @@ impl PairingE2E {
             self.curve
         )
     }
-    /// Compute the Tate pairing ⟨·,·⟩: E[n](k) × E(k)/nE(k) → k*/(k*)^n.
+    /// Compute the Tate pairing ⟨·,·⟩: E\[n\](k) × E(k)/nE(k) → k*/(k*)^n.
     ///
     /// The Tate pairing is well-defined on cohomology classes and is non-degenerate.
     pub fn tate_pairing(&self) -> String {
@@ -790,7 +790,7 @@ impl PairingE2E {
 }
 /// Miller's algorithm for Weil/Tate pairings.
 ///
-/// Given P, Q ∈ E[n] with P ≠ ±Q, computes the value f_{n,P}(Q) using
+/// Given P, Q ∈ E\[n\] with P ≠ ±Q, computes the value f_{n,P}(Q) using
 /// the Miller loop. This is a structural implementation over (f64, f64) points
 /// (not a finite field, so the actual pairing value is approximated).
 #[allow(dead_code)]
@@ -891,7 +891,7 @@ pub struct JacobianCoordinates {
     pub z_jac: f64,
 }
 impl JacobianCoordinates {
-    /// Convert from affine (x, y) to Jacobian [1,1,1] representative.
+    /// Convert from affine (x, y) to Jacobian \[1,1,1\] representative.
     pub fn from_affine(x: f64, y: f64) -> Self {
         Self {
             x_jac: x,
@@ -1003,7 +1003,7 @@ impl ECDSAParams {
 }
 /// Baby-step Giant-step solver for the Elliptic Curve Discrete Logarithm Problem.
 ///
-/// Given a generator G and a target point P on E, finds k such that [k]G = P,
+/// Given a generator G and a target point P on E, finds k such that \[k\]G = P,
 /// or returns None if not found within the search bound.
 #[allow(dead_code)]
 pub struct ECDLPSolver {
@@ -1019,9 +1019,9 @@ impl ECDLPSolver {
     pub fn new(a: f64, b: f64, order: u64) -> Self {
         Self { a, b, order }
     }
-    /// Baby-step giant-step: find k such that [k]G = P.
+    /// Baby-step giant-step: find k such that \[k\]G = P.
     ///
-    /// Let m = ceil(√n). Baby steps: compute {[j]G : j = 0..m-1} as a table.
+    /// Let m = ceil(√n). Baby steps: compute {\[j\]G : j = 0..m-1} as a table.
     /// Giant steps: compute P - [i·m]G for i = 0..m-1 and look up in the table.
     /// Complexity: O(√n) in time and space.
     ///

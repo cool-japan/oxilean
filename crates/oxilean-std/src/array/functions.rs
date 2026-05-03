@@ -1578,7 +1578,7 @@ pub fn arr_ext_bind_assoc_ty() -> Expr {
         ),
     )
 }
-/// `Array.mergesort : {α : Type} → {n : Nat} → [Ord α] → Array α n → Array α n`
+/// `Array.mergesort : {α : Type} → {n : Nat} → \[Ord α\] → Array α n → Array α n`
 ///
 /// Merge sort: a stable O(n log n) sorting algorithm that returns a sorted
 /// permutation of the input array.
@@ -1602,7 +1602,7 @@ pub fn arr_ext_mergesort_ty() -> Expr {
         ),
     )
 }
-/// `Array.sort_stable : ∀ {α n}, [Ord α] → Array α n → Prop`
+/// `Array.sort_stable : ∀ {α n}, \[Ord α\] → Array α n → Prop`
 ///
 /// Stability of merge sort: elements with equal keys retain their original
 /// relative order. A stable sort preserves the original ordering for equal elements.
@@ -1622,7 +1622,7 @@ pub fn arr_ext_sort_stable_ty() -> Expr {
         ),
     )
 }
-/// `Array.sort_perm : ∀ {α n}, [Ord α] → Array α n → Prop`
+/// `Array.sort_perm : ∀ {α n}, \[Ord α\] → Array α n → Prop`
 ///
 /// Correctness of sort as a permutation: the sorted result is a permutation
 /// of the input (no elements added or dropped).
@@ -1642,7 +1642,7 @@ pub fn arr_ext_sort_perm_ty() -> Expr {
         ),
     )
 }
-/// `Array.sort_sorted : ∀ {α n}, [Ord α] → Array α n → Prop`
+/// `Array.sort_sorted : ∀ {α n}, \[Ord α\] → Array α n → Prop`
 ///
 /// Output of sort satisfies the sorted predicate: for all i < j,
 /// `get (sort a) i ≤ get (sort a) j`.
@@ -1662,7 +1662,7 @@ pub fn arr_ext_sort_sorted_ty() -> Expr {
         ),
     )
 }
-/// `Array.qsort_average_case : ∀ {α n}, [Ord α] → Array α n → Prop`
+/// `Array.qsort_average_case : ∀ {α n}, \[Ord α\] → Array α n → Prop`
 ///
 /// Quicksort average-case complexity: for a random permutation of n elements,
 /// expected O(n log n) comparisons with randomized pivot selection.
@@ -1823,7 +1823,7 @@ pub fn arr_ext_slice_ty() -> Expr {
 /// `Array.prefix_sum : {α : Type} → {n : Nat} → Array α n → Array α n`
 ///
 /// Prefix sum (cumulative sum): given an array a, compute b where
-/// b[i] = a[0] + a[1] + ... + a[i]. Enables O(1) range sum queries.
+/// b\[i\] = a\[0\] + a\[1\] + ... + a\[i\]. Enables O(1) range sum queries.
 #[allow(dead_code)]
 pub fn arr_ext_prefix_sum_ty() -> Expr {
     implicit_pi(

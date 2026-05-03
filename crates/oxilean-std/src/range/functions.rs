@@ -1064,7 +1064,7 @@ pub fn axiom_interval_hi_ty() -> Expr {
         rng_ext_arrow(rng_ext_interval_of(Expr::BVar(0)), Expr::BVar(0)),
     )
 }
-/// `Interval.valid : {α : Type} → [Ord α] → Interval α → Prop` — lo ≤ hi.
+/// `Interval.valid : {α : Type} → \[Ord α\] → Interval α → Prop` — lo ≤ hi.
 pub fn axiom_interval_valid_ty() -> Expr {
     rng_ext_ipi(
         "α",
@@ -1083,7 +1083,7 @@ pub fn axiom_interval_valid_ty() -> Expr {
         ),
     )
 }
-/// `Interval.contains : {α : Type} → [Ord α] → Interval α → α → Prop`.
+/// `Interval.contains : {α : Type} → \[Ord α\] → Interval α → α → Prop`.
 pub fn axiom_interval_contains_ty() -> Expr {
     rng_ext_ipi(
         "α",

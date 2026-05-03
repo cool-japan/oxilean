@@ -208,21 +208,21 @@ impl PatternCompiler {
                         guard: row.guard.clone(),
                     });
                 }
-                Pattern::Or(left, right) => {
-                    if self.is_irrefutable(&left.value) || self.is_irrefutable(&right.value) {
-                        let new_patterns: Vec<Pattern> = row
-                            .patterns
-                            .iter()
-                            .enumerate()
-                            .filter(|(i, _)| *i != col)
-                            .map(|(_, p)| p.clone())
-                            .collect();
-                        result.push(PatternRow {
-                            patterns: new_patterns,
-                            body: row.body.clone(),
-                            guard: row.guard.clone(),
-                        });
-                    }
+                Pattern::Or(left, right)
+                    if (self.is_irrefutable(&left.value) || self.is_irrefutable(&right.value)) =>
+                {
+                    let new_patterns: Vec<Pattern> = row
+                        .patterns
+                        .iter()
+                        .enumerate()
+                        .filter(|(i, _)| *i != col)
+                        .map(|(_, p)| p.clone())
+                        .collect();
+                    result.push(PatternRow {
+                        patterns: new_patterns,
+                        body: row.body.clone(),
+                        guard: row.guard.clone(),
+                    });
                 }
                 _ => {}
             }

@@ -291,7 +291,7 @@ pub fn to_titlecase_first(c: char) -> char {
 pub fn case_fold(c: char) -> char {
     c.to_lowercase().next().unwrap_or(c)
 }
-/// Return all characters in a Latin alphabet range [a, z] or [A, Z].
+/// Return all characters in a Latin alphabet range \[a, z\] or \[A, Z\].
 pub fn latin_alphabet(uppercase: bool) -> Vec<char> {
     if uppercase {
         ('A'..='Z').collect()

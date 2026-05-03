@@ -508,7 +508,7 @@ pub fn adam_operations_ty() -> Expr {
 /// `BrownRepresentability : ∀ (h : Type → Type), Prop`
 ///
 /// Brown's representability theorem: every cohomology theory h^n on CW-complexes
-/// is representable, i.e., h^n(X) ≅ [X, K_n] for some spectrum K.
+/// is representable, i.e., h^n(X) ≅ \[X, K_n\] for some spectrum K.
 pub fn brown_representability_ty() -> Expr {
     arrow(arrow(type0(), type0()), prop())
 }

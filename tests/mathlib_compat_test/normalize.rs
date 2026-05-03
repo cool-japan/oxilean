@@ -741,10 +741,8 @@ fn fix_forall_no_body_before_assign(src: &str) -> String {
                     break;
                 }
             }
-            b':' if depth == 1 => {
-                if j + 1 < blen && bytes[j + 1] != b'=' {
-                    has_colon_d1 = true;
-                }
+            b':' if depth == 1 && j + 1 < blen && bytes[j + 1] != b'=' => {
+                has_colon_d1 = true;
             }
             _ => {}
         }
@@ -2205,10 +2203,7 @@ fn normalize_destructuring_binders(src: &str) -> String {
     for keyword in &["fun", "forall", "\u{2200}"] {
         let pattern = format!("{keyword} ((");
         let pat_len = pattern.len();
-        loop {
-            let Some(kw_pos) = result.find(&pattern) else {
-                break;
-            };
+        while let Some(kw_pos) = result.find(&pattern) {
             let after = &result[kw_pos + pat_len..]; // after "keyword (("
                                                      // Find matching `)` for inner parens
             let mut depth = 1usize;

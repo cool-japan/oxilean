@@ -888,7 +888,7 @@ pub struct MpcController {
     pub r: Vec<Vec<f64>>,
     /// Prediction/control horizon (steps).
     pub horizon: usize,
-    /// Input constraint: each u_i ∈ [-u_max[i], u_max[i]]. Empty = no constraint.
+    /// Input constraint: each u_i ∈ [-u_max\[i\], u_max\[i\]]. Empty = no constraint.
     pub u_max: Vec<f64>,
 }
 impl MpcController {

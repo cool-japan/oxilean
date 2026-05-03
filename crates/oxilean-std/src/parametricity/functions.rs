@@ -1134,7 +1134,7 @@ pub fn suspension_hit_ty() -> Expr {
 }
 /// `IntervalHIT : Type`
 ///
-/// The interval [0,1] as a HIT with two endpoints and a path between them.
+/// The interval \[0,1\] as a HIT with two endpoints and a path between them.
 pub fn interval_hit_ty() -> Expr {
     type0()
 }

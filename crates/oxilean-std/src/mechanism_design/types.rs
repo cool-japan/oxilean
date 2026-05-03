@@ -162,9 +162,9 @@ pub struct DynamicVCGMechanism {
     pub n_agents: usize,
     /// Number of periods.
     pub n_periods: usize,
-    /// Allocation history: `alloc[t][i]` = allocation to agent i in period t.
+    /// Allocation history: `alloc\[t\]\[i\]` = allocation to agent i in period t.
     pub alloc_history: Vec<Vec<f64>>,
-    /// Payment history: `payments[t][i]` = payment by agent i in period t.
+    /// Payment history: `payments\[t\]\[i\]` = payment by agent i in period t.
     pub payment_history: Vec<Vec<f64>>,
 }
 impl DynamicVCGMechanism {
@@ -208,7 +208,7 @@ impl DynamicVCGMechanism {
     }
     /// Compute the total welfare across all periods given the true values.
     ///
-    /// `true_values[t][i]` = agent i's true value in period t.
+    /// `true_values\[t\]\[i\]` = agent i's true value in period t.
     pub fn total_welfare(&self, true_values: &[Vec<f64>]) -> f64 {
         let mut welfare = 0.0;
         for (t, alloc) in self.alloc_history.iter().enumerate() {
@@ -295,9 +295,9 @@ impl BipartiteMatching {
 ///
 /// States of the world: indexed 0..n_states.
 /// Actions: indexed 0..n_actions.
-/// `sender_payoff[s][a]` = sender's payoff in state s when receiver takes action a.
-/// `receiver_payoff[s][a]` = receiver's payoff in state s when taking action a.
-/// `prior[s]` = prior probability of state s.
+/// `sender_payoff\[s\]\[a\]` = sender's payoff in state s when receiver takes action a.
+/// `receiver_payoff\[s\]\[a\]` = receiver's payoff in state s when taking action a.
+/// `prior\[s\]` = prior probability of state s.
 #[derive(Debug, Clone)]
 pub struct InformationDesignSolver {
     /// Number of states.
@@ -328,7 +328,7 @@ impl InformationDesignSolver {
             prior,
         }
     }
-    /// Compute the receiver's best response to a posterior belief `belief[s]`.
+    /// Compute the receiver's best response to a posterior belief `belief\[s\]`.
     ///
     /// Returns the action maximizing the receiver's expected payoff.
     pub fn receiver_best_response(&self, belief: &[f64]) -> usize {
@@ -350,7 +350,7 @@ impl InformationDesignSolver {
     /// Compute the sender's expected payoff for a direct signal (recommendation scheme).
     ///
     /// A direct signal assigns to each state s a distribution over actions.
-    /// `signal[s][a]` = probability of recommending action a in state s.
+    /// `signal\[s\]\[a\]` = probability of recommending action a in state s.
     ///
     /// The obedience condition requires that each recommended action a is a best
     /// response given the posterior. Here we compute the sender's expected payoff
@@ -673,11 +673,11 @@ impl MyersonMechanism {
             expected_revenue: 0.0,
         }
     }
-    /// Virtual value for uniform distribution on [0, b]: ψ(v) = 2v - b.
+    /// Virtual value for uniform distribution on \[0, b\]: ψ(v) = 2v - b.
     pub fn virtual_value_uniform(v: f64, b: f64) -> f64 {
         2.0 * v - b
     }
-    /// Optimal reserve for uniform [0, b]: r* = b/2.
+    /// Optimal reserve for uniform \[0, b\]: r* = b/2.
     pub fn optimal_reserve_uniform(b: f64) -> f64 {
         b / 2.0
     }

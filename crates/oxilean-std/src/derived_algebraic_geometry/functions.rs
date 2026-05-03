@@ -70,7 +70,7 @@ pub fn t_structure_ty() -> Expr {
 }
 /// `ExactTriangle : DerivedCategory → Type`
 ///
-/// A distinguished triangle A → B → C → A[1] in a triangulated category.
+/// A distinguished triangle A → B → C → A\[1\] in a triangulated category.
 pub fn exact_triangle_ty() -> Expr {
     arrow(cst("DerivedCategory"), type0())
 }
@@ -85,8 +85,8 @@ pub fn derived_functor_ty() -> Expr {
 }
 /// `RotateTriangle : ExactTriangle D → ExactTriangle D`
 ///
-/// Rotating a distinguished triangle: if A→B→C→A[1] is distinguished,
-/// so is B→C→A[1]→B[1].
+/// Rotating a distinguished triangle: if A→B→C→A\[1\] is distinguished,
+/// so is B→C→A\[1\]→B\[1\].
 pub fn rotate_triangle_ty() -> Expr {
     arrow(
         app(cst("ExactTriangle"), cst("DerivedCategory")),
@@ -247,7 +247,7 @@ pub fn obstruction_theory_ty() -> Expr {
 }
 /// `VirtualFundamentalClass : ObstructionTheory X → Type`
 ///
-/// The virtual fundamental class [X]^vir produced by a perfect obstruction
+/// The virtual fundamental class \[X\]^vir produced by a perfect obstruction
 /// theory, living in the Chow group A_*(X).
 pub fn virtual_fundamental_class_ty() -> Expr {
     arrow(cst("ObstructionTheory"), type0())
@@ -255,7 +255,7 @@ pub fn virtual_fundamental_class_ty() -> Expr {
 /// `PerfectObstructionTheory : DerivedScheme → Prop`
 ///
 /// A perfect obstruction theory is a two-term perfect complex in degrees
-/// [-1, 0] together with a map from the cotangent complex.
+/// \[-1, 0\] together with a map from the cotangent complex.
 pub fn perfect_obstruction_theory_ty() -> Expr {
     arrow(cst("DerivedScheme"), prop())
 }

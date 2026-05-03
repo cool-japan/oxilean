@@ -170,7 +170,7 @@ impl TacticProfileLog {
     #[allow(dead_code)]
     pub fn top_slow(&self, n: usize) -> Vec<&TacticProfilingEvent> {
         let mut sorted: Vec<&TacticProfilingEvent> = self.events.iter().collect();
-        sorted.sort_by(|a, b| b.duration_ns.cmp(&a.duration_ns));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.duration_ns));
         sorted.truncate(n);
         sorted
     }
@@ -791,7 +791,7 @@ impl AllocationTracker {
             .iter()
             .map(|(k, v)| (k.as_str(), v.total_bytes))
             .collect();
-        v.sort_by(|a, b| b.1.cmp(&a.1));
+        v.sort_by_key(|b| std::cmp::Reverse(b.1));
         v.truncate(n);
         v
     }
@@ -1023,7 +1023,7 @@ impl Profiler {
             }
         }
         let mut hot_functions: Vec<(String, u64)> = fn_durations.into_iter().collect();
-        hot_functions.sort_by(|a, b| b.1.cmp(&a.1));
+        hot_functions.sort_by_key(|b| std::cmp::Reverse(b.1));
         hot_functions.truncate(10);
         ProfileReport {
             total_calls,
@@ -1503,7 +1503,7 @@ impl SamplingProfiler {
             }
         }
         let mut result: Vec<(String, usize)> = counts.into_iter().collect();
-        result.sort_by(|a, b| b.1.cmp(&a.1));
+        result.sort_by_key(|b| std::cmp::Reverse(b.1));
         result
     }
     /// Compute the cumulative profile: each function gets credit for every sample
@@ -1517,7 +1517,7 @@ impl SamplingProfiler {
             }
         }
         let mut result: Vec<(String, usize)> = counts.into_iter().collect();
-        result.sort_by(|a, b| b.1.cmp(&a.1));
+        result.sort_by_key(|b| std::cmp::Reverse(b.1));
         result
     }
     /// Total number of samples collected.

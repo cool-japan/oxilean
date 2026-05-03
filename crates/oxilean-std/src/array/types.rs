@@ -173,7 +173,7 @@ pub struct PrefixSum {
 impl PrefixSum {
     /// Build a prefix-sum structure from a slice.
     ///
-    /// `prefix[0] = 0`, `prefix[i+1] = prefix[i] + data[i]`.
+    /// `prefix\[0\] = 0`, `prefix[i+1] = prefix\[i\] + data\[i\]`.
     pub fn build(data: &[i64]) -> Self {
         let mut prefix = vec![0i64; data.len() + 1];
         for (i, &x) in data.iter().enumerate() {

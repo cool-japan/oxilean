@@ -120,7 +120,7 @@ pub fn stochastic_optimal_control_ty() -> Expr {
     prop()
 }
 /// `LinearQuadraticRegulator : (List (List Real)) -> (List (List Real)) -> (List (List Real)) -> (List (List Real)) -> Prop`
-/// LQR/LQG: minimise E[∫(x^T Q x + u^T R u)dt] subject to linear stochastic dynamics.
+/// LQR/LQG: minimise E\[∫(x^T Q x + u^T R u)dt\] subject to linear stochastic dynamics.
 pub fn lqr_ty() -> Expr {
     let mat = list_ty(list_ty(real_ty()));
     arrow(
@@ -195,7 +195,7 @@ pub fn convergence_rate_rl_ty() -> Expr {
     prop()
 }
 /// `ZeroSumSDG : Prop`
-/// J = E[∫ L(x,u,v)dt + g(x_T)]: zero-sum stochastic differential game objective.
+/// J = E\[∫ L(x,u,v)dt + g(x_T)\]: zero-sum stochastic differential game objective.
 pub fn zero_sum_sdg_ty() -> Expr {
     prop()
 }
@@ -267,7 +267,7 @@ pub fn qmdp_approximation_ty() -> Expr {
     prop()
 }
 /// `EntropicRisk : Real -> (Nat -> Real) -> Real`
-/// Entropic risk measure: ρ_θ(X) = (1/θ) log E[e^{θX}].
+/// Entropic risk measure: ρ_θ(X) = (1/θ) log E\[e^{θX}\].
 pub fn entropic_risk_ty() -> Expr {
     arrow(real_ty(), arrow(fn_ty(nat_ty(), real_ty()), real_ty()))
 }
@@ -283,7 +283,7 @@ pub fn coherent_risk_measure_ty() -> Expr {
     arrow(fn_ty(fn_ty(nat_ty(), real_ty()), real_ty()), prop())
 }
 /// `RiskSensitiveBellman : Real -> Prop`
-/// Risk-sensitive Bellman equation: V(s) = min_a {l(s,a) + (1/θ) log E[e^{θ V(s')}]}.
+/// Risk-sensitive Bellman equation: V(s) = min_a {l(s,a) + (1/θ) log E\[e^{θ V(s')}\]}.
 pub fn risk_sensitive_bellman_ty() -> Expr {
     arrow(real_ty(), prop())
 }
@@ -339,7 +339,7 @@ pub fn shapley_operator_ty() -> Expr {
     prop()
 }
 /// `AverageCostMDP : Prop`
-/// Ergodic/average-cost MDP: min_{π} lim_{T→∞} (1/T) E[Σ_{t=0}^{T-1} r_t].
+/// Ergodic/average-cost MDP: min_{π} lim_{T→∞} (1/T) E\[Σ_{t=0}^{T-1} r_t\].
 pub fn average_cost_mdp_ty() -> Expr {
     prop()
 }
@@ -354,12 +354,12 @@ pub fn bias_function_ty() -> Expr {
     arrow(fn_ty(nat_ty(), real_ty()), prop())
 }
 /// `OptimalStopping : Prop`
-/// Optimal stopping: choose stopping time τ to maximise E[g(X_τ)] — free boundary problem.
+/// Optimal stopping: choose stopping time τ to maximise E\[g(X_τ)\] — free boundary problem.
 pub fn optimal_stopping_ty() -> Expr {
     prop()
 }
 /// `DynkinFormula : Prop`
-/// Dynkin's formula: E[f(X_τ)] = f(x) + E[∫_0^τ Lf(X_t)dt] for Markov processes.
+/// Dynkin's formula: E\[f(X_τ)\] = f(x) + E\[∫_0^τ Lf(X_t)dt\] for Markov processes.
 pub fn dynkin_formula_ty() -> Expr {
     prop()
 }

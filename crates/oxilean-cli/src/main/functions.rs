@@ -28,6 +28,12 @@ pub fn cli_main() {
                 check_file(&args[2]);
             }
             "repl" => run_repl(),
+            "lsp" | "serve" => {
+                if let Err(e) = crate::lsp::server::run_server_stdio() {
+                    eprintln!("LSP server error: {}", e);
+                    process::exit(1);
+                }
+            }
             "version" => print_version(),
             "help" => print_help(),
             _ => {
@@ -73,6 +79,8 @@ fn print_help() {
     println!("  oxilean <file>          Check a file");
     println!("  oxilean check <file>    Check a file");
     println!("  oxilean repl            Start REPL");
+    println!("  oxilean lsp             Start LSP server (stdio transport)");
+    println!("  oxilean serve           Start LSP server (alias for lsp)");
     println!("  oxilean version         Show version");
     println!("  oxilean help            Show this help");
     println!();

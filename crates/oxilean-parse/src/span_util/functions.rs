@@ -830,7 +830,7 @@ pub fn sort_spans_by_end(spans: &mut [Span]) {
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub fn sort_spans_reverse(spans: &mut [Span]) {
-    spans.sort_by(|a, b| b.start.cmp(&a.start));
+    spans.sort_by_key(|b| std::cmp::Reverse(b.start));
 }
 /// Return `true` if `spans` are sorted by start offset.
 #[allow(dead_code)]

@@ -36,7 +36,7 @@ impl MeasureDisintExt {
 pub struct MeasureDisintegration {
     /// Weights μ({ωᵢ}) for each atom.
     pub weights: Vec<f64>,
-    /// Fibre assignment: fibre[i] = j means ωᵢ ∈ Bⱼ.
+    /// Fibre assignment: fibre\[i\] = j means ωᵢ ∈ Bⱼ.
     pub fibre: Vec<usize>,
     /// Number of fibres (partition classes).
     pub n_fibres: usize,
@@ -282,7 +282,7 @@ impl BochnerIntegralApprox {
     }
     /// Compute ∫ f dμ for a vector-valued function f : Ω → ℝᵈ.
     ///
-    /// `values[i]` is the vector f(ωᵢ) ∈ ℝᵈ.
+    /// `values\[i\]` is the vector f(ωᵢ) ∈ ℝᵈ.
     pub fn integrate(&self, values: &[Vec<f64>]) -> Vec<f64> {
         assert_eq!(values.len(), self.weights.len());
         let mut result = vec![0.0f64; self.dim];
@@ -501,7 +501,7 @@ impl AbstractIntegral {
 pub struct CaratheodoryExtension {
     /// Number of base elements (universe = {0, …, n-1}).
     pub n: usize,
-    /// Pre-measure weights: weight[i] = pre-measure of singleton {i}.
+    /// Pre-measure weights: weight\[i\] = pre-measure of singleton {i}.
     pub weights: Vec<f64>,
 }
 impl CaratheodoryExtension {
@@ -992,7 +992,7 @@ impl MonteCarloMeasureEstimator {
             .map(|d| Self::van_der_corput(i + 1, primes[d % primes.len()]))
             .collect()
     }
-    /// Estimate the measure (volume fraction) of the set `{ x ∈ [0,1]^d | predicate(x) }`.
+    /// Estimate the measure (volume fraction) of the set `{ x ∈ \[0,1\]^d | predicate(x) }`.
     ///
     /// Returns the fraction of sample points satisfying `predicate`.
     pub fn estimate_unit_cube<F>(&self, predicate: F) -> f64
@@ -1048,7 +1048,7 @@ impl Martingale {
 /// to cover the point set at multiple scales ε = 2^{-k}.
 #[derive(Debug, Clone)]
 pub struct HausdorffDimensionEstimator {
-    /// The point set (each entry is (x, y) ∈ [0,1]²).
+    /// The point set (each entry is (x, y) ∈ \[0,1\]²).
     pub points: Vec<(f64, f64)>,
 }
 impl HausdorffDimensionEstimator {
@@ -1058,7 +1058,7 @@ impl HausdorffDimensionEstimator {
     }
     /// Count the number of ε-boxes (side length ε) needed to cover all points.
     ///
-    /// Uses a grid of ε × ε boxes covering [0, 1]².
+    /// Uses a grid of ε × ε boxes covering \[0, 1\]².
     pub fn box_count(&self, epsilon: f64) -> usize {
         if self.points.is_empty() || epsilon <= 0.0 {
             return 0;

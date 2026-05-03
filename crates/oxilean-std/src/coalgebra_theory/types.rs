@@ -193,7 +193,7 @@ impl<A: Clone + 'static> CoList<A> {
 pub struct HyperSet {
     /// Nodes: each node is a set, represented by its ID.
     pub num_nodes: usize,
-    /// Children: children[i] = list of member IDs of set i.
+    /// Children: children\[i\] = list of member IDs of set i.
     pub children: Vec<Vec<usize>>,
 }
 #[allow(dead_code)]
@@ -313,7 +313,7 @@ impl<T: Clone> OptionStream<T> {
     }
 }
 /// A probabilistic automaton viewed as a coalgebra over the distribution functor.
-/// States: Q, alphabet: Σ, transitions: Q → Σ → Dist(Q), acceptance: Q → [0,1].
+/// States: Q, alphabet: Σ, transitions: Q → Σ → Dist(Q), acceptance: Q → \[0,1\].
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ProbabilisticAutomaton {
@@ -321,9 +321,9 @@ pub struct ProbabilisticAutomaton {
     pub num_states: usize,
     /// Alphabet size.
     pub alphabet_size: usize,
-    /// Transition probabilities: trans[state][symbol][next_state] = probability.
+    /// Transition probabilities: trans\[state\]\[symbol\]\[next_state\] = probability.
     pub trans: Vec<Vec<Vec<f64>>>,
-    /// Acceptance probabilities: accept[state] ∈ [0,1].
+    /// Acceptance probabilities: accept\[state\] ∈ \[0,1\].
     pub accept: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -663,12 +663,12 @@ impl HopfAlgebraOps {
             dim: self.dim,
         }
     }
-    /// Counit ε: H → k. For the group algebra k[G], ε(g) = 1.
+    /// Counit ε: H → k. For the group algebra k\[G\], ε(g) = 1.
     /// Simplified: returns the sum of all coordinates.
     pub fn counit(&self) -> f64 {
         self.coords.iter().sum()
     }
-    /// Antipode S: for the group algebra k[G], S(g) = g^{-1}.
+    /// Antipode S: for the group algebra k\[G\], S(g) = g^{-1}.
     /// Simplified: returns the negation (as a formal opposite).
     pub fn antipode(&self) -> HopfAlgebraOps {
         HopfAlgebraOps {
@@ -677,7 +677,7 @@ impl HopfAlgebraOps {
         }
     }
     /// Comultiplication Δ: H → H ⊗ H.
-    /// For the group algebra k[G], Δ(g) = g ⊗ g.
+    /// For the group algebra k\[G\], Δ(g) = g ⊗ g.
     /// Simplified: returns (self.clone(), self.clone()) as a tensor-product pair.
     pub fn comultiply(&self) -> (HopfAlgebraOps, HopfAlgebraOps) {
         (self.clone(), self.clone())

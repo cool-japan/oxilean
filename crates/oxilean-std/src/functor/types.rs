@@ -179,14 +179,14 @@ impl<A, B> Either<A, B> {
             Either::Right(b) => Either::Right(g(b)),
         }
     }
-    /// Convert to Option<A>.
+    /// Convert to `Option<A>`.
     pub fn left(self) -> Option<A> {
         match self {
             Either::Left(a) => Some(a),
             _ => None,
         }
     }
-    /// Convert to Option<B>.
+    /// Convert to `Option<B>`.
     pub fn right(self) -> Option<B> {
         match self {
             Either::Right(b) => Some(b),

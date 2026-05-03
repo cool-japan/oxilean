@@ -295,7 +295,7 @@ impl IdentityTypeScheme {
 pub struct Induction {
     /// The type former (e.g. "Nat", "List", "Tree").
     pub type_former: String,
-    /// The constructor names (e.g. ["zero", "succ"]).
+    /// The constructor names (e.g. \["zero", "succ"\]).
     pub constructors: Vec<String>,
     /// Whether this is a recursive type (has recursive occurrences).
     pub is_recursive: bool,
@@ -501,7 +501,7 @@ impl SetoidQuotientComputer {
             equiv_pairs,
         }
     }
-    /// Add an equivalence: declare elements[i] ~ elements[j].
+    /// Add an equivalence: declare elements\[i\] ~ elements\[j\].
     /// Automatically adds (j, i) for symmetry.
     pub fn add_equiv(&mut self, i: usize, j: usize) {
         if i < self.elements.len() && j < self.elements.len() {
@@ -883,7 +883,7 @@ impl UniversePolymorphism {
 ///
 /// CIC is the theoretical foundation of the Coq proof assistant.
 pub struct CIC {
-    /// The universe names (e.g. ["Prop", "Type₀", "Type₁", ...]).
+    /// The universe names (e.g. \["Prop", "Type₀", "Type₁", ...\]).
     pub universes: Vec<String>,
     /// Whether the Prop universe is impredicative.
     pub has_impredicative_prop: bool,

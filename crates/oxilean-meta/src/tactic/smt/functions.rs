@@ -158,9 +158,10 @@ mod tests {
         );
     }
     #[test]
-    fn test_smt_check_sat_unknown() {
+    fn test_smt_check_sat_empty_is_sat() {
+        // An empty assertion set is trivially satisfiable.
         let ctx = SmtContext::new(SmtSolver::Yices2);
-        assert_eq!(ctx.check_sat(), SmtResult::Unknown);
+        assert_eq!(ctx.check_sat(), SmtResult::Sat);
         assert!(!ctx.check_unsat());
     }
     #[test]
@@ -485,10 +486,14 @@ pub fn sort_is_numeric(sort: &SmtSort) -> bool {
 pub fn sort_is_arithmetic(sort: &SmtSort) -> bool {
     matches!(sort, SmtSort::Int | SmtSort::Real | SmtSort::BitVec(_))
 }
-/// Stub: run the SMT tactic on a proof obligation.
+/// Run the SMT tactic on a proof obligation using the OxiZ solver.
 ///
-/// In a real implementation, this would invoke an external solver process.
-/// Here it always returns `Unknown` since no solver is available.
+/// The obligation is discharged in refutation style: the negated goal
+/// (together with all hypotheses) is asserted, and the solver is asked
+/// whether it is satisfiable.  `Unsat` → `Proved`; `Sat` → `CounterExample`;
+/// `Unknown` or `Error` → forwarded as such.
+///
+/// The `config.solver` field is advisory — OxiZ is always used as the backend.
 #[allow(dead_code)]
 pub fn run_smt_tactic(
     obligation: &SmtProofObligation,
@@ -498,8 +503,23 @@ pub fn run_smt_tactic(
     if goal_size > config.max_term_size {
         return SmtTacticResult::TooLarge;
     }
-    let _script = obligation.to_smtlib2_refutation(config.solver.clone());
-    SmtTacticResult::Unknown("no solver available".to_string())
+
+    // Build a fresh SmtContext with all declarations and the negated goal.
+    let mut ctx = SmtContext::new(config.solver.clone());
+    for (name, sort) in &obligation.declarations {
+        ctx.declare_const(name, sort.clone());
+    }
+    for hyp in &obligation.hypotheses {
+        ctx.assert(hyp.clone());
+    }
+    ctx.assert(smt_negate(obligation.goal.clone()));
+
+    match ctx.check_sat() {
+        SmtResult::Unsat => SmtTacticResult::Proved,
+        SmtResult::Sat => SmtTacticResult::CounterExample(SmtModel::new()),
+        SmtResult::Unknown => SmtTacticResult::Unknown("solver returned unknown".to_string()),
+        SmtResult::Error(e) => SmtTacticResult::Error(e),
+    }
 }
 /// Try to reduce a linear arithmetic goal to an SMT proof obligation.
 #[allow(dead_code)]
@@ -1285,5 +1305,63 @@ mod smt_ext_tests_3100 {
         let l = SmtExtConfigVal3100::List(vec!["a".to_string(), "b".to_string()]);
         assert_eq!(l.type_name(), "list");
         assert_eq!(l.as_list().map(|v| v.len()), Some(2));
+    }
+}
+#[cfg(test)]
+mod oxiz_integration_tests {
+    use super::*;
+    use crate::tactic::smt::*;
+
+    /// A simple sat query: declare an integer x and assert x > 0.
+    /// OxiZ should return Sat.
+    #[test]
+    fn smt_sat_simple() {
+        let mut ctx = SmtContext::new(SmtSolver::Z3);
+        ctx.declare_const("x", SmtSort::Int);
+        ctx.assert(SmtTerm::Gt(
+            Box::new(SmtTerm::Var("x".to_string(), SmtSort::Int)),
+            Box::new(SmtTerm::IntLit(0)),
+        ));
+        assert_eq!(ctx.check_sat(), SmtResult::Sat);
+    }
+
+    /// An unsatisfiable constraint: x > 0 AND x < 0 has no solution.
+    /// OxiZ should return Unsat.
+    #[test]
+    fn smt_unsat_contradiction() {
+        let mut ctx = SmtContext::new(SmtSolver::Z3);
+        ctx.declare_const("x", SmtSort::Int);
+        let x = SmtTerm::Var("x".to_string(), SmtSort::Int);
+        let zero = SmtTerm::IntLit(0);
+        ctx.assert(SmtTerm::And(vec![
+            SmtTerm::Gt(Box::new(x.clone()), Box::new(zero.clone())),
+            SmtTerm::Lt(Box::new(x), Box::new(zero)),
+        ]));
+        assert_eq!(ctx.check_sat(), SmtResult::Unsat);
+    }
+
+    /// UF reflexivity: (f x) = (f x) is always satisfiable.
+    /// This exercises the declare_fun extension on SmtContext.
+    #[test]
+    fn smt_sat_uf_reflexivity() {
+        let mut ctx = SmtContext::new(SmtSolver::Z3);
+        ctx.declare_const("x", SmtSort::Int);
+        ctx.declare_fun("f", vec![SmtSort::Int], SmtSort::Int);
+        let fx = SmtTerm::App(
+            "f".to_string(),
+            vec![SmtTerm::Var("x".to_string(), SmtSort::Int)],
+        );
+        ctx.assert(SmtTerm::Eq(Box::new(fx.clone()), Box::new(fx)));
+        assert_eq!(ctx.check_sat(), SmtResult::Sat);
+    }
+
+    /// Boolean contradiction: p AND (NOT p) is unsatisfiable.
+    #[test]
+    fn smt_unsat_boolean() {
+        let mut ctx = SmtContext::new(SmtSolver::Z3);
+        ctx.declare_const("p", SmtSort::Bool);
+        let p = SmtTerm::Var("p".to_string(), SmtSort::Bool);
+        ctx.assert(SmtTerm::And(vec![p.clone(), SmtTerm::Not(Box::new(p))]));
+        assert_eq!(ctx.check_sat(), SmtResult::Unsat);
     }
 }

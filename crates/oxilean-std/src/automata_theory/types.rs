@@ -14,7 +14,7 @@ pub struct WeightedAutomaton {
     pub num_states: usize,
     /// Alphabet.
     pub alphabet: Vec<char>,
-    /// Weighted transitions: wtrans[q][a] = list of (successor, weight).
+    /// Weighted transitions: wtrans\[q\]\[a\] = list of (successor, weight).
     pub wtrans: Vec<Vec<Vec<(usize, f64)>>>,
     /// Initial weight for each state (1.0 for initial, 0.0 otherwise).
     pub init_vec: Vec<f64>,
@@ -142,7 +142,7 @@ pub struct BuchiNba {
     pub num_states: usize,
     /// Alphabet symbols.
     pub alphabet: Vec<char>,
-    /// Transition relation: delta[q][a] = set of successor states.
+    /// Transition relation: delta\[q\]\[a\] = set of successor states.
     pub delta: Vec<Vec<BTreeSet<usize>>>,
     /// Initial state (single for simplicity; generalizes easily).
     pub init: usize,
@@ -553,7 +553,7 @@ pub struct WeightedAut {
     pub num_states: usize,
     /// Alphabet.
     pub alphabet: Vec<char>,
-    /// Transition weights: weights[q][a] = Vec<(successor, weight)>.
+    /// Transition weights: weights\[q\]\[a\] = `Vec<(successor, weight)>`.
     pub weights: Vec<Vec<Vec<(usize, i64)>>>,
     /// Initial weight vector.
     pub init_weights: Vec<i64>,
@@ -629,7 +629,7 @@ pub struct BuchiAutomatonSimulator {
     pub num_states: usize,
     /// Alphabet.
     pub alphabet: Vec<char>,
-    /// Transition relation: trans[q][a] = set of successor states.
+    /// Transition relation: trans\[q\]\[a\] = set of successor states.
     pub trans: Vec<Vec<BTreeSet<usize>>>,
     /// Set of initial states.
     pub initial_states: BTreeSet<usize>,

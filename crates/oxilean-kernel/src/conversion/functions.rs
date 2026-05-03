@@ -155,20 +155,10 @@ pub fn convertibility_score(e1: &Expr, e2: &Expr) -> f64 {
         | (Expr::Pi(_, _, ty1, b1), Expr::Pi(_, _, ty2, b2)) => {
             (convertibility_score(ty1, ty2) + convertibility_score(b1, b2)) / 2.0
         }
-        (Expr::Const(n1, _), Expr::Const(n2, _)) => {
-            if n1 == n2 {
-                0.9
-            } else {
-                0.0
-            }
-        }
-        (Expr::BVar(i1), Expr::BVar(i2)) => {
-            if i1 == i2 {
-                1.0
-            } else {
-                0.0
-            }
-        }
+        (Expr::Const(n1, _), Expr::Const(n2, _)) if n1 == n2 => 0.9,
+        (Expr::Const(_, _), Expr::Const(_, _)) => 0.0,
+        (Expr::BVar(i1), Expr::BVar(i2)) if i1 == i2 => 1.0,
+        (Expr::BVar(_), Expr::BVar(_)) => 0.0,
         (Expr::Sort(_), Expr::Sort(_)) => 0.8,
         _ => 0.0,
     }

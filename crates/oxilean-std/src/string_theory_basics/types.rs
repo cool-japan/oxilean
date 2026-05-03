@@ -236,7 +236,7 @@ impl VirasoroAlgebraExt {
         }
         prefactor * sum
     }
-    /// Central term in the commutator [L_m, L_{-m}] = 2m L_0 + c/12 m(m²-1).
+    /// Central term in the commutator \[L_m, L_{-m}\] = 2m L_0 + c/12 m(m²-1).
     pub fn central_term(&self, m: i64) -> f64 {
         self.central_charge / 12.0 * (m as f64) * ((m * m - 1) as f64)
     }
@@ -277,7 +277,7 @@ impl StringAction {
         self.worldsheet_dim == 2
     }
 }
-/// A 2D worldsheet represented as a flat rectangle [0, 2π] × [0, T].
+/// A 2D worldsheet represented as a flat rectangle \[0, 2π\] × \[0, T\].
 #[derive(Debug, Clone)]
 pub struct RectangularWorldsheet {
     /// Spatial extent (0 to sigma_length).
@@ -476,7 +476,7 @@ pub struct StringConfiguration {
     pub n_points: usize,
     /// Lattice spacing.
     pub d_sigma: f64,
-    /// Field values X^μ_i, stored as [n_points × dim] row-major.
+    /// Field values X^μ_i, stored as \[n_points × dim\] row-major.
     pub coords: Vec<f64>,
 }
 impl StringConfiguration {

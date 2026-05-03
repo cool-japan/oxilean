@@ -73,7 +73,7 @@ pub enum ManyValuedTruth {
     Both,
     /// Neither true nor false (gapped).
     Neither,
-    /// A numerical value in [0, 1] (fuzzy).
+    /// A numerical value in \[0, 1\] (fuzzy).
     Fuzzy(f64),
 }
 #[allow(dead_code)]

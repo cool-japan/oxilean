@@ -272,7 +272,7 @@ impl CompleteLatticeFinite {
 pub struct OrthoModularLattice {
     /// Underlying lattice.
     pub lat: FiniteLattice,
-    /// Orthocomplement table: ortho[i] = i⊥.
+    /// Orthocomplement table: ortho\[i\] = i⊥.
     pub ortho: Vec<usize>,
 }
 #[allow(dead_code)]
@@ -394,7 +394,7 @@ impl HeytingAlgebraFiniteTop {
 /// A finite lattice represented by its order relation matrix.
 pub struct FiniteLattice {
     pub size: usize,
-    /// `order[i][j]` is true iff element i ≤ element j.
+    /// `order\[i\]\[j\]` is true iff element i ≤ element j.
     pub order: Vec<Vec<bool>>,
 }
 impl FiniteLattice {
@@ -565,11 +565,11 @@ impl BitVectorBooleanAlgebra {
 pub struct ResidLattice {
     /// Underlying finite lattice.
     pub lat: FiniteLattice,
-    /// Product table: product_table[i][j] = i ⊗ j.
+    /// Product table: product_table\[i\]\[j\] = i ⊗ j.
     pub product_table: Vec<Vec<usize>>,
-    /// Left residual table: left_resid[i][j] = i \ j.
+    /// Left residual table: left_resid\[i\]\[j\] = i \ j.
     pub left_resid: Vec<Vec<usize>>,
-    /// Right residual table: right_resid[i][j] = i / j.
+    /// Right residual table: right_resid\[i\]\[j\] = i / j.
     pub right_resid: Vec<Vec<usize>>,
 }
 #[allow(dead_code)]
@@ -615,7 +615,7 @@ impl ResidLattice {
 pub struct PriestleySpace {
     /// Number of points.
     pub num_points: usize,
-    /// Order relation: order[i][j] = true iff i ≤ j.
+    /// Order relation: order\[i\]\[j\] = true iff i ≤ j.
     pub order: Vec<Vec<bool>>,
     /// Clopen upsets (each as a set of point indices).
     pub clopen_upsets: Vec<Vec<usize>>,
@@ -721,7 +721,7 @@ pub struct FormalContext {
     pub num_objects: usize,
     /// Number of attributes.
     pub num_attributes: usize,
-    /// Incidence relation: incidence[g][m] = true iff object g has attribute m.
+    /// Incidence relation: incidence\[g\]\[m\] = true iff object g has attribute m.
     pub incidence: Vec<Vec<bool>>,
 }
 #[allow(dead_code)]

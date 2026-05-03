@@ -709,7 +709,7 @@ pub struct SymplecticMatrix {
     pub dim: usize,
 }
 impl SymplecticMatrix {
-    /// Create the 2n×2n standard symplectic identity matrix J = [[0, Iₙ], [-Iₙ, 0]].
+    /// Create the 2n×2n standard symplectic identity matrix J = [\[0, Iₙ\], \[-Iₙ, 0\]].
     pub fn new(dim: usize) -> Self {
         let size = 2 * dim;
         let mut entries = vec![vec![0.0f64; size]; size];
@@ -780,7 +780,7 @@ impl LagrangianSubmanifold {
     }
     /// Returns `true` if L is a monotone Lagrangian submanifold.
     /// A Lagrangian is monotone when the Maslov class and the symplectic area class
-    /// are positively proportional: [ω] = τ·μ for some τ > 0.
+    /// are positively proportional: \[ω\] = τ·μ for some τ > 0.
     pub fn is_monotone(&self) -> bool {
         self.ambient.contains('R') || self.ambient.contains('C') || self.ambient.contains("Torus")
     }
@@ -1472,7 +1472,7 @@ impl DiophantineCondition {
         }
     }
     /// Check whether the frequency vector is Diophantine.
-    /// For a 2-vector [1, φ] with φ = golden ratio, this holds with γ = 1/√5.
+    /// For a 2-vector \[1, φ\] with φ = golden ratio, this holds with γ = 1/√5.
     pub fn is_diophantine(&self) -> bool {
         if self.frequencies.len() < 2 {
             return true;

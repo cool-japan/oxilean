@@ -107,7 +107,7 @@ pub fn sample_complexity_bound_ty() -> Expr {
         ),
     )
 }
-/// `RademacherComplexity`: R_n(H) = E_{σ,S}[sup_{h∈H} (1/n) Σ σ_i h(x_i)]
+/// `RademacherComplexity`: R_n(H) = E_{σ,S}\[sup_{h∈H} (1/n) Σ σ_i h(x_i)\]
 /// Type: Type → Nat → Real
 pub fn rademacher_complexity_ty() -> Expr {
     arrow(type0(), arrow(nat_ty(), real_ty()))
@@ -122,7 +122,7 @@ pub fn uniform_convergence_ty() -> Expr {
 pub fn double_rademacher_ty() -> Expr {
     arrow(type0(), arrow(nat_ty(), arrow(real_ty(), prop())))
 }
-/// `GaussianComplexity`: G_n(H) = E_{g,S}[sup_{h∈H} (1/n) Σ g_i h(x_i)]
+/// `GaussianComplexity`: G_n(H) = E_{g,S}\[sup_{h∈H} (1/n) Σ g_i h(x_i)\]
 /// Type: Type → Nat → Real
 pub fn gaussian_complexity_ty() -> Expr {
     arrow(type0(), arrow(nat_ty(), real_ty()))
@@ -240,7 +240,7 @@ pub fn ridge_regression_solution_ty() -> Expr {
         ),
     )
 }
-/// Bias-variance decomposition: E[(ŷ - y)²] = Bias²(ŷ) + Var(ŷ) + σ²
+/// Bias-variance decomposition: E\[(ŷ - y)²\] = Bias²(ŷ) + Var(ŷ) + σ²
 /// Type: Prop
 pub fn bias_variance_decomposition_ty() -> Expr {
     prop()
@@ -305,12 +305,12 @@ pub fn ml_mutual_information_ty() -> Expr {
 pub fn ml_kl_divergence_ty() -> Expr {
     arrow(list_ty(real_ty()), arrow(list_ty(real_ty()), real_ty()))
 }
-/// `FisherInformation`: I(θ) = E[(∂/∂θ log p(x;θ))²]
+/// `FisherInformation`: I(θ) = E\[(∂/∂θ log p(x;θ))²\]
 /// Type: (Real → Real) → Real → Real
 pub fn fisher_information_ty() -> Expr {
     arrow(arrow(real_ty(), real_ty()), arrow(real_ty(), real_ty()))
 }
-/// `ELBO`: evidence lower bound ℒ(q) = E_q[log p(x,z)] - E_q[log q(z)]
+/// `ELBO`: evidence lower bound ℒ(q) = E_q\[log p(x,z)\] - E_q\[log q(z)\]
 /// Type: (Real → Real) → (Real → Real) → Real
 pub fn elbo_ty() -> Expr {
     arrow(
@@ -703,7 +703,7 @@ pub fn dp_sample_complexity_ty() -> Expr {
 pub fn calibration_error_ty() -> Expr {
     arrow(list_ty(real_ty()), arrow(list_ty(real_ty()), real_ty()))
 }
-/// `ProperScoringRule`: S(f, y) is proper if E[S(f,Y)] maximized by true dist
+/// `ProperScoringRule`: S(f, y) is proper if E\[S(f,Y)\] maximized by true dist
 /// Type: (Real → Real) → Real → Real (forecast function, outcome → score)
 pub fn proper_scoring_rule_ty() -> Expr {
     arrow(arrow(real_ty(), real_ty()), arrow(real_ty(), real_ty()))

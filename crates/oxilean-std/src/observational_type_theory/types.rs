@@ -635,7 +635,7 @@ impl ProgramEquiv {
     }
     /// Contextual equivalence: equal in all program contexts.
     ///
-    /// `C[A] ≃ C[B]` for all contexts `C`.
+    /// `C\[A\] ≃ C\[B\]` for all contexts `C`.
     pub fn contextual_equivalence(&self) -> String {
         format!("ctx_equiv({}, {})", self.program_a, self.program_b)
     }

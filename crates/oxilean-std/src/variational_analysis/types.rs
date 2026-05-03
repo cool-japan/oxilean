@@ -727,7 +727,7 @@ impl MountainPassConfig {
 }
 /// A convex function with domain and lower-semicontinuity properties.
 pub struct ConvexFunction {
-    /// Domain description (e.g., "R^n", "[0,1]").
+    /// Domain description (e.g., "R^n", "\[0,1\]").
     pub domain: String,
     /// Whether the function is proper (not identically +∞, never -∞).
     pub is_proper: bool,
@@ -986,7 +986,7 @@ impl MetricRegularityChecker {
         true
     }
     /// Check whether a set of points satisfies a quasiconvexity condition:
-    /// f on the line segment [x,y] is ≤ max(f(x), f(y)) for sample points.
+    /// f on the line segment \[x,y\] is ≤ max(f(x), f(y)) for sample points.
     pub fn check_quasiconvex(
         f: impl Fn(&[f64]) -> f64,
         x: &[f64],

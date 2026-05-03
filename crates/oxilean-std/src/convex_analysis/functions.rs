@@ -1,1281 +1,905 @@
-//! Auto-generated module
-//!
-//! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
-
-use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
+//! Functions for convex analysis.
 
 use super::types::{
-    ADMMData, AdmmSolver, AlternatingProjectionSolver, ConvexCone, ConvexConjugate, ConvexFunction,
-    ConvexProblemClass, ConvexProgram, Epigraph, ExtragradientMethod, FenchelConjugate,
-    FenchelConjugateEvaluator, FenchelDualityPair, FunctionClass, Hyperplane, LagrangianDuality,
-    MirrorDescent, ProxConfig, ProximalOperator, ProximalOperatorNew, ProximalPointAlgorithm,
-    RecessionCone, SeparatingHyperplaneFinder, StepSchedule, Subdifferential, SubgradientMethod,
-    SublevelSet, VariationalInequality,
+    ConvexFunction, FunctionKind, OptimizationResult, ProjectionResult, SeparatingHyperplane,
+    SubgradientResult,
 };
 
-pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
-}
-pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
-    app(app(f, a), b)
-}
-pub fn app3(f: Expr, a: Expr, b: Expr, c: Expr) -> Expr {
-    app(app2(f, a, b), c)
-}
-pub fn cst(s: &str) -> Expr {
-    Expr::Const(Name::str(s), vec![])
-}
-pub fn prop() -> Expr {
-    Expr::Sort(Level::zero())
-}
-pub fn type0() -> Expr {
-    Expr::Sort(Level::succ(Level::zero()))
-}
-pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
-}
-pub fn arrow(a: Expr, b: Expr) -> Expr {
-    pi(BinderInfo::Default, "_", a, b)
-}
-pub fn bvar(n: u32) -> Expr {
-    Expr::BVar(n)
-}
-pub fn real_ty() -> Expr {
-    cst("Real")
-}
-pub fn nat_ty() -> Expr {
-    cst("Nat")
-}
-pub fn list_ty(elem: Expr) -> Expr {
-    app(cst("List"), elem)
-}
-pub fn bool_ty() -> Expr {
-    cst("Bool")
-}
-pub fn fn_ty(dom: Expr, cod: Expr) -> Expr {
-    arrow(dom, cod)
-}
-pub fn vec_ty() -> Expr {
-    list_ty(real_ty())
-}
-pub fn mat_ty() -> Expr {
-    list_ty(list_ty(real_ty()))
-}
-pub fn extended_real_ty() -> Expr {
-    cst("ExtendedReal")
-}
-/// `IsConvexSet : (List Real -> Prop) -> Prop`
-/// A set C ⊆ ℝ^n given as characteristic predicate is convex.
-pub fn is_convex_set_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), prop())
-}
-/// `IsConvexFunction : (List Real -> Real) -> Prop`
-/// f is convex: f(λx + (1-λ)y) ≤ λf(x) + (1-λ)f(y) for all λ ∈ [0,1].
-pub fn is_convex_function_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `IsStrictlyConvexFunction : (List Real -> Real) -> Prop`
-/// f is strictly convex: strict inequality for λ ∈ (0,1) and x ≠ y.
-pub fn is_strictly_convex_function_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `IsStronglyConvexFunction : (List Real -> Real) -> Real -> Prop`
-/// f is strongly convex with modulus m: f(λx+(1-λ)y) ≤ λf(x)+(1-λ)f(y) - (m/2)λ(1-λ)‖x-y‖².
-pub fn is_strongly_convex_function_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), arrow(real_ty(), prop()))
-}
-/// `Epigraph : (List Real -> Real) -> (List Real -> Prop)`
-/// epi(f) = {(x, t) | f(x) ≤ t}, encoded as a predicate on ℝ^{n+1}.
-pub fn epigraph_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), fn_ty(vec_ty(), prop()))
-}
-/// `LevelSet : (List Real -> Real) -> Real -> (List Real -> Prop)`
-/// lev_α(f) = {x | f(x) ≤ α}.
-pub fn level_set_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(real_ty(), fn_ty(vec_ty(), prop())),
-    )
-}
-/// `ClosureFunction : (List Real -> Real) -> (List Real -> Real)`
-/// cl(f): lower semi-continuous closure of f.
-pub fn closure_function_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), fn_ty(vec_ty(), real_ty()))
-}
-/// `IsLowerSemicontinuous : (List Real -> Real) -> Prop`
-/// f is lsc iff its epigraph is closed.
-pub fn is_lsc_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `IsProperConvex : (List Real -> Real) -> Prop`
-/// f is proper: never −∞ and not identically +∞.
-pub fn is_proper_convex_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `SupportingHyperplane : (List Real -> Prop) -> List Real -> Prop`
-/// At boundary point x₀ of convex set C, ∃ nonzero c with c·x ≤ c·x₀ for all x ∈ C.
-pub fn supporting_hyperplane_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), arrow(vec_ty(), prop()))
-}
-/// `SeparatingHyperplane : (List Real -> Prop) -> (List Real -> Prop) -> Prop`
-/// Two disjoint convex sets can be separated by a hyperplane.
-pub fn separating_hyperplane_ty() -> Expr {
-    let set_ty = fn_ty(vec_ty(), prop());
-    arrow(set_ty.clone(), arrow(set_ty, prop()))
-}
-/// `StrictSeparation : (List Real -> Prop) -> (List Real -> Prop) -> Prop`
-/// Compact convex C and closed convex D, disjoint, can be strictly separated.
-pub fn strict_separation_ty() -> Expr {
-    let set_ty = fn_ty(vec_ty(), prop());
-    arrow(set_ty.clone(), arrow(set_ty, prop()))
-}
-/// `SupportFunction : (List Real -> Prop) -> List Real -> Real`
-/// σ_C(y) = sup_{x ∈ C} ⟨y, x⟩.
-pub fn support_function_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), fn_ty(vec_ty(), real_ty()))
-}
-/// `GaugeFunction : (List Real -> Prop) -> List Real -> Real`
-/// γ_C(x) = inf{t ≥ 0 | x ∈ t·C}.
-pub fn gauge_function_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), fn_ty(vec_ty(), real_ty()))
-}
-/// `FenchelConjugate : (List Real -> Real) -> (List Real -> Real)`
-/// f*(y) = sup_x {⟨y,x⟩ − f(x)}.
-pub fn fenchel_conjugate_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(rn_r.clone(), rn_r)
-}
-/// `Biconjugate : (List Real -> Real) -> (List Real -> Real)`
-/// f** = cl(conv(f)): the lsc convex hull of f.
-pub fn biconjugate_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(rn_r.clone(), rn_r)
-}
-/// `FenchelYoungInequality : (List Real -> Real) -> Prop`
-/// For any f and its conjugate f*: ⟨x, y⟩ ≤ f(x) + f*(y).
-pub fn fenchel_young_inequality_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `FenchelYoungEquality : (List Real -> Real) -> Prop`
-/// ⟨x, y⟩ = f(x) + f*(y) iff y ∈ ∂f(x) (subgradient condition).
-pub fn fenchel_young_equality_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `LegendreFenchelTransform : (List Real -> Real) -> (List Real -> Real)`
-/// Alias for FenchelConjugate for convex lsc functions.
-pub fn legendre_fenchel_transform_ty() -> Expr {
-    fenchel_conjugate_ty()
-}
-/// `ConjugateOfSum : Prop`
-/// (f + g)*(y) = (f* □ g*)(y) where □ is inf-convolution (under qualification).
-pub fn conjugate_of_sum_ty() -> Expr {
-    prop()
-}
-/// `MorozovIdentity : (List Real -> Real) -> Prop`
-/// Moreau decomposition: prox_f(x) + prox_{f*}(x) = x.
-pub fn moreau_identity_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `Subgradient : (List Real -> Real) -> List Real -> List Real -> Prop`
-/// g ∈ ∂f(x) iff f(y) ≥ f(x) + ⟨g, y - x⟩ for all y.
-pub fn subgradient_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(vec_ty(), arrow(vec_ty(), prop())),
-    )
-}
-/// `Subdifferential : (List Real -> Real) -> List Real -> (List Real -> Prop)`
-/// ∂f(x) = {g | g is a subgradient of f at x}.
-pub fn subdifferential_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(vec_ty(), fn_ty(vec_ty(), prop())),
-    )
-}
-/// `NormalCone : (List Real -> Prop) -> List Real -> (List Real -> Prop)`
-/// N_C(x) = {v | ⟨v, y-x⟩ ≤ 0 for all y ∈ C}.
-pub fn normal_cone_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), prop()),
-        arrow(vec_ty(), fn_ty(vec_ty(), prop())),
-    )
-}
-/// `TangentCone : (List Real -> Prop) -> List Real -> (List Real -> Prop)`
-/// T_C(x) = cl({d | ∃ t_k ↘ 0, x + t_k d ∈ C}).
-pub fn tangent_cone_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), prop()),
-        arrow(vec_ty(), fn_ty(vec_ty(), prop())),
-    )
-}
-/// `OptimalityConditionConvex : (List Real -> Real) -> (List Real -> Prop) -> Prop`
-/// x* minimizes f over C iff 0 ∈ ∂f(x*) + N_C(x*).
-pub fn optimality_condition_convex_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(fn_ty(vec_ty(), prop()), prop()),
-    )
-}
-/// `SubdiffOfSum : Prop`
-/// Under constraint qualification: ∂(f+g)(x) ⊇ ∂f(x) + ∂g(x) (Moreau-Rockafellar).
-pub fn subdiff_of_sum_ty() -> Expr {
-    prop()
-}
-/// `SubdiffOfComposition : Prop`
-/// Chain rule for subdifferentials of composed convex functions.
-pub fn subdiff_of_composition_ty() -> Expr {
-    prop()
-}
-/// `RecessionCone : (List Real -> Prop) -> (List Real -> Prop)`
-/// rec(C) = {d | x + td ∈ C for all t ≥ 0, for some x ∈ C}.
-pub fn recession_cone_ty() -> Expr {
-    let set_ty = fn_ty(vec_ty(), prop());
-    arrow(set_ty.clone(), set_ty)
-}
-/// `RecessionFunction : (List Real -> Real) -> (List Real -> Real)`
-/// rec(f)(d) = lim_{t→∞} f(x + td)/t (horizon function of f).
-pub fn recession_function_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(rn_r.clone(), rn_r)
-}
-/// `IsCoercive : (List Real -> Real) -> Prop`
-/// f is coercive: f(x) → +∞ as ‖x‖ → ∞.
-pub fn is_coercive_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `IsLevelBounded : (List Real -> Real) -> Prop`
-/// All level sets {x | f(x) ≤ α} are bounded.
-pub fn is_level_bounded_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `ExistenceOfMinimum : (List Real -> Real) -> (List Real -> Prop) -> Prop`
-/// Weierstrass theorem: lsc proper coercive f on closed set has a minimizer.
-pub fn existence_of_minimum_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(fn_ty(vec_ty(), prop()), prop()),
-    )
-}
-/// `ProximalOperator : (List Real -> Real) -> Real -> List Real -> List Real`
-/// prox_{λf}(v) = argmin_x {f(x) + (1/2λ)‖x-v‖²}.
-pub fn proximal_operator_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(real_ty(), fn_ty(vec_ty(), vec_ty())),
-    )
-}
-/// `MoreauEnvelope : (List Real -> Real) -> Real -> List Real -> Real`
-/// e_{λf}(x) = inf_y {f(y) + (1/2λ)‖x-y‖²}.
-pub fn moreau_envelope_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(real_ty(), fn_ty(vec_ty(), real_ty())),
-    )
-}
-/// `InfConvolution : (List Real -> Real) -> (List Real -> Real) -> List Real -> Real`
-/// (f □ g)(x) = inf_{y} {f(y) + g(x - y)}.
-pub fn inf_convolution_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(rn_r.clone(), arrow(rn_r, fn_ty(vec_ty(), real_ty())))
-}
-/// `ProxFirmlyNonexpansive : (List Real -> Real) -> Prop`
-/// prox_{λf} is firmly nonexpansive: ‖prox x - prox y‖² ≤ ⟨prox x - prox y, x - y⟩.
-pub fn prox_firmly_nonexpansive_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `MoreauEnvelopeSmooth : (List Real -> Real) -> Prop`
-/// e_{λf} is 1/λ-smooth and ∇e_{λf}(x) = (1/λ)(x - prox_{λf}(x)).
-pub fn moreau_envelope_smooth_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `MoreauEnvelopeConvergence : (List Real -> Real) -> Prop`
-/// e_{λf}(x) ↗ f(x) as λ ↘ 0 (pointwise approximation).
-pub fn moreau_envelope_convergence_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `BregmanDivergence : (List Real -> Real) -> List Real -> List Real -> Real`
-/// D_f(x, y) = f(x) - f(y) - ⟨∇f(y), x - y⟩ for differentiable f.
-pub fn bregman_divergence_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        fn_ty(vec_ty(), fn_ty(vec_ty(), real_ty())),
-    )
-}
-/// `BregmanProjection : (List Real -> Real) -> (List Real -> Prop) -> List Real -> List Real`
-/// argmin_{y ∈ C} D_f(y, x) — Bregman projection of x onto C.
-pub fn bregman_projection_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(fn_ty(vec_ty(), prop()), fn_ty(vec_ty(), vec_ty())),
-    )
-}
-/// `BregmanThreePointIdentity : (List Real -> Real) -> Prop`
-/// D_f(x, z) = D_f(x, y) + D_f(y, z) + ⟨∇f(y) - ∇f(z), x - y⟩.
-pub fn bregman_three_point_identity_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `MirrorDescentStep : (List Real -> Real) -> (List Real -> Real) -> Real -> List Real -> List Real`
-/// Mirror descent update: x_{k+1} = argmin_{y} {⟨g_k, y⟩ + (1/η) D_f(y, x_k)}.
-pub fn mirror_descent_step_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(
-        rn_r.clone(),
-        arrow(rn_r, arrow(real_ty(), fn_ty(vec_ty(), vec_ty()))),
-    )
-}
-/// `ExtremePoint : (List Real -> Prop) -> List Real -> Prop`
-/// x is an extreme point of C: x ∉ (y, z) strictly for any y, z ∈ C with y ≠ z.
-pub fn extreme_point_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), arrow(vec_ty(), prop()))
-}
-/// `CaratheodoryTheorem : (List Real -> Prop) -> Nat -> Prop`
-/// Every point in conv(C) ⊆ ℝ^n can be written as a convex combination of ≤ n+1 points of C.
-pub fn caratheodory_theorem_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), arrow(nat_ty(), prop()))
-}
-/// `KreinMilmanTheorem : (List Real -> Prop) -> Prop`
-/// Every compact convex set is the closed convex hull of its extreme points.
-pub fn krein_milman_theorem_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), prop())
-}
-/// `ConvexHull : (List Real -> Prop) -> (List Real -> Prop)`
-/// conv(C) = smallest convex set containing C.
-pub fn convex_hull_ty() -> Expr {
-    let set_ty = fn_ty(vec_ty(), prop());
-    arrow(set_ty.clone(), set_ty)
-}
-/// `ClosedConvexHull : (List Real -> Prop) -> (List Real -> Prop)`
-/// cl(conv(C)).
-pub fn closed_convex_hull_ty() -> Expr {
-    let set_ty = fn_ty(vec_ty(), prop());
-    arrow(set_ty.clone(), set_ty)
-}
-/// `FarkasLemma : Prop`
-/// Ax = b, x ≥ 0 has a solution iff for all y with A^Ty ≥ 0 we have b^Ty ≥ 0.
-pub fn farkas_lemma_ty() -> Expr {
-    prop()
-}
-/// `FarkasLemmaMatrix : (List (List Real)) -> List Real -> Prop`
-/// Farkas lemma parameterised by matrix A and vector b.
-pub fn farkas_lemma_matrix_ty() -> Expr {
-    arrow(mat_ty(), arrow(vec_ty(), prop()))
-}
-/// `GordonAlternative : (List (List Real)) -> Prop`
-/// Gordon's theorem: either ∃x, Ax < 0 or ∃y ≥ 0, y ≠ 0, A^Ty = 0, but not both.
-pub fn gordon_alternative_ty() -> Expr {
-    arrow(mat_ty(), prop())
-}
-/// `TuckerAlternative : (List (List Real)) -> Prop`
-/// Tucker's theorem of the alternative for linear inequalities.
-pub fn tucker_alternative_ty() -> Expr {
-    arrow(mat_ty(), prop())
-}
-/// `StiemkePosanAlternative : Prop`
-/// Stiemke/Positivstellensatz alternative for polynomial systems.
-pub fn stiemke_alternative_ty() -> Expr {
-    prop()
-}
-/// `IsLipschitzGradient : (List Real -> Real) -> Real -> Prop`
-/// ‖∇f(x) - ∇f(y)‖ ≤ L‖x-y‖ for all x, y.
-pub fn is_lipschitz_gradient_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), arrow(real_ty(), prop()))
-}
-/// `StrongConvexityQuadraticBound : (List Real -> Real) -> Real -> Prop`
-/// f(y) ≥ f(x) + ⟨∇f(x), y-x⟩ + (m/2)‖y-x‖² for all x, y.
-pub fn strong_convexity_quadratic_bound_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), arrow(real_ty(), prop()))
-}
-/// `IsSmooth : (List Real -> Real) -> Real -> Prop`
-/// f is L-smooth: has L-Lipschitz gradient.
-pub fn is_smooth_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), arrow(real_ty(), prop()))
-}
-/// `DescentLemma : (List Real -> Real) -> Real -> Prop`
-/// f(y) ≤ f(x) + ⟨∇f(x), y-x⟩ + (L/2)‖y-x‖² (upper quadratic bound for L-smooth f).
-pub fn descent_lemma_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), arrow(real_ty(), prop()))
-}
-/// `ConvergenceRateGradient : (List Real -> Real) -> Real -> Prop`
-/// Gradient descent on L-smooth convex f converges at rate O(1/k).
-pub fn convergence_rate_gradient_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), arrow(real_ty(), prop()))
-}
-/// `LinearConvergenceStrongConvex : (List Real -> Real) -> Real -> Real -> Prop`
-/// Gradient descent on m-strongly convex L-smooth f converges at linear rate (1 - m/L)^k.
-pub fn linear_convergence_strong_convex_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(real_ty(), arrow(real_ty(), prop())),
-    )
-}
-/// `IsBarrierFunction : (List Real -> Prop) -> (List Real -> Real) -> Prop`
-/// B is a barrier for C: B(x) → +∞ as x approaches the boundary of C.
-pub fn is_barrier_function_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), prop()),
-        arrow(fn_ty(vec_ty(), real_ty()), prop()),
-    )
-}
-/// `IsSelfConcordant : (List Real -> Real) -> Prop`
-/// f is self-concordant: |∇³f(x)[d,d,d]| ≤ 2(∇²f(x)[d,d])^(3/2) for all d.
-pub fn is_self_concordant_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `LogBarrier : (List Real -> Prop) -> (List Real -> Real)`
-/// B(x) = -∑ log(constraints(x)) — standard log barrier for a polytope.
-pub fn log_barrier_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), fn_ty(vec_ty(), real_ty()))
-}
-/// `CentralPath : (List Real -> Real) -> (List Real -> Prop) -> Real -> (List Real -> Prop)`
-/// x*(t) = argmin_x { t * f(x) + B(x) } — central path parameterised by t.
-pub fn central_path_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(
-            fn_ty(vec_ty(), prop()),
-            arrow(real_ty(), fn_ty(vec_ty(), prop())),
-        ),
-    )
-}
-/// `InteriorPointConvergence : (List Real -> Real) -> (List Real -> Prop) -> Prop`
-/// Central path converges to a solution as t → ∞.
-pub fn interior_point_convergence_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(fn_ty(vec_ty(), prop()), prop()),
-    )
-}
-/// `IsSOCConstraint : List Real -> Real -> Prop`
-/// ‖Ax + b‖ ≤ c^T x + d — second-order cone (Lorentz cone) constraint.
-pub fn is_soc_constraint_ty() -> Expr {
-    arrow(vec_ty(), arrow(real_ty(), prop()))
-}
-/// `LorentzCone : Nat -> (List Real -> Prop)`
-/// K_n = {(x, t) ∈ ℝ^{n+1} | ‖x‖ ≤ t}.
-pub fn lorentz_cone_ty() -> Expr {
-    arrow(nat_ty(), fn_ty(vec_ty(), prop()))
-}
-/// `PositiveSemidefiniteCone : Nat -> (List (List Real) -> Prop)`
-/// PSD cone: S_n^+ = {X ∈ S_n | X ⪰ 0}.
-pub fn psd_cone_ty() -> Expr {
-    arrow(nat_ty(), fn_ty(mat_ty(), prop()))
-}
-/// `SOCPDuality : Prop`
-/// Strong duality for second-order cone programming under Slater's condition.
-pub fn socp_duality_ty() -> Expr {
-    prop()
-}
-/// `SDPDuality : Prop`
-/// Strong duality for semidefinite programming under Slater's condition.
-pub fn sdp_duality_ty() -> Expr {
-    prop()
-}
-/// `LagrangianFunction : (List Real -> Real) -> (List (List Real -> Real)) -> List Real -> List Real -> Real`
-/// L(x, λ) = f(x) + ∑_i λ_i g_i(x) — Lagrangian of the primal problem.
-pub fn lagrangian_function_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(
-        rn_r.clone(),
-        arrow(list_ty(rn_r), fn_ty(vec_ty(), fn_ty(vec_ty(), real_ty()))),
-    )
-}
-/// `DualFunction : (List Real -> Real) -> (List (List Real -> Real)) -> List Real -> Real`
-/// q(λ) = inf_x L(x, λ) — Lagrange dual function (always concave).
-pub fn dual_function_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(
-        rn_r.clone(),
-        arrow(list_ty(rn_r), fn_ty(vec_ty(), real_ty())),
-    )
-}
-/// `WeakDuality : Prop`
-/// Weak duality: d* = sup_λ q(λ) ≤ p* = inf_x f(x).
-pub fn weak_duality_ty() -> Expr {
-    prop()
-}
-/// `StrongDuality : (List Real -> Real) -> (List (List Real -> Real)) -> Prop`
-/// Strong duality: d* = p* (under constraint qualification like Slater's).
-pub fn strong_duality_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(rn_r.clone(), arrow(list_ty(rn_r), prop()))
-}
-/// `SlaterCondition : (List (List Real -> Real)) -> (List Real -> Prop) -> Prop`
-/// ∃ x ∈ int(D) with g_i(x) < 0 for all i (strict feasibility).
-pub fn slater_condition_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(list_ty(rn_r), arrow(fn_ty(vec_ty(), prop()), prop()))
-}
-/// `KKTConditions : (List Real -> Real) -> (List (List Real -> Real)) -> List Real -> List Real -> Prop`
-/// KKT conditions: stationarity, primal feasibility, dual feasibility, complementary slackness.
-pub fn kkt_conditions_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(
-        rn_r.clone(),
-        arrow(list_ty(rn_r), arrow(vec_ty(), arrow(vec_ty(), prop()))),
-    )
-}
-/// `KKTSufficiency : (List Real -> Real) -> (List (List Real -> Real)) -> Prop`
-/// For convex problems, KKT conditions are sufficient for global optimality.
-pub fn kkt_sufficiency_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(rn_r.clone(), arrow(list_ty(rn_r), prop()))
-}
-/// `DualityGap : (List Real -> Real) -> (List (List Real -> Real)) -> Real`
-/// Gap = p* - d* ≥ 0.
-pub fn duality_gap_ty() -> Expr {
-    let rn_r = fn_ty(vec_ty(), real_ty());
-    arrow(rn_r.clone(), arrow(list_ty(rn_r), real_ty()))
-}
-/// `FenchelRockafellarDuality : Prop`
-/// inf_x { f(Ax) + g(x) } = - inf_y { f*(y) + g*(-A^T y) } under regularity.
-pub fn fenchel_rockafellar_duality_ty() -> Expr {
-    prop()
-}
-/// `ClarkeSubdifferential : (List Real -> Real) -> List Real -> (List Real -> Prop)`
-/// ∂^C f(x) = conv { lim ∇f(x_k) | x_k → x, x_k ∉ null set }.
-pub fn clarke_subdifferential_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(vec_ty(), fn_ty(vec_ty(), prop())),
-    )
-}
-/// `ClarkeGeneralisedGradient : (List Real -> Real) -> List Real -> List Real -> Prop`
-/// v ∈ ∂^C f(x): the Clarke generalised directional derivative condition.
-pub fn clarke_generalised_gradient_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), real_ty()),
-        arrow(vec_ty(), arrow(vec_ty(), prop())),
-    )
-}
-/// `IsRegularFunction : (List Real -> Real) -> Prop`
-/// f is Clarke-regular: directional derivative equals Clarke directional derivative.
-pub fn is_regular_function_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), real_ty()), prop())
-}
-/// `NonSmoothChainRule : Prop`
-/// Clarke chain rule: ∂^C(f ∘ g)(x) ⊆ ∂^C f(g(x)) ∘ ∂^C g(x) (in appropriate sense).
-pub fn nonsmooth_chain_rule_ty() -> Expr {
-    prop()
-}
-/// `IsMonotoneOperator : (List Real -> List Real -> Prop) -> Prop`
-/// T is monotone: ⟨Tx - Ty, x - y⟩ ≥ 0 for all x, y.
-pub fn is_monotone_operator_ty() -> Expr {
-    let set_rel = fn_ty(vec_ty(), fn_ty(vec_ty(), prop()));
-    arrow(set_rel, prop())
-}
-/// `IsMaximalMonotone : (List Real -> List Real -> Prop) -> Prop`
-/// T is maximal monotone: no proper monotone extension exists.
-pub fn is_maximal_monotone_ty() -> Expr {
-    let set_rel = fn_ty(vec_ty(), fn_ty(vec_ty(), prop()));
-    arrow(set_rel, prop())
-}
-/// `Resolvent : (List Real -> List Real -> Prop) -> Real -> (List Real -> List Real)`
-/// J_{λT} = (I + λT)^{-1} — resolvent operator of T with parameter λ.
-pub fn resolvent_ty() -> Expr {
-    let set_rel = fn_ty(vec_ty(), fn_ty(vec_ty(), prop()));
-    arrow(set_rel, arrow(real_ty(), fn_ty(vec_ty(), vec_ty())))
-}
-/// `YosidaApproximation : (List Real -> List Real -> Prop) -> Real -> (List Real -> List Real)`
-/// T_λ = (1/λ)(I - J_{λT}) — Yosida approximation (Lipschitz, monotone).
-pub fn yosida_approximation_ty() -> Expr {
-    let set_rel = fn_ty(vec_ty(), fn_ty(vec_ty(), prop()));
-    arrow(set_rel, arrow(real_ty(), fn_ty(vec_ty(), vec_ty())))
-}
-/// `BrouwerFixedPoint : (List Real -> List Real) -> (List Real -> Prop) -> Prop`
-/// Every continuous function f : C → C on a compact convex set has a fixed point.
-pub fn brouwer_fixed_point_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), vec_ty()),
-        arrow(fn_ty(vec_ty(), prop()), prop()),
-    )
-}
-/// `SchauderFixedPoint : (List Real -> List Real) -> (List Real -> Prop) -> Prop`
-/// Infinite-dimensional generalisation: compact continuous map on convex compact set.
-pub fn schauder_fixed_point_ty() -> Expr {
-    arrow(
-        fn_ty(vec_ty(), vec_ty()),
-        arrow(fn_ty(vec_ty(), prop()), prop()),
-    )
-}
-/// `MinimaxTheorem : (List Real -> List Real -> Real) -> (List Real -> Prop) -> (List Real -> Prop) -> Prop`
-/// Rockafellar minimax: min_x max_y f(x,y) = max_y min_x f(x,y) under convex-concave.
-pub fn minimax_theorem_ty() -> Expr {
-    let bilinear = fn_ty(vec_ty(), fn_ty(vec_ty(), real_ty()));
-    let set_ty = fn_ty(vec_ty(), prop());
-    arrow(bilinear, arrow(set_ty.clone(), arrow(set_ty, prop())))
-}
-/// `OperatorSplitting : Prop`
-/// Douglas-Rachford / ADMM splitting convergence for sum of maximal monotone operators.
-pub fn operator_splitting_ty() -> Expr {
-    prop()
-}
-/// `ProjectionOperator : (List Real -> Prop) -> List Real -> List Real`
-/// proj_C(x) = argmin_{y ∈ C} ‖y - x‖.
-pub fn projection_operator_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), prop()), fn_ty(vec_ty(), vec_ty()))
-}
-/// `IsNonexpansive : (List Real -> List Real) -> Prop`
-/// ‖Tx - Ty‖ ≤ ‖x - y‖ for all x, y.
-pub fn is_nonexpansive_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), vec_ty()), prop())
-}
-/// `IsFirmlyNonexpansive : (List Real -> List Real) -> Prop`
-/// ‖Tx - Ty‖² ≤ ⟨Tx - Ty, x - y⟩ for all x, y.
-pub fn is_firmly_nonexpansive_ty() -> Expr {
-    arrow(fn_ty(vec_ty(), vec_ty()), prop())
-}
-/// `AlternatingProjectionConvergence : (List Real -> Prop) -> (List Real -> Prop) -> Prop`
-/// von Neumann / Bregman: alternating projections converge to a point in C ∩ D.
-pub fn alternating_projection_convergence_ty() -> Expr {
-    let set_ty = fn_ty(vec_ty(), prop());
-    arrow(set_ty.clone(), arrow(set_ty, prop()))
-}
-/// Build an [`Environment`] containing convex analysis axioms and theorems.
-pub fn build_convex_analysis_env() -> Environment {
-    let mut env = Environment::new();
-    let axioms: &[(&str, Expr)] = &[
-        ("IsConvexSet", is_convex_set_ty()),
-        ("IsConvexFunction", is_convex_function_ty()),
-        ("IsStrictlyConvexFunction", is_strictly_convex_function_ty()),
-        ("IsStronglyConvexFunction", is_strongly_convex_function_ty()),
-        ("Epigraph", epigraph_ty()),
-        ("LevelSet", level_set_ty()),
-        ("ClosureFunction", closure_function_ty()),
-        ("IsLowerSemicontinuous", is_lsc_ty()),
-        ("IsProperConvex", is_proper_convex_ty()),
-        ("SupportingHyperplane", supporting_hyperplane_ty()),
-        ("SeparatingHyperplane", separating_hyperplane_ty()),
-        ("StrictSeparation", strict_separation_ty()),
-        ("SupportFunction", support_function_ty()),
-        ("GaugeFunction", gauge_function_ty()),
-        ("FenchelConjugate", fenchel_conjugate_ty()),
-        ("Biconjugate", biconjugate_ty()),
-        ("FenchelYoungInequality", fenchel_young_inequality_ty()),
-        ("FenchelYoungEquality", fenchel_young_equality_ty()),
-        ("LegendreFenchelTransform", legendre_fenchel_transform_ty()),
-        ("ConjugateOfSum", conjugate_of_sum_ty()),
-        ("MoreauIdentity", moreau_identity_ty()),
-        ("Subgradient", subgradient_ty()),
-        ("Subdifferential", subdifferential_ty()),
-        ("NormalCone", normal_cone_ty()),
-        ("TangentCone", tangent_cone_ty()),
-        (
-            "OptimalityConditionConvex",
-            optimality_condition_convex_ty(),
-        ),
-        ("SubdiffOfSum", subdiff_of_sum_ty()),
-        ("SubdiffOfComposition", subdiff_of_composition_ty()),
-        ("RecessionCone", recession_cone_ty()),
-        ("RecessionFunction", recession_function_ty()),
-        ("IsCoercive", is_coercive_ty()),
-        ("IsLevelBounded", is_level_bounded_ty()),
-        ("ExistenceOfMinimum", existence_of_minimum_ty()),
-        ("ProximalOperator", proximal_operator_ty()),
-        ("MoreauEnvelope", moreau_envelope_ty()),
-        ("InfConvolution", inf_convolution_ty()),
-        ("ProxFirmlyNonexpansive", prox_firmly_nonexpansive_ty()),
-        ("MoreauEnvelopeSmooth", moreau_envelope_smooth_ty()),
-        (
-            "MoreauEnvelopeConvergence",
-            moreau_envelope_convergence_ty(),
-        ),
-        ("BregmanDivergence", bregman_divergence_ty()),
-        ("BregmanProjection", bregman_projection_ty()),
-        (
-            "BregmanThreePointIdentity",
-            bregman_three_point_identity_ty(),
-        ),
-        ("MirrorDescentStep", mirror_descent_step_ty()),
-        ("ExtremePoint", extreme_point_ty()),
-        ("CaratheodoryTheorem", caratheodory_theorem_ty()),
-        ("KreinMilmanTheorem", krein_milman_theorem_ty()),
-        ("ConvexHull", convex_hull_ty()),
-        ("ClosedConvexHull", closed_convex_hull_ty()),
-        ("FarkasLemma", farkas_lemma_ty()),
-        ("FarkasLemmaMatrix", farkas_lemma_matrix_ty()),
-        ("GordonAlternative", gordon_alternative_ty()),
-        ("TuckerAlternative", tucker_alternative_ty()),
-        ("StiemkeAlternative", stiemke_alternative_ty()),
-        ("IsLipschitzGradient", is_lipschitz_gradient_ty()),
-        (
-            "StrongConvexityQuadraticBound",
-            strong_convexity_quadratic_bound_ty(),
-        ),
-        ("IsSmooth", is_smooth_ty()),
-        ("DescentLemma", descent_lemma_ty()),
-        ("ConvergenceRateGradient", convergence_rate_gradient_ty()),
-        (
-            "LinearConvergenceStrongConvex",
-            linear_convergence_strong_convex_ty(),
-        ),
-        ("IsBarrierFunction", is_barrier_function_ty()),
-        ("IsSelfConcordant", is_self_concordant_ty()),
-        ("LogBarrier", log_barrier_ty()),
-        ("CentralPath", central_path_ty()),
-        ("InteriorPointConvergence", interior_point_convergence_ty()),
-        ("IsSOCConstraint", is_soc_constraint_ty()),
-        ("LorentzCone", lorentz_cone_ty()),
-        ("PositiveSemidefiniteCone", psd_cone_ty()),
-        ("SOCPDuality", socp_duality_ty()),
-        ("SDPDuality", sdp_duality_ty()),
-        ("LagrangianFunction", lagrangian_function_ty()),
-        ("DualFunction", dual_function_ty()),
-        ("WeakDuality", weak_duality_ty()),
-        ("StrongDuality", strong_duality_ty()),
-        ("SlaterCondition", slater_condition_ty()),
-        ("KKTConditions", kkt_conditions_ty()),
-        ("KKTSufficiency", kkt_sufficiency_ty()),
-        ("DualityGap", duality_gap_ty()),
-        (
-            "FenchelRockafellarDuality",
-            fenchel_rockafellar_duality_ty(),
-        ),
-        ("ClarkeSubdifferential", clarke_subdifferential_ty()),
-        (
-            "ClarkeGeneralisedGradient",
-            clarke_generalised_gradient_ty(),
-        ),
-        ("IsRegularFunction", is_regular_function_ty()),
-        ("NonSmoothChainRule", nonsmooth_chain_rule_ty()),
-        ("IsMonotoneOperator", is_monotone_operator_ty()),
-        ("IsMaximalMonotone", is_maximal_monotone_ty()),
-        ("Resolvent", resolvent_ty()),
-        ("YosidaApproximation", yosida_approximation_ty()),
-        ("BrouwerFixedPoint", brouwer_fixed_point_ty()),
-        ("SchauderFixedPoint", schauder_fixed_point_ty()),
-        ("MinimaxTheorem", minimax_theorem_ty()),
-        ("OperatorSplitting", operator_splitting_ty()),
-        ("ProjectionOperator", projection_operator_ty()),
-        ("IsNonexpansive", is_nonexpansive_ty()),
-        ("IsFirmlyNonexpansive", is_firmly_nonexpansive_ty()),
-        (
-            "AlternatingProjectionConvergence",
-            alternating_projection_convergence_ty(),
-        ),
-    ];
-    for (name, ty) in axioms {
-        let decl = Declaration::Axiom {
-            name: Name::str(*name),
-            univ_params: vec![],
-            ty: ty.clone(),
-        };
-        let _ = env.add(decl);
+// ── Internal helpers ─────────────────────────────────────────────────────────
+
+/// Dot product of two slices.
+fn dot(a: &[f64], b: &[f64]) -> f64 {
+    a.iter().zip(b.iter()).map(|(x, y)| x * y).sum()
+}
+
+/// Euclidean norm of a slice.
+fn norm2(v: &[f64]) -> f64 {
+    v.iter().map(|x| x * x).sum::<f64>().sqrt()
+}
+
+/// Matrix–vector product  w = M * v  where M is n×n.
+fn mat_vec(m: &[Vec<f64>], v: &[f64]) -> Vec<f64> {
+    m.iter()
+        .map(|row| row.iter().zip(v.iter()).map(|(a, b)| a * b).sum())
+        .collect()
+}
+
+// ── Convex combination test ───────────────────────────────────────────────────
+
+/// Check whether `target` is a convex combination of `points` with given `weights`.
+///
+/// Requirements: `weights.len() == points.len()`, all weights >= 0 and sum to 1.
+/// Returns `false` if dimensions mismatch or weights do not form a valid distribution.
+pub fn is_convex_combination(points: &[Vec<f64>], weights: &[f64], target: &[f64]) -> bool {
+    if points.is_empty() || weights.len() != points.len() {
+        return false;
     }
-    env
-}
-/// Computes a subgradient of a convex function at a given point via finite differences.
-pub fn compute_subgradient(f: &ConvexFunction, x: &[f64]) -> Vec<f64> {
-    f.gradient(x)
-}
-/// Checks the subgradient inequality: f(y) ≥ f(x) + ⟨g, y-x⟩.
-pub fn check_subgradient_inequality(f: &ConvexFunction, x: &[f64], g: &[f64], y: &[f64]) -> bool {
-    let fx = f.eval(x);
-    let fy = f.eval(y);
-    let inner: f64 = g
+    // Weights must be non-negative and sum to ~1.
+    let weight_sum: f64 = weights.iter().sum();
+    if (weight_sum - 1.0).abs() > 1e-9 {
+        return false;
+    }
+    if weights.iter().any(|&w| w < -1e-12) {
+        return false;
+    }
+    let dim = target.len();
+    if points.iter().any(|p| p.len() != dim) {
+        return false;
+    }
+    // Compute combination.
+    let mut combo = vec![0.0f64; dim];
+    for (p, &w) in points.iter().zip(weights.iter()) {
+        for (c, pi) in combo.iter_mut().zip(p.iter()) {
+            *c += w * pi;
+        }
+    }
+    let diff: f64 = combo
         .iter()
-        .zip(y.iter().zip(x.iter()))
-        .map(|(gi, (yi, xi))| gi * (yi - xi))
-        .sum();
-    fy >= fx + inner - 1e-9
+        .zip(target.iter())
+        .map(|(c, t)| (c - t) * (c - t))
+        .sum::<f64>()
+        .sqrt();
+    diff < 1e-9
 }
-/// Checks v ∈ N_C(x): ⟨v, y - x⟩ ≤ ε for all sampled y in C.
-pub fn check_normal_cone_membership(v: &[f64], x: &[f64], set_points: &[Vec<f64>]) -> bool {
-    for y in set_points {
-        let dot: f64 = v
+
+// ── Projections ───────────────────────────────────────────────────────────────
+
+/// Project `point` onto the half-space { x : <normal, x> <= offset }.
+///
+/// If the point already satisfies the constraint the projection is the point
+/// itself.  Otherwise the projection is onto the bounding hyperplane.
+pub fn project_to_halfspace(point: &[f64], normal: &[f64], offset: f64) -> ProjectionResult {
+    let n2: f64 = normal.iter().map(|x| x * x).sum();
+    if n2 < 1e-15 {
+        return ProjectionResult {
+            projected: point.to_vec(),
+            distance: 0.0,
+        };
+    }
+    let violation = dot(point, normal) - offset;
+    if violation <= 0.0 {
+        // Already feasible.
+        return ProjectionResult {
+            projected: point.to_vec(),
+            distance: 0.0,
+        };
+    }
+    let lambda = violation / n2;
+    let projected: Vec<f64> = point
+        .iter()
+        .zip(normal.iter())
+        .map(|(xi, ni)| xi - lambda * ni)
+        .collect();
+    let distance = (lambda * lambda * n2).sqrt();
+    ProjectionResult {
+        projected,
+        distance,
+    }
+}
+
+/// Project `point` onto the probability simplex
+/// Δ = { x : x_i >= 0, sum x_i = 1 }
+/// using the O(n log n) algorithm of Duchi et al. (2008).
+pub fn project_to_simplex(point: &[f64]) -> ProjectionResult {
+    let n = point.len();
+    if n == 0 {
+        return ProjectionResult {
+            projected: vec![],
+            distance: 0.0,
+        };
+    }
+    let mut u: Vec<f64> = point.to_vec();
+    u.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    let mut cssv = 0.0f64;
+    let mut rho = 0usize;
+    for (j, &uj) in u.iter().enumerate() {
+        cssv += uj;
+        let theta = (cssv - 1.0) / (j as f64 + 1.0);
+        if uj > theta {
+            rho = j;
+        }
+    }
+    let cssv_rho: f64 = u[..=rho].iter().sum();
+    let theta = (cssv_rho - 1.0) / (rho as f64 + 1.0);
+    let projected: Vec<f64> = point.iter().map(|xi| (xi - theta).max(0.0)).collect();
+    let distance = norm2(
+        &point
             .iter()
-            .zip(y.iter().zip(x.iter()))
-            .map(|(vi, (yi, xi))| vi * (yi - xi))
-            .sum();
-        if dot > 1e-9 {
+            .zip(projected.iter())
+            .map(|(a, b)| a - b)
+            .collect::<Vec<_>>(),
+    );
+    ProjectionResult {
+        projected,
+        distance,
+    }
+}
+
+/// Project `point` onto the Euclidean ball B(center, radius).
+pub fn project_to_ball(point: &[f64], center: &[f64], radius: f64) -> ProjectionResult {
+    let diff: Vec<f64> = point
+        .iter()
+        .zip(center.iter())
+        .map(|(p, c)| p - c)
+        .collect();
+    let d = norm2(&diff);
+    if d <= radius {
+        return ProjectionResult {
+            projected: point.to_vec(),
+            distance: 0.0,
+        };
+    }
+    let scale = radius / d;
+    let projected: Vec<f64> = center
+        .iter()
+        .zip(diff.iter())
+        .map(|(c, di)| c + scale * di)
+        .collect();
+    let distance = d - radius;
+    ProjectionResult {
+        projected,
+        distance,
+    }
+}
+
+// ── Supporting hyperplane ─────────────────────────────────────────────────────
+
+/// Compute the supporting hyperplane of a convex set at `point` given the
+/// outward normal direction `set_normal`.
+///
+/// The hyperplane is H = { x : <set_normal, x> = <set_normal, point> }.
+pub fn supporting_hyperplane(point: &[f64], set_normal: &[f64]) -> SeparatingHyperplane {
+    let offset = dot(point, set_normal);
+    SeparatingHyperplane {
+        normal: set_normal.to_vec(),
+        offset,
+    }
+}
+
+// ── Convex hull (2-D, Graham scan) ───────────────────────────────────────────
+
+/// Compute the convex hull of a set of 2-D points using the Graham scan
+/// algorithm.  Returns vertices in counter-clockwise order.
+pub fn convex_hull_2d(points: &[(f64, f64)]) -> Vec<(f64, f64)> {
+    if points.len() < 3 {
+        let mut out = points.to_vec();
+        out.sort_by(|a, b| {
+            a.0.partial_cmp(&b.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+        });
+        return out;
+    }
+    // Find pivot: lowest y, then leftmost x.
+    let pivot_idx = points
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| {
+            a.1.partial_cmp(&b.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+    let pivot = points[pivot_idx];
+
+    let mut rest: Vec<(f64, f64)> = points
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != pivot_idx)
+        .map(|(_, &p)| p)
+        .collect();
+
+    // Sort by polar angle with respect to pivot.
+    rest.sort_by(|&a, &b| {
+        let cross = cross2(pivot, a, b);
+        if cross.abs() < 1e-12 {
+            let da = dist2(pivot, a);
+            let db = dist2(pivot, b);
+            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+        } else if cross > 0.0 {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
+    });
+
+    let mut stack: Vec<(f64, f64)> = vec![pivot];
+    for &p in &rest {
+        while stack.len() >= 2 {
+            let n = stack.len();
+            let c = cross2(stack[n - 2], stack[n - 1], p);
+            if c <= 0.0 {
+                stack.pop();
+            } else {
+                break;
+            }
+        }
+        stack.push(p);
+    }
+    stack
+}
+
+/// 2-D cross product (o→a) × (o→b).
+fn cross2(o: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
+    (a.0 - o.0) * (b.1 - o.1) - (a.1 - o.1) * (b.0 - o.0)
+}
+
+/// Squared Euclidean distance between two 2-D points.
+fn dist2(a: (f64, f64), b: (f64, f64)) -> f64 {
+    (a.0 - b.0) * (a.0 - b.0) + (a.1 - b.1) * (a.1 - b.1)
+}
+
+// ── Subgradients ──────────────────────────────────────────────────────────────
+
+/// Compute a subgradient of the quadratic f(x) = (1/2) x^T Q x + b^T x + c
+/// at point `x`.
+///
+/// The gradient is ∇f(x) = Q x + b (quadratics are differentiable everywhere).
+pub fn subgradient_quadratic(q: &[Vec<f64>], b: &[f64], c: f64, x: &[f64]) -> SubgradientResult {
+    let qx = mat_vec(q, x);
+    let subgradient: Vec<f64> = qx.iter().zip(b.iter()).map(|(qi, bi)| qi + bi).collect();
+    let value: f64 = 0.5 * dot(x, &qx) + dot(b, x) + c;
+    SubgradientResult {
+        point: x.to_vec(),
+        subgradient,
+        value,
+    }
+}
+
+/// Evaluate a `FunctionKind` at point `x`, returning (value, subgradient).
+fn eval_with_subgradient(func_kind: &FunctionKind, x: &[f64]) -> (f64, Vec<f64>) {
+    let n = x.len();
+    match func_kind {
+        FunctionKind::Quadratic { q, b, c } => {
+            let qx = mat_vec(q, x);
+            let value = 0.5 * dot(x, &qx) + dot(b, x) + c;
+            let grad: Vec<f64> = qx.iter().zip(b.iter()).map(|(qi, bi)| qi + bi).collect();
+            (value, grad)
+        }
+        FunctionKind::Linear { a, b } => {
+            let value = dot(a, x) + b;
+            (value, a.clone())
+        }
+        FunctionKind::Norm { p } => {
+            let p = *p;
+            if (p - 2.0).abs() < 1e-12 {
+                let v = norm2(x);
+                let grad: Vec<f64> = if v < 1e-15 {
+                    vec![0.0; n]
+                } else {
+                    x.iter().map(|xi| xi / v).collect()
+                };
+                (v, grad)
+            } else if (p - 1.0).abs() < 1e-12 {
+                let v: f64 = x.iter().map(|xi| xi.abs()).sum();
+                let grad: Vec<f64> = x
+                    .iter()
+                    .map(|xi| {
+                        if *xi > 0.0 {
+                            1.0
+                        } else if *xi < 0.0 {
+                            -1.0
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect();
+                (v, grad)
+            } else {
+                // General Lp norm via chain rule.
+                let v: f64 = x
+                    .iter()
+                    .map(|xi| xi.abs().powf(p))
+                    .sum::<f64>()
+                    .powf(1.0 / p);
+                let grad: Vec<f64> = if v < 1e-15 {
+                    vec![0.0; n]
+                } else {
+                    x.iter()
+                        .map(|xi| xi.signum() * xi.abs().powf(p - 1.0) * v.powf(1.0 - p))
+                        .collect()
+                };
+                (v, grad)
+            }
+        }
+        FunctionKind::Indicator => (0.0, vec![0.0; n]),
+        FunctionKind::MaxAffine { pieces } => {
+            let mut best_val = f64::NEG_INFINITY;
+            let mut best_idx = 0;
+            for (i, (a, b)) in pieces.iter().enumerate() {
+                let val = dot(a, x) + b;
+                if val > best_val {
+                    best_val = val;
+                    best_idx = i;
+                }
+            }
+            let subg = if pieces.is_empty() {
+                vec![0.0; n]
+            } else {
+                pieces[best_idx].0.clone()
+            };
+            (best_val, subg)
+        }
+    }
+}
+
+/// Subgradient descent minimisation.
+///
+/// Uses the step sizes `step_sizes\[k\]` (cycled if shorter than `max_iter`).
+/// Tracks the best function value seen and returns that point.
+pub fn subgradient_descent(
+    func_kind: &FunctionKind,
+    x0: Vec<f64>,
+    step_sizes: &[f64],
+    max_iter: usize,
+) -> OptimizationResult {
+    if step_sizes.is_empty() || x0.is_empty() {
+        return OptimizationResult {
+            optimal_point: x0,
+            optimal_value: f64::INFINITY,
+            iterations: 0,
+            converged: false,
+        };
+    }
+    let n = x0.len();
+    let mut x = x0;
+    let (mut best_val, _) = eval_with_subgradient(func_kind, &x);
+    let mut best_x = x.clone();
+
+    for k in 0..max_iter {
+        let step = step_sizes[k % step_sizes.len()];
+        let (val, g) = eval_with_subgradient(func_kind, &x);
+        let g_norm = norm2(&g);
+        if g_norm < 1e-12 {
+            return OptimizationResult {
+                optimal_point: best_x,
+                optimal_value: best_val,
+                iterations: k + 1,
+                converged: true,
+            };
+        }
+        if val < best_val {
+            best_val = val;
+            best_x = x.clone();
+        }
+        // x_{k+1} = x_k - step * g / ||g||
+        x = x
+            .iter()
+            .zip(g.iter())
+            .map(|(xi, gi)| xi - step * gi / g_norm)
+            .collect();
+        let _ = n; // suppress unused warning
+    }
+    let (final_val, _) = eval_with_subgradient(func_kind, &x);
+    if final_val < best_val {
+        best_val = final_val;
+        best_x = x;
+    }
+    OptimizationResult {
+        optimal_point: best_x,
+        optimal_value: best_val,
+        iterations: max_iter,
+        converged: false,
+    }
+}
+
+// ── Proximal gradient ─────────────────────────────────────────────────────────
+
+/// Evaluate the proximal operator of `prox_kind` with step `t` at point `v`.
+///
+/// Only `Norm { p: 1.0 }` (soft thresholding) and `Indicator` (projection
+/// onto simplex) are supported analytically here; other kinds fall back to a
+/// gradient step.
+fn prox_step(prox_kind: &FunctionKind, v: &[f64], t: f64) -> Vec<f64> {
+    match prox_kind {
+        FunctionKind::Norm { p } if (p - 1.0).abs() < 1e-12 => {
+            // Soft-thresholding: prox_{t||.||_1}(v)_i = sign(v_i) max(|v_i|-t, 0)
+            v.iter()
+                .map(|vi| vi.signum() * (vi.abs() - t).max(0.0))
+                .collect()
+        }
+        FunctionKind::Indicator => {
+            // Projection onto probability simplex.
+            project_to_simplex(v).projected
+        }
+        FunctionKind::Linear { a, b: _ } => {
+            // prox_{t(a^T x + b)}(v) = v - t*a  (unconstrained linear prox)
+            v.iter().zip(a.iter()).map(|(vi, ai)| vi - t * ai).collect()
+        }
+        _ => {
+            // Generic: gradient step as fallback (for quadratic / max-affine).
+            let (_, g) = eval_with_subgradient(prox_kind, v);
+            v.iter().zip(g.iter()).map(|(vi, gi)| vi - t * gi).collect()
+        }
+    }
+}
+
+/// Proximal gradient method:
+///   x_{k+1} = prox_{step * prox_kind}( x_k - step * ∇func_kind(x_k) )
+///
+/// Suitable for minimising `func_kind + prox_kind` when `func_kind` is smooth.
+pub fn proximal_gradient(
+    func_kind: &FunctionKind,
+    prox_kind: &FunctionKind,
+    x0: Vec<f64>,
+    step: f64,
+    max_iter: usize,
+) -> OptimizationResult {
+    if x0.is_empty() || step <= 0.0 {
+        return OptimizationResult {
+            optimal_point: x0,
+            optimal_value: f64::INFINITY,
+            iterations: 0,
+            converged: false,
+        };
+    }
+    let mut x = x0;
+    let tol = 1e-8;
+
+    for k in 0..max_iter {
+        let (_, g) = eval_with_subgradient(func_kind, &x);
+        // Gradient step on smooth part.
+        let v: Vec<f64> = x
+            .iter()
+            .zip(g.iter())
+            .map(|(xi, gi)| xi - step * gi)
+            .collect();
+        // Proximal step on non-smooth part.
+        let x_new = prox_step(prox_kind, &v, step);
+        // Convergence check.
+        let diff = norm2(
+            &x.iter()
+                .zip(x_new.iter())
+                .map(|(a, b)| a - b)
+                .collect::<Vec<_>>(),
+        );
+        x = x_new;
+        if diff < tol {
+            let (val, _) = eval_with_subgradient(func_kind, &x);
+            return OptimizationResult {
+                optimal_point: x,
+                optimal_value: val,
+                iterations: k + 1,
+                converged: true,
+            };
+        }
+    }
+    let (val, _) = eval_with_subgradient(func_kind, &x);
+    OptimizationResult {
+        optimal_point: x,
+        optimal_value: val,
+        iterations: max_iter,
+        converged: false,
+    }
+}
+
+// ── Fenchel conjugate ─────────────────────────────────────────────────────────
+
+/// Evaluate f*(y) for the linear function f(x) = a^T x + b.
+///
+/// The conjugate of a linear function is the indicator of {a}:
+///   f*(y) = 0  if y = a,  +∞ otherwise.
+/// Here we return 0 when ||y - a|| < 1e-9, else +∞.
+pub fn fenchel_conjugate_linear(a: &[f64], b: f64, y: &[f64]) -> f64 {
+    if a.len() != y.len() {
+        return f64::INFINITY;
+    }
+    let diff = norm2(
+        &a.iter()
+            .zip(y.iter())
+            .map(|(ai, yi)| yi - ai)
+            .collect::<Vec<_>>(),
+    );
+    if diff < 1e-9 {
+        // f*(y) = sup_x { <y, x> - a^T x - b } = sup_x { <y-a, x> } - b = 0 - b = -b
+        -b
+    } else {
+        f64::INFINITY
+    }
+}
+
+// ── Moreau envelope ───────────────────────────────────────────────────────────
+
+/// Compute the Moreau envelope:
+///   e_λ f(x) = min_u { f(u) + (1 / 2λ) ||u - x||^2 }
+///
+/// Uses a simple gradient descent on the composite objective.
+/// Returns an approximation for general `FunctionKind`.
+pub fn moreau_envelope(point: &[f64], func: &ConvexFunction, lambda: f64) -> f64 {
+    if lambda <= 0.0 {
+        let (val, _) = eval_with_subgradient(&func.kind, point);
+        return val;
+    }
+    // Use prox_step as the exact minimiser for supported kinds.
+    let u = prox_step(&func.kind, point, lambda);
+    let (fu, _) = eval_with_subgradient(&func.kind, &u);
+    let diff = norm2(
+        &u.iter()
+            .zip(point.iter())
+            .map(|(ui, xi)| ui - xi)
+            .collect::<Vec<_>>(),
+    );
+    fu + diff * diff / (2.0 * lambda)
+}
+
+// ── Bregman divergence ────────────────────────────────────────────────────────
+
+/// Compute the KL divergence as a Bregman divergence generated by
+/// φ(p) = sum_i p_i log(p_i):
+///   D_φ(p || q) = sum_i p_i log(p_i / q_i) - p_i + q_i.
+///
+/// Both `p` and `q` must have the same length and non-negative entries.
+/// Returns +∞ when q_i = 0 and p_i > 0.
+pub fn bregman_divergence(p: &[f64], q: &[f64]) -> f64 {
+    if p.len() != q.len() {
+        return f64::INFINITY;
+    }
+    p.iter()
+        .zip(q.iter())
+        .map(|(&pi, &qi)| {
+            if pi < 0.0 || qi < 0.0 {
+                return f64::INFINITY;
+            }
+            if pi == 0.0 {
+                // 0 * log(0/q) = 0; -0 + q_i = q_i >= 0.
+                return qi;
+            }
+            if qi == 0.0 {
+                return f64::INFINITY;
+            }
+            pi * (pi / qi).ln() - pi + qi
+        })
+        .fold(0.0f64, |acc, v| {
+            if v.is_infinite() {
+                f64::INFINITY
+            } else {
+                acc + v
+            }
+        })
+}
+
+// ── KKT conditions ────────────────────────────────────────────────────────────
+
+/// Check first-order KKT (stationarity) conditions:
+///   grad + sum_i mu_i * a_i = 0
+///
+/// where `active_constraints\[i\]` is the gradient of the i-th active inequality
+/// constraint and `multipliers\[i\] >= 0` are the Lagrange multipliers.
+pub fn check_kkt_conditions(
+    grad: &[f64],
+    active_constraints: &[Vec<f64>],
+    multipliers: &[f64],
+) -> bool {
+    if active_constraints.len() != multipliers.len() {
+        return false;
+    }
+    // Multipliers must be non-negative.
+    if multipliers.iter().any(|&mu| mu < -1e-9) {
+        return false;
+    }
+    let n = grad.len();
+    let mut residual = grad.to_vec();
+    for (ai, &mu) in active_constraints.iter().zip(multipliers.iter()) {
+        if ai.len() != n {
             return false;
         }
-    }
-    true
-}
-/// Compute prox_{λf}(v) = argmin_x { f(x) + 1/(2λ) ‖x-v‖² } using gradient descent.
-pub fn proximal_operator(f: &ConvexFunction, v: &[f64], cfg: &ProxConfig) -> Vec<f64> {
-    let n = v.len();
-    let mut x = v.to_vec();
-    let inv_lambda = 1.0 / cfg.lambda;
-    for _ in 0..cfg.max_iter {
-        let grad_f = f.gradient(&x);
-        let mut new_x = vec![0.0; n];
-        let mut delta_sq = 0.0;
-        for i in 0..n {
-            let g = grad_f[i] + inv_lambda * (x[i] - v[i]);
-            let dx = cfg.step_size * g;
-            new_x[i] = x[i] - dx;
-            delta_sq += dx * dx;
-        }
-        x = new_x;
-        if delta_sq.sqrt() < cfg.tol {
-            break;
+        for (r, aij) in residual.iter_mut().zip(ai.iter()) {
+            *r += mu * aij;
         }
     }
-    x
+    norm2(&residual) < 1e-8
 }
-/// Compute Moreau envelope e_{λf}(x) = inf_y { f(y) + 1/(2λ)‖x-y‖² }.
-pub fn moreau_envelope(f: &ConvexFunction, x: &[f64], cfg: &ProxConfig) -> f64 {
-    let p = proximal_operator(f, x, cfg);
-    let dist_sq: f64 = x
-        .iter()
-        .zip(p.iter())
-        .map(|(xi, pi)| (xi - pi).powi(2))
-        .sum();
-    f.eval(&p) + dist_sq / (2.0 * cfg.lambda)
-}
-/// Compute inf-convolution (f □ g)(x) = inf_y { f(y) + g(x-y) } by grid search in 1D.
-pub fn inf_convolution_1d(
-    f: fn(f64) -> f64,
-    g: fn(f64) -> f64,
-    x: f64,
-    steps: usize,
-    radius: f64,
-) -> f64 {
-    let step = 2.0 * radius / steps as f64;
-    let mut best = f64::INFINITY;
-    for k in 0..=steps {
-        let y = -radius + k as f64 * step;
-        let val = f(y) + g(x - y);
-        if val < best {
-            best = val;
-        }
-    }
-    best
-}
-/// Bregman divergence D_f(x, y) = f(x) - f(y) - ⟨∇f(y), x-y⟩.
-pub fn bregman_divergence(f: &ConvexFunction, x: &[f64], y: &[f64]) -> f64 {
-    let fy = f.eval(y);
-    let fx = f.eval(x);
-    let grad_y = f.gradient(y);
-    let inner: f64 = grad_y
-        .iter()
-        .zip(x.iter().zip(y.iter()))
-        .map(|(g, (xi, yi))| g * (xi - yi))
-        .sum();
-    fx - fy - inner
-}
-/// Check three-point identity (approximately):
-/// D_f(x, z) ≈ D_f(x, y) + D_f(y, z) + ⟨∇f(y) - ∇f(z), x - y⟩.
-pub fn check_three_point_identity(f: &ConvexFunction, x: &[f64], y: &[f64], z: &[f64]) -> bool {
-    let lhs = bregman_divergence(f, x, z);
-    let d_xy = bregman_divergence(f, x, y);
-    let d_yz = bregman_divergence(f, y, z);
-    let grad_y = f.gradient(y);
-    let grad_z = f.gradient(z);
-    let inner: f64 = grad_y
-        .iter()
-        .zip(grad_z.iter())
-        .zip(x.iter().zip(y.iter()))
-        .map(|((gy, gz), (xi, yi))| (gy - gz) * (xi - yi))
-        .sum();
-    let rhs = d_xy + d_yz + inner;
-    (lhs - rhs).abs() < 1e-5
-}
-/// Compute a separating hyperplane between two finite point sets using the midpoint normal.
-pub fn compute_separating_hyperplane(
-    a_points: &[Vec<f64>],
-    b_points: &[Vec<f64>],
-) -> Option<Hyperplane> {
-    if a_points.is_empty() || b_points.is_empty() {
-        return None;
-    }
-    let n = a_points[0].len();
-    let ca: Vec<f64> = (0..n)
-        .map(|i| a_points.iter().map(|p| p[i]).sum::<f64>() / a_points.len() as f64)
-        .collect();
-    let cb: Vec<f64> = (0..n)
-        .map(|i| b_points.iter().map(|p| p[i]).sum::<f64>() / b_points.len() as f64)
-        .collect();
-    let normal: Vec<f64> = ca.iter().zip(cb.iter()).map(|(a, b)| a - b).collect();
-    let norm = normal.iter().map(|x| x * x).sum::<f64>().sqrt();
-    if norm < 1e-12 {
-        return None;
-    }
-    let unit_normal: Vec<f64> = normal.iter().map(|x| x / norm).collect();
-    let mid: Vec<f64> = ca
-        .iter()
-        .zip(cb.iter())
-        .map(|(a, b)| (a + b) / 2.0)
-        .collect();
-    let offset: f64 = unit_normal.iter().zip(mid.iter()).map(|(a, b)| a * b).sum();
-    Some(Hyperplane::new(unit_normal, offset))
-}
-/// Compute σ_C(y) = max_{x ∈ C} ⟨y, x⟩ over a finite set of points.
-pub fn support_function(c_points: &[Vec<f64>], y: &[f64]) -> f64 {
-    c_points
-        .iter()
-        .map(|x| x.iter().zip(y.iter()).map(|(xi, yi)| xi * yi).sum::<f64>())
-        .fold(f64::NEG_INFINITY, f64::max)
-}
-/// Compute gauge function γ_C(x) = inf { t ≥ 0 | x ∈ t·C } via binary search.
-pub fn gauge_function(c_points: &[Vec<f64>], x: &[f64]) -> f64 {
-    let norm_x: f64 = x.iter().map(|xi| xi * xi).sum::<f64>().sqrt();
-    if norm_x < 1e-15 {
+
+// ── Spectral estimates ────────────────────────────────────────────────────────
+
+/// Estimate the minimum eigenvalue of Q via the Gershgorin circle theorem.
+///
+/// For each row i: λ_min >= Q\[i\]\[i\] - sum_{j≠i} |Q\[i\]\[j\]|.
+/// Returns the maximum of these lower bounds.
+pub fn strong_convexity_parameter(q: &[Vec<f64>]) -> f64 {
+    let n = q.len();
+    if n == 0 {
         return 0.0;
     }
-    let mut lo = 0.0_f64;
-    let mut hi = norm_x * 100.0 + 1.0;
-    for _ in 0..60 {
-        let mid = (lo + hi) / 2.0;
-        let scaled: Vec<f64> = x.iter().map(|xi| xi / mid.max(1e-15)).collect();
-        let s = support_function(c_points, &scaled);
-        let s_x = support_function(c_points, x);
-        if s_x <= mid * s + 1e-9 {
-            hi = mid;
-        } else {
-            lo = mid;
-        }
-    }
-    hi
+    q.iter()
+        .enumerate()
+        .map(|(i, row)| {
+            let radius: f64 = row
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != i)
+                .map(|(_, qij)| qij.abs())
+                .sum();
+            let diag = if i < row.len() { row[i] } else { 0.0 };
+            diag - radius
+        })
+        .fold(f64::INFINITY, f64::min)
 }
+
+/// Estimate the maximum eigenvalue of Q via the Gershgorin circle theorem.
+///
+/// For each row i: λ_max <= Q\[i\]\[i\] + sum_{j≠i} |Q\[i\]\[j\]|.
+/// Returns the minimum of these upper bounds.
+pub fn lipschitz_constant_quadratic(q: &[Vec<f64>]) -> f64 {
+    let n = q.len();
+    if n == 0 {
+        return 0.0;
+    }
+    q.iter()
+        .enumerate()
+        .map(|(i, row)| {
+            let radius: f64 = row
+                .iter()
+                .enumerate()
+                .filter(|&(j, _)| j != i)
+                .map(|(_, qij)| qij.abs())
+                .sum();
+            let diag = if i < row.len() { row[i] } else { 0.0 };
+            diag + radius
+        })
+        .fold(f64::NEG_INFINITY, f64::max)
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn sq_func(x: &[f64]) -> f64 {
-        x.iter().map(|xi| xi * xi).sum::<f64>() * 0.5
+
+    fn approx(a: f64, b: f64, tol: f64) -> bool {
+        (a - b).abs() < tol
     }
-    fn sq_grad(x: &[f64]) -> Vec<f64> {
-        x.to_vec()
-    }
+
+    // 1. Convex combination: barycenter of triangle vertices.
     #[test]
-    fn test_build_env_keys() {
-        let env = build_convex_analysis_env();
-        assert!(env.get(&Name::str("IsConvexFunction")).is_some());
-        assert!(env.get(&Name::str("FenchelConjugate")).is_some());
-        assert!(env.get(&Name::str("Subdifferential")).is_some());
-        assert!(env.get(&Name::str("NormalCone")).is_some());
-        assert!(env.get(&Name::str("ProximalOperator")).is_some());
-        assert!(env.get(&Name::str("MoreauEnvelope")).is_some());
-        assert!(env.get(&Name::str("BregmanDivergence")).is_some());
-        assert!(env.get(&Name::str("InfConvolution")).is_some());
+    fn test_is_convex_combination_centroid() {
+        let pts = vec![vec![0.0, 0.0], vec![3.0, 0.0], vec![0.0, 3.0]];
+        let w = vec![1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0];
+        let target = vec![1.0, 1.0];
+        assert!(is_convex_combination(&pts, &w, &target));
     }
+
+    // 2. Convex combination: wrong weights (negative).
     #[test]
-    fn test_epigraph_membership() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        assert!(f.in_epigraph(&[1.0, 1.0], 1.5));
-        assert!(!f.in_epigraph(&[1.0, 1.0], 0.5));
+    fn test_is_convex_combination_negative_weight() {
+        let pts = vec![vec![0.0], vec![1.0]];
+        let w = vec![-0.1, 1.1];
+        assert!(!is_convex_combination(&pts, &w, &[0.9]));
     }
+
+    // 3. Project onto half-space: point outside.
     #[test]
-    fn test_level_set_membership() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        assert!(f.in_level_set(&[0.5, 0.5], 1.0));
-        assert!(!f.in_level_set(&[2.0, 0.0], 1.0));
+    fn test_project_to_halfspace_outside() {
+        // Half-space x1 <= 1 (normal=(1,0), offset=1), point=(3,0).
+        let proj = project_to_halfspace(&[3.0, 0.0], &[1.0, 0.0], 1.0);
+        assert!(approx(proj.projected[0], 1.0, 1e-9));
+        assert!(approx(proj.projected[1], 0.0, 1e-9));
+        assert!(approx(proj.distance, 2.0, 1e-9));
     }
+
+    // 4. Project onto half-space: point inside.
     #[test]
-    fn test_subgradient_inequality() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        let x = vec![1.0];
-        let g = f.gradient(&x);
-        let y = vec![3.0];
-        assert!(check_subgradient_inequality(&f, &x, &g, &y));
-        let y2 = vec![-2.0];
-        assert!(check_subgradient_inequality(&f, &x, &g, &y2));
+    fn test_project_to_halfspace_inside() {
+        let proj = project_to_halfspace(&[0.5, 0.0], &[1.0, 0.0], 1.0);
+        assert!(approx(proj.projected[0], 0.5, 1e-9));
+        assert!(approx(proj.distance, 0.0, 1e-9));
     }
+
+    // 5. Project onto simplex: uniform vector.
     #[test]
-    fn test_proximal_operator_quadratic() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        let cfg = ProxConfig::new(1.0);
-        let v = vec![2.0];
-        let p = proximal_operator(&f, &v, &cfg);
-        assert!((p[0] - 1.0).abs() < 1e-3, "prox = {}", p[0]);
+    fn test_project_to_simplex_uniform() {
+        let proj = project_to_simplex(&[0.25, 0.25, 0.25, 0.25]);
+        let sum: f64 = proj.projected.iter().sum();
+        assert!(approx(sum, 1.0, 1e-9));
+        assert!(approx(proj.distance, 0.0, 1e-6));
     }
+
+    // 6. Project onto simplex: outside.
     #[test]
-    fn test_moreau_envelope_quadratic() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        let cfg = ProxConfig::new(1.0);
-        let x = vec![2.0];
-        let env_val = moreau_envelope(&f, &x, &cfg);
-        let expected = 0.5 * 4.0 / 2.0;
-        assert!((env_val - expected).abs() < 1e-3, "env = {}", env_val);
+    fn test_project_to_simplex_outside() {
+        let proj = project_to_simplex(&[3.0, 0.0, 0.0]);
+        let sum: f64 = proj.projected.iter().sum();
+        assert!(approx(sum, 1.0, 1e-9));
+        assert!(proj.projected.iter().all(|&xi| xi >= -1e-12));
     }
+
+    // 7. Project onto ball: outside.
     #[test]
-    fn test_bregman_divergence_quadratic() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        let x = vec![3.0, 0.0];
-        let y = vec![1.0, 0.0];
-        let d = bregman_divergence(&f, &x, &y);
-        assert!((d - 2.0).abs() < 1e-6, "D_f = {d}");
+    fn test_project_to_ball_outside() {
+        let proj = project_to_ball(&[5.0, 0.0], &[0.0, 0.0], 1.0);
+        assert!(approx(norm2(&proj.projected), 1.0, 1e-9));
+        assert!(approx(proj.distance, 4.0, 1e-9));
     }
+
+    // 8. Project onto ball: inside.
     #[test]
-    fn test_bregman_three_point_identity() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        let x = vec![3.0];
-        let y = vec![1.0];
-        let z = vec![-1.0];
-        assert!(check_three_point_identity(&f, &x, &y, &z));
+    fn test_project_to_ball_inside() {
+        let proj = project_to_ball(&[0.5, 0.0], &[0.0, 0.0], 1.0);
+        assert!(approx(proj.projected[0], 0.5, 1e-9));
+        assert!(approx(proj.distance, 0.0, 1e-9));
     }
+
+    // 9. Supporting hyperplane offset equals dot(normal, point).
     #[test]
-    fn test_separating_hyperplane() {
-        let a = vec![vec![0.0, 0.0], vec![0.5, 0.0]];
-        let b = vec![vec![2.0, 0.0], vec![2.5, 0.0]];
-        let hp = compute_separating_hyperplane(&a, &b).expect("operation should succeed");
-        assert!(hp.separates(&a, &b), "hyperplane should separate A from B");
+    fn test_supporting_hyperplane_offset() {
+        let pt = vec![1.0, 2.0, 3.0];
+        let n = vec![1.0, 0.0, 0.0];
+        let h = supporting_hyperplane(&pt, &n);
+        assert!(approx(h.offset, 1.0, 1e-12));
     }
+
+    // 10. Convex hull of square: 4 corners.
     #[test]
-    fn test_support_function_unit_square() {
-        let c = vec![
-            vec![0.0, 0.0],
-            vec![1.0, 0.0],
-            vec![1.0, 1.0],
-            vec![0.0, 1.0],
+    fn test_convex_hull_square() {
+        let pts = vec![
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (1.0, 1.0),
+            (0.0, 1.0),
+            (0.5, 0.5), // interior
         ];
-        let s1 = support_function(&c, &[1.0, 0.0]);
-        assert!((s1 - 1.0).abs() < 1e-12, "σ(1,0) = 1");
-        let s2 = support_function(&c, &[1.0, 1.0]);
-        assert!((s2 - 2.0).abs() < 1e-12, "σ(1,1) = 2");
+        let hull = convex_hull_2d(&pts);
+        assert_eq!(hull.len(), 4);
     }
+
+    // 11. Subgradient of quadratic (identity Q, zero b) at x=(1,0) is (1,0).
     #[test]
-    fn test_inf_convolution_1d() {
-        let f = |x: f64| 0.5 * x * x;
-        let g = |x: f64| 0.5 * x * x;
-        let x = 4.0;
-        let val = inf_convolution_1d(f, g, x, 1000, 10.0);
-        let expected = 0.25 * x * x;
-        assert!(
-            (val - expected).abs() < 0.05,
-            "inf-conv = {val}, expected {expected}"
+    fn test_subgradient_quadratic_identity() {
+        let q = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
+        let b = vec![0.0, 0.0];
+        let x = vec![1.0, 0.0];
+        let res = subgradient_quadratic(&q, &b, 0.0, &x);
+        assert!(approx(res.subgradient[0], 1.0, 1e-12));
+        assert!(approx(res.subgradient[1], 0.0, 1e-12));
+        assert!(approx(res.value, 0.5, 1e-12));
+    }
+
+    // 12. Subgradient descent on f(x)=x^2 converges towards 0.
+    #[test]
+    fn test_subgradient_descent_quadratic() {
+        let q = vec![vec![2.0]]; // f(x) = x^2, ∇f = 2x
+        let b = vec![0.0];
+        let kind = FunctionKind::Quadratic { q, b, c: 0.0 };
+        let steps: Vec<f64> = (1..=200).map(|k| 1.0 / (k as f64).sqrt()).collect();
+        let res = subgradient_descent(&kind, vec![10.0], &steps, 200);
+        assert!(res.optimal_value < 1.0, "value={}", res.optimal_value);
+    }
+
+    // 13. Proximal gradient on f(x)=||x||^2, prox=indicator (simplex).
+    #[test]
+    fn test_proximal_gradient_simplex() {
+        let q = vec![vec![2.0, 0.0], vec![0.0, 2.0]];
+        let b = vec![-2.0, -2.0];
+        let func = FunctionKind::Quadratic { q, b, c: 2.0 };
+        let prox = FunctionKind::Indicator;
+        let res = proximal_gradient(&func, &prox, vec![0.5, 0.5], 0.01, 1000);
+        // Solution is on the simplex
+        let sum: f64 = res.optimal_point.iter().sum();
+        assert!(approx(sum, 1.0, 1e-3));
+    }
+
+    // 14. Fenchel conjugate of linear: y = a gives finite value.
+    #[test]
+    fn test_fenchel_conjugate_linear_at_a() {
+        let a = vec![1.0, 2.0];
+        let val = fenchel_conjugate_linear(&a, 3.0, &[1.0, 2.0]);
+        assert!(approx(val, -3.0, 1e-9));
+    }
+
+    // 15. Fenchel conjugate of linear: y != a gives +inf.
+    #[test]
+    fn test_fenchel_conjugate_linear_away() {
+        let a = vec![1.0, 0.0];
+        let val = fenchel_conjugate_linear(&a, 0.0, &[0.0, 1.0]);
+        assert!(val.is_infinite());
+    }
+
+    // 16. Moreau envelope <= f(x) for Norm{1}.
+    #[test]
+    fn test_moreau_envelope_norm1() {
+        use super::super::types::{ConvexSet, SetDescription};
+        let domain = ConvexSet::new(
+            2,
+            SetDescription::HalfSpace {
+                normal: vec![0.0, 0.0],
+                offset: 1e9,
+            },
         );
+        let func = ConvexFunction::new(domain, FunctionKind::Norm { p: 1.0 });
+        let pt = vec![2.0, -1.0];
+        let env = moreau_envelope(&pt, &func, 0.5);
+        let (fx, _) = eval_with_subgradient(&func.kind, &pt);
+        assert!(env <= fx + 1e-9);
     }
+
+    // 17. Bregman divergence: KL(p || p) = 0.
     #[test]
-    fn test_build_env_new_axioms() {
-        let env = build_convex_analysis_env();
-        assert!(env.get(&Name::str("ExtremePoint")).is_some());
-        assert!(env.get(&Name::str("CaratheodoryTheorem")).is_some());
-        assert!(env.get(&Name::str("KreinMilmanTheorem")).is_some());
-        assert!(env.get(&Name::str("ConvexHull")).is_some());
-        assert!(env.get(&Name::str("FarkasLemma")).is_some());
-        assert!(env.get(&Name::str("GordonAlternative")).is_some());
-        assert!(env.get(&Name::str("IsLipschitzGradient")).is_some());
-        assert!(env.get(&Name::str("IsSmooth")).is_some());
-        assert!(env.get(&Name::str("DescentLemma")).is_some());
-        assert!(env.get(&Name::str("IsBarrierFunction")).is_some());
-        assert!(env.get(&Name::str("IsSelfConcordant")).is_some());
-        assert!(env.get(&Name::str("CentralPath")).is_some());
-        assert!(env.get(&Name::str("LorentzCone")).is_some());
-        assert!(env.get(&Name::str("PositiveSemidefiniteCone")).is_some());
-        assert!(env.get(&Name::str("SOCPDuality")).is_some());
-        assert!(env.get(&Name::str("KKTConditions")).is_some());
-        assert!(env.get(&Name::str("SlaterCondition")).is_some());
-        assert!(env.get(&Name::str("StrongDuality")).is_some());
-        assert!(env.get(&Name::str("FenchelRockafellarDuality")).is_some());
-        assert!(env.get(&Name::str("ClarkeSubdifferential")).is_some());
-        assert!(env.get(&Name::str("IsRegularFunction")).is_some());
-        assert!(env.get(&Name::str("IsMonotoneOperator")).is_some());
-        assert!(env.get(&Name::str("Resolvent")).is_some());
-        assert!(env.get(&Name::str("BrouwerFixedPoint")).is_some());
-        assert!(env.get(&Name::str("MinimaxTheorem")).is_some());
-        assert!(env.get(&Name::str("ProjectionOperator")).is_some());
-        assert!(env
-            .get(&Name::str("AlternatingProjectionConvergence"))
-            .is_some());
+    fn test_bregman_divergence_self() {
+        let p = vec![0.3, 0.5, 0.2];
+        let d = bregman_divergence(&p, &p);
+        assert!(approx(d, 0.0, 1e-9));
     }
+
+    // 18. Bregman divergence: non-negative.
     #[test]
-    fn test_subgradient_method_quadratic() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        let method = SubgradientMethod::new(StepSchedule::DiminishingSqrt(1.0), 500);
-        let (best, _history) = method.run(&f, &[5.0]);
-        assert!(
-            best[0].abs() < 0.5,
-            "should converge near 0, got {}",
-            best[0]
-        );
+    fn test_bregman_divergence_nonneg() {
+        let p = vec![0.4, 0.6];
+        let q = vec![0.2, 0.8];
+        let d = bregman_divergence(&p, &q);
+        assert!(d >= -1e-12);
     }
+
+    // 19. KKT: zero gradient and no constraints satisfied trivially.
     #[test]
-    fn test_proximal_point_algorithm_quadratic() {
-        let f = ConvexFunction::new("sq", sq_func, Some(sq_grad));
-        let ppa = ProximalPointAlgorithm::constant(1.0, 50, 1e-6);
-        let iterates = ppa.run(&f, &[4.0]);
-        let last = iterates.last().expect("last should succeed");
-        assert!(
-            last[0].abs() < 0.1,
-            "PPA should converge near 0, got {}",
-            last[0]
-        );
+    fn test_kkt_trivial() {
+        let grad = vec![0.0, 0.0];
+        assert!(check_kkt_conditions(&grad, &[], &[]));
     }
+
+    // 20. KKT: stationarity with one active constraint.
     #[test]
-    fn test_fenchel_conjugate_squared_norm() {
-        let ev = FenchelConjugateEvaluator::new(FunctionClass::SquaredNorm);
-        let y = vec![3.0, 4.0];
-        let conj = ev.eval(&y);
-        assert!((conj - 12.5).abs() < 1e-10, "f*(3,4) = 12.5, got {conj}");
+    fn test_kkt_one_active_constraint() {
+        // grad = [1.0] + mu * [-1.0] = 0  =>  mu = 1.0
+        let grad = vec![1.0];
+        let active = vec![vec![-1.0]];
+        let multipliers = vec![1.0];
+        assert!(check_kkt_conditions(&grad, &active, &multipliers));
     }
+
+    // 21. Strong convexity parameter of 2I is 2.
     #[test]
-    fn test_fenchel_young_inequality() {
-        let ev = FenchelConjugateEvaluator::new(FunctionClass::SquaredNorm);
-        let x = vec![1.0, 2.0];
-        let y = vec![3.0, 0.5];
-        let fx = 0.5 * (1.0_f64 + 4.0_f64);
-        assert!(ev.check_fenchel_young(&x, &y, fx));
+    fn test_strong_convexity_parameter() {
+        let q = vec![vec![2.0, 0.0], vec![0.0, 2.0]];
+        let m = strong_convexity_parameter(&q);
+        assert!(approx(m, 2.0, 1e-12));
     }
+
+    // 22. Lipschitz constant of 5I is 5.
     #[test]
-    fn test_fenchel_conjugate_negative_entropy() {
-        let ev = FenchelConjugateEvaluator::new(FunctionClass::NegativeEntropy);
-        let y = vec![1.0];
-        let val = ev.eval(&y);
-        assert!((val - 1.0).abs() < 1e-10, "f*(1) = exp(0) = 1, got {val}");
+    fn test_lipschitz_constant_quadratic() {
+        let q = vec![vec![5.0, 0.0], vec![0.0, 5.0]];
+        let l = lipschitz_constant_quadratic(&q);
+        assert!(approx(l, 5.0, 1e-12));
     }
+
+    // 23. Convex hull of collinear points.
     #[test]
-    fn test_fenchel_conjugate_box_indicator() {
-        let ev = FenchelConjugateEvaluator::new(FunctionClass::BoxIndicator { lo: -1.0, hi: 1.0 });
-        let y = vec![2.0, -3.0];
-        let val = ev.eval(&y);
-        assert!((val - 5.0).abs() < 1e-10, "f*(2,-3) = 5, got {val}");
+    fn test_convex_hull_collinear() {
+        let pts = vec![(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)];
+        let hull = convex_hull_2d(&pts);
+        // Collinear: 3 points, all on boundary of degenerate hull.
+        assert!(!hull.is_empty());
     }
+
+    // 24. MaxAffine subgradient is a piece's normal.
     #[test]
-    fn test_separating_hyperplane_finder() {
-        let a = vec![vec![0.0, 0.0], vec![0.0, 1.0]];
-        let b = vec![vec![3.0, 0.0], vec![3.0, 1.0]];
-        let finder = SeparatingHyperplaneFinder::new(0.01, 200, 1e-4);
-        let hp = finder.find(&a, &b);
-        assert!(hp.is_some(), "should find a separating hyperplane");
-        let hp = hp.expect("hp should be valid");
-        assert!(hp.separates(&a, &b), "hyperplane should separate A and B");
-    }
-    #[test]
-    fn test_alternating_projections_intersection() {
-        let proj_a = |x: &[f64]| vec![x[0].max(1.0)];
-        let proj_b = |x: &[f64]| vec![x[0].min(2.0)];
-        let solver = AlternatingProjectionSolver::new(100, 1e-8);
-        let iters = solver.run(proj_a, proj_b, &[5.0]);
-        let last = iters.last().expect("last should succeed");
-        assert!(
-            (last[0] - 2.0).abs() < 1e-6,
-            "should converge to 2, got {}",
-            last[0]
-        );
-    }
-}
-#[cfg(test)]
-mod convex_ext_tests {
-    use super::*;
-    #[test]
-    fn test_convex_cone() {
-        let soc = ConvexCone::second_order_cone(3);
-        assert!(soc.is_pointed);
-        assert!(soc.is_closed);
-        assert!(!soc.dual_cone_description().is_empty());
-    }
-    #[test]
-    fn test_fenchel_conjugate() {
-        let fc = FenchelConjugate::new("||x||^2/2");
-        assert!(!fc.definition().is_empty());
-        assert!(!fc.fenchel_inequality().is_empty());
-    }
-    #[test]
-    fn test_proximal_operator() {
-        let prox = ProximalOperator::new("||x||_1", 0.1);
-        assert!(!prox.definition().is_empty());
-        assert!(!prox.for_indicator_function().is_empty());
-    }
-    #[test]
-    fn test_admm() {
-        let admm = AdmmSolver::new(1.0, 1000, 1e-4);
-        assert!(!admm.convergence_description().is_empty());
-    }
-    #[test]
-    fn test_convex_program() {
-        let lp = ConvexProgram::new("diet", 100, 50, ConvexProblemClass::Lp);
-        assert!(lp.is_lp());
-        assert!(lp.strong_duality_holds());
-    }
-}
-#[cfg(test)]
-mod duality_ext_tests {
-    use super::*;
-    #[test]
-    fn test_lagrangian_duality() {
-        let ld = LagrangianDuality::new("min f(x)", "max g(lambda)", 0.0);
-        assert!(ld.strong_duality());
-        assert_eq!(ld.kkt_conditions().len(), 4);
-    }
-    #[test]
-    fn test_mirror_descent() {
-        let md = MirrorDescent::with_entropy(0.01, 1000);
-        let rate = md.convergence_rate(1.0, 1.0);
-        assert!(rate > 0.0 && rate < 1.0);
-    }
-}
-#[cfg(test)]
-mod epi_level_tests {
-    use super::*;
-    #[test]
-    fn test_epigraph() {
-        let epi = Epigraph::new("||x||^2");
-        assert!(epi.f_convex_iff_epi_convex());
-        assert!(!epi.definition().is_empty());
-    }
-    #[test]
-    fn test_sublevel_set() {
-        let sl = SublevelSet::new("exp(x)", 2.0);
-        assert!(sl.is_convex_if_f_quasiconvex());
-    }
-    #[test]
-    fn test_recession_cone() {
-        let rc = RecessionCone::new("R^n+");
-        assert!(rc.compact_iff_trivial_recession());
-    }
-}
-#[cfg(test)]
-mod tests_convex_analysis_ext {
-    use super::*;
-    #[test]
-    fn test_convex_conjugate() {
-        let quad = ConvexConjugate::quadratic_conjugate();
-        assert!(quad.biconjugate_equals_f());
-        let fm = quad.fenchel_moreau_theorem();
-        assert!(fm.contains("Fenchel-Moreau"));
-        let yf = quad.young_fenchel_inequality();
-        assert!(yf.contains("Young-Fenchel"));
-        let ind = ConvexConjugate::indicator_conjugate("C");
-        assert!(ind.conjugate_name.contains("h_"));
-    }
-    #[test]
-    fn test_fenchel_duality() {
-        let strong = FenchelDualityPair::new("min f", "max -f*", 0.0);
-        assert!(strong.strong_duality_holds);
-        assert!(strong.slater_condition_met());
-        let desc = strong.duality_gap_description();
-        assert!(desc.contains("Strong duality"));
-    }
-    #[test]
-    fn test_proximal_l1() {
-        let prox = ProximalOperatorNew::l1_norm(0.5);
-        assert!(prox.has_closed_form);
-        let formula = prox.proximal_point_formula();
-        assert!(formula.contains("prox_"));
-        let moreau = prox.moreau_decomposition();
-        assert!(moreau.contains("Moreau"));
-    }
-    #[test]
-    fn test_admm() {
-        let mut admm = ADMMData::new(1.0);
-        assert!(!admm.has_converged(1e-6));
-        admm.update_residuals(1e-8, 1e-8);
-        assert!(admm.has_converged(1e-6));
-        let desc = admm.admm_update_description();
-        assert!(desc.contains("ADMM"));
-        let conv = admm.convergence_guarantee();
-        assert!(conv.contains("ADMM"));
-    }
-    #[test]
-    fn test_variational_inequality() {
-        let vi = VariationalInequality::new("F", "C", true);
-        let form = vi.vi_formulation();
-        assert!(form.contains("F(x*)"));
-        let stamp = vi.stampacchia_existence();
-        assert!(stamp.contains("Stampacchia"));
-        let svi = VariationalInequality::strongly_monotone("G", "K", 0.5);
-        assert!(svi.unique_solution_exists());
-    }
-    #[test]
-    fn test_extragradient() {
-        let mut eg = ExtragradientMethod::new(0.01, "F");
-        assert!(eg.convergence_condition(50.0));
-        assert!(!eg.convergence_condition(200.0));
-        eg.do_step(0.5);
-        assert_eq!(eg.iterations, 1);
-        let desc = eg.korpelevich_step_description();
-        assert!(desc.contains("Korpelevich"));
+    fn test_eval_max_affine() {
+        let pieces = vec![(vec![1.0, 0.0], 0.0), (vec![0.0, 1.0], 0.0)];
+        let kind = FunctionKind::MaxAffine { pieces };
+        let (val, g) = eval_with_subgradient(&kind, &[3.0, 1.0]);
+        assert!(approx(val, 3.0, 1e-12));
+        assert!(approx(g[0], 1.0, 1e-12));
+        assert!(approx(g[1], 0.0, 1e-12));
     }
 }

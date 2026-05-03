@@ -1603,7 +1603,7 @@ impl GrothendieckFibrationImpl {
 ///
 /// Seely (1987) showed that models of System F correspond to certain
 /// cartesian closed categories with a "weakly generic" small object.
-/// The key is the Seely isomorphism: A[τ/X] ≅ A ∘ (_, τ).
+/// The key is the Seely isomorphism: A\[τ/X\] ≅ A ∘ (_, τ).
 pub struct PolymorphismCategory {
     /// Name of the category.
     pub name: String,
@@ -1621,7 +1621,7 @@ impl PolymorphismCategory {
             seely_strict: false,
         }
     }
-    /// Seely's isomorphism: A[τ/X] ≅ A ∘ (id, τ).
+    /// Seely's isomorphism: A\[τ/X\] ≅ A ∘ (id, τ).
     pub fn seely_isomorphism(&self, a: &str, tau: &str) -> String {
         format!(
             "Seely's isomorphism in {}: {}[{}/X] ≅ {} ∘ (id, {}). \

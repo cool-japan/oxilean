@@ -19,10 +19,8 @@ pub fn collect_fvars(expr: &Expr) -> Vec<FVarId> {
 }
 pub(super) fn collect_fvars_impl(expr: &Expr, result: &mut Vec<FVarId>) {
     match expr {
-        Expr::FVar(id) => {
-            if id.0 < MVAR_FVAR_OFFSET && !result.contains(id) {
-                result.push(*id);
-            }
+        Expr::FVar(id) if id.0 < MVAR_FVAR_OFFSET && !result.contains(id) => {
+            result.push(*id);
         }
         Expr::App(f, a) => {
             collect_fvars_impl(f, result);
@@ -675,10 +673,8 @@ pub(super) fn collect_level_params_impl(expr: &Expr, params: &mut Vec<oxilean_ke
 }
 pub(super) fn collect_level_param_names(level: &Level, params: &mut Vec<oxilean_kernel::Name>) {
     match level {
-        Level::Param(name) => {
-            if !params.contains(name) {
-                params.push(name.clone());
-            }
+        Level::Param(name) if !params.contains(name) => {
+            params.push(name.clone());
         }
         Level::Succ(l) => collect_level_param_names(l, params),
         Level::Max(l1, l2) | Level::IMax(l1, l2) => {

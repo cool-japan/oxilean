@@ -1135,3 +1135,632 @@ mod LICM_infra_tests {
 /// LICM code version
 #[allow(dead_code)]
 pub const LICM_CODE_VERSION: &str = "1.0.0";
+
+// ── CFG-based LICM functions ──────────────────────────────────────────────────
+
+use super::types::{
+    CfgHoistCandidate, LicmBlock, LicmCfg, LicmInstruction, LicmResult, LicmStats, LoopInfo,
+};
+
+/// Compute dominator sets for every block in `cfg`.
+///
+/// Returns a vector where `dominators[i]` is the set of block ids that
+/// dominate block `i` (a block always dominates itself).  Uses the standard
+/// iterative data-flow algorithm.
+pub fn compute_dominators(cfg: &LicmCfg) -> Vec<Vec<usize>> {
+    let n = cfg.blocks.len();
+    if n == 0 {
+        return Vec::new();
+    }
+
+    // Initialise: entry is dominated only by itself; all others by the full set.
+    let all: Vec<usize> = (0..n).collect();
+    let mut dom: Vec<Vec<usize>> = vec![all.clone(); n];
+    dom[cfg.entry] = vec![cfg.entry];
+
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for block in &cfg.blocks {
+            if block.id == cfg.entry {
+                continue;
+            }
+            // new_dom = {block.id} ∪ (∩ dom[pred] for each pred)
+            let mut new_dom: Option<Vec<usize>> = None;
+            for &pred in &block.predecessors {
+                let pred_dom = &dom[pred];
+                new_dom = Some(match new_dom {
+                    None => pred_dom.clone(),
+                    Some(existing) => existing
+                        .into_iter()
+                        .filter(|x| pred_dom.contains(x))
+                        .collect(),
+                });
+            }
+            let mut nd = new_dom.unwrap_or_default();
+            if !nd.contains(&block.id) {
+                nd.push(block.id);
+                nd.sort_unstable();
+            }
+            if nd != dom[block.id] {
+                dom[block.id] = nd;
+                changed = true;
+            }
+        }
+    }
+    dom
+}
+
+/// Identify natural loops in `cfg` via dominator analysis.
+///
+/// A natural loop is defined by a back-edge `(n, h)` where `h` dominates `n`.
+/// The loop body consists of all blocks from which `n` is reachable without
+/// passing through `h`.
+pub fn identify_loops(cfg: &LicmCfg) -> Vec<LoopInfo> {
+    let dom = compute_dominators(cfg);
+    let mut loops: Vec<LoopInfo> = Vec::new();
+
+    // Find back-edges.
+    for block in &cfg.blocks {
+        for &succ in &block.successors {
+            // back-edge if succ dominates block
+            if dom[block.id].contains(&succ) {
+                let header = succ;
+                let from = block.id;
+                // Collect loop body via reverse-reachability from `from` up to `header`.
+                let body = collect_loop_body(cfg, header, from);
+                // Merge into existing loop with same header or create new.
+                if let Some(existing) = loops.iter_mut().find(|l| l.header == header) {
+                    existing.back_edges.push((from, header));
+                    for b in &body {
+                        if !existing.body.contains(b) {
+                            existing.body.push(*b);
+                        }
+                    }
+                } else {
+                    loops.push(LoopInfo {
+                        header,
+                        body,
+                        preheader: None,
+                        back_edges: vec![(from, header)],
+                    });
+                }
+            }
+        }
+    }
+    loops
+}
+
+/// Collect all block ids reachable from `from` going *backwards* through
+/// predecessors, stopping at (and including) `header`.
+fn collect_loop_body(cfg: &LicmCfg, header: usize, from: usize) -> Vec<usize> {
+    let mut body = vec![header];
+    let mut worklist = vec![from];
+    while let Some(current) = worklist.pop() {
+        if body.contains(&current) {
+            continue;
+        }
+        body.push(current);
+        if let Some(blk) = cfg.blocks.iter().find(|b| b.id == current) {
+            for &pred in &blk.predecessors {
+                if !body.contains(&pred) {
+                    worklist.push(pred);
+                }
+            }
+        }
+    }
+    body.sort_unstable();
+    body
+}
+
+/// Return `true` if `instr` is loop-invariant with respect to `loop_body`.
+///
+/// An instruction is loop-invariant when none of its operand ids are
+/// *defined* inside the loop body.  Constant instructions (no uses) are
+/// always invariant.
+pub fn is_loop_invariant(instr: &LicmInstruction, loop_body: &[usize], cfg: &LicmCfg) -> bool {
+    // Collect all instruction ids defined inside the loop.
+    let loop_defs: Vec<usize> = cfg
+        .blocks
+        .iter()
+        .filter(|b| loop_body.contains(&b.id))
+        .flat_map(|b| b.instructions.iter().flat_map(|i| i.defs.iter().copied()))
+        .collect();
+
+    // The instruction is invariant if none of its uses are defined in the loop.
+    instr.uses.iter().all(|u| !loop_defs.contains(u))
+}
+
+/// Find all instructions inside `loop_` that can be hoisted to a preheader.
+///
+/// An instruction is eligible when:
+/// 1. It is loop-invariant.
+/// 2. It has no side-effects (approximated as having at least one def).
+pub fn find_hoist_candidates(
+    cfg: &LicmCfg,
+    loop_: &LoopInfo,
+    loop_id: usize,
+) -> Vec<CfgHoistCandidate> {
+    let mut candidates = Vec::new();
+    for &block_id in &loop_.body {
+        if let Some(blk) = cfg.blocks.iter().find(|b| b.id == block_id) {
+            for instr in &blk.instructions {
+                if !instr.defs.is_empty() && is_loop_invariant(instr, &loop_.body, cfg) {
+                    candidates.push(CfgHoistCandidate {
+                        instr_id: instr.id,
+                        loop_id,
+                        reason: format!(
+                            "instruction {} is loop-invariant (no operands defined in loop body)",
+                            instr.id
+                        ),
+                    });
+                }
+            }
+        }
+    }
+    candidates
+}
+
+/// Create a preheader block for `loop_` and insert it into `cfg`.
+///
+/// The preheader is a new block that becomes the sole predecessor of the
+/// loop header from outside the loop.  All non-back-edge predecessors of
+/// the header are redirected to the preheader.
+pub fn create_preheader(cfg: &mut LicmCfg, loop_: &mut LoopInfo) {
+    if loop_.preheader.is_some() {
+        return; // already has a preheader
+    }
+
+    let new_id = cfg.blocks.iter().map(|b| b.id).max().unwrap_or(0) + 1;
+    let header = loop_.header;
+
+    // Determine which predecessors of the header come from *outside* the loop.
+    let outside_preds: Vec<usize> =
+        if let Some(hdr_block) = cfg.blocks.iter().find(|b| b.id == header) {
+            hdr_block
+                .predecessors
+                .iter()
+                .copied()
+                .filter(|p| !loop_.body.contains(p))
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+    // Build the preheader block.
+    let preheader = LicmBlock {
+        id: new_id,
+        instructions: Vec::new(),
+        successors: vec![header],
+        predecessors: outside_preds.clone(),
+    };
+    cfg.blocks.push(preheader);
+
+    // Redirect outside predecessors to go to the preheader instead of header.
+    for blk in cfg.blocks.iter_mut() {
+        if outside_preds.contains(&blk.id) {
+            for succ in blk.successors.iter_mut() {
+                if *succ == header {
+                    *succ = new_id;
+                }
+            }
+        }
+    }
+
+    // Update the header's predecessor list.
+    if let Some(hdr_block) = cfg.blocks.iter_mut().find(|b| b.id == header) {
+        hdr_block
+            .predecessors
+            .retain(|p| !outside_preds.contains(p));
+        if !hdr_block.predecessors.contains(&new_id) {
+            hdr_block.predecessors.push(new_id);
+        }
+    }
+
+    loop_.preheader = Some(new_id);
+}
+
+/// Physically move the instruction identified by `candidate.instr_id` from
+/// its current block in `loop_` to the loop's preheader block.
+///
+/// If no preheader exists, one is created first.
+pub fn hoist_instruction(cfg: &mut LicmCfg, candidate: &CfgHoistCandidate, loop_: &mut LoopInfo) {
+    create_preheader(cfg, loop_);
+    let preheader_id = match loop_.preheader {
+        Some(id) => id,
+        None => return,
+    };
+
+    // Extract the instruction from its source block.
+    let mut hoisted_instr: Option<LicmInstruction> = None;
+    'outer: for blk in cfg.blocks.iter_mut() {
+        if loop_.body.contains(&blk.id) {
+            let pos = blk
+                .instructions
+                .iter()
+                .position(|i| i.id == candidate.instr_id);
+            if let Some(idx) = pos {
+                hoisted_instr = Some(blk.instructions.remove(idx));
+                break 'outer;
+            }
+        }
+    }
+
+    // Insert it at the end of the preheader.
+    if let Some(instr) = hoisted_instr {
+        if let Some(ph) = cfg.blocks.iter_mut().find(|b| b.id == preheader_id) {
+            ph.instructions.push(instr);
+        }
+    }
+}
+
+/// Run the full LICM pass over `cfg`.
+///
+/// Identifies all natural loops, finds hoist candidates in each, creates
+/// preheaders as needed, and moves invariant instructions out of loops.
+pub fn run_licm(mut cfg: LicmCfg) -> LicmResult {
+    let mut loops = identify_loops(&cfg);
+    let mut all_candidates: Vec<CfgHoistCandidate> = Vec::new();
+    let mut stats = LicmStats::default();
+
+    // Collect candidates before mutating cfg.
+    for (loop_id, loop_) in loops.iter().enumerate() {
+        stats.loops_analyzed += 1;
+        let candidates = find_hoist_candidates(&cfg, loop_, loop_id);
+        all_candidates.extend(candidates);
+    }
+
+    // Hoist each candidate.
+    let mut blocks_modified: std::collections::HashSet<usize> = std::collections::HashSet::new();
+    for candidate in &all_candidates {
+        let loop_id = candidate.loop_id;
+        if loop_id < loops.len() {
+            let loop_ = &mut loops[loop_id];
+            // Track which blocks will be modified.
+            for &block_id in &loop_.body {
+                if let Some(blk) = cfg.blocks.iter().find(|b| b.id == block_id) {
+                    if blk.instructions.iter().any(|i| i.id == candidate.instr_id) {
+                        blocks_modified.insert(block_id);
+                    }
+                }
+            }
+            hoist_instruction(&mut cfg, candidate, loop_);
+            stats.instructions_hoisted += 1;
+        }
+    }
+    stats.blocks_modified = blocks_modified.len();
+
+    LicmResult {
+        hoisted: all_candidates,
+        cfg,
+        stats,
+    }
+}
+
+#[cfg(test)]
+mod cfg_licm_tests {
+    use super::super::types::{
+        CfgHoistCandidate, LicmBlock, LicmCfg, LicmInstruction, LicmStats, LoopInfo,
+    };
+    use super::{
+        compute_dominators, create_preheader, find_hoist_candidates, hoist_instruction,
+        identify_loops, is_loop_invariant, run_licm,
+    };
+
+    fn make_instr(id: usize, expr: &str, uses: Vec<usize>, defs: Vec<usize>) -> LicmInstruction {
+        LicmInstruction {
+            id,
+            expr: expr.to_string(),
+            uses,
+            defs,
+            is_invariant: false,
+        }
+    }
+
+    fn make_block(
+        id: usize,
+        instructions: Vec<LicmInstruction>,
+        successors: Vec<usize>,
+        predecessors: Vec<usize>,
+    ) -> LicmBlock {
+        LicmBlock {
+            id,
+            instructions,
+            successors,
+            predecessors,
+        }
+    }
+
+    /// Build a minimal CFG with one loop:
+    ///   0 -> 1 -> 2 -> 1 (back-edge), 2 -> 3
+    fn simple_loop_cfg() -> LicmCfg {
+        let b0 = make_block(
+            0,
+            vec![make_instr(10, "x = 5", vec![], vec![10])],
+            vec![1],
+            vec![],
+        );
+        let b1 = make_block(
+            1,
+            vec![
+                make_instr(20, "y = x + 1", vec![10], vec![20]),
+                make_instr(21, "z = 42", vec![], vec![21]), // loop-invariant
+            ],
+            vec![2],
+            vec![0, 2],
+        );
+        let b2 = make_block(
+            2,
+            vec![make_instr(30, "w = y * 2", vec![20], vec![30])],
+            vec![1, 3],
+            vec![1],
+        );
+        let b3 = make_block(3, vec![], vec![], vec![2]);
+        LicmCfg {
+            blocks: vec![b0, b1, b2, b3],
+            entry: 0,
+        }
+    }
+
+    #[test]
+    fn test_compute_dominators_entry() {
+        let cfg = simple_loop_cfg();
+        let dom = compute_dominators(&cfg);
+        // Entry dominates itself only initially
+        assert!(dom[0].contains(&0));
+        assert!(!dom[0].contains(&1));
+    }
+
+    #[test]
+    fn test_compute_dominators_all_blocks_dominated_by_entry() {
+        let cfg = simple_loop_cfg();
+        let dom = compute_dominators(&cfg);
+        for i in 0..cfg.blocks.len() {
+            assert!(
+                dom[i].contains(&0),
+                "block {} should be dominated by entry",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn test_compute_dominators_self_dominance() {
+        let cfg = simple_loop_cfg();
+        let dom = compute_dominators(&cfg);
+        for i in 0..cfg.blocks.len() {
+            assert!(dom[i].contains(&i), "block {} must dominate itself", i);
+        }
+    }
+
+    #[test]
+    fn test_identify_loops_finds_one_loop() {
+        let cfg = simple_loop_cfg();
+        let loops = identify_loops(&cfg);
+        assert_eq!(loops.len(), 1, "should find exactly one loop");
+    }
+
+    #[test]
+    fn test_identify_loops_correct_header() {
+        let cfg = simple_loop_cfg();
+        let loops = identify_loops(&cfg);
+        assert_eq!(loops[0].header, 1);
+    }
+
+    #[test]
+    fn test_identify_loops_body_contains_header() {
+        let cfg = simple_loop_cfg();
+        let loops = identify_loops(&cfg);
+        assert!(loops[0].body.contains(&1));
+    }
+
+    #[test]
+    fn test_identify_loops_back_edge() {
+        let cfg = simple_loop_cfg();
+        let loops = identify_loops(&cfg);
+        assert!(
+            loops[0].back_edges.contains(&(2, 1)),
+            "back-edge (2->1) expected"
+        );
+    }
+
+    #[test]
+    fn test_is_loop_invariant_constant() {
+        let cfg = simple_loop_cfg();
+        let instr = make_instr(21, "z = 42", vec![], vec![21]);
+        let loop_body = vec![1, 2];
+        assert!(is_loop_invariant(&instr, &loop_body, &cfg));
+    }
+
+    #[test]
+    fn test_is_loop_invariant_uses_loop_def() {
+        let cfg = simple_loop_cfg();
+        // instr 20 (y = x+1) uses 10 which is defined in block 0 (outside loop)
+        let instr = make_instr(20, "y = x+1", vec![10], vec![20]);
+        let loop_body = vec![1, 2];
+        // x (10) is defined in block 0, which is outside the loop body
+        assert!(is_loop_invariant(&instr, &loop_body, &cfg));
+    }
+
+    #[test]
+    fn test_is_loop_invariant_uses_inloop_def() {
+        let cfg = simple_loop_cfg();
+        // instr 30 uses 20, which is defined by instr 20 in block 1 (inside loop)
+        let instr = make_instr(30, "w = y*2", vec![20], vec![30]);
+        let loop_body = vec![1, 2];
+        assert!(!is_loop_invariant(&instr, &loop_body, &cfg));
+    }
+
+    #[test]
+    fn test_find_hoist_candidates_finds_constant() {
+        let cfg = simple_loop_cfg();
+        let loops = identify_loops(&cfg);
+        let candidates = find_hoist_candidates(&cfg, &loops[0], 0);
+        // instr 21 (z=42) should be a hoist candidate
+        assert!(
+            candidates.iter().any(|c| c.instr_id == 21),
+            "instruction 21 should be a hoist candidate"
+        );
+    }
+
+    #[test]
+    fn test_find_hoist_candidates_excludes_loop_dependent() {
+        let cfg = simple_loop_cfg();
+        let loops = identify_loops(&cfg);
+        let candidates = find_hoist_candidates(&cfg, &loops[0], 0);
+        // instr 30 (w=y*2) uses 20 which is defined in the loop
+        assert!(
+            !candidates.iter().any(|c| c.instr_id == 30),
+            "instruction 30 is not invariant"
+        );
+    }
+
+    #[test]
+    fn test_create_preheader_adds_block() {
+        let mut cfg = simple_loop_cfg();
+        let mut loop_ = identify_loops(&cfg).remove(0);
+        let original_count = cfg.blocks.len();
+        create_preheader(&mut cfg, &mut loop_);
+        assert_eq!(cfg.blocks.len(), original_count + 1);
+        assert!(loop_.preheader.is_some());
+    }
+
+    #[test]
+    fn test_create_preheader_idempotent() {
+        let mut cfg = simple_loop_cfg();
+        let mut loop_ = identify_loops(&cfg).remove(0);
+        create_preheader(&mut cfg, &mut loop_);
+        let count_after_first = cfg.blocks.len();
+        create_preheader(&mut cfg, &mut loop_);
+        assert_eq!(cfg.blocks.len(), count_after_first, "should be idempotent");
+    }
+
+    #[test]
+    fn test_create_preheader_links_to_header() {
+        let mut cfg = simple_loop_cfg();
+        let mut loop_ = identify_loops(&cfg).remove(0);
+        create_preheader(&mut cfg, &mut loop_);
+        let ph_id = loop_.preheader.unwrap();
+        let ph = cfg.blocks.iter().find(|b| b.id == ph_id).unwrap();
+        assert!(ph.successors.contains(&loop_.header));
+    }
+
+    #[test]
+    fn test_hoist_instruction_moves_instr() {
+        let mut cfg = simple_loop_cfg();
+        let mut loops = identify_loops(&cfg);
+        let candidates = find_hoist_candidates(&cfg, &loops[0], 0);
+        let candidate = candidates
+            .iter()
+            .find(|c| c.instr_id == 21)
+            .unwrap()
+            .clone();
+        hoist_instruction(&mut cfg, &candidate, &mut loops[0]);
+        // instr 21 should no longer be in block 1
+        let b1 = cfg.blocks.iter().find(|b| b.id == 1).unwrap();
+        assert!(
+            !b1.instructions.iter().any(|i| i.id == 21),
+            "instruction should have been moved out of block 1"
+        );
+    }
+
+    #[test]
+    fn test_hoist_instruction_instr_in_preheader() {
+        let mut cfg = simple_loop_cfg();
+        let mut loops = identify_loops(&cfg);
+        let candidates = find_hoist_candidates(&cfg, &loops[0], 0);
+        let candidate = candidates
+            .iter()
+            .find(|c| c.instr_id == 21)
+            .unwrap()
+            .clone();
+        hoist_instruction(&mut cfg, &candidate, &mut loops[0]);
+        let ph_id = loops[0].preheader.unwrap();
+        let ph = cfg.blocks.iter().find(|b| b.id == ph_id).unwrap();
+        assert!(
+            ph.instructions.iter().any(|i| i.id == 21),
+            "instruction should be in preheader"
+        );
+    }
+
+    #[test]
+    fn test_run_licm_result_stats() {
+        let cfg = simple_loop_cfg();
+        let result = run_licm(cfg);
+        assert_eq!(result.stats.loops_analyzed, 1);
+        assert!(result.stats.instructions_hoisted > 0);
+    }
+
+    #[test]
+    fn test_run_licm_hoisted_candidates_nonempty() {
+        let cfg = simple_loop_cfg();
+        let result = run_licm(cfg);
+        assert!(!result.hoisted.is_empty());
+    }
+
+    #[test]
+    fn test_run_licm_empty_cfg() {
+        let cfg = LicmCfg {
+            blocks: vec![],
+            entry: 0,
+        };
+        let result = run_licm(cfg);
+        assert_eq!(result.stats.loops_analyzed, 0);
+        assert_eq!(result.stats.instructions_hoisted, 0);
+    }
+
+    #[test]
+    fn test_run_licm_no_loops() {
+        // Linear chain: 0 -> 1 -> 2
+        let b0 = make_block(
+            0,
+            vec![make_instr(1, "a=1", vec![], vec![1])],
+            vec![1],
+            vec![],
+        );
+        let b1 = make_block(
+            1,
+            vec![make_instr(2, "b=2", vec![], vec![2])],
+            vec![2],
+            vec![0],
+        );
+        let b2 = make_block(2, vec![], vec![], vec![1]);
+        let cfg = LicmCfg {
+            blocks: vec![b0, b1, b2],
+            entry: 0,
+        };
+        let result = run_licm(cfg);
+        assert_eq!(result.stats.loops_analyzed, 0);
+        assert_eq!(result.stats.instructions_hoisted, 0);
+    }
+
+    #[test]
+    fn test_loop_info_fields() {
+        let cfg = simple_loop_cfg();
+        let loops = identify_loops(&cfg);
+        let l = &loops[0];
+        assert!(!l.body.is_empty());
+        assert!(!l.back_edges.is_empty());
+        assert!(l.preheader.is_none());
+    }
+
+    #[test]
+    fn test_licm_stats_default() {
+        let s = LicmStats::default();
+        assert_eq!(s.loops_analyzed, 0);
+        assert_eq!(s.instructions_hoisted, 0);
+        assert_eq!(s.blocks_modified, 0);
+    }
+
+    #[test]
+    fn test_cfg_hoist_candidate_fields() {
+        let c = CfgHoistCandidate {
+            instr_id: 5,
+            loop_id: 0,
+            reason: "test".to_string(),
+        };
+        assert_eq!(c.instr_id, 5);
+        assert_eq!(c.loop_id, 0);
+        assert_eq!(c.reason, "test");
+    }
+}

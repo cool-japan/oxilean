@@ -174,9 +174,9 @@ impl PageRank {
 pub struct DiGraph {
     /// Number of vertices.
     pub n: usize,
-    /// `out_adj[v]` = set of vertices that v points to.
+    /// `out_adj\[v\]` = set of vertices that v points to.
     pub out_adj: Vec<HashSet<usize>>,
-    /// `in_adj[v]` = set of vertices that point to v.
+    /// `in_adj\[v\]` = set of vertices that point to v.
     pub in_adj: Vec<HashSet<usize>>,
 }
 impl DiGraph {
@@ -211,7 +211,7 @@ pub struct WattsStrogatz {
     pub n: usize,
     /// Mean degree k.
     pub k: usize,
-    /// Rewiring probability β ∈ [0, 1].
+    /// Rewiring probability β ∈ \[0, 1\].
     pub beta: f64,
 }
 impl WattsStrogatz {
@@ -643,7 +643,7 @@ pub struct PageRankConfig {
 }
 /// Represents a community partition.
 pub struct CommunityPartition {
-    /// `label[v]` = community id of vertex v.
+    /// `label\[v\]` = community id of vertex v.
     pub label: Vec<usize>,
     /// Number of communities.
     pub n_communities: usize,
@@ -651,7 +651,7 @@ pub struct CommunityPartition {
 impl CommunityPartition {
     /// Compute modularity Q of this partition on graph `g`.
     ///
-    /// Q = (1/2m) * Σ_{ij} [A_{ij} - k_i k_j / (2m)] δ(c_i, c_j)
+    /// Q = (1/2m) * Σ_{ij} \[A_{ij} - k_i k_j / (2m)\] δ(c_i, c_j)
     pub fn modularity(&self, g: &Graph) -> f64 {
         let m = g.edge_count();
         if m == 0 {
@@ -761,7 +761,7 @@ impl CentralityMeasure {
 pub struct Graph {
     /// Number of vertices (0..n).
     pub n: usize,
-    /// Adjacency list: `adj[v]` = set of neighbors of v.
+    /// Adjacency list: `adj\[v\]` = set of neighbors of v.
     pub adj: Vec<HashSet<usize>>,
 }
 impl Graph {

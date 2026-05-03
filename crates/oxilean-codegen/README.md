@@ -9,7 +9,7 @@
 
 The crate is **untrusted** with respect to logical soundness -- any bug here can only affect the performance or correctness of extracted programs, not the validity of proofs, because all terms are independently verified by `oxilean-kernel` before reaching this stage.
 
-243,915 SLOC -- comprehensive code generation with multiple backends and optimisation passes (1,074 source files, 4,570 tests passing).
+243,915 SLOC -- comprehensive code generation with multiple backends and optimisation passes (1,074 source files, 4,706 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -74,6 +74,13 @@ Kernel Expr (type-checked)
 | `zig_backend` | Zig code emission |
 | `ffi_bridge` | C FFI header generation |
 
+### Optimization Passes
+
+| Pass | Description |
+|------|-------------|
+| `InliningPass::run_all` / `run_with_context` | Real fixed-point function inliner in `opt_copy_prop` with variable-ID freshening, configurable cost threshold, and support for both module-level and per-function inlining |
+| EVM / Solidity `compute_selector` / `SolidityFunction::selector` | Correct keccak256-based 4-byte ABI selectors (via `tiny-keccak`); replaces former incorrect FNV-1a/djb2 placeholders |
+
 ### Configuration
 
 ```rust
@@ -103,7 +110,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-codegen = "0.1.1"
+oxilean-codegen = "0.1.2"
 ```
 
 ## Dependencies

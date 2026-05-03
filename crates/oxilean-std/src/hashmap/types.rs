@@ -24,7 +24,7 @@ impl<T: Ord + Clone, V: Clone> IntervalMap<T, V> {
     pub fn new() -> Self {
         Self::default()
     }
-    /// Insert an interval [lo, hi] with a value.
+    /// Insert an interval \[lo, hi\] with a value.
     pub fn insert(&mut self, lo: T, hi: T, value: V) {
         self.intervals.push(IntervalEntry { lo, hi, value });
     }

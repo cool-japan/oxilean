@@ -406,7 +406,7 @@ impl FiniteMatrix {
         }
         true
     }
-    /// Commutator [A, B] = AB - BA.
+    /// Commutator \[A, B\] = AB - BA.
     pub fn commutator(&self, other: &Self) -> Option<Self> {
         let ab = self.matmul(other)?;
         let ba = other.matmul(self)?;
@@ -417,7 +417,7 @@ impl FiniteMatrix {
         }
         Some(result)
     }
-    /// Commutator norm estimate ||[A,B]||_F.
+    /// Commutator norm estimate ||\[A,B\]||_F.
     pub fn commutator_norm(&self, other: &Self) -> Option<f64> {
         Some(self.commutator(other)?.frobenius_norm())
     }
@@ -495,7 +495,7 @@ pub struct KTheoryData {
     pub k1_summands: Vec<u64>,
     /// Positive cone generator count in K0.
     pub k0_positive_generators: usize,
-    /// The class of the unit [1_A] in K0.
+    /// The class of the unit \[1_A\] in K0.
     pub unit_class: i64,
 }
 impl KTheoryData {
@@ -1069,7 +1069,7 @@ impl SpectralTripleData {
             spectral_dim: n as f64,
         }
     }
-    /// Connes' distance formula: d(x,y) = sup { |f(x)-f(y)| : ||[D,f]|| ≤ 1 }.
+    /// Connes' distance formula: d(x,y) = sup { |f(x)-f(y)| : ||\[D,f\]|| ≤ 1 }.
     pub fn distance_formula(&self) -> String {
         format!(
             "d(x,y) = sup{{|f(x)-f(y)| : ||[{},π(f)]|| ≤ 1}}",

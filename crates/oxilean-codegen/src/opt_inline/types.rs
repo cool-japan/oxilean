@@ -1038,7 +1038,7 @@ impl InlineProfile {
     /// Return the top `n` callees by call count, highest first.
     pub fn top_callees(&self, n: usize) -> Vec<(String, u64)> {
         let mut pairs: Vec<(String, u64)> = self.call_counts.clone().into_iter().collect();
-        pairs.sort_by(|a, b| b.1.cmp(&a.1));
+        pairs.sort_by_key(|b| std::cmp::Reverse(b.1));
         pairs.truncate(n);
         pairs
     }

@@ -76,13 +76,13 @@ impl GroupHarmonic {
 }
 /// A discrete H¹ atom checker over a finite signal.
 ///
-/// An H¹-atom supported on an interval I = [lo, hi] satisfies:
+/// An H¹-atom supported on an interval I = \[lo, hi\] satisfies:
 /// 1. supp(a) ⊆ I
 /// 2. ‖a‖_{L∞} ≤ 1/|I|
 /// 3. ∫ a = 0  (zero-mean / cancellation condition)
 #[derive(Debug, Clone)]
 pub struct HardySpaceAtom {
-    /// Support interval [lo, hi] (index range).
+    /// Support interval \[lo, hi\] (index range).
     pub lo: usize,
     /// Support interval hi (inclusive).
     pub hi: usize,
@@ -102,7 +102,7 @@ impl HardySpaceAtom {
             0
         }
     }
-    /// Check that all values outside [lo, hi] are zero.
+    /// Check that all values outside \[lo, hi\] are zero.
     pub fn has_compact_support(&self) -> bool {
         self.values
             .iter()
@@ -128,7 +128,7 @@ impl HardySpaceAtom {
     pub fn is_valid_atom(&self) -> bool {
         self.has_compact_support() && self.satisfies_linfty_bound() && self.has_zero_mean()
     }
-    /// Construct a canonical atom supported on [lo, hi] with +1/|I| on first half,
+    /// Construct a canonical atom supported on \[lo, hi\] with +1/|I| on first half,
     /// -1/|I| on second half (or ±1/|I| for |I|=1 → zero atom).
     pub fn canonical(signal_len: usize, lo: usize, hi: usize) -> Self {
         let mut values = vec![0.0f64; signal_len];
@@ -578,7 +578,7 @@ impl FourierSeries {
     }
     /// Evaluate the N-th partial sum at x.
     ///
-    /// Sₙ(x) = a₀/2 + Σₖ₌₁ⁿ [aₖ cos(2πkx/T) + bₖ sin(2πkx/T)]
+    /// Sₙ(x) = a₀/2 + Σₖ₌₁ⁿ \[aₖ cos(2πkx/T) + bₖ sin(2πkx/T)\]
     pub fn partial_sum(&self, n: usize, x: f64) -> f64 {
         let t = self.period;
         let (a0, _b0) = self.coefficients.first().copied().unwrap_or((0.0, 0.0));
@@ -911,7 +911,7 @@ impl MaximalFunctionData {
         MaximalFunctionData { dimension, samples }
     }
     /// Approximate Hardy-Littlewood maximal function Mf(x) at index i.
-    /// Uses average over samples[max(0,i-r)..=min(n-1,i+r)] for r=1.
+    /// Uses average over samples\[max(0,i-r)..=min(n-1,i+r)\] for r=1.
     pub fn hl_maximal_at(&self, i: usize, r: usize) -> f64 {
         if self.samples.is_empty() {
             return 0.0;

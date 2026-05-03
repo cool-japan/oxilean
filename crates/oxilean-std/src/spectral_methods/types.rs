@@ -19,7 +19,7 @@ pub struct HpAdaptiveSpectral {
 }
 #[allow(dead_code)]
 impl HpAdaptiveSpectral {
-    /// Create a uniform hp mesh on [a, b].
+    /// Create a uniform hp mesh on \[a, b\].
     pub fn uniform(a: f64, b: f64, num_elements: usize, p: usize) -> Self {
         let h = (b - a) / num_elements as f64;
         let breakpoints: Vec<f64> = (0..=num_elements).map(|i| a + i as f64 * h).collect();
@@ -445,7 +445,7 @@ impl FourierSpectralMethod {
         }
         d
     }
-    /// Solve −u'' = f on [0, L] with periodic BC using FFT.
+    /// Solve −u'' = f on \[0, L\] with periodic BC using FFT.
     ///
     /// Returns the solution u at the N evenly-spaced collocation points,
     /// with the mean value set to zero.
@@ -634,11 +634,11 @@ impl BarycentricInterpolator {
             .fold(0.0_f64, f64::max)
     }
 }
-/// Chebyshev expansion on a mapped domain [a, b].
+/// Chebyshev expansion on a mapped domain \[a, b\].
 pub struct ChebychevExpansion {
     /// Degree of the expansion (number of modes − 1).
     pub degree: usize,
-    /// Physical domain [a, b].
+    /// Physical domain \[a, b\].
     pub domain: (f64, f64),
     /// Chebyshev coefficients cₙ.
     pub coefficients: Vec<f64>,
@@ -652,9 +652,9 @@ impl ChebychevExpansion {
             coefficients,
         }
     }
-    /// Evaluate the expansion at a physical-domain point x ∈ [a, b].
+    /// Evaluate the expansion at a physical-domain point x ∈ \[a, b\].
     ///
-    /// Maps x → ξ ∈ [−1, 1] then uses Clenshaw's algorithm.
+    /// Maps x → ξ ∈ \[−1, 1\] then uses Clenshaw's algorithm.
     pub fn evaluate_at(&self, x: f64) -> f64 {
         let (a, b) = self.domain;
         let xi = 2.0 * (x - a) / (b - a) - 1.0;
@@ -701,7 +701,7 @@ impl ChebychevExpansion {
 pub struct GaussLobattoRule {
     /// Polynomial degree N.
     pub degree: usize,
-    /// Quadrature nodes in [-1, 1].
+    /// Quadrature nodes in \[-1, 1\].
     pub nodes: Vec<f64>,
     /// Quadrature weights summing to 2.
     pub weights: Vec<f64>,
@@ -731,7 +731,7 @@ impl GaussLobattoRule {
             weights,
         }
     }
-    /// Integrate f over [-1, 1] using the Gauss-Lobatto rule.
+    /// Integrate f over \[-1, 1\] using the Gauss-Lobatto rule.
     pub fn integrate<F: Fn(f64) -> f64>(&self, f: F) -> f64 {
         self.nodes
             .iter()

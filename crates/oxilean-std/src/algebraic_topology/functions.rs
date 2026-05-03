@@ -202,7 +202,7 @@ pub fn postnikov_tower_ty() -> Expr {
     arrow(space_ty(), arrow(nat_ty(), space_ty()))
 }
 /// `WhiteheadProduct : Nat → Nat → TopologicalSpace → Group`
-/// [α, β] : π_m(X) × π_n(X) → π_{m+n-1}(X), the Whitehead product.
+/// \[α, β\] : π_m(X) × π_n(X) → π_{m+n-1}(X), the Whitehead product.
 pub fn whitehead_product_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), arrow(space_ty(), group_ty())))
 }
@@ -313,7 +313,7 @@ pub fn atiyah_hirzebruch_ss_ty() -> Expr {
 }
 /// `AdamsSpectralSequence : TopologicalSpace → TopologicalSpace → Prop`
 /// The Adams spectral sequence converging to stable homotopy classes:
-/// E_2^{s,t} = Ext_{A}^{s,t}(H*(Y), H*(X)) ⟹ [X, Y]_*.
+/// E_2^{s,t} = Ext_{A}^{s,t}(H*(Y), H*(X)) ⟹ \[X, Y\]_*.
 pub fn adams_spectral_sequence_ty() -> Expr {
     arrow(space_ty(), arrow(space_ty(), prop()))
 }
@@ -444,7 +444,7 @@ pub fn normal_map_ty() -> Expr {
 }
 /// `SurgeryExactSequence : Nat → TopologicalSpace → Prop`
 /// The Browder–Novikov–Sullivan–Wall surgery exact sequence:
-/// … → L_{n+1}(π₁) → S(X) → [X, G/O] → L_n(π₁) → …
+/// … → L_{n+1}(π₁) → S(X) → \[X, G/O\] → L_n(π₁) → …
 pub fn surgery_exact_sequence_ty() -> Expr {
     arrow(nat_ty(), arrow(space_ty(), prop()))
 }
@@ -1071,7 +1071,7 @@ pub fn betti_sphere_product(m: u32, n: u32) -> Vec<u32> {
 /// Compute the Lefschetz number L(f) = Σ_k (-1)^k · tr(f_k)
 /// where f_k is the induced map on H_k with ℚ coefficients.
 ///
-/// `traces[k]` should contain tr(f_* : H_k(X;ℚ) → H_k(X;ℚ)).
+/// `traces\[k\]` should contain tr(f_* : H_k(X;ℚ) → H_k(X;ℚ)).
 pub fn lefschetz_number(traces: &[i64]) -> i64 {
     traces
         .iter()

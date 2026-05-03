@@ -16,7 +16,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["COOLJAPAN OU (Team Kitasan)"]
 license = "Apache-2.0"
@@ -26,17 +26,26 @@ documentation = "https://docs.rs/oxilean"
 rust-version = "1.70"
 
 [workspace.dependencies]
+# Testing
+proptest = "1.11.0"
+
+# Cryptography
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+
+# SMT Solver (OxiZ - COOLJAPAN Pure Rust SMT solver, replaces Z3)
+oxiz-solver = "0.2.1"
+
 # Internal dependencies
-oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.1" }
-oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.1" }
-oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.1" }
-oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.1" }
-oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.1" }
-oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.1" }
-oxilean-std = { path = "crates/oxilean-std", version = "0.1.1" }
-oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.1" }
-oxilean-build = { path = "crates/oxilean-build", version = "0.1.1" }
-oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.1" }
+oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.2" }
+oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.2" }
+oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.2" }
+oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.2" }
+oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.2" }
+oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.2" }
+oxilean-std = { path = "crates/oxilean-std", version = "0.1.2" }
+oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.2" }
+oxilean-build = { path = "crates/oxilean-build", version = "0.1.2" }
+oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.2" }
 
 [profile.release]
 lto = true
@@ -68,6 +77,10 @@ path = "tests/mathlib_theorems_test/mod.rs"
 [[test]]
 name = "std_library_test"
 path = "tests/std_library_test/mod.rs"
+
+[[test]]
+name = "formal_proofs_test"
+path = "tests/formal_proofs_test/mod.rs"
 
 [dev-dependencies]
 oxilean-kernel = { path = "crates/oxilean-kernel" }

@@ -596,7 +596,7 @@ pub fn resolvent(mat: &ComplexMatrix, lambda: Complex64) -> Option<ComplexMatrix
     Some(inv)
 }
 /// Evaluate a polynomial p(A) = ∑ cₖ Aᵏ for a matrix A.
-/// Coefficients are given as [c₀, c₁, ..., cₘ] (real).
+/// Coefficients are given as \[c₀, c₁, ..., cₘ\] (real).
 pub fn polynomial_functional_calculus(mat: &ComplexMatrix, coeffs: &[f64]) -> ComplexMatrix {
     let n = mat.n;
     if coeffs.is_empty() {

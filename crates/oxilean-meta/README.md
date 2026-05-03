@@ -9,7 +9,7 @@
 
 This crate is **untrusted** with respect to soundness: metavariable assignment and unification code cannot corrupt the kernel environment. All proofs produced by the tactic system are ultimately re-verified by the kernel before being accepted.
 
-152,716 SLOC -- comprehensive meta layer implementation (648 source files, 5,184 tests passing).
+152,716 SLOC -- comprehensive meta layer implementation (648 source files, 5,479 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -77,13 +77,23 @@ where the variables and hypotheses above `|-` form the local context and `Q x` i
 | `simp [...]` | Simplify using a lemma set |
 | `omega` | Solve linear arithmetic over integers and naturals |
 
+## Advanced Features
+
+### SMT Integration
+
+`SmtContext::check_sat` now performs real SMT solving via **oxiz-solver 0.2.1** (OxiZ), returning `Sat`, `Unsat`, or `Unknown`. This replaces the previous stub and enables the `decide` and `native_decide` tactics to delegate hard propositional goals to the OxiZ backend.
+
+### Gröbner Basis and Polynomial Arithmetic
+
+`GroebnerBasis::reduce` implements full multivariate polynomial division following the algorithm in Cox--Little--O'Shea §2.3 (ideal membership testing via remainder computation). The `polyrith` tactic leverages this to perform ideal membership testing on non-trivial polynomial ideals, enabling automated proofs of polynomial equalities that are out of reach for `ring` alone.
+
 ## Usage
 
 Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-meta = "0.1.1"
+oxilean-meta = "0.1.2"
 ```
 
 ### Creating a Meta Context

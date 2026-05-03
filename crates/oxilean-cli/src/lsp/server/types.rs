@@ -179,29 +179,25 @@ impl<'a> RequestDispatcher<'a> {
         let params = msg.params.clone().unwrap_or(JsonValue::Null);
         let id = msg.id.clone();
         match self.session.state {
-            ServerState::Uninitialized => {
-                if method != "initialize" {
-                    return if let Some(id_val) = id {
-                        DispatchResult::Response(JsonRpcMessage::error_response(
-                            id_val,
-                            JsonRpcError::new(-32002, "Server not initialized"),
-                        ))
-                    } else {
-                        DispatchResult::Handled
-                    };
-                }
+            ServerState::Uninitialized if method != "initialize" => {
+                return if let Some(id_val) = id {
+                    DispatchResult::Response(JsonRpcMessage::error_response(
+                        id_val,
+                        JsonRpcError::new(-32002, "Server not initialized"),
+                    ))
+                } else {
+                    DispatchResult::Handled
+                };
             }
-            ServerState::ShuttingDown => {
-                if method != "exit" {
-                    return if let Some(id_val) = id {
-                        DispatchResult::Response(JsonRpcMessage::error_response(
-                            id_val,
-                            JsonRpcError::new(-32600, "Server is shutting down"),
-                        ))
-                    } else {
-                        DispatchResult::Handled
-                    };
-                }
+            ServerState::ShuttingDown if method != "exit" => {
+                return if let Some(id_val) = id {
+                    DispatchResult::Response(JsonRpcMessage::error_response(
+                        id_val,
+                        JsonRpcError::new(-32600, "Server is shutting down"),
+                    ))
+                } else {
+                    DispatchResult::Handled
+                };
             }
             ServerState::Exited => {
                 return DispatchResult::Error("Server has exited".to_string());

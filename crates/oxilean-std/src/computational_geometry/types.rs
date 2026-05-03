@@ -9,7 +9,7 @@ use std::collections::HashMap;
 /// Uses dynamic programming: O(mn) time and space.
 /// The discrete Fréchet distance is an upper bound on the continuous Fréchet distance.
 pub struct FrechetDistanceApprox {
-    /// Memoisation table ca[i][j] = discrete Fréchet distance for P[0..i] and Q[0..j]
+    /// Memoisation table ca\[i\]\[j\] = discrete Fréchet distance for P[0..i] and Q[0..j]
     ca: Vec<Vec<f64>>,
 }
 impl FrechetDistanceApprox {
@@ -646,7 +646,7 @@ impl RangeTree2D {
             secondary,
         }
     }
-    /// Query all points in [x_lo, x_hi] × [y_lo, y_hi].
+    /// Query all points in \[x_lo, x_hi\] × \[y_lo, y_hi\].
     pub fn query(&self, x_lo: f64, x_hi: f64, y_lo: f64, y_hi: f64) -> Vec<Point2D> {
         let candidates: Vec<Point2D> = self
             .sorted_x

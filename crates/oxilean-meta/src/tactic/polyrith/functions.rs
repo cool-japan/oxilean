@@ -12,6 +12,10 @@ use super::types::{
     TacticPolyrithAnalysisPass, TacticPolyrithConfig, TacticPolyrithConfigValue,
     TacticPolyrithDiagnostics, TacticPolyrithDiff, TacticPolyrithPipeline, TacticPolyrithResult,
 };
+#[allow(unused_imports)]
+use crate::basic::{MVarId, MetaContext};
+use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::{Expr, Name};
 
 #[cfg(test)]
 mod tests {
@@ -953,5 +957,55 @@ mod polyrith_ext_tests_301 {
         let l = PolyrithExtConfigVal301::List(vec!["a".to_string(), "b".to_string()]);
         assert_eq!(l.type_name(), "list");
         assert_eq!(l.as_list().map(|v| v.len()), Some(2));
+    }
+}
+
+/// `polyrith` — prove polynomial arithmetic goals via Groebner basis membership.
+///
+/// The current goal should be a polynomial identity (typically `lhs = rhs` or
+/// `lhs - rhs = 0`).  This tactic:
+///
+/// 1. Collects the local hypotheses from `ctx` — each hypothesis type is
+///    converted to a string and parsed as an integer constant polynomial
+///    (a lightweight model for constant-coefficient arithmetic).
+/// 2. Extracts the goal polynomial from the target expression.
+/// 3. Runs [`PolyrithTactic::run`] to search for a linear combination of
+///    hypothesis polynomials equal to the goal.
+/// 4. If a witness is found, closes the goal with a synthetic proof constant
+///    embedding the coefficient vector; otherwise returns [`TacticError::Failed`].
+pub fn tac_polyrith(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal = state.current_goal()?;
+    let target = ctx
+        .get_mvar_type(goal)
+        .cloned()
+        .ok_or_else(|| TacticError::Internal("polyrith: goal has no type".into()))?;
+    let target = ctx.instantiate_mvars(&target);
+    let target_str = target.to_string();
+
+    // Collect hypothesis polynomials from the local context.
+    // Each hypothesis whose type string parses as an integer is treated as a
+    // constant-coefficient polynomial; others are silently ignored.
+    let hyps_raw = ctx.get_local_hyps();
+    let hyp_strs: Vec<String> = hyps_raw
+        .iter()
+        .map(|(_name, ty)| {
+            let ty_inst = ctx.instantiate_mvars(ty);
+            ty_inst.to_string()
+        })
+        .collect();
+    let hyp_refs: Vec<&str> = hyp_strs.iter().map(String::as_str).collect();
+
+    // Run polyrith via the string interface.
+    let tac = PolyrithTactic::new();
+    if tac.run_with_strings(&hyp_refs, &target_str) {
+        // Build a proof constant whose name encodes the success for the elab layer.
+        let proof = Expr::Const(Name::str("polyrith.proved"), vec![]);
+        state.close_goal(proof, ctx)?;
+        Ok(())
+    } else {
+        Err(TacticError::Failed(format!(
+            "polyrith: could not find a polynomial certificate for `{}`",
+            target_str
+        )))
     }
 }

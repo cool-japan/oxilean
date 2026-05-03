@@ -132,7 +132,7 @@ pub fn scott_continuous_ty() -> Expr {
         ),
     )
 }
-/// ContinuousFunctionSpace: [D →_c E] — the CPO of continuous maps from D to E.
+/// ContinuousFunctionSpace: \[D →_c E\] — the CPO of continuous maps from D to E.
 /// Type: Type → Type → Type
 pub fn continuous_function_space_ty() -> Expr {
     arrow(type0(), arrow(type0(), type0()))
@@ -313,7 +313,7 @@ pub fn adequacy_thm_ty() -> Expr {
 pub fn soundness_thm_ty() -> Expr {
     prop()
 }
-/// OperationalEquivalence: t ≅_op s iff ∀ context C, C[t] ⇓ ⟺ C[s] ⇓.
+/// OperationalEquivalence: t ≅_op s iff ∀ context C, C\[t\] ⇓ ⟺ C\[s\] ⇓.
 /// Type: PCFTerm → PCFTerm → Prop
 pub fn operational_equivalence_ty() -> Expr {
     arrow(type0(), arrow(type0(), prop()))
@@ -329,7 +329,7 @@ pub fn denotational_equivalence_ty() -> Expr {
 pub fn full_abstraction_ty() -> Expr {
     prop()
 }
-/// Compositionality: if t ≅_den s then C[t] ≅_den C[s] for every context C.
+/// Compositionality: if t ≅_den s then C\[t\] ≅_den C\[s\] for every context C.
 /// Type: Prop
 pub fn compositionality_ty() -> Expr {
     prop()
@@ -506,7 +506,7 @@ pub fn smyth_order_ty() -> Expr {
         arrow(type0(), arrow(type0(), prop())),
     )
 }
-/// Valuation: a Scott-continuous map v : Open(D) → [0,1] representing a
+/// Valuation: a Scott-continuous map v : Open(D) → \[0,1\] representing a
 /// sub-probability measure on a domain D.
 /// Type: Type → Type
 pub fn valuation_ty() -> Expr {
@@ -1132,7 +1132,7 @@ pub fn kleene_lfp(f: &MonotoneMap, n: usize) -> usize {
     }
     x
 }
-/// Compute the Kleene chain [⊥, f(⊥), f²(⊥), …] until a fixed point.
+/// Compute the Kleene chain \[⊥, f(⊥), f²(⊥), …\] until a fixed point.
 pub fn kleene_chain(f: &MonotoneMap, max_steps: usize) -> Vec<usize> {
     let mut chain = vec![0usize];
     let mut x = 0usize;

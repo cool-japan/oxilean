@@ -248,13 +248,13 @@ pub fn evolutionary_game_ty() -> Expr {
 /// `EvolutionarilyStableStrategy : Vec Real → Prop`
 ///
 /// ESS condition: σ* is an ESS if for all σ ≠ σ*,
-///   W(σ*, σ*) > W(σ, σ*), or [W(σ*, σ*) = W(σ, σ*) and W(σ*, σ) > W(σ, σ)].
+///   W(σ*, σ*) > W(σ, σ*), or \[W(σ*, σ*) = W(σ, σ*) and W(σ*, σ) > W(σ, σ)\].
 pub fn ess_ty() -> Expr {
     arrow(vec_real(), prop())
 }
 /// `ReplicatorDynamics : Nat → Vec Real → Vec Real`
 ///
-/// Replicator equation: dxᵢ/dt = xᵢ [fᵢ(x) − f̄(x)] where f̄ = Σⱼ xⱼ fⱼ.
+/// Replicator equation: dxᵢ/dt = xᵢ \[fᵢ(x) − f̄(x)\] where f̄ = Σⱼ xⱼ fⱼ.
 pub fn replicator_dynamics_ty() -> Expr {
     arrow(nat_ty(), arrow(vec_real(), vec_real()))
 }

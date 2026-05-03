@@ -107,7 +107,7 @@ pub fn aliasing_error_ty() -> Expr {
 }
 /// `ChebyshevPolynomial : Nat → Real → Real`
 ///
-/// T_n(x) = cos(n arccos x) for x ∈ [-1, 1], defined by the recurrence
+/// T_n(x) = cos(n arccos x) for x ∈ \[-1, 1\], defined by the recurrence
 /// T_0 = 1, T_1 = x, T_{n+1} = 2x T_n - T_{n-1}.
 pub fn chebyshev_polynomial_ty() -> Expr {
     arrow(nat_ty(), fn_ty(real_ty(), real_ty()))
@@ -147,7 +147,7 @@ pub fn chebyshev_interpolation_ty() -> Expr {
 }
 /// `GaussLegendreNodes : Nat → List Real`
 ///
-/// The N Gauss-Legendre quadrature nodes in [-1, 1]: roots of P_N(x).
+/// The N Gauss-Legendre quadrature nodes in \[-1, 1\]: roots of P_N(x).
 pub fn gauss_legendre_nodes_ty() -> Expr {
     arrow(nat_ty(), list_ty(real_ty()))
 }
@@ -301,12 +301,12 @@ pub fn chebyshev_t(n: usize, x: f64) -> f64 {
 }
 /// Evaluate T_n(x) using the trigonometric definition cos(n arccos x).
 ///
-/// Numerically stable for x ∈ [-1, 1].
+/// Numerically stable for x ∈ \[-1, 1\].
 pub fn chebyshev_t_trig(n: usize, x: f64) -> f64 {
     let theta = x.clamp(-1.0, 1.0).acos();
     ((n as f64) * theta).cos()
 }
-/// Compute the N+1 Chebyshev-Gauss-Lobatto nodes on [-1, 1]:
+/// Compute the N+1 Chebyshev-Gauss-Lobatto nodes on \[-1, 1\]:
 /// x_j = cos(jπ/N), j = 0, 1, ..., N.
 pub fn chebyshev_gauss_lobatto_nodes(n: usize) -> Vec<f64> {
     (0..=n)
@@ -348,7 +348,7 @@ pub fn clenshaw_eval(coeffs: &[f64], x: f64) -> f64 {
 /// Compute the Chebyshev expansion coefficients of f sampled at N+1
 /// Gauss-Lobatto nodes using the DCT-I relationship.
 ///
-/// Returns coefficients [a_0, a_1, ..., a_N].
+/// Returns coefficients \[a_0, a_1, ..., a_N\].
 pub fn chebyshev_coefficients(values: &[f64]) -> Vec<f64> {
     let n = values.len() - 1;
     let mut coeffs = vec![0.0_f64; n + 1];
@@ -448,7 +448,7 @@ pub fn legendre_pn_dpn(n: usize, x: f64) -> (f64, f64) {
     let dp = (n as f64) * (p_prev - x * p_curr) / (1.0 - x * x);
     (p_curr, dp)
 }
-/// Compute N Gauss-Legendre nodes and weights on [-1, 1].
+/// Compute N Gauss-Legendre nodes and weights on \[-1, 1\].
 ///
 /// Uses Newton's method to find roots of P_N(x) then computes weights
 /// w_i = 2 / ((1 - x_i²) [P'_N(x_i)]²).
@@ -480,7 +480,7 @@ pub fn gauss_legendre_nodes_weights(n: usize) -> (Vec<f64>, Vec<f64>) {
     }
     (nodes, weights)
 }
-/// Integrate f on [-1, 1] using N-point Gauss-Legendre quadrature.
+/// Integrate f on \[-1, 1\] using N-point Gauss-Legendre quadrature.
 pub fn gauss_legendre_integrate(f: &dyn Fn(f64) -> f64, n: usize) -> f64 {
     let (nodes, weights) = gauss_legendre_nodes_weights(n);
     nodes
@@ -489,7 +489,7 @@ pub fn gauss_legendre_integrate(f: &dyn Fn(f64) -> f64, n: usize) -> f64 {
         .map(|(&x, &w)| w * f(x))
         .sum()
 }
-/// Integrate f on [a, b] using N-point Gauss-Legendre quadrature
+/// Integrate f on \[a, b\] using N-point Gauss-Legendre quadrature
 /// via the change of variables x = ((b-a)t + (b+a)) / 2.
 pub fn gauss_legendre_integrate_ab(f: &dyn Fn(f64) -> f64, a: f64, b: f64, n: usize) -> f64 {
     let mid = (a + b) / 2.0;
@@ -517,7 +517,7 @@ pub fn clenshaw_curtis_weights(n: usize) -> Vec<f64> {
     }
     w
 }
-/// Integrate f on [-1, 1] using N-point Clenshaw-Curtis quadrature.
+/// Integrate f on \[-1, 1\] using N-point Clenshaw-Curtis quadrature.
 pub fn clenshaw_curtis_integrate(f: &dyn Fn(f64) -> f64, n: usize) -> f64 {
     let nodes = chebyshev_gauss_lobatto_nodes(n);
     let weights = clenshaw_curtis_weights(n);
@@ -529,7 +529,7 @@ pub fn clenshaw_curtis_integrate(f: &dyn Fn(f64) -> f64, n: usize) -> f64 {
 }
 /// Perform the in-place radix-2 DIT FFT on a power-of-2 length input.
 ///
-/// After the call, `data[k]` holds the k-th DFT coefficient X_k = Σ x_n e^{-2πi kn/N}.
+/// After the call, `data\[k\]` holds the k-th DFT coefficient X_k = Σ x_n e^{-2πi kn/N}.
 pub fn fft_inplace(data: &mut [Complex]) {
     let n = data.len();
     assert!(n.is_power_of_two(), "FFT length must be a power of two");
@@ -580,7 +580,7 @@ pub fn fft(input: &[f64]) -> Vec<Complex> {
     fft_inplace(&mut data);
     data
 }
-/// Inverse FFT (IFFT): IDFT(X)[n] = (1/N) Σ X_k e^{2πi kn/N}.
+/// Inverse FFT (IFFT): IDFT(X)\[n\] = (1/N) Σ X_k e^{2πi kn/N}.
 pub fn ifft(spectrum: &mut [Complex]) {
     for x in spectrum.iter_mut() {
         *x = x.conj();
@@ -649,7 +649,7 @@ pub fn exponential_euler(
     }
     traj
 }
-/// Solve the 1-D periodic heat equation u_t = ν u_{xx} on [0, 2π]
+/// Solve the 1-D periodic heat equation u_t = ν u_{xx} on \[0, 2π\]
 /// using Fourier pseudospectral method with implicit time integration.
 ///
 /// Returns the solution at time T given initial data `u0` sampled at N
@@ -971,7 +971,7 @@ pub fn hp_spectral_element_ty() -> Expr {
 }
 /// `MappedJacobiPolynomial : Real → Real → Nat → Real → Real → Real → Real`
 ///
-/// Jacobi polynomial P_n^{(α,β)} mapped to interval [a, b].
+/// Jacobi polynomial P_n^{(α,β)} mapped to interval \[a, b\].
 pub fn mapped_jacobi_polynomial_ty() -> Expr {
     spec2_ext_arrow(
         spec2_ext_real_ty(),

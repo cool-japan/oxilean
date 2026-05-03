@@ -961,13 +961,7 @@ pub fn apply_substitution(expr: &Expr, subst: &MetaSubstitution) -> Expr {
 #[allow(dead_code)]
 pub fn count_bvar_occurrences(expr: &Expr, target: u32) -> usize {
     match expr {
-        Expr::BVar(i) => {
-            if *i == target {
-                1
-            } else {
-                0
-            }
-        }
+        Expr::BVar(i) if *i == target => 1,
         Expr::App(f, a) => count_bvar_occurrences(f, target) + count_bvar_occurrences(a, target),
         Expr::Lam(_, _, ty, body) => {
             count_bvar_occurrences(ty, target) + count_bvar_occurrences(body, target + 1)

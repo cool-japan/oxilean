@@ -37,7 +37,7 @@ impl PAdicValuation {
 }
 /// A polynomial with integer coefficients considered modulo a prime power.
 pub struct PolynomialMod {
-    /// Coefficients [a_0, a_1, …, a_n] so that f(x) = Σ a_i x^i.
+    /// Coefficients \[a_0, a_1, …, a_n\] so that f(x) = Σ a_i x^i.
     pub coeffs: Vec<i64>,
     /// The modulus (typically p or p^k).
     pub modulus: u64,
@@ -73,12 +73,12 @@ impl PolynomialMod {
         Self::new(d, self.modulus)
     }
 }
-/// The Iwasawa algebra Λ = ℤ_p[[Γ]] ≅ ℤ_p[[T]], where Γ ≅ ℤ_p is the Galois group
+/// The Iwasawa algebra Λ = ℤ_p[\[Γ\]] ≅ ℤ_p[\[T\]], where Γ ≅ ℤ_p is the Galois group
 /// of the cyclotomic ℤ_p-extension of ℚ.
 pub struct IwasawaAlgebra {
     /// The prime p.
     pub p: u64,
-    /// Informal description of the group ring (e.g. "ℤ_p[[Γ]]").
+    /// Informal description of the group ring (e.g. "ℤ_p[\[Γ\]]").
     pub group_ring: String,
 }
 impl IwasawaAlgebra {
@@ -182,7 +182,7 @@ pub struct LocalField {
     pub p: u64,
     /// The residue characteristic (same as p for extensions of ℚ_p).
     pub residue_char: u64,
-    /// The degree [L : ℚ_p] = e · f.
+    /// The degree \[L : ℚ_p\] = e · f.
     pub degree: usize,
     /// The ramification index e.
     pub ramification_index: usize,
@@ -443,7 +443,7 @@ impl IntegralExtension {
         self.degree == 1
     }
 }
-/// A p-adic differential equation: ∂/∂T M = A(T) M for a matrix A(T) ∈ GL_n(ℚ_p[[T]]).
+/// A p-adic differential equation: ∂/∂T M = A(T) M for a matrix A(T) ∈ GL_n(ℚ_p[\[T\]]).
 pub struct PAdicDifferentialEquation {
     /// The prime p.
     pub p: u64,
@@ -701,7 +701,7 @@ impl MahlerTransform {
         Self { coefficients, p }
     }
     /// Compute the k-th Mahler coefficient a_k = ∑_{j=0}^{k} (-1)^{k-j} C(k,j) f(j).
-    /// Here f(j) = self.coefficients[j] (treated as f evaluated at integers).
+    /// Here f(j) = self.coefficients\[j\] (treated as f evaluated at integers).
     pub fn mahler_coefficient(&self, k: usize) -> f64 {
         if k >= self.coefficients.len() {
             return 0.0;
@@ -919,7 +919,7 @@ impl AffinoidSpace {
         true
     }
 }
-/// The Weierstrass preparation theorem: f ∈ ℤ_p[[T]] is u·P where u is a unit
+/// The Weierstrass preparation theorem: f ∈ ℤ_p[\[T\]] is u·P where u is a unit
 /// and P is a Weierstrass polynomial (distinguished polynomial).
 pub struct WeierstrausPrepTheorem {
     /// The prime p.
@@ -932,8 +932,8 @@ impl WeierstrausPrepTheorem {
     pub fn new(p: u64, degree: usize) -> Self {
         Self { p, degree }
     }
-    /// Returns true: every power series f ∈ ℤ_p[[T]] that is not identically 0
-    /// factors as f = u · P where u ∈ ℤ_p[[T]]^× and P is a Weierstrass polynomial.
+    /// Returns true: every power series f ∈ ℤ_p[\[T\]] that is not identically 0
+    /// factors as f = u · P where u ∈ ℤ_p[\[T\]]^× and P is a Weierstrass polynomial.
     pub fn factorization_exists(&self) -> bool {
         true
     }
@@ -1313,7 +1313,7 @@ impl PAdicExponential {
 pub struct UnramifiedExtension {
     /// The residue characteristic.
     pub base_p: u64,
-    /// The degree f = [𝔽_{p^f} : 𝔽_p].
+    /// The degree f = \[𝔽_{p^f} : 𝔽_p\].
     pub degree: usize,
 }
 impl UnramifiedExtension {

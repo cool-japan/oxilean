@@ -143,7 +143,7 @@ impl SchurFunction {
 #[derive(Debug, Clone)]
 pub struct CrystalGraph {
     pub nodes: Vec<CrystalNode>,
-    /// edges[i] = list of (colour, target_id) outgoing f_i edges from node i.
+    /// edges\[i\] = list of (colour, target_id) outgoing f_i edges from node i.
     pub edges: Vec<Vec<(usize, usize)>>,
     /// rank: number of simple roots.
     pub rank: usize,
@@ -302,10 +302,10 @@ impl ParkingFunction {
     }
 }
 /// Kazhdan-Lusztig polynomial P_{y,w}(q) for the symmetric group S_n.
-/// Stored as coefficient vector: P[i] = coefficient of q^i.
+/// Stored as coefficient vector: P\[i\] = coefficient of q^i.
 #[allow(dead_code)]
 pub struct KLPolynomial {
-    /// Coefficients: coeffs[i] is the coefficient of q^i.
+    /// Coefficients: coeffs\[i\] is the coefficient of q^i.
     pub coeffs: Vec<i64>,
 }
 impl KLPolynomial {
@@ -385,7 +385,7 @@ impl LittlewoodRichardsonRule {
 /// Semistandard Young Tableau: weakly increasing rows, strictly increasing columns.
 #[derive(Debug, Clone)]
 pub struct SemistandardYoungTableau {
-    /// rows[i][j] = the value (from an alphabet {1..n}).
+    /// rows\[i\]\[j\] = the value (from an alphabet {1..n}).
     pub rows: Vec<Vec<usize>>,
     pub shape: YoungDiagram,
     pub alphabet_size: usize,
@@ -515,12 +515,12 @@ pub struct CyclicSievingData {
     pub size: usize,
     /// The cyclic group order (= n).
     pub order: usize,
-    /// The action: orbit[i] = list of elements in the orbit of i.
+    /// The action: orbit\[i\] = list of elements in the orbit of i.
     pub orbits: Vec<Vec<usize>>,
 }
 impl CyclicSievingData {
     /// Build cyclic sieving data from an explicit cyclic action.
-    /// `action[i]` = the image of element i under the generator.
+    /// `action\[i\]` = the image of element i under the generator.
     pub fn from_action(action: &[usize]) -> Self {
         let n = action.len();
         let order = {
@@ -631,7 +631,7 @@ impl SymFunctionHopf {
 /// columns strictly increasing.
 #[derive(Debug, Clone)]
 pub struct StandardYoungTableau {
-    /// rows[i][j] = the value at cell (i, j).
+    /// rows\[i\]\[j\] = the value at cell (i, j).
     pub rows: Vec<Vec<usize>>,
     pub shape: YoungDiagram,
 }
@@ -757,9 +757,7 @@ impl YoungDiagram {
         for i in 0..self.parts.len() {
             for j in 0..self.parts[i] {
                 let h = self.hook_length(i, j).unwrap_or(1) as u64;
-                if h > 0 {
-                    num /= h;
-                }
+                num = num.checked_div(h).unwrap_or(num);
             }
         }
         num
@@ -821,7 +819,7 @@ impl GrassmannianCalculus {
         let size: usize = parts.iter().sum();
         rect.saturating_sub(size)
     }
-    /// Compute intersection number σ_λ · σ_μ · σ_ν[dual] via LR rule.
+    /// Compute intersection number σ_λ · σ_μ · σ_ν\[dual\] via LR rule.
     /// Returns 1 if c^{λ_dual}_{μν} = 1, 0 otherwise (simplified).
     pub fn intersection_number(&self, lambda: &[usize], mu: &[usize], nu: &[usize]) -> usize {
         let m = self.n - self.k;
@@ -932,7 +930,7 @@ pub struct CharacterTable {
     pub n: usize,
     /// Partitions of n in lexicographic order.
     pub partitions: Vec<Vec<usize>>,
-    /// `values[i][j]` = χ^{λ_i}(μ_j).
+    /// `values\[i\]\[j\]` = χ^{λ_i}(μ_j).
     pub values: Vec<Vec<i64>>,
 }
 impl CharacterTable {

@@ -98,7 +98,7 @@ impl MarchenkoPasturData {
     pub fn new(gamma: f64, variance: f64) -> Self {
         MarchenkoPasturData { gamma, variance }
     }
-    /// Returns support endpoints: [λ-, λ+] = σ^2 (1 ± sqrt(γ))^2.
+    /// Returns support endpoints: \[λ-, λ+\] = σ^2 (1 ± sqrt(γ))^2.
     pub fn support_endpoints(&self) -> (f64, f64) {
         let sqrt_g = self.gamma.sqrt();
         let lo = self.variance * (1.0 - sqrt_g).powi(2);
@@ -173,7 +173,7 @@ impl WignerSemicircleData {
         }
         (r_sq - x * x).sqrt() / (std::f64::consts::PI * self.variance)
     }
-    /// Estimates the empirical spectral density in interval [a, b].
+    /// Estimates the empirical spectral density in interval \[a, b\].
     pub fn empirical_density(&self, a: f64, b: f64) -> f64 {
         let count = self
             .eigenvalues
@@ -182,7 +182,7 @@ impl WignerSemicircleData {
             .count();
         count as f64 / self.eigenvalues.len() as f64
     }
-    /// Returns the endpoints of the support: [-2σ, 2σ].
+    /// Returns the endpoints of the support: \[-2σ, 2σ\].
     pub fn support_endpoints(&self) -> (f64, f64) {
         let r = 2.0 * self.variance.sqrt();
         (-r, r)
@@ -437,7 +437,7 @@ impl EigenvalueCorrelation {
         Self { n, k }
     }
     /// Return a symbolic description of the k-point correlation formula.
-    /// For GUE: Rₖ(x₁,…,xₖ) = det[K_n(xᵢ,xⱼ)]_{i,j=1}^k  where K_n is the sine kernel.
+    /// For GUE: Rₖ(x₁,…,xₖ) = det\[K_n(xᵢ,xⱼ)\]_{i,j=1}^k  where K_n is the sine kernel.
     pub fn k_point_correlation_formula(&self) -> String {
         format!(
             "R_{k}(x₁,…,x_{k}) = det[K_n(xᵢ,xⱼ)]_{{i,j=1}}^{k}  (determinantal point process, n={n})",
@@ -514,7 +514,7 @@ impl GUEEnsemble {
     }
     /// Return the empirical eigenvalue density description.
     /// By the Wigner semicircle law, the empirical spectral distribution converges
-    /// to the semicircle distribution with radius 2√n on [-2√n, 2√n].
+    /// to the semicircle distribution with radius 2√n on \[-2√n, 2√n\].
     pub fn empirical_eigenvalue_density(&self) -> String {
         let r = 2.0 * (self.n as f64).sqrt();
         format!(
@@ -541,11 +541,11 @@ impl MarcenkoPastur {
         Self { lambda, sigma }
     }
     /// Density at x.
-    /// ρ(x) = (1/(2πσ²)) · √((λ₊-x)(x-λ₋)) / (λx) on [λ₋, λ₊].
+    /// ρ(x) = (1/(2πσ²)) · √((λ₊-x)(x-λ₋)) / (λx) on \[λ₋, λ₊\].
     pub fn density_at(&self, x: f64) -> f64 {
         marchenko_pastur_density(x, self.lambda, self.sigma * self.sigma)
     }
-    /// Support of the distribution: [λ₋, λ₊] where λ± = σ²(1±√λ)².
+    /// Support of the distribution: \[λ₋, λ₊\] where λ± = σ²(1±√λ)².
     pub fn support(&self) -> (f64, f64) {
         let s = self.sigma * self.sigma;
         let lo = s * (1.0 - self.lambda.sqrt()).powi(2);
@@ -690,7 +690,7 @@ impl DysonBrownianMotionData {
 }
 /// Wigner semicircle distribution with radius R.
 pub struct WignerSemicircle {
-    /// Radius of the semicircle support [-R, R].
+    /// Radius of the semicircle support \[-R, R\].
     pub r: f64,
 }
 impl WignerSemicircle {

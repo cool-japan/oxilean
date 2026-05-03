@@ -121,10 +121,10 @@ impl AffineVariety {
 /// A point in projective space P^n represented by homogeneous coordinates.
 ///
 /// The coordinates are stored as a vector of `i64`; the actual point is the
-/// equivalence class [x₀ : x₁ : … : xₙ] where not all xᵢ are zero.
+/// equivalence class \[x₀ : x₁ : … : xₙ\] where not all xᵢ are zero.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectivePoint {
-    /// Homogeneous coordinates [x₀ : x₁ : … : xₙ].
+    /// Homogeneous coordinates \[x₀ : x₁ : … : xₙ\].
     pub coords: Vec<i64>,
 }
 impl ProjectivePoint {
@@ -279,7 +279,7 @@ impl ProjectiveVariety {
 /// An affine scheme represented by the name of its coordinate ring.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AffineScheme {
-    /// Name of the coordinate ring (e.g., "k[x, y]" for affine n-space).
+    /// Name of the coordinate ring (e.g., "k\[x, y\]" for affine n-space).
     pub ring: String,
 }
 impl AffineScheme {
@@ -291,7 +291,7 @@ impl AffineScheme {
     pub fn spec_z() -> Self {
         Self::new("Int")
     }
-    /// The spectrum of a polynomial ring k[x₁, …, xₙ] — affine n-space.
+    /// The spectrum of a polynomial ring k\[x₁, …, xₙ\] — affine n-space.
     pub fn affine_n_space(base_ring: &str, n: usize) -> Self {
         let vars: Vec<String> = (1..=n).map(|i| format!("x{}", i)).collect();
         Self::new(format!("{}[{}]", base_ring, vars.join(", ")))
@@ -540,7 +540,7 @@ impl EllipticCurveF {
             }
         }
     }
-    /// Scalar multiplication [n]P on the elliptic curve using double-and-add.
+    /// Scalar multiplication \[n\]P on the elliptic curve using double-and-add.
     pub fn scalar_mul(&self, n: u64, pt: &EllipticCurvePoint) -> EllipticCurvePoint {
         let mut result = EllipticCurvePoint::Infinity;
         let mut addend = pt.clone();
@@ -554,7 +554,7 @@ impl EllipticCurveF {
         }
         result
     }
-    /// Compute the order of a point P (the smallest n > 0 such that [n]P = O).
+    /// Compute the order of a point P (the smallest n > 0 such that \[n\]P = O).
     /// Returns `None` if the order exceeds `max_order`.
     pub fn point_order(&self, pt: &EllipticCurvePoint, max_order: u64) -> Option<u64> {
         if matches!(pt, EllipticCurvePoint::Infinity) {
@@ -581,7 +581,7 @@ pub struct AffineSchemeData {
 }
 #[allow(dead_code)]
 impl AffineSchemeData {
-    /// Spec of polynomial ring k[x1,...,xn].
+    /// Spec of polynomial ring k\[x1,...,xn\].
     pub fn affine_space(n: usize) -> Self {
         Self {
             ring: format!("k[x1,...,x{}]", n),

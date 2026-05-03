@@ -13,6 +13,10 @@ use super::types::{
     TacticFunPropAnalysisPass, TacticFunPropConfig, TacticFunPropConfigValue,
     TacticFunPropDiagnostics, TacticFunPropDiff, TacticFunPropPipeline, TacticFunPropResult,
 };
+#[allow(unused_imports)]
+use crate::basic::{MVarId, MetaContext};
+use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::{Expr, Name};
 
 #[cfg(test)]
 mod tests {
@@ -972,5 +976,80 @@ mod fun_prop_ext_tests_201 {
         let l = FunPropExtConfigVal201::List(vec!["a".to_string(), "b".to_string()]);
         assert_eq!(l.type_name(), "list");
         assert_eq!(l.as_list().map(|v| v.len()), Some(2));
+    }
+}
+
+/// `continuity` — prove continuity goals of the form `Continuous f`.
+///
+/// Extracts the function expression from the goal string and queries the
+/// [`FunPropTactic`] database (initialised with standard rules) for a proof
+/// of `FunProperty::Continuous`.  If found, the goal is closed with the
+/// proof-term string embedded as a named constant; otherwise fails.
+pub fn tac_continuity(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal = state.current_goal()?;
+    let target = ctx
+        .get_mvar_type(goal)
+        .cloned()
+        .ok_or_else(|| TacticError::Internal("continuity: goal has no type".into()))?;
+    let target = ctx.instantiate_mvars(&target);
+    let target_str = target.to_string();
+
+    // Extract the function argument from a goal of the form "(Continuous f)".
+    let fn_expr = extract_fun_prop_arg(&target_str, "Continuous");
+
+    let tac = FunPropTactic::with_db(FunPropDatabase::with_standard_rules());
+    match tac.prove_continuous(fn_expr.trim()) {
+        Some(proof_str) => {
+            let proof = Expr::Const(Name::str(&proof_str), vec![]);
+            state.close_goal(proof, ctx)?;
+            Ok(())
+        }
+        None => Err(TacticError::Failed(format!(
+            "continuity: could not prove `Continuous {}` automatically",
+            fn_expr.trim()
+        ))),
+    }
+}
+
+/// `measurability` — prove measurability goals of the form `Measurable f`.
+///
+/// Mirrors [`tac_continuity`] but queries for `FunProperty::Measurable`.
+pub fn tac_measurability(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal = state.current_goal()?;
+    let target = ctx
+        .get_mvar_type(goal)
+        .cloned()
+        .ok_or_else(|| TacticError::Internal("measurability: goal has no type".into()))?;
+    let target = ctx.instantiate_mvars(&target);
+    let target_str = target.to_string();
+
+    let fn_expr = extract_fun_prop_arg(&target_str, "Measurable");
+
+    let tac = FunPropTactic::with_db(FunPropDatabase::with_standard_rules());
+    match tac.prove_measurable(fn_expr.trim()) {
+        Some(proof_str) => {
+            let proof = Expr::Const(Name::str(&proof_str), vec![]);
+            state.close_goal(proof, ctx)?;
+            Ok(())
+        }
+        None => Err(TacticError::Failed(format!(
+            "measurability: could not prove `Measurable {}` automatically",
+            fn_expr.trim()
+        ))),
+    }
+}
+
+/// Extract the function argument from a goal like `(Continuous f)` or `(Measurable f)`.
+///
+/// Looks for the pattern `"KEYWORD f"` in `goal_str` and returns the remainder
+/// after `KEYWORD `.  Falls back to the whole string if the keyword is absent.
+fn extract_fun_prop_arg<'a>(goal_str: &'a str, keyword: &str) -> &'a str {
+    let search = format!("{} ", keyword);
+    if let Some(idx) = goal_str.find(&search) {
+        let after = &goal_str[idx + search.len()..];
+        // Strip trailing `)` from Display output like `(Continuous id)`.
+        after.trim_end_matches(')').trim()
+    } else {
+        goal_str
     }
 }

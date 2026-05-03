@@ -140,7 +140,7 @@ impl ParityDomain {
 /// probability of being in each of k abstract states (partition of the state space).
 ///
 /// Represents distributions where each partition cell has a probability
-/// in [lo_i, hi_i] with Σ lo_i ≤ 1 ≤ Σ hi_i.
+/// in \[lo_i, hi_i\] with Σ lo_i ≤ 1 ≤ Σ hi_i.
 #[allow(dead_code)]
 pub struct ProbabilisticAbstractDomain {
     /// Number of abstract partition cells
@@ -161,7 +161,7 @@ impl ProbabilisticAbstractDomain {
             prob_upper: vec![p; k],
         }
     }
-    /// Create the top element (no probability information: [0, 1] per cell).
+    /// Create the top element (no probability information: \[0, 1\] per cell).
     pub fn top(k: usize) -> Self {
         Self {
             k,
@@ -200,8 +200,8 @@ impl ProbabilisticAbstractDomain {
                 .collect(),
         }
     }
-    /// Compute abstract expected value of a bounded function f: f[i] = value on cell i.
-    /// Returns [lower, upper] interval on E[f].
+    /// Compute abstract expected value of a bounded function f: f\[i\] = value on cell i.
+    /// Returns \[lower, upper\] interval on E\[f\].
     pub fn abstract_expectation(&self, f: &[f64]) -> (f64, f64) {
         assert_eq!(f.len(), self.k);
         let lower_e: f64 = self
@@ -305,7 +305,7 @@ impl LoopBound {
     pub fn finite(n: u64) -> Self {
         Self { bound: Some(n) }
     }
-    /// Estimate loop bound from interval [0, n]: bound is n+1 iterations.
+    /// Estimate loop bound from interval \[0, n\]: bound is n+1 iterations.
     pub fn from_interval(interval: &IntervalDomain) -> Self {
         match &interval.upper {
             Bound::Finite(n) if *n >= 0 => Self::finite(*n as u64 + 1),
@@ -446,7 +446,7 @@ impl SignDomain {
 pub struct OctagonDomain {
     /// Number of variables
     pub n: usize,
-    /// DBM entries: entry [2i][2j] = bound on xi - xj, etc.
+    /// DBM entries: entry \[2i\]\[2j\] = bound on xi - xj, etc.
     pub matrix: Vec<Vec<Option<i64>>>,
 }
 impl OctagonDomain {
@@ -587,7 +587,7 @@ impl TaintAnalysis {
         self.taint.insert(result.into(), val);
     }
 }
-/// The interval domain: an abstract value [lower, upper].
+/// The interval domain: an abstract value \[lower, upper\].
 /// Represents the set of integers n with lower ≤ n ≤ upper.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntervalDomain {
@@ -615,7 +615,7 @@ impl IntervalDomain {
             is_bottom: false,
         }
     }
-    /// A constant interval [n, n].
+    /// A constant interval \[n, n\].
     pub fn constant(n: i64) -> Self {
         Self {
             lower: Bound::Finite(n),
@@ -623,7 +623,7 @@ impl IntervalDomain {
             is_bottom: false,
         }
     }
-    /// An interval [l, u].
+    /// An interval \[l, u\].
     pub fn new(lower: Bound, upper: Bound) -> Self {
         if lower > upper {
             Self::bottom()
@@ -695,7 +695,7 @@ impl IntervalDomain {
         };
         Self::new(new_lower, new_upper)
     }
-    /// Abstract addition: [a,b] + [c,d] = [a+c, b+d].
+    /// Abstract addition: \[a,b\] + \[c,d\] = \[a+c, b+d\].
     pub fn add(&self, other: &Self) -> Self {
         if self.is_bottom || other.is_bottom {
             return Self::bottom();
@@ -761,7 +761,7 @@ pub enum NullValue {
     /// Unreachable (bottom)
     Bottom,
 }
-/// A zonotope: x = center + Σ_i ε_i * generators[i], |ε_i| ≤ 1.
+/// A zonotope: x = center + Σ_i ε_i * generators\[i\], |ε_i| ≤ 1.
 ///
 /// Zonotopes are closed under affine maps and provide compact relational
 /// over-approximations. Each generator g_i encodes a direction of uncertainty.
@@ -889,7 +889,7 @@ impl ArrayBoundsAnalysis {
             array_sizes: HashMap::new(),
         }
     }
-    /// Check if access array[idx_var] is provably safe.
+    /// Check if access array\[idx_var\] is provably safe.
     pub fn is_safe_access(&self, array: &str, idx_var: &str) -> bool {
         let idx = self
             .index_bounds
@@ -940,11 +940,11 @@ impl DelayedWidening {
         self.step = 0;
     }
 }
-/// A Galois connection (α, γ) between concrete sets (Vec<i64>) and intervals.
+/// A Galois connection (α, γ) between concrete sets (`Vec<i64>`) and intervals.
 pub struct GaloisConnection {
     /// α: ℘(ℤ) → IntervalDomain (abstraction)
     pub alpha: Box<dyn Fn(&[i64]) -> IntervalDomain>,
-    /// γ: IntervalDomain → Vec<i64> (concretization, approximate for ∞)
+    /// γ: IntervalDomain → `Vec<i64>` (concretization, approximate for ∞)
     pub gamma: Box<dyn Fn(&IntervalDomain) -> Option<Vec<i64>>>,
 }
 impl GaloisConnection {

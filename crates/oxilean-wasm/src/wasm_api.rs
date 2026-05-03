@@ -1,12 +1,32 @@
 //! WASM API bindings for JavaScript/TypeScript
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 use crate::api::OxiLean;
+use crate::incremental::{
+    incremental_check, DiagnosticInfo, IncrementalCache, IncrementalCheckResult,
+};
+
+/// Serialisable summary returned to JavaScript from `checkIncremental`.
+#[derive(Debug, Serialize)]
+struct IncrementalSummary {
+    diagnostics: Vec<DiagnosticInfo>,
+    recheck_count: usize,
+    cache_hit_count: usize,
+}
 
 /// OxiLean WASM instance for JavaScript
 #[wasm_bindgen]
 pub struct WasmOxiLean {
     inner: OxiLean,
+    /// Incremental type-check cache, persisted across calls to `checkIncremental`
+    incremental_cache: Option<IncrementalCache>,
+}
+
+impl Default for WasmOxiLean {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[wasm_bindgen]
@@ -16,6 +36,7 @@ impl WasmOxiLean {
     pub fn new() -> Self {
         WasmOxiLean {
             inner: OxiLean::new(),
+            incremental_cache: None,
         }
     }
 
@@ -36,7 +57,7 @@ impl WasmOxiLean {
     }
 
     /// Get completions at a position
-    /// Returns a JSON-serialized Vec<CompletionItem>
+    /// Returns a JSON-serialized `Vec<CompletionItem>`
     #[wasm_bindgen]
     pub fn completions(&self, source: &str, line: u32, col: u32) -> Result<JsValue, JsError> {
         let result = self.inner.completions(source, line, col);
@@ -80,6 +101,39 @@ impl WasmOxiLean {
     #[wasm_bindgen]
     pub fn version() -> String {
         OxiLean::version().to_string()
+    }
+
+    /// Incrementally type-check `source`, reusing cached results for
+    /// unchanged declarations.
+    ///
+    /// The internal cache is updated in-place so that successive calls for
+    /// nearby edits are as efficient as possible.
+    ///
+    /// Returns a JS object with the shape:
+    /// ```json
+    /// {
+    ///   "diagnostics": [{ "name": "...", "message": "...", "severity": 2 }],
+    ///   "recheck_count": 1,
+    ///   "cache_hit_count": 3
+    /// }
+    /// ```
+    #[wasm_bindgen(js_name = "checkIncremental")]
+    pub fn check_incremental(&mut self, source: &str) -> Result<JsValue, JsError> {
+        let old_cache = self.incremental_cache.take();
+        let result: IncrementalCheckResult = incremental_check(source, old_cache);
+
+        // Persist the updated cache for the next call
+        self.incremental_cache = Some(result.cache.clone());
+
+        // Build a serialisable summary (omit the full cache from the JS return
+        // value — it is an internal implementation detail)
+        let summary = IncrementalSummary {
+            diagnostics: result.diagnostics,
+            recheck_count: result.recheck_count,
+            cache_hit_count: result.cache_hit_count,
+        };
+
+        serde_wasm_bindgen::to_value(&summary).map_err(|e| JsError::new(&e.to_string()))
     }
 }
 

@@ -74,7 +74,7 @@ pub struct ShamirSS {
 impl ShamirSS {
     /// Split secret `s` into n shares using a random degree-(t-1) polynomial.
     ///
-    /// Coefficients a[0]=s, a[1..t] come from `coeffs` (length t-1).
+    /// Coefficients a\[0\]=s, a[1..t] come from `coeffs` (length t-1).
     ///
     /// # WARNING
     /// In production, coefficients must be uniformly random elements of F_p.
@@ -332,18 +332,18 @@ impl ShamirSecretSharingExtended {
 /// Educational sketch only. Real garbling uses AES-based encryption.
 #[derive(Debug, Clone)]
 pub struct GarbledGate {
-    /// Garbled table: indexed [a_bit][b_bit] → output label
+    /// Garbled table: indexed \[a_bit\]\[b_bit\] → output label
     pub table: [[u64; 2]; 2],
-    /// Labels for wire A: [label_0, label_1]
+    /// Labels for wire A: \[label_0, label_1\]
     pub labels_a: [u64; 2],
-    /// Labels for wire B: [label_0, label_1]
+    /// Labels for wire B: \[label_0, label_1\]
     pub labels_b: [u64; 2],
-    /// Labels for output wire: [label_0, label_1]
+    /// Labels for output wire: \[label_0, label_1\]
     pub labels_out: [u64; 2],
 }
 impl GarbledGate {
     /// Build a garbled AND gate.
-    /// labels_a, labels_b, labels_out: [label_for_0, label_for_1] on each wire.
+    /// labels_a, labels_b, labels_out: \[label_for_0, label_for_1\] on each wire.
     pub fn garble_and(labels_a: [u64; 2], labels_b: [u64; 2], labels_out: [u64; 2]) -> Self {
         let mut table = [[0u64; 2]; 2];
         for a in 0usize..2 {

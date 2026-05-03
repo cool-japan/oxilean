@@ -346,7 +346,7 @@ impl FixSuggestion {
     /// Apply all edits in reverse order (to preserve byte offsets).
     pub fn apply_all(&self, source: &str) -> String {
         let mut sorted: Vec<&TextEdit> = self.edits.iter().collect();
-        sorted.sort_by(|a, b| b.range_start.cmp(&a.range_start));
+        sorted.sort_by_key(|b| std::cmp::Reverse(b.range_start));
         let mut result = source.to_string();
         for edit in sorted {
             result = edit.apply(&result);

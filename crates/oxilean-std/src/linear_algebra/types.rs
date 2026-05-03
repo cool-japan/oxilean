@@ -86,7 +86,7 @@ pub struct SparseMatrix {
     pub rows: usize,
     /// Number of columns.
     pub cols: usize,
-    /// Row pointers: row i has non-zeros at col_indices[row_ptr[i]..row_ptr[i+1]].
+    /// Row pointers: row i has non-zeros at col_indices[row_ptr\[i\]..row_ptr[i+1]].
     pub row_ptr: Vec<usize>,
     /// Column indices of non-zero entries.
     pub col_indices: Vec<usize>,
@@ -532,7 +532,7 @@ pub struct BandedMatrix {
     pub kl: usize,
     /// Upper bandwidth (number of super-diagonals).
     pub ku: usize,
-    /// Storage: (kl + ku + 1) × cols, band[k][j] = A[j - ku + k][j].
+    /// Storage: (kl + ku + 1) × cols, band\[k\]\[j\] = A\[j - ku + k\]\[j\].
     pub band: Vec<Vec<f64>>,
 }
 #[allow(dead_code)]
@@ -548,7 +548,7 @@ impl BandedMatrix {
             band: vec![vec![0.0; cols]; ndiag],
         }
     }
-    /// Get A[r][c] (returns 0 if outside band).
+    /// Get A\[r\]\[c\] (returns 0 if outside band).
     pub fn get(&self, r: usize, c: usize) -> f64 {
         let offset = c as isize - r as isize;
         if offset < -(self.kl as isize) || offset > self.ku as isize {
@@ -557,7 +557,7 @@ impl BandedMatrix {
         let k = (offset + self.kl as isize) as usize;
         self.band[k][c]
     }
-    /// Set A[r][c] (panics if outside band).
+    /// Set A\[r\]\[c\] (panics if outside band).
     pub fn set(&mut self, r: usize, c: usize, v: f64) {
         let offset = c as isize - r as isize;
         assert!(
@@ -592,7 +592,7 @@ impl BandedMatrix {
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct LanczosResult {
-    /// Orthonormal Lanczos vectors (columns of V), stored row-major as Vec<DenseVector>.
+    /// Orthonormal Lanczos vectors (columns of V), stored row-major as `Vec<DenseVector>`.
     pub basis: Vec<DenseVector>,
     /// Diagonal entries of the tridiagonal matrix T.
     pub alpha: Vec<f64>,

@@ -332,11 +332,11 @@ impl<'a> AdvDiagnosticCollector<'a> {
         let analysis = analyze_document(&doc.uri, &doc.content, self.env);
         for def in &analysis.definitions {
             match def.kind {
-                SymbolKind::Function | SymbolKind::Method | SymbolKind::Variable => {
+                SymbolKind::Function | SymbolKind::Method | SymbolKind::Variable
                     if def.name.starts_with(|c: char| c.is_uppercase())
-                        && def.kind != SymbolKind::Constant
-                    {
-                        diagnostics
+                        && def.kind != SymbolKind::Constant =>
+                {
+                    diagnostics
                             .push(AdvDiagnostic {
                                 code: AdvDiagnosticCode::StyleNaming,
                                 severity: DiagnosticSeverity::Information,
@@ -350,24 +350,23 @@ impl<'a> AdvDiagnosticCollector<'a> {
                                 tags: Vec::new(),
                                 uri: doc.uri.clone(),
                             });
-                    }
                 }
-                SymbolKind::Enum | SymbolKind::Struct | SymbolKind::Class => {
-                    if def.name.starts_with(|c: char| c.is_lowercase()) {
-                        diagnostics.push(AdvDiagnostic {
-                            code: AdvDiagnosticCode::StyleNaming,
-                            severity: DiagnosticSeverity::Information,
-                            range: def.range.clone(),
-                            message: format!(
-                                "'{}' should start with an uppercase letter (convention for types)",
-                                def.name
-                            ),
-                            related: Vec::new(),
-                            fixes: Vec::new(),
-                            tags: Vec::new(),
-                            uri: doc.uri.clone(),
-                        });
-                    }
+                SymbolKind::Enum | SymbolKind::Struct | SymbolKind::Class
+                    if def.name.starts_with(|c: char| c.is_lowercase()) =>
+                {
+                    diagnostics.push(AdvDiagnostic {
+                        code: AdvDiagnosticCode::StyleNaming,
+                        severity: DiagnosticSeverity::Information,
+                        range: def.range.clone(),
+                        message: format!(
+                            "'{}' should start with an uppercase letter (convention for types)",
+                            def.name
+                        ),
+                        related: Vec::new(),
+                        fixes: Vec::new(),
+                        tags: Vec::new(),
+                        uri: doc.uri.clone(),
+                    });
                 }
                 _ => {}
             }

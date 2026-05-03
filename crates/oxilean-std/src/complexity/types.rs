@@ -23,7 +23,7 @@ impl DpllSolver {
     pub fn add_clause(&mut self, clause: Vec<i32>) {
         self.clauses.push(clause);
     }
-    /// Solve. Returns `Some(assignment)` if SAT (assignment[i] = value of variable i+1).
+    /// Solve. Returns `Some(assignment)` if SAT (assignment\[i\] = value of variable i+1).
     pub fn solve(&self) -> Option<Vec<bool>> {
         let mut assignment = vec![None::<bool>; self.n_vars + 1];
         if self.dpll(&mut assignment) {
@@ -322,7 +322,7 @@ impl ParameterizedAlgorithmChecker {
 /// The function is given as a truth table (index = bit string, value = output).
 #[allow(dead_code)]
 pub struct SensitivityChecker {
-    /// Truth table: table[x] = f(x). Length must be 2^n.
+    /// Truth table: table\[x\] = f(x). Length must be 2^n.
     pub table: Vec<bool>,
     /// Number of input bits n.
     pub n: usize,

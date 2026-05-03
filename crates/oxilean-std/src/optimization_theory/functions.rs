@@ -222,7 +222,7 @@ pub fn nesterov_acceleration_ty() -> Expr {
     )
 }
 /// `SGDConvergenceConvex : (Rⁿ→ℝ) → ℝ → ℝ → Nat → ℝ → Prop`
-/// SGD on convex L-Lipschitz f with step η achieves E[f(x̄_T) - f*] ≤ ε after T steps.
+/// SGD on convex L-Lipschitz f with step η achieves E\[f(x̄_T) - f*\] ≤ ε after T steps.
 pub fn sgd_convergence_convex_ty() -> Expr {
     arrow(
         rn_to_r(),
@@ -963,7 +963,7 @@ pub fn compute_regret(
 }
 /// Robbins-Monro stochastic approximation.
 ///
-/// Finds root of E[H(x, ξ)] = 0 using noisy observations H(x_t, ξ_t).
+/// Finds root of E\[H(x, ξ)\] = 0 using noisy observations H(x_t, ξ_t).
 ///
 /// `h_oracle(x, t)` returns a noisy sample of H(x, ξ_t).
 /// Step sizes: a_t = a / (t + A)^α (Polyak-Ruppert schedule).

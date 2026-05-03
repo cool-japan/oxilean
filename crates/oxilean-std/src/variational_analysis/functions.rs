@@ -437,12 +437,12 @@ pub fn is_palais_smale_sequence(
     let norm: f64 = g.iter().map(|gi| gi * gi).sum::<f64>().sqrt();
     norm < 0.1 * bound.max(1.0)
 }
-/// Compute penalty approximation of indicator function of [a, b]:
+/// Compute penalty approximation of indicator function of \[a, b\]:
 /// f_n(x) = n * (max(0, x - b) + max(0, a - x)).
 pub fn penalty_indicator_1d(x: f64, a: f64, b: f64, n: f64) -> f64 {
     n * (0.0_f64.max(x - b) + 0.0_f64.max(a - x))
 }
-/// Check whether a sequence of penalty functions Gamma-converges to the indicator of [a,b].
+/// Check whether a sequence of penalty functions Gamma-converges to the indicator of \[a,b\].
 /// Only verifies the liminf inequality at a test point.
 pub fn check_gamma_convergence_indicator(x: f64, a: f64, b: f64, ns: &[f64]) -> bool {
     let inside = x >= a && x <= b;

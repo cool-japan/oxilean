@@ -1128,7 +1128,7 @@ impl PgoFeedback {
             .iter()
             .filter(|p| p.is_hot_function(threshold))
             .collect();
-        hot.sort_by(|a, b| b.total_calls.cmp(&a.total_calls));
+        hot.sort_by_key(|b| std::cmp::Reverse(b.total_calls));
         hot.truncate(n);
         hot
     }
@@ -1177,7 +1177,7 @@ impl SampleBasedProfileGenerator {
     pub fn top_functions(&self, n: usize) -> Vec<(String, u64)> {
         let profile = self.build_flat_profile();
         let mut entries: Vec<(String, u64)> = profile.into_iter().collect();
-        entries.sort_by(|a, b| b.1.cmp(&a.1));
+        entries.sort_by_key(|b| std::cmp::Reverse(b.1));
         entries.truncate(n);
         entries
     }
@@ -1405,7 +1405,7 @@ impl HotColdSplit {
             .iter()
             .map(|p| (p.name.clone(), p.total_calls))
             .collect();
-        counts.sort_by(|a, b| b.1.cmp(&a.1));
+        counts.sort_by_key(|b| std::cmp::Reverse(b.1));
         let total: u64 = counts.iter().map(|(_, c)| c).sum();
         let threshold = (total as f64 * self.hot_threshold_percentile / 100.0) as u64;
         let mut cumulative = 0u64;

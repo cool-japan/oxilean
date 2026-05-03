@@ -6,12 +6,12 @@ use super::functions::*;
 /// Represents a well-quasi-order (WQO) over a finite carrier.
 ///
 /// An encoding of the WQO property: every infinite sequence has a good pair
-/// (indices i < j with carrier[i] ≤ carrier[j]).
+/// (indices i < j with carrier\[i\] ≤ carrier\[j\]).
 #[allow(dead_code)]
 pub struct WqoInstance {
     /// The elements of the carrier set (finite approximation).
     pub carrier: Vec<u64>,
-    /// The quasi-order as a boolean matrix (le_matrix[i][j] = carrier[i] ≤ carrier[j]).
+    /// The quasi-order as a boolean matrix (le_matrix\[i\]\[j\] = carrier\[i\] ≤ carrier\[j\]).
     pub le_matrix: Vec<Vec<bool>>,
 }
 #[allow(dead_code)]
@@ -79,7 +79,7 @@ impl WqoInstance {
 pub struct FiniteLinearOrder {
     /// Number of elements.
     pub size: usize,
-    /// The permutation defining the order: order[i] is the i-th smallest element.
+    /// The permutation defining the order: order\[i\] is the i-th smallest element.
     pub order: Vec<usize>,
 }
 #[allow(dead_code)]
@@ -175,7 +175,7 @@ impl OrderingBuilder {
 }
 /// A range structure for ordered types.
 ///
-/// Represents the interval [lo, hi] in an ordered set, supporting
+/// Represents the interval \[lo, hi\] in an ordered set, supporting
 /// membership tests, containment, and iteration for integer ranges.
 #[allow(dead_code)]
 pub struct OrderedRange<T: std::cmp::Ord + Clone> {
@@ -186,7 +186,7 @@ pub struct OrderedRange<T: std::cmp::Ord + Clone> {
 }
 #[allow(dead_code)]
 impl<T: std::cmp::Ord + Clone> OrderedRange<T> {
-    /// Create a new range [lo, hi]. Panics if lo > hi.
+    /// Create a new range \[lo, hi\]. Panics if lo > hi.
     pub fn new(lo: T, hi: T) -> Self {
         assert!(lo <= hi, "lower bound must not exceed upper bound");
         Self { lo, hi }
@@ -514,7 +514,7 @@ impl DedekindCutQ {
 pub struct FinitePartialOrder {
     /// Number of elements.
     pub size: usize,
-    /// The order relation as a boolean matrix: le[i][j] = (i ≤ j).
+    /// The order relation as a boolean matrix: le\[i\]\[j\] = (i ≤ j).
     pub le: Vec<Vec<bool>>,
 }
 #[allow(dead_code)]

@@ -59,7 +59,7 @@ impl NotationCompletionHelper {
                 }
             })
             .collect();
-        found.sort_by(|a, b| b.0.cmp(&a.0));
+        found.sort_by_key(|b| std::cmp::Reverse(b.0));
         found.truncate(max);
         found.into_iter().map(|(_, s)| s).collect()
     }
@@ -1149,10 +1149,10 @@ pub struct NotationSorter;
 #[allow(dead_code)]
 impl NotationSorter {
     pub fn by_priority(notations: &mut [Notation]) {
-        notations.sort_by(|a, b| b.priority.cmp(&a.priority));
+        notations.sort_by_key(|b| std::cmp::Reverse(b.priority));
     }
     pub fn by_pattern_length(notations: &mut [Notation]) {
-        notations.sort_by(|a, b| b.pattern.len().cmp(&a.pattern.len()));
+        notations.sort_by_key(|b| std::cmp::Reverse(b.pattern.len()));
     }
 }
 #[allow(dead_code)]

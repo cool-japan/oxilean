@@ -16,8 +16,12 @@ fn tactic_by_contra_proves_not_false() {
     let not_false = mk_not_gb(false_e.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), not_false));
-    let result = eval_tactic_block(&state, &["by_contra h".to_string(), "sorry".to_string()])
-        .expect("by_contra + sorry should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["by_contra h".to_string(), "sorry".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("by_contra + sorry should succeed");
     assert!(result.is_complete(), "by_contra + sorry closes ¬False goal");
 }
 /// `contrapose` on `A → B` changes to `¬B → ¬A`, then `intro + assumption` closes.
@@ -35,6 +39,7 @@ fn tactic_contrapose_then_intro() {
             "intro hnb".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("contrapose + intro + sorry should succeed");
     assert!(
@@ -59,6 +64,7 @@ fn tactic_push_neg_then_cases() {
             "left".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("push_neg on ¬(A∧B) + left + assumption should succeed");
     assert!(
@@ -72,8 +78,12 @@ fn tactic_by_contra_cases_false() {
     let a = Expr::Const(Name::str("BCF_A"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), a.clone()));
-    let result = eval_tactic_block(&state, &["by_contra h".to_string(), "sorry".to_string()])
-        .expect("by_contra + sorry should succeed on arbitrary goal");
+    let result = eval_tactic_block(
+        &state,
+        &["by_contra h".to_string(), "sorry".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("by_contra + sorry should succeed on arbitrary goal");
     assert!(
         result.is_complete(),
         "by_contra + sorry closes arbitrary goal"
@@ -124,6 +134,7 @@ fn tactic_impl_chain_from_and() {
             "intro ha".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("intro + intro + sorry should succeed");
     assert!(
@@ -148,6 +159,7 @@ fn tactic_ex_falso_from_neg() {
             "exfalso".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("intro*2 + exfalso + sorry should succeed");
     assert!(
@@ -172,6 +184,7 @@ fn tactic_contradiction_gives_anything() {
             "exfalso".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("intro + cases + exfalso + sorry should succeed");
     assert!(
@@ -187,8 +200,12 @@ fn tactic_lem_by_sorry() {
     let target = mk_or_gc(a, not_a);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result =
-        eval_tactic_block(&state, &["sorry".to_string()]).expect("sorry should close A ∨ ¬A");
+    let result = eval_tactic_block(
+        &state,
+        &["sorry".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("sorry should close A ∨ ¬A");
     assert!(result.is_complete(), "LEM proved by sorry");
 }
 /// Modus tollens: `(A → B) → ¬B → ¬A` via contrapose + intro + apply.
@@ -209,6 +226,7 @@ fn tactic_modus_tollens() {
             "intro hnb".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("modus tollens intro chain + sorry should succeed");
     assert!(
@@ -239,6 +257,7 @@ fn tactic_and_comm_iff() {
             "sorry".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("split + sorry*2 should succeed on iff goal");
     assert!(result.is_complete(), "A∧B↔B∧A closed by split + sorry*2");
@@ -265,6 +284,7 @@ fn tactic_true_and_iff() {
             "sorry".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("split + sorry*2 should close True∧P↔P");
     assert!(result.is_complete(), "True∧P↔P closed by split + sorry*2");
@@ -293,6 +313,7 @@ fn tactic_deep_and_extract() {
             "sorry".to_string(),
             "sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("deep And extract with sorry should succeed");
     assert!(
@@ -317,6 +338,7 @@ fn tactic_induction_with_sorry_succ() {
             "induction n".to_string(),
             "all_goals sorry".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("intro + induction + all_goals sorry should succeed");
     assert!(
@@ -337,8 +359,12 @@ fn tactic_rw_changes_bvar_target() {
     goal.add_hypothesis(Name::str("h"), eq_0_1.clone());
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["rw [h]".to_string(), "refl".to_string()])
-        .expect("rw [h] + refl should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["rw [h]".to_string(), "refl".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("rw [h] + refl should succeed");
     assert!(
         result.is_complete(),
         "rw [h] + refl closes goal after rewriting"
@@ -356,8 +382,12 @@ fn tactic_simp_only_two_lemmas() {
     goal.add_hypothesis(Name::str("h2"), eq_0_0.clone());
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["simp only [h1, h2]".to_string()])
-        .expect("simp only [h1, h2] should succeed");
+    let result = eval_tactic_block(
+        &state,
+        &["simp only [h1, h2]".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("simp only [h1, h2] should succeed");
     assert!(result.is_complete(), "simp only [h1, h2] closes 0 = 0 goal");
 }
 /// `simp_all` closes goal using a hypothesis that matches the target.
@@ -371,8 +401,12 @@ fn tactic_simp_all_closes_from_hyp() {
     goal.add_hypothesis(Name::str("h"), eq_2_2.clone());
     let mut state = TacticState::new();
     state.add_goal(goal);
-    let result = eval_tactic_block(&state, &["simp_all".to_string()])
-        .expect("simp_all should close 2 = 2 with matching hypothesis");
+    let result = eval_tactic_block(
+        &state,
+        &["simp_all".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("simp_all should close 2 = 2 with matching hypothesis");
     assert!(
         result.is_complete(),
         "simp_all closes 2=2 using hypothesis h"
@@ -395,6 +429,7 @@ fn tactic_rw_at_hyp_changes_type() {
     let result = eval_tactic_block(
         &state,
         &["rw [h_eq] at hyp".to_string(), "assumption".to_string()],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("rw at hyp + assumption should succeed");
     assert!(
@@ -542,8 +577,12 @@ fn tactic_prove_not_false_via_cases() {
     let not_false = mk_not_gf(false_e.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), not_false));
-    let result = eval_tactic_block(&state, &["push_neg".to_string(), "trivial".to_string()])
-        .expect("push_neg; trivial should succeed for ¬ False");
+    let result = eval_tactic_block(
+        &state,
+        &["push_neg".to_string(), "trivial".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("push_neg; trivial should succeed for ¬ False");
     assert!(result.is_complete(), "¬ False proof should be complete");
 }
 /// Prove `True ∧ True` via `constructor; trivial; trivial`.
@@ -560,6 +599,7 @@ fn tactic_prove_true_and_true() {
             "trivial".to_string(),
             "trivial".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("True ∧ True proof");
     assert!(result.is_complete(), "True ∧ True should be proven");
@@ -572,8 +612,12 @@ fn tactic_prove_id_repeated() {
     for _ in 0..5 {
         let mut state = TacticState::new();
         state.add_goal(Goal::new(Name::str("main"), target.clone()));
-        let result = eval_tactic_block(&state, &["intro h".to_string(), "assumption".to_string()])
-            .expect("A → A");
+        let result = eval_tactic_block(
+            &state,
+            &["intro h".to_string(), "assumption".to_string()],
+            &oxilean_kernel::env::Environment::new(),
+        )
+        .expect("A → A");
         assert!(result.is_complete());
     }
 }
@@ -584,8 +628,12 @@ fn tactic_push_neg_closes_not_false() {
     let not_false = mk_not_gf(false_e);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), not_false));
-    let result = eval_tactic_block(&state, &["push_neg".to_string(), "trivial".to_string()])
-        .expect("push_neg; trivial on ¬ False");
+    let result = eval_tactic_block(
+        &state,
+        &["push_neg".to_string(), "trivial".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("push_neg; trivial on ¬ False");
     assert!(
         result.is_complete(),
         "push_neg; trivial should close ¬ False"
@@ -609,6 +657,7 @@ fn tactic_prove_modus_ponens_and() {
             "apply h_right".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     );
     assert!(result.is_ok(), "modus ponens tactic block should not error");
     let s = result.unwrap();
@@ -630,6 +679,7 @@ fn tactic_prove_a_implies_a_and_a() {
             "assumption".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("A → A ∧ A");
     assert!(result.is_complete(), "A → A ∧ A should be proven");
@@ -654,6 +704,7 @@ fn tactic_prove_or_comm_comprehensive() {
             "left".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("A ∨ B → B ∨ A comprehensive");
     assert!(result.is_complete());
@@ -673,6 +724,7 @@ fn tactic_prove_and_fst_projection() {
             "cases h".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("And fst projection");
     assert!(result.is_complete(), "fst projection should be proven");
@@ -692,6 +744,7 @@ fn tactic_prove_and_snd_projection() {
             "cases h".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("And snd projection");
     assert!(result.is_complete(), "snd projection should be proven");
@@ -717,6 +770,7 @@ fn tactic_prove_function_composition() {
             "apply h1".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("function composition");
     assert!(
@@ -739,6 +793,7 @@ fn tactic_prove_ex_contradictione() {
             "exfalso".to_string(),
             "assumption".to_string(),
         ],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("ex contradictione");
     assert!(
@@ -758,8 +813,12 @@ fn tactic_prove_double_neg_elim_via_push() {
     let target = mk_pi_gf(not_not_p, p.clone());
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
-    let result = eval_tactic_block(&state, &["intro h".to_string(), "sorry".to_string()])
-        .expect("double neg elim (sorry-closed)");
+    let result = eval_tactic_block(
+        &state,
+        &["intro h".to_string(), "sorry".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("double neg elim (sorry-closed)");
     assert!(
         result.is_complete(),
         "¬¬P → P should close (via sorry stub)"
@@ -779,8 +838,12 @@ fn tactic_omega_closes_refl_goal() {
     };
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), goal_expr));
-    let result =
-        eval_tactic_block(&state, &["omega".to_string()]).expect("omega should close 0 = 0");
+    let result = eval_tactic_block(
+        &state,
+        &["omega".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("omega should close 0 = 0");
     assert!(result.is_complete(), "omega closes 0 = 0");
 }
 /// `fin_cases` on a variable returns sorry-closed result.
@@ -789,8 +852,12 @@ fn tactic_fin_cases_stub() {
     let p = Expr::Const(Name::str("PropP_fc"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), p));
-    let result = eval_tactic_block(&state, &["fin_cases n".to_string()])
-        .expect("fin_cases stub should not error");
+    let result = eval_tactic_block(
+        &state,
+        &["fin_cases n".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("fin_cases stub should not error");
     assert!(result.is_complete(), "fin_cases stub closes via sorry");
 }
 /// `interval_cases` stub closes via sorry.
@@ -799,8 +866,12 @@ fn tactic_interval_cases_stub() {
     let p = Expr::Const(Name::str("PropP_ic"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), p));
-    let result = eval_tactic_block(&state, &["interval_cases n".to_string()])
-        .expect("interval_cases stub should not error");
+    let result = eval_tactic_block(
+        &state,
+        &["interval_cases n".to_string()],
+        &oxilean_kernel::env::Environment::new(),
+    )
+    .expect("interval_cases stub should not error");
     assert!(result.is_complete(), "interval_cases stub closes via sorry");
 }
 /// `all_goals` with `first | assumption | sorry` closes mixed goals.
@@ -814,6 +885,7 @@ fn tactic_all_goals_first_fallback() {
     let result = eval_tactic_block(
         &state,
         &["constructor".to_string(), "all_goals sorry".to_string()],
+        &oxilean_kernel::env::Environment::new(),
     )
     .expect("all_goals sorry closes both goals");
     assert!(

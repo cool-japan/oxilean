@@ -54,7 +54,7 @@ impl DilithiumParams {
 /// # WARNING: Educational only. No NTT, no constant-time guarantees.
 #[derive(Debug, Clone)]
 pub struct ModularLatticeArithmetic {
-    /// Polynomial degree n (ring Z_q[x]/(x^n + 1)).
+    /// Polynomial degree n (ring Z_q\[x\]/(x^n + 1)).
     pub n: usize,
     /// Modulus q.
     pub q: i64,
@@ -132,7 +132,7 @@ impl ModularLatticeArithmetic {
             })
             .sum()
     }
-    /// Check if a polynomial is "small": all centered coefficients in [-eta, eta].
+    /// Check if a polynomial is "small": all centered coefficients in \[-eta, eta\].
     pub fn is_small(&self, a: &[i64], eta: i64) -> bool {
         a.iter().all(|&ai| self.center_reduce(ai).abs() <= eta)
     }
@@ -140,9 +140,9 @@ impl ModularLatticeArithmetic {
 /// A Lamport key pair: secret keys and public (hashed) keys.
 #[derive(Debug, Clone)]
 pub struct LamportKeyPair {
-    /// Secret keys: sk[i][b] = pre-image for bit i value b
+    /// Secret keys: sk\[i\]\[b\] = pre-image for bit i value b
     pub sk: Vec<[u64; 2]>,
-    /// Public keys: pk[i][b] = hash(sk[i][b])
+    /// Public keys: pk\[i\]\[b\] = hash(sk\[i\]\[b\])
     pub pk: Vec<[u64; 2]>,
 }
 /// Toy WOTS+ (Winternitz One-Time Signature Plus) implementation.
@@ -193,7 +193,7 @@ impl HashBasedSignature {
         WOTSKeyPair { sk, pk }
     }
     /// Sign a message hash m (encoded as chain lengths).
-    /// Each element of m must be in [0, w-1].
+    /// Each element of m must be in \[0, w-1\].
     pub fn sign(&self, kp: &WOTSKeyPair, m: &[usize]) -> Vec<u64> {
         assert_eq!(m.len(), self.chains);
         m.iter()
@@ -272,7 +272,7 @@ pub struct ToyLWE {
     pub n: usize,
     /// Modulus q
     pub q: i64,
-    /// Error bound B: errors are in [-B, B]
+    /// Error bound B: errors are in \[-B, B\]
     pub b: i64,
 }
 impl ToyLWE {
@@ -347,7 +347,7 @@ impl LatticeBasisReducer {
         );
         Self { delta }
     }
-    /// Reduce a 2D basis given as [[b00, b01], [b10, b11]].
+    /// Reduce a 2D basis given as [\[b00, b01\], \[b10, b11\]].
     /// Returns the reduced basis (Gauss reduction for dimension 2).
     pub fn reduce_2d(&self, b0: [i64; 2], b1: [i64; 2]) -> ([i64; 2], [i64; 2]) {
         let mut v0 = b0;
@@ -484,7 +484,7 @@ impl DilithiumVariant {
 pub struct ToyMerkleTree {
     /// Leaf public keys (hashed with toy hash)
     pub leaves: Vec<u64>,
-    /// Internal nodes: inner[0..2] = parents of leaf pairs; inner[2] = root
+    /// Internal nodes: inner[0..2] = parents of leaf pairs; inner\[2\] = root
     pub inner: Vec<u64>,
 }
 impl ToyMerkleTree {
@@ -539,7 +539,7 @@ impl ToyMerkleTree {
 pub struct WOTSKeyPair {
     /// Secret key: one random value per chain.
     pub sk: Vec<u64>,
-    /// Public key: hash^{w-1}(sk[i]) for each chain i.
+    /// Public key: hash^{w-1}(sk\[i\]) for each chain i.
     pub pk: Vec<u64>,
 }
 /// FALCON signature scheme data.
@@ -579,7 +579,7 @@ impl FalconParams {
         )
     }
 }
-/// A polynomial in Z_q[x] / (x^n + 1), stored as coefficient vector.
+/// A polynomial in Z_q\[x\] / (x^n + 1), stored as coefficient vector.
 ///
 /// Used for toy implementations of RLWE / Kyber / Dilithium.
 ///
@@ -729,7 +729,7 @@ pub struct LWESampleGenerator {
     pub n: usize,
     /// Modulus q.
     pub q: i64,
-    /// Error bound b (errors uniform in [-b, b]).
+    /// Error bound b (errors uniform in \[-b, b\]).
     pub b: i64,
     /// PRNG state.
     state: u64,
@@ -756,7 +756,7 @@ impl LWESampleGenerator {
     fn sample_uniform(&mut self) -> i64 {
         (self.next_rand() as i64).rem_euclid(self.q)
     }
-    /// Sample a small error from [-b, b].
+    /// Sample a small error from \[-b, b\].
     pub fn sample_error(&mut self) -> i64 {
         let raw = (self.next_rand() as i64).rem_euclid(2 * self.b + 1);
         raw - self.b

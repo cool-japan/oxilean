@@ -206,7 +206,7 @@ impl ResultAxiomRegistry {
         self.names.is_empty()
     }
 }
-/// Bridge between Result<T,E> and Either<E,T> representations.
+/// Bridge between `Result<T,E>` and Either<E,T> representations.
 #[allow(dead_code)]
 pub struct ResultEitherBridge {
     pub convention: &'static str,

@@ -557,7 +557,7 @@ pub fn blahut_arimoto_ty() -> Expr {
     arrow(nat_ty(), prop())
 }
 /// `RateDistortionFunction : Nat → Nat → Prop` —
-/// Shannon rate-distortion theorem: R(D) = min_{p(x̂|x): E[d(X,X̂)]≤D} I(X; X̂).
+/// Shannon rate-distortion theorem: R(D) = min_{p(x̂|x): E\[d(X,X̂)\]≤D} I(X; X̂).
 pub fn rate_distortion_function_ty() -> Expr {
     arrow(nat_ty(), arrow(nat_ty(), prop()))
 }

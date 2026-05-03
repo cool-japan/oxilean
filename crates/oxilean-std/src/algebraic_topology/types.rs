@@ -191,9 +191,9 @@ impl SimplicialComplex {
     pub fn k_simplices(&self, k: usize) -> Vec<&Vec<usize>> {
         self.simplices.iter().filter(|s| s.len() == k + 1).collect()
     }
-    /// Compute the boundary matrix ∂_k : C_k → C_{k-1} as a Vec<Vec<i32>>.
+    /// Compute the boundary matrix ∂_k : C_k → C_{k-1} as a `Vec<Vec<i32>`>.
     /// Rows index (k-1)-simplices; columns index k-simplices.
-    /// The sign convention: ∂[v_0,…,v_k] = Σ_i (-1)^i [v_0,…,v̂_i,…,v_k].
+    /// The sign convention: ∂\[v_0,…,v_k\] = Σ_i (-1)^i \[v_0,…,v̂_i,…,v_k\].
     pub fn boundary_matrix(&self, k: usize) -> Vec<Vec<i32>> {
         let k_sims = self.k_simplices(k);
         let km1_sims = self.k_simplices(k.saturating_sub(1));
@@ -618,10 +618,10 @@ impl PersistenceInterval {
 }
 /// A chain complex C_n →^{d_n} C_{n-1} → … stored as boundary matrices.
 pub struct ChainComplex {
-    /// `boundary_matrices[k]` is the matrix of d_k: C_k → C_{k-1},
+    /// `boundary_matrices\[k\]` is the matrix of d_k: C_k → C_{k-1},
     /// stored as a `rank(C_{k-1}) × rank(C_k)` integer matrix.
     pub boundary_matrices: Vec<Vec<Vec<i32>>>,
-    /// `ranks[k]` = rank(C_k), the number of k-cells.
+    /// `ranks\[k\]` = rank(C_k), the number of k-cells.
     pub ranks: Vec<usize>,
 }
 impl ChainComplex {

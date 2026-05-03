@@ -565,7 +565,7 @@ pub fn systemf_universal_intro_ty() -> Expr {
     )
 }
 /// `SystemFUniversalElim : ∀ (Γ : Ctx) (t : Term) (α : TyVar) (T S : FType),
-///     HasTypeSF Γ t (Forall α T) → HasTypeSF Γ (TyApp t S) (T[S/α])`
+///     HasTypeSF Γ t (Forall α T) → HasTypeSF Γ (TyApp t S) (T\[S/α\])`
 ///
 /// System F type application (elimination of universal quantification).
 pub fn systemf_universal_elim_ty() -> Expr {

@@ -290,7 +290,7 @@ impl HeredFiniteSet {
     pub fn is_empty(&self) -> bool {
         self.0 == 0
     }
-    /// Power set: returns all subsets as a Vec<HeredFiniteSet>.
+    /// Power set: returns all subsets as a `Vec<HeredFiniteSet>`.
     /// Only feasible for small sets (≤ 20 elements).
     pub fn power_set(&self) -> Vec<HeredFiniteSet> {
         let bits: Vec<u32> = (0..64).filter(|&i| (self.0 >> i) & 1 == 1).collect();

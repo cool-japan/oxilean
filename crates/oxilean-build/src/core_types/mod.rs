@@ -1,0 +1,52 @@
+//! Auto-generated module structure
+
+pub mod artifactkind_traits;
+pub mod buildartifact_traits;
+pub mod buildcache_traits;
+pub mod buildconfig_traits;
+pub mod buildenvironment_traits;
+pub mod buildgraph_traits;
+pub mod buildlogentry_traits;
+pub mod buildloglevel_traits;
+pub mod buildnotification_traits;
+pub mod buildoutputfilter_traits;
+pub mod buildphase_traits;
+pub mod buildprofilekind_traits;
+pub mod buildsummary_traits;
+pub mod buildsystemcapabilities_traits;
+pub mod buildsystemerror_traits;
+pub mod functions;
+pub mod noopplugin_traits;
+pub mod oxileanversion_traits;
+pub mod packageid_traits;
+pub mod phasetimings_traits;
+pub mod pluginregistry_traits;
+pub mod targetkind_traits;
+pub mod types;
+pub mod workspaceinfo_traits;
+
+// Re-export all types
+pub use artifactkind_traits::*;
+pub use buildartifact_traits::*;
+pub use buildcache_traits::*;
+pub use buildconfig_traits::*;
+pub use buildenvironment_traits::*;
+pub use buildgraph_traits::*;
+pub use buildlogentry_traits::*;
+pub use buildloglevel_traits::*;
+pub use buildnotification_traits::*;
+pub use buildoutputfilter_traits::*;
+pub use buildphase_traits::*;
+pub use buildprofilekind_traits::*;
+pub use buildsummary_traits::*;
+pub use buildsystemcapabilities_traits::*;
+pub use buildsystemerror_traits::*;
+pub use functions::*;
+pub use noopplugin_traits::*;
+pub use oxileanversion_traits::*;
+pub use packageid_traits::*;
+pub use phasetimings_traits::*;
+pub use pluginregistry_traits::*;
+pub use targetkind_traits::*;
+pub use types::*;
+pub use workspaceinfo_traits::*;

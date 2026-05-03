@@ -54,7 +54,7 @@ impl MagicStateDistillation {
         r.powi(self.n_rounds_needed() as i32)
     }
 }
-/// An [[n, k, d]] stabilizer code.
+/// An [\[n, k, d\]] stabilizer code.
 #[derive(Debug, Clone)]
 pub struct StabilizerCode {
     /// Number of physical qubits.
@@ -75,7 +75,7 @@ impl StabilizerCode {
             generators,
         }
     }
-    /// 3-qubit bit-flip code [[3,1,1]].
+    /// 3-qubit bit-flip code [\[3,1,1\]].
     pub fn bit_flip_3() -> Self {
         let zzz = |a: PauliOp, b: PauliOp, c: PauliOp| PauliString::new(vec![a, b, c]);
         Self::new(
@@ -88,7 +88,7 @@ impl StabilizerCode {
             ],
         )
     }
-    /// 3-qubit phase-flip code [[3,1,1]].
+    /// 3-qubit phase-flip code [\[3,1,1\]].
     pub fn phase_flip_3() -> Self {
         let make = |a: PauliOp, b: PauliOp, c: PauliOp| PauliString::new(vec![a, b, c]);
         Self::new(
@@ -101,7 +101,7 @@ impl StabilizerCode {
             ],
         )
     }
-    /// [[7,1,3]] Steane code (CSS from [7,4,3] Hamming code).
+    /// [\[7,1,3\]] Steane code (CSS from \[7,4,3\] Hamming code).
     pub fn steane_7() -> Self {
         let x = PauliOp::X;
         let z = PauliOp::Z;
@@ -331,7 +331,7 @@ impl PauliOperator {
             .count()
     }
 }
-/// Shor's 9-qubit [[9,1,3]] code.
+/// Shor's 9-qubit [\[9,1,3\]] code.
 pub struct ShorCode {
     inner: StabilizerCode,
 }
@@ -385,7 +385,7 @@ impl BinaryCode {
     pub fn new(n: usize, k: usize, d: usize, h: Vec<Vec<u8>>) -> Self {
         Self { n, k, d, h }
     }
-    /// [7,4,3] Hamming code.
+    /// \[7,4,3\] Hamming code.
     pub fn hamming_7_4_3() -> Self {
         Self::new(
             7,
@@ -398,7 +398,7 @@ impl BinaryCode {
             ],
         )
     }
-    /// [7,4,3] Hamming dual code (same parity check for CSS).
+    /// \[7,4,3\] Hamming dual code (same parity check for CSS).
     pub fn hamming_dual_7_3_4() -> Self {
         Self::new(
             7,
@@ -795,7 +795,7 @@ impl CSSCode {
     pub fn new(n: usize, k: usize, d: usize, h_x: Vec<Vec<u8>>, h_z: Vec<Vec<u8>>) -> Self {
         Self { n, k, d, h_x, h_z }
     }
-    /// CSS from Steane/Hamming code: [[7,1,3]].
+    /// CSS from Steane/Hamming code: [\[7,1,3\]].
     pub fn steane() -> Self {
         let h = BinaryCode::hamming_7_4_3().h;
         Self::new(7, 1, 3, h.clone(), h)
@@ -832,7 +832,7 @@ impl CSSCode {
         self.z_syndrome(z_err).iter().any(|&s| s != 0)
     }
 }
-/// Estimates the fault-tolerance threshold for a [[n,k,d]] code using the
+/// Estimates the fault-tolerance threshold for a [\[n,k,d\]] code using the
 /// concatenated code model: p_th ≈ 1/(A · n^2) where A is a combinatorial factor.
 #[allow(dead_code)]
 pub struct FaultToleranceThreshold {
@@ -950,7 +950,7 @@ impl StabCode {
         let d = self.min_distance_upper_bound();
         (self.n_physical, self.k_logical, d)
     }
-    /// Build the [[5,1,3]] perfect quantum code.
+    /// Build the [\[5,1,3\]] perfect quantum code.
     pub fn five_qubit_code() -> Self {
         let mut code = StabCode::new(5, 1);
         let gens = vec![
@@ -979,7 +979,7 @@ impl StabCode {
         }
         code
     }
-    /// Build the [[7,1,3]] Steane code (CSS code from Hamming [7,4,3]).
+    /// Build the [\[7,1,3\]] Steane code (CSS code from Hamming \[7,4,3\]).
     pub fn steane_code() -> Self {
         let mut code = StabCode::new(7, 1);
         let parity_rows = vec![
@@ -1059,7 +1059,7 @@ impl SyndromeDecoder2 {
         self.lookup_table.get(syndrome)
     }
 }
-/// A concatenated code at level L using base [[n,1,d]] code.
+/// A concatenated code at level L using base [\[n,1,d\]] code.
 pub struct ConcatenatedCode {
     pub n_base: usize,
     pub d_base: usize,

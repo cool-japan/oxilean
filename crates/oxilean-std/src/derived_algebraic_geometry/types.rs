@@ -85,7 +85,7 @@ pub struct VirtualFundamentalClass {
     pub space: String,
     /// Virtual dimension.
     pub virtual_dim: i32,
-    /// Chow group in which [X]^vir lives.
+    /// Chow group in which \[X\]^vir lives.
     pub chow_group: String,
 }
 impl VirtualFundamentalClass {
@@ -98,7 +98,7 @@ impl VirtualFundamentalClass {
         }
     }
 }
-/// A distinguished (exact) triangle A → B → C → A[1].
+/// A distinguished (exact) triangle A → B → C → A\[1\].
 #[derive(Debug, Clone)]
 pub struct ExactTriangle {
     /// Object A (the source).
@@ -124,7 +124,7 @@ impl ExactTriangle {
     pub fn is_distinguished_triangle(&self) -> bool {
         self.is_distinguished
     }
-    /// Rotate the triangle: A→B→C→A[1] becomes B→C→A[1]→B[1].
+    /// Rotate the triangle: A→B→C→A\[1\] becomes B→C→A\[1\]→B\[1\].
     pub fn rotate(&self) -> ExactTriangle {
         ExactTriangle {
             vertex_a: self.vertex_b.clone(),
@@ -710,7 +710,7 @@ pub struct DerivedScheme {
     pub classical_truncation: String,
     /// Whether the derived scheme is affine.
     pub is_affine: bool,
-    /// Cohomological amplitude [a, b] of the structure sheaf.
+    /// Cohomological amplitude \[a, b\] of the structure sheaf.
     pub amplitude: (i32, i32),
 }
 impl DerivedScheme {

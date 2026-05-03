@@ -60,13 +60,8 @@ mod tests {
 }
 pub(super) fn count_bvar_occ(e: &Expr, idx: u32) -> usize {
     match e {
-        Expr::BVar(n) => {
-            if *n == idx {
-                1
-            } else {
-                0
-            }
-        }
+        Expr::BVar(n) if *n == idx => 1,
+        Expr::BVar(_) => 0,
         Expr::App(f, a) => count_bvar_occ(f, idx) + count_bvar_occ(a, idx),
         Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
             count_bvar_occ(ty, idx) + count_bvar_occ(body, idx + 1)

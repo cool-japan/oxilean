@@ -21,7 +21,7 @@ pub struct ArenaMove {
 pub struct FinitePartialOrder {
     /// Number of elements (indexed 0..n).
     pub n: usize,
-    /// Relation: `leq[i][j]` is true iff i ≤ j.
+    /// Relation: `leq\[i\]\[j\]` is true iff i ≤ j.
     pub leq: Vec<Vec<bool>>,
 }
 impl FinitePartialOrder {
@@ -459,7 +459,7 @@ impl ScottOpen {
 pub struct GameArena {
     /// The moves in this arena.
     pub moves: Vec<ArenaMove>,
-    /// Enabling relation: `enables[i]` = set of moves that move `i` enables.
+    /// Enabling relation: `enables\[i\]` = set of moves that move `i` enables.
     pub enables: HashMap<usize, Vec<usize>>,
 }
 impl GameArena {
@@ -505,7 +505,7 @@ impl PCFValue {
 /// on a finite CPO where elements are represented as `usize` indices).
 #[derive(Clone)]
 pub struct MonotoneMap {
-    /// The underlying function table: `table[i] = f(i)`.
+    /// The underlying function table: `table\[i\] = f(i)`.
     pub table: Vec<usize>,
 }
 impl MonotoneMap {
@@ -583,7 +583,7 @@ impl PCFTerm {
 pub struct BilimitStep {
     /// The size of the CPO at this step.
     pub size: usize,
-    /// The projection table `proj[x] = p(x)` mapping this level to the previous.
+    /// The projection table `proj\[x\] = p(x)` mapping this level to the previous.
     pub proj: Vec<usize>,
 }
 impl BilimitStep {

@@ -995,7 +995,7 @@ impl ProofSearcher {
 ///
 /// A sequence (a_n) is metastable with rate Φ if for every ε > 0 and k,
 /// there exists n ≤ Φ(ε, k) such that |a_n - a_{n+1}| < ε for all
-/// indices in [n, n + k].
+/// indices in \[n, n + k\].
 #[derive(Debug, Clone)]
 pub struct MetastabilityBound {
     /// Name of the theorem/sequence this bound applies to.

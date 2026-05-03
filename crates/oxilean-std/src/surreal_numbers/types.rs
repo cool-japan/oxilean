@@ -165,7 +165,7 @@ impl SignExpansionEncoder {
         }
         self.signs.len() <= other.signs.len()
     }
-    /// Return the signs as a Vec<Sign> for compatibility with FinSurreal.
+    /// Return the signs as a `Vec<Sign>` for compatibility with FinSurreal.
     pub fn to_signs(&self) -> Vec<Sign> {
         self.signs
             .iter()

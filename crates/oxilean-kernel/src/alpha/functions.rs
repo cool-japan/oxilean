@@ -817,13 +817,8 @@ pub fn count_bvar0_occurrences(expr: &Expr) -> usize {
 }
 pub(super) fn count_bvar0_impl(expr: &Expr, depth: u32) -> usize {
     match expr {
-        Expr::BVar(i) => {
-            if *i == depth {
-                1
-            } else {
-                0
-            }
-        }
+        Expr::BVar(i) if *i == depth => 1,
+        Expr::BVar(_) => 0,
         Expr::App(f, a) => count_bvar0_impl(f, depth) + count_bvar0_impl(a, depth),
         Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
             count_bvar0_impl(ty, depth) + count_bvar0_impl(body, depth + 1)

@@ -618,7 +618,7 @@ impl RelationAlgebra {
 /// A congruence relation on a finite algebra, represented as a partition
 /// of carrier elements into equivalence classes.
 pub struct CongruenceRelation {
-    /// `parent[i]` is the representative of element `i` (union-find style).
+    /// `parent\[i\]` is the representative of element `i` (union-find style).
     parent: Vec<usize>,
     /// Size of the carrier.
     pub carrier_size: usize,

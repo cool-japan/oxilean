@@ -342,7 +342,7 @@ mod tests {
 pub fn apply_edits(source: &str, edits: &[SourceEdit]) -> String {
     let mut result = source.to_string();
     let mut sorted = edits.to_vec();
-    sorted.sort_by(|a, b| b.start.cmp(&a.start));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.start));
     for edit in sorted {
         let end = edit.end.min(result.len());
         let start = edit.start.min(end);

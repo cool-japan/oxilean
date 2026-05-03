@@ -10,6 +10,8 @@
 
 The npm package is published as [`@cooljapan/oxilean`](https://www.npmjs.com/package/@cooljapan/oxilean).
 
+47 tests passing -- full integration with the kernel/parse/elab pipeline.
+
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
 ## Install

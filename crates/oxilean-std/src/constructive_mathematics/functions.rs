@@ -917,7 +917,7 @@ pub fn bar_theorem_analytic_ty() -> Expr {
 pub fn kleene_brouwer_ordering_ty() -> Expr {
     arrow(list_ty(nat_ty()), arrow(list_ty(nat_ty()), prop()))
 }
-/// `ConstructiveHeineBorel : the unit interval [0,1] is compact for lawful sequences.`
+/// `ConstructiveHeineBorel : the unit interval \[0,1\] is compact for lawful sequences.`
 pub fn constructive_heine_borel_ty() -> Expr {
     pi(
         BinderInfo::Default,
@@ -936,7 +936,7 @@ pub fn constructive_heine_borel_ty() -> Expr {
 pub fn lawful_sequence_ty() -> Expr {
     arrow(arrow(nat_ty(), bishop_real_ty()), prop())
 }
-/// `SequentialCompactness : [0,1] is sequentially compact for lawful sequences.`
+/// `SequentialCompactness : \[0,1\] is sequentially compact for lawful sequences.`
 pub fn sequential_compactness_ty() -> Expr {
     pi(
         BinderInfo::Default,

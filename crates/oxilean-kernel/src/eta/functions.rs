@@ -131,13 +131,8 @@ pub fn contains_bvar(expr: &Expr, idx: u32) -> bool {
 /// Count occurrences of a bound variable in an expression.
 pub fn count_bvar(expr: &Expr, idx: u32) -> usize {
     match expr {
-        Expr::BVar(i) => {
-            if *i == idx {
-                1
-            } else {
-                0
-            }
-        }
+        Expr::BVar(i) if *i == idx => 1,
+        Expr::BVar(_) => 0,
         Expr::App(f, a) => count_bvar(f, idx) + count_bvar(a, idx),
         Expr::Lam(_, _, ty, body) => count_bvar(ty, idx) + count_bvar(body, idx + 1),
         Expr::Pi(_, _, ty, body) => count_bvar(ty, idx) + count_bvar(body, idx + 1),

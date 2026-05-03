@@ -107,9 +107,9 @@ impl PTAS {
 /// - Phase 2: cluster clients and assign to open facilities.
 #[derive(Debug, Clone)]
 pub struct PrimalDualFacility {
-    /// Facility opening costs f[i] ≥ 0.
+    /// Facility opening costs f\[i\] ≥ 0.
     pub opening_costs: Vec<f64>,
-    /// Connection costs c[j][i]: cost for client j to connect to facility i.
+    /// Connection costs c\[j\]\[i\]: cost for client j to connect to facility i.
     pub connection_costs: Vec<Vec<f64>>,
 }
 impl PrimalDualFacility {

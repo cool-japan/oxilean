@@ -54,7 +54,7 @@ pub fn cartesian_delete_law<A: Clone, B: Clone>(a: A, b: B) -> bool {
     let _ = b;
     true
 }
-/// Check traversal identity law for Vec<Option>.
+/// Check traversal identity law for `Vec<Option>`.
 pub fn traverse_identity_law<A: Clone + PartialEq>(xs: Vec<A>) -> bool {
     let traversed: Option<Vec<A>> = traverse_vec_option(xs.clone(), |a| Some(a));
     traversed == Some(xs)
@@ -74,7 +74,7 @@ pub fn traverse_composition_law<A: Clone, B: Clone + PartialEq, E: Clone>(
         _ => false,
     }
 }
-/// Check fold consistency: fold = foldMap id for Vec<i64>.
+/// Check fold consistency: fold = foldMap id for `Vec<i64>`.
 pub fn fold_consistency_law(xs: Vec<i64>) -> bool {
     let fold_result = xs.iter().sum::<i64>();
     let foldmap_result: i64 = xs.iter().map(|x| *x).sum();

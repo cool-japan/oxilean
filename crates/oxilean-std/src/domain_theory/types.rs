@@ -99,7 +99,7 @@ impl<A, B> LinearArrow<A, B> {
 /// A function f: D → E is Scott-continuous iff it is monotone and
 /// preserves directed sups: f(⊔S) = ⊔f(S).
 pub struct ScottContinuousFunction {
-    /// The function as a lookup table: `table[i]` = f(i).
+    /// The function as a lookup table: `table\[i\]` = f(i).
     pub table: Vec<usize>,
 }
 impl ScottContinuousFunction {
@@ -313,7 +313,7 @@ impl<T: Clone + PartialEq> FlatDomain<T> {
 pub struct ScottContinuousChecker<'a> {
     src: &'a DCPO,
     tgt: &'a DCPO,
-    /// Function table: `f[i]` = image of element `i`.
+    /// Function table: `f\[i\]` = image of element `i`.
     f: Vec<usize>,
 }
 impl<'a> ScottContinuousChecker<'a> {
@@ -392,7 +392,7 @@ impl<'a> ScottContinuousChecker<'a> {
 /// Berry stability: if x ≤ z, y ≤ z, and f(x) and f(y) are compatible (have
 /// a common upper bound in the codomain), then f(x⊓y) = f(x) ⊓ f(y).
 pub struct StableFunction {
-    /// Function table: `table[i]` = f(i).
+    /// Function table: `table\[i\]` = f(i).
     pub table: Vec<usize>,
 }
 impl StableFunction {
@@ -704,7 +704,7 @@ impl IdealCompletion {
 pub struct DCPO {
     /// Number of elements (including ⊥ at index 0).
     pub size: usize,
-    /// The partial order: `order[i][j]` is `true` if element i ≤ element j.
+    /// The partial order: `order\[i\]\[j\]` is `true` if element i ≤ element j.
     pub order: Vec<Vec<bool>>,
 }
 impl DCPO {
@@ -972,9 +972,9 @@ impl InformationSystem {
 pub struct PrimeEventStructure {
     /// Number of events.
     pub n_events: usize,
-    /// Causality relation: `causes[i][j]` = true if event i ≤ event j.
+    /// Causality relation: `causes\[i\]\[j\]` = true if event i ≤ event j.
     pub causes: Vec<Vec<bool>>,
-    /// Conflict relation: `conflicts[i][j]` = true if event i # event j.
+    /// Conflict relation: `conflicts\[i\]\[j\]` = true if event i # event j.
     pub conflicts: Vec<Vec<bool>>,
 }
 impl PrimeEventStructure {
@@ -1095,7 +1095,7 @@ impl KleeneFixedPoint {
         None
     }
 }
-/// Operational equivalence: e₁ ≡ e₂ iff ∀C: C[e₁]↓ ↔ C[e₂]↓.
+/// Operational equivalence: e₁ ≡ e₂ iff ∀C: C\[e₁\]↓ ↔ C\[e₂\]↓.
 pub struct OperationalEquivalence {
     /// Whether the two expressions are operationally equivalent.
     pub are_equivalent: bool,
@@ -1243,7 +1243,7 @@ impl ProofNet {
 pub struct CoherenceSpace {
     /// Number of tokens.
     pub n_tokens: usize,
-    /// Coherence relation: `coh[i][j]` = true if token i is coherent with token j.
+    /// Coherence relation: `coh\[i\]\[j\]` = true if token i is coherent with token j.
     /// Must be reflexive and symmetric.
     pub coh: Vec<Vec<bool>>,
 }

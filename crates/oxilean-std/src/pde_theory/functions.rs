@@ -363,10 +363,10 @@ pub fn entropy_solution_ty() -> Expr {
 pub fn kruzkov_theorem_ty() -> Expr {
     arrow(cst("L2Space"), prop())
 }
-/// `RankineHugoniot : shock speed = [f(u)] / [u]`
+/// `RankineHugoniot : shock speed = [f(u)] / \[u\]`
 ///
 /// The Rankine-Hugoniot condition: at a shock discontinuity, the shock speed s
-/// satisfies s [u] = [f(u)] where [·] denotes the jump across the discontinuity.
+/// satisfies s \[u\] = [f(u)] where [·] denotes the jump across the discontinuity.
 pub fn rankine_hugoniot_ty() -> Expr {
     arrow(cst("ConservationLaw"), arrow(real_ty(), prop()))
 }
@@ -595,7 +595,7 @@ pub fn obstacle_problem_ty() -> Expr {
 /// `StefanProblem : FreeBoundary → Real → Prop`
 ///
 /// The Stefan problem for phase transitions: heat equation in each phase with
-/// Stefan condition v_n = [∂_n u] on the free boundary (latent heat release).
+/// Stefan condition v_n = \[∂_n u\] on the free boundary (latent heat release).
 pub fn stefan_problem_ty() -> Expr {
     arrow(cst("FreeBoundary"), arrow(real_ty(), prop()))
 }

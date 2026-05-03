@@ -103,7 +103,7 @@ impl LamportClock {
 /// A vector clock for `n` processes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VectorClock {
-    /// The clock vector. `clocks[i]` = logical time at process i.
+    /// The clock vector. `clocks\[i\]` = logical time at process i.
     pub clocks: Vec<u64>,
     /// The id of this process.
     pub process_id: usize,

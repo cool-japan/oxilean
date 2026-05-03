@@ -45,7 +45,7 @@ impl<T: Clone> FinFun<T> {
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FinExtPerm {
-    /// The permutation as a map: index i → perm[i].
+    /// The permutation as a map: index i → perm\[i\].
     pub perm: Vec<usize>,
 }
 #[allow(dead_code)]
@@ -344,7 +344,7 @@ impl Fin {
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FinExtYoungShape {
-    /// The partition: parts[i] is the length of the i-th row.
+    /// The partition: parts\[i\] is the length of the i-th row.
     pub parts: Vec<usize>,
 }
 #[allow(dead_code)]

@@ -412,20 +412,19 @@ pub fn check_has_type_basic(expr: &Expr, ty: &Expr) -> Option<bool> {
                 }
             }
         }
-        Expr::Const(name, _) if name == &Name::str("Bool.true") || name == &Name::str("true") => {
-            if ty_is("Bool") {
-                return Some(true);
-            }
+        Expr::Const(name, _)
+            if (name == &Name::str("Bool.true") || name == &Name::str("true")) && ty_is("Bool") =>
+        {
+            return Some(true);
         }
-        Expr::Const(name, _) if name == &Name::str("Bool.false") || name == &Name::str("false") => {
-            if ty_is("Bool") {
-                return Some(true);
-            }
+        Expr::Const(name, _)
+            if (name == &Name::str("Bool.false") || name == &Name::str("false"))
+                && ty_is("Bool") =>
+        {
+            return Some(true);
         }
-        Expr::Const(name, _) if name == &Name::str("Nat.zero") => {
-            if ty_is("Nat") {
-                return Some(true);
-            }
+        Expr::Const(name, _) if name == &Name::str("Nat.zero") && ty_is("Nat") => {
+            return Some(true);
         }
         _ => {}
     }

@@ -321,9 +321,9 @@ pub fn vickrey_surplus(valuations: &[f64]) -> Vec<f64> {
     surplus
 }
 /// Gale-Shapley algorithm for stable matching.
-/// `proposer_prefs[i]` is proposer i's preference list (most preferred first).
-/// `responder_prefs[j]` is responder j's preference list.
-/// Returns a matching: result[proposer] = Some(responder).
+/// `proposer_prefs\[i\]` is proposer i's preference list (most preferred first).
+/// `responder_prefs\[j\]` is responder j's preference list.
+/// Returns a matching: result\[proposer\] = Some(responder).
 pub fn gale_shapley(
     proposer_prefs: &[Vec<usize>],
     responder_prefs: &[Vec<usize>],
@@ -579,7 +579,7 @@ pub fn grim_trigger_threshold(game: &TwoPlayerGame) -> Option<f64> {
     Some(threshold)
 }
 /// Check if a probability distribution over strategy profiles forms a correlated equilibrium
-/// for a two-player game. dist[i][j] = probability of recommending (i, j).
+/// for a two-player game. dist\[i\]\[j\] = probability of recommending (i, j).
 pub fn is_correlated_equilibrium(game: &TwoPlayerGame, dist: &[Vec<f64>]) -> bool {
     let (m, n) = (game.n_strategies_a, game.n_strategies_b);
     let total: f64 = dist.iter().flat_map(|row| row.iter()).sum();
@@ -1231,7 +1231,7 @@ pub fn gt_ext_banzhaf_value_ty() -> Expr {
     arrow(app(cst("CooperativeGame"), nat_ty()), list_ty(real_ty()))
 }
 /// `WeightedVotingGame : List Real → Real → CooperativeGame`
-/// Weighted voting game [q; w_1, ..., w_n] with quota q.
+/// Weighted voting game \[q; w_1, ..., w_n\] with quota q.
 pub fn gt_ext_weighted_voting_game_ty() -> Expr {
     arrow(
         list_ty(real_ty()),

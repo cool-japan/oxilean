@@ -97,7 +97,7 @@ impl<E: 'static, A: 'static, B: 'static> EitherKleisli<E, A, B> {
 /// The select combinator for `Either`, implementing `Selective` behaviour.
 ///
 /// `select` runs a computation that may short-circuit or choose between two
-/// branches. Given `OxiEither<A, E>` (lhs) and `OxiEither<Box<dyn Fn(A) -> B>, E>` (rhs),
+/// branches. Given `OxiEither<A, E>` (lhs) and `OxiEither<`Box<dyn Fn(A) ->` B>, E>` (rhs),
 /// it applies the function when lhs is `Left(a)`, otherwise short-circuits.
 #[allow(dead_code)]
 pub struct SelectCombinator<E, A, B> {

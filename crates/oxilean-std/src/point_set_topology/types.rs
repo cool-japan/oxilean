@@ -72,7 +72,7 @@ impl Filter {
 pub struct QuotientTopology {
     /// Number of equivalence classes.
     pub num_classes: usize,
-    /// `class_of[p]` is the class index of point `p`.
+    /// `class_of\[p\]` is the class index of point `p`.
     pub class_of: Vec<usize>,
     /// Open sets of the quotient (characteristic vectors over classes).
     pub open_sets: Vec<Vec<bool>>,
@@ -465,7 +465,7 @@ impl TopologicalSpace {
 pub struct MetricSpace {
     /// Number of points.
     pub n: usize,
-    /// Distance matrix: `dist[i][j]` is d(i, j).
+    /// Distance matrix: `dist\[i\]\[j\]` is d(i, j).
     pub dist: Vec<Vec<f64>>,
 }
 impl MetricSpace {
@@ -703,7 +703,7 @@ pub struct ContinuousMap {
     pub domain_size: usize,
     /// Number of elements in the codomain.
     pub codomain_size: usize,
-    /// `mapping[x]` is the image of `x`; must have length `domain_size`.
+    /// `mapping\[x\]` is the image of `x`; must have length `domain_size`.
     pub mapping: Vec<usize>,
 }
 impl ContinuousMap {

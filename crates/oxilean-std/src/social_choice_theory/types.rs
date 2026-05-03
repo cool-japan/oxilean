@@ -5,11 +5,11 @@
 use super::functions::*;
 /// Hegselmann-Krause (HK) opinion dynamics model.
 ///
-/// Agents hold real-valued opinions in [0, 1] and update by averaging the opinions
+/// Agents hold real-valued opinions in \[0, 1\] and update by averaging the opinions
 /// of agents within confidence radius epsilon.
 #[derive(Debug, Clone)]
 pub struct HegselmannKrause {
-    /// Current opinions of each agent in [0, 1].
+    /// Current opinions of each agent in \[0, 1\].
     pub opinions: Vec<f64>,
     /// Confidence radius: agents only average with those within this distance.
     pub epsilon: f64,
@@ -307,9 +307,9 @@ impl PreferenceProfile {
 pub struct LiquidDemocracy {
     /// Number of participants.
     pub n_participants: usize,
-    /// `delegation[i]` = Some(j) if participant i delegates to j, None if i votes directly.
+    /// `delegation\[i\]` = Some(j) if participant i delegates to j, None if i votes directly.
     pub delegation: Vec<Option<usize>>,
-    /// Direct votes: `direct_vote[i]` = Some(alt) if i votes directly (no delegation).
+    /// Direct votes: `direct_vote\[i\]` = Some(alt) if i votes directly (no delegation).
     pub direct_vote: Vec<Option<usize>>,
 }
 impl LiquidDemocracy {

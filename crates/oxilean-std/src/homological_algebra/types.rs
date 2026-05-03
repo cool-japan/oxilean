@@ -166,7 +166,7 @@ impl ModelCategoryData {
 /// A chain complex C_• with boundary maps d_n : C_n → C_{n-1}.
 ///
 /// Stored as a sequence of groups and the matrices representing the boundary maps.
-/// `boundaries[i]` is the matrix of d_{i+1} : C_{i+1} → C_i (rows = rank C_i).
+/// `boundaries\[i\]` is the matrix of d_{i+1} : C_{i+1} → C_i (rows = rank C_i).
 #[derive(Debug, Clone, Default)]
 pub struct ChainComplex {
     /// The chain groups C_0, C_1, …, C_n.
@@ -192,8 +192,8 @@ impl ChainComplex {
     }
     /// Compute the Betti numbers β_n = dim ker(d_n) - dim im(d_{n+1}).
     ///
-    /// Convention: `boundaries[k]` = d_{k+1}: C_{k+1} → C_k.
-    /// So d_i = boundaries[i-1] and d_{i+1} = boundaries[i].
+    /// Convention: `boundaries\[k\]` = d_{k+1}: C_{k+1} → C_k.
+    /// So d_i = boundaries[i-1] and d_{i+1} = boundaries\[i\].
     ///
     /// Returns one Betti number per chain group.
     pub fn compute_betti_numbers(&self) -> Vec<i64> {
@@ -256,7 +256,7 @@ impl ChainGroup {
 /// Each page is a bigraded collection of abelian-group ranks.
 #[derive(Debug, Clone, Default)]
 pub struct SpectralSequence {
-    /// The pages E^r, indexed from r=0. `pages[r][(p,q)]` = rank of E^r_{p,q}.
+    /// The pages E^r, indexed from r=0. `pages\[r\]\[(p,q)\]` = rank of E^r_{p,q}.
     pub pages: Vec<HashMap<(i32, i32), usize>>,
     /// The current (highest stored) page number.
     pub page_num: usize,
@@ -301,7 +301,7 @@ impl SpectralSequence {
 pub struct DGCategoryData {
     /// Object labels.
     pub objects: Vec<String>,
-    /// Morphism complexes: `hom_complexes[(i, j)]` = Hom(objects[i], objects[j]).
+    /// Morphism complexes: `hom_complexes\[(i, j)\]` = Hom(objects\[i\], objects\[j\]).
     pub hom_complexes: HashMap<(usize, usize), ChainComplex>,
 }
 impl DGCategoryData {
@@ -362,7 +362,7 @@ impl ChowGroupData {
             cycles: HashMap::new(),
         }
     }
-    /// Add a cycle n·[Z] to the Chow group.
+    /// Add a cycle n·\[Z\] to the Chow group.
     pub fn add_cycle(&mut self, subvariety: &str, coefficient: i64) {
         let entry = self.cycles.entry(subvariety.to_string()).or_insert(0);
         *entry += coefficient;
@@ -578,7 +578,7 @@ impl TriangulatedCategoryData {
 pub struct MixedHodgeStructureData {
     /// The weight of the pure Hodge structure.
     pub weight: i32,
-    /// Hodge numbers h^{p,q}: `hodge_numbers[(p, q)]` = dim H^{p,q}.
+    /// Hodge numbers h^{p,q}: `hodge_numbers\[(p, q)\]` = dim H^{p,q}.
     pub hodge_numbers: HashMap<(i32, i32), usize>,
 }
 impl MixedHodgeStructureData {
@@ -635,7 +635,7 @@ impl MixedHodgeStructureData {
 pub struct SemiorthogonalDecompositionData {
     /// Labels of the components A_1, …, A_n (in order).
     pub components: Vec<String>,
-    /// `hom_nonzero[i][j]` = true if Hom(A_j, A_i) ≠ 0 (i.e. j < i allowed).
+    /// `hom_nonzero\[i\]\[j\]` = true if Hom(A_j, A_i) ≠ 0 (i.e. j < i allowed).
     pub hom_nonzero: Vec<Vec<bool>>,
 }
 impl SemiorthogonalDecompositionData {
@@ -693,7 +693,7 @@ impl SemiorthogonalDecompositionData {
 pub struct BridgelandStabilityData {
     /// Object labels.
     pub objects: Vec<String>,
-    /// Central charges Z(E) = (re, im): `charges[i]` = Z(objects[i]).
+    /// Central charges Z(E) = (re, im): `charges\[i\]` = Z(objects\[i\]).
     pub charges: Vec<(f64, f64)>,
 }
 impl BridgelandStabilityData {
@@ -744,5 +744,218 @@ impl BridgelandStabilityData {
         (0..self.objects.len())
             .filter(|&i| !(0..self.objects.len()).any(|j| j != i && self.destabilises(j, i)))
             .collect()
+    }
+}
+
+// ── Spec-required types ─────────────────────────────────────────────────────
+
+/// An abelian group presented by generators and integer relation matrix.
+///
+/// The group is G = Z^|generators| / im(relations), where each row of
+/// `relations` is a linear combination that equals zero.
+#[derive(Debug, Clone, Default)]
+pub struct AbelianGroup {
+    pub generators: Vec<String>,
+    /// Each row is a relation (vector over generators).
+    pub relations: Vec<Vec<i64>>,
+}
+
+impl AbelianGroup {
+    pub fn new(generators: Vec<String>, relations: Vec<Vec<i64>>) -> Self {
+        AbelianGroup {
+            generators,
+            relations,
+        }
+    }
+
+    /// Free abelian group on `n` generators with no relations.
+    pub fn free(n: usize) -> Self {
+        let gens = (0..n).map(|i| format!("e{}", i)).collect();
+        AbelianGroup {
+            generators: gens,
+            relations: Vec::new(),
+        }
+    }
+
+    /// The trivial group (one generator, relation \[1\]).
+    pub fn trivial() -> Self {
+        AbelianGroup {
+            generators: vec!["e".into()],
+            relations: vec![vec![1]],
+        }
+    }
+
+    /// Cyclic group Z/nZ.
+    pub fn cyclic(n: i64) -> Self {
+        AbelianGroup {
+            generators: vec!["t".into()],
+            relations: vec![vec![n]],
+        }
+    }
+
+    pub fn rank(&self) -> usize {
+        self.generators.len()
+    }
+}
+
+/// A chain complex C_• with differentials d_n: C_n → C_{n-1}.
+///
+/// `groups\[n\]` is C_n, `differentials\[n\]` is the matrix of d_{n+1}: C_{n+1} → C_n
+/// (rows = dim C_n, cols = dim C_{n+1}).
+#[derive(Debug, Clone, Default)]
+pub struct SpecChainComplex {
+    pub groups: Vec<AbelianGroup>,
+    /// differentials\[i\] : groups[i+1] → groups\[i\]
+    pub differentials: Vec<Vec<Vec<i64>>>,
+}
+
+impl SpecChainComplex {
+    pub fn new(groups: Vec<AbelianGroup>, differentials: Vec<Vec<Vec<i64>>>) -> Self {
+        SpecChainComplex {
+            groups,
+            differentials,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.groups.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.groups.is_empty()
+    }
+}
+
+/// A cochain complex C^• with coboundary operators d^n: C^n → C^{n+1}.
+#[derive(Debug, Clone, Default)]
+pub struct CochainComplex {
+    pub groups: Vec<AbelianGroup>,
+    /// coboundaries\[i\] : groups\[i\] → groups[i+1]
+    pub coboundaries: Vec<Vec<Vec<i64>>>,
+}
+
+impl CochainComplex {
+    pub fn new(groups: Vec<AbelianGroup>, coboundaries: Vec<Vec<Vec<i64>>>) -> Self {
+        CochainComplex {
+            groups,
+            coboundaries,
+        }
+    }
+}
+
+/// A homology group H_n = Z^r ⊕ Z/t_1 ⊕ … ⊕ Z/t_k.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HomologyGroup {
+    pub degree: i32,
+    pub free_rank: usize,
+    /// Torsion orders (each > 1).
+    pub torsion: Vec<u64>,
+}
+
+impl HomologyGroup {
+    pub fn new(degree: i32, free_rank: usize, torsion: Vec<u64>) -> Self {
+        HomologyGroup {
+            degree,
+            free_rank,
+            torsion,
+        }
+    }
+
+    pub fn zero(degree: i32) -> Self {
+        HomologyGroup {
+            degree,
+            free_rank: 0,
+            torsion: Vec::new(),
+        }
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.free_rank == 0 && self.torsion.is_empty()
+    }
+}
+
+/// A chain map f_•: C_• → D_• — a collection of matrices f_n: C_n → D_n
+/// commuting with the differentials.
+#[derive(Debug, Clone, Default)]
+pub struct SpecChainMap {
+    /// id of the source complex (external reference)
+    pub source: usize,
+    /// id of the target complex (external reference)
+    pub target: usize,
+    /// maps\[n\] is the matrix f_n: C_n → D_n
+    pub maps: Vec<Vec<Vec<i64>>>,
+}
+
+impl SpecChainMap {
+    pub fn new(source: usize, target: usize, maps: Vec<Vec<Vec<i64>>>) -> Self {
+        SpecChainMap {
+            source,
+            target,
+            maps,
+        }
+    }
+}
+
+/// A short exact sequence 0 → A → B → C → 0.
+#[derive(Debug, Clone)]
+pub struct SpecShortExactSequence {
+    pub groups: [AbelianGroup; 3],
+    /// maps\[0\]: A → B, maps\[1\]: B → C
+    pub maps: [Vec<Vec<i64>>; 2],
+}
+
+impl SpecShortExactSequence {
+    pub fn new(
+        a: AbelianGroup,
+        b: AbelianGroup,
+        c: AbelianGroup,
+        f: Vec<Vec<i64>>,
+        g: Vec<Vec<i64>>,
+    ) -> Self {
+        SpecShortExactSequence {
+            groups: [a, b, c],
+            maps: [f, g],
+        }
+    }
+}
+
+/// A long exact sequence.
+#[derive(Debug, Clone, Default)]
+pub struct LongExactSequence {
+    pub groups: Vec<AbelianGroup>,
+    pub maps: Vec<Vec<Vec<i64>>>,
+}
+
+impl LongExactSequence {
+    pub fn new(groups: Vec<AbelianGroup>, maps: Vec<Vec<Vec<i64>>>) -> Self {
+        LongExactSequence { groups, maps }
+    }
+}
+
+/// Ext^p(A, B) group.
+#[derive(Debug, Clone)]
+pub struct SpecExtGroup {
+    pub p: usize,
+    pub q: usize,
+    pub group: HomologyGroup,
+}
+
+impl SpecExtGroup {
+    pub fn new(p: usize, q: usize, group: HomologyGroup) -> Self {
+        SpecExtGroup { p, q, group }
+    }
+}
+
+/// Tor_p(A, B) group.
+#[derive(Debug, Clone)]
+pub struct TorGroup {
+    pub p: usize,
+    pub q: usize,
+    pub group: HomologyGroup,
+}
+
+impl TorGroup {
+    pub fn new(p: usize, q: usize, group: HomologyGroup) -> Self {
+        TorGroup { p, q, group }
     }
 }

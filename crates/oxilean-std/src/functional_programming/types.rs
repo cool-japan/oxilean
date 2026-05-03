@@ -744,7 +744,7 @@ impl EffectSystem {
 /// A profunctor-encoded optic, represented as a Rust trait object.
 ///
 /// In Haskell: `type Optic p s t a b = p a b -> p s t`.
-/// Here we use `Fn(Box<dyn Fn(a) -> b>) -> Box<dyn Fn(s) -> t>` as a simplified model.
+/// Here we use `Fn(`Box<dyn Fn(a) ->` b>) -> `Box<dyn Fn(s) ->` t>` as a simplified model.
 pub struct ProfunctorOptic<S, T, A, B> {
     run: Box<dyn Fn(Box<dyn Fn(A) -> B>) -> Box<dyn Fn(S) -> T>>,
 }

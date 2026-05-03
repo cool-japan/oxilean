@@ -327,7 +327,7 @@ pub fn tauberian_for_laplace_ty() -> Expr {
 /// `StieltjesTauberianThm : Prop`
 ///
 /// Tauberian theorem for Stieltjes transforms: relates the behavior of
-/// f̃(s) = ∫ dμ(t)/(s+t) near s = 0 to the asymptotics of μ([0, x]).
+/// f̃(s) = ∫ dμ(t)/(s+t) near s = 0 to the asymptotics of μ(\[0, x\]).
 pub fn stieltjes_tauberian_thm_ty() -> Expr {
     prop()
 }
@@ -705,7 +705,7 @@ pub fn riesz_summability_method_ty() -> Expr {
 /// `HausdorffMean : Type → Real`
 ///
 /// Hausdorff means: a matrix summability method defined by a sequence (μₙ)
-/// via [Δ^m μ]_n; includes Cesàro and Hölder means as special cases.
+/// via \[Δ^m μ\]_n; includes Cesàro and Hölder means as special cases.
 pub fn hausdorff_mean_ty() -> Expr {
     arrow(type0(), real_ty())
 }
@@ -720,7 +720,7 @@ pub fn mercerian_thm_ty() -> Expr {
 /// `HausdorffMercerianThm : Prop`
 ///
 /// Hausdorff's Mercerian theorem: for a Hausdorff matrix H with associated
-/// measure μ on [0,1], H is regular iff ∫ t^n dμ(t) → 0 as n → ∞.
+/// measure μ on \[0,1\], H is regular iff ∫ t^n dμ(t) → 0 as n → ∞.
 pub fn hausdorff_mercerian_thm_ty() -> Expr {
     prop()
 }
@@ -899,7 +899,7 @@ pub fn tauberian_for_de_haan_ty() -> Expr {
 }
 /// `MellinTauberianThm : Prop`
 ///
-/// Mellin-Tauberian theorem: if the Mellin transform M[f](s) = ∫₀^∞ f(t) t^{s-1} dt
+/// Mellin-Tauberian theorem: if the Mellin transform M\[f\](s) = ∫₀^∞ f(t) t^{s-1} dt
 /// has abscissa of convergence σ₀ and extends analytically to Re(s) ≥ σ₀ except for
 /// a pole at σ₀, then f(x) ~ C x^{σ₀} L(x) with L slowly varying.
 pub fn mellin_tauberian_thm_ty() -> Expr {
@@ -908,8 +908,8 @@ pub fn mellin_tauberian_thm_ty() -> Expr {
 /// `StiltjesTauberianExtended : Prop`
 ///
 /// Extended Stieltjes-Tauberian theorem: the Stieltjes transform
-/// S[μ](x) = ∫ dμ(t)/(x + t) satisfies S[μ](x) ~ C x^{-α} L(x) as x → ∞
-/// iff μ([0,t]) ~ C t^α L(t) / (Γ(α)Γ(1-α)) for α ∈ (0,1), L slowly varying.
+/// S\[μ\](x) = ∫ dμ(t)/(x + t) satisfies S\[μ\](x) ~ C x^{-α} L(x) as x → ∞
+/// iff μ(\[0,t\]) ~ C t^α L(t) / (Γ(α)Γ(1-α)) for α ∈ (0,1), L slowly varying.
 pub fn stieltjes_tauberian_extended_ty() -> Expr {
     prop()
 }

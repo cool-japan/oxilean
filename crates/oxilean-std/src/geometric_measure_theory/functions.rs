@@ -578,7 +578,7 @@ pub fn tangent_measure_uniqueness_ty() -> Expr {
 /// `MarstrandDensityTheorem : (s n : Nat) → Prop`
 ///
 /// Marstrand density theorem: if H^s(E) > 0 then the s-density
-/// Θ^s(E, x) ∈ [2^{-s}, 1] for H^s-a.e. x ∈ E.
+/// Θ^s(E, x) ∈ \[2^{-s}, 1\] for H^s-a.e. x ∈ E.
 pub fn marstrand_density_theorem_ty() -> Expr {
     pi(BinderInfo::Default, "s", nat_ty(), arrow(nat_ty(), prop()))
 }

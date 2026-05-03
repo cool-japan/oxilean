@@ -34,33 +34,27 @@ impl LintRule for SorryInProofRule {
     }
     fn check_decl(&self, ctx: &mut LintContext<'_>, decl: &Located<Decl>) {
         match &decl.value {
-            Decl::Theorem { name, proof, .. } => {
-                if Self::contains_sorry(&proof.value) {
-                    ctx.emit(
-                        LintDiagnostic::new(
-                            self.id(),
-                            Severity::Warning,
-                            format!("theorem `{}` uses `sorry` — proof is incomplete", name),
-                            SourceRange::from_span(&decl.span),
-                        )
-                        .with_note(
-                            "replace `sorry` with a real proof before marking this as complete",
-                        ),
-                    );
-                }
+            Decl::Theorem { name, proof, .. } if Self::contains_sorry(&proof.value) => {
+                ctx.emit(
+                    LintDiagnostic::new(
+                        self.id(),
+                        Severity::Warning,
+                        format!("theorem `{}` uses `sorry` — proof is incomplete", name),
+                        SourceRange::from_span(&decl.span),
+                    )
+                    .with_note("replace `sorry` with a real proof before marking this as complete"),
+                );
             }
-            Decl::Definition { name, val, .. } => {
-                if Self::contains_sorry(&val.value) {
-                    ctx.emit(
-                        LintDiagnostic::new(
-                            self.id(),
-                            Severity::Warning,
-                            format!("definition `{}` uses `sorry` — body is incomplete", name),
-                            SourceRange::from_span(&decl.span),
-                        )
-                        .with_note("replace `sorry` with a real implementation"),
-                    );
-                }
+            Decl::Definition { name, val, .. } if Self::contains_sorry(&val.value) => {
+                ctx.emit(
+                    LintDiagnostic::new(
+                        self.id(),
+                        Severity::Warning,
+                        format!("definition `{}` uses `sorry` — body is incomplete", name),
+                        SourceRange::from_span(&decl.span),
+                    )
+                    .with_note("replace `sorry` with a real implementation"),
+                );
             }
             _ => {}
         }

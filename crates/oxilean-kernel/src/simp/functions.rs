@@ -196,20 +196,8 @@ pub fn eval_nat(expr: &Expr) -> Option<u64> {
                         "Nat.add" => Some(lhs + rhs),
                         "Nat.mul" => Some(lhs * rhs),
                         "Nat.sub" => Some(lhs.saturating_sub(rhs)),
-                        "Nat.div" => {
-                            if rhs == 0 {
-                                Some(0)
-                            } else {
-                                Some(lhs / rhs)
-                            }
-                        }
-                        "Nat.mod" => {
-                            if rhs == 0 {
-                                Some(0)
-                            } else {
-                                Some(lhs % rhs)
-                            }
-                        }
+                        "Nat.div" => Some(lhs.checked_div(rhs).unwrap_or(0)),
+                        "Nat.mod" => Some(lhs.checked_rem(rhs).unwrap_or(0)),
                         "Nat.pow" => Some(lhs.saturating_pow(rhs as u32)),
                         "Nat.min" => Some(lhs.min(rhs)),
                         "Nat.max" => Some(lhs.max(rhs)),

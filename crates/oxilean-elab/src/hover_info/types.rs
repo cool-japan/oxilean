@@ -1581,10 +1581,8 @@ impl HoverTypeSignatureParser {
         while i < bytes.len() {
             match bytes[i] {
                 b'(' | b'[' | b'{' => depth += 1,
-                b')' | b']' | b'}' => {
-                    if depth > 0 {
-                        depth -= 1;
-                    }
+                b')' | b']' | b'}' if depth > 0 => {
+                    depth -= 1;
                 }
                 b'-' if depth == 0 && i + 1 < bytes.len() && bytes[i + 1] == b'>' => {
                     parts.push(sig[start..i].trim().to_string());

@@ -179,7 +179,7 @@ pub fn interior(s: Expr) -> Expr {
 pub fn boundary(s: Expr) -> Expr {
     app(cst("Boundary"), s)
 }
-/// `{X : Type} -> [TopologicalSpace X] -> <body>`
+/// `{X : Type} -> \[TopologicalSpace X\] -> <body>`
 #[allow(dead_code)]
 pub fn mk_topo_law<F>(prop_builder: F) -> Expr
 where
@@ -197,7 +197,7 @@ where
         ),
     )
 }
-/// `{X : Type} -> [TopologicalSpace X] -> forall (U : X -> Prop), <body>`
+/// `{X : Type} -> \[TopologicalSpace X\] -> forall (U : X -> Prop), <body>`
 #[allow(dead_code)]
 pub fn mk_topo_forall_set<F>(prop_builder: F) -> Expr
 where
@@ -220,7 +220,7 @@ where
         ),
     )
 }
-/// `{X : Type} -> [TopologicalSpace X] -> forall (U V : X -> Prop), <body>`
+/// `{X : Type} -> \[TopologicalSpace X\] -> forall (U V : X -> Prop), <body>`
 #[allow(dead_code)]
 pub fn mk_topo_forall_set2<F>(prop_builder: F) -> Expr
 where
@@ -248,7 +248,7 @@ where
         ),
     )
 }
-/// `{X Y : Type} -> [TopologicalSpace X] -> [TopologicalSpace Y] -> <body>`
+/// `{X Y : Type} -> \[TopologicalSpace X\] -> \[TopologicalSpace Y\] -> <body>`
 #[allow(dead_code)]
 pub fn mk_two_topo_law<F>(prop_builder: F) -> Expr
 where
@@ -276,7 +276,7 @@ where
         ),
     )
 }
-/// `{X Y : Type} -> [TopologicalSpace X] -> [TopologicalSpace Y] ->
+/// `{X Y : Type} -> \[TopologicalSpace X\] -> \[TopologicalSpace Y\] ->
 ///  forall (f : X -> Y), <body>`
 #[allow(dead_code)]
 pub fn mk_two_topo_forall_fun<F>(prop_builder: F) -> Expr
@@ -310,7 +310,7 @@ where
         ),
     )
 }
-/// `{X : Type} -> [MetricSpace X] -> <body>`
+/// `{X : Type} -> \[MetricSpace X\] -> <body>`
 #[allow(dead_code)]
 pub fn mk_metric_law<F>(prop_builder: F) -> Expr
 where
@@ -328,7 +328,7 @@ where
         ),
     )
 }
-/// `{X : Type} -> [MetricSpace X] -> forall (a : X), <body>`
+/// `{X : Type} -> \[MetricSpace X\] -> forall (a : X), <body>`
 #[allow(dead_code)]
 pub fn mk_metric_forall1<F>(prop_builder: F) -> Expr
 where
@@ -346,7 +346,7 @@ where
         ),
     )
 }
-/// `{X : Type} -> [MetricSpace X] -> forall (a b : X), <body>`
+/// `{X : Type} -> \[MetricSpace X\] -> forall (a b : X), <body>`
 #[allow(dead_code)]
 pub fn mk_metric_forall2<F>(prop_builder: F) -> Expr
 where
@@ -369,7 +369,7 @@ where
         ),
     )
 }
-/// `{X : Type} -> [MetricSpace X] -> forall (a b c : X), <body>`
+/// `{X : Type} -> \[MetricSpace X\] -> forall (a b c : X), <body>`
 #[allow(dead_code)]
 pub fn mk_metric_forall3<F>(prop_builder: F) -> Expr
 where

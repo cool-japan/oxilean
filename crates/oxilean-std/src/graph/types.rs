@@ -250,7 +250,7 @@ impl TreewidthHeuristic {
 pub struct DiGraph {
     /// Number of vertices (0..n).
     pub n: usize,
-    /// Adjacency list: adj[u] = list of (v, weight) neighbors.
+    /// Adjacency list: adj\[u\] = list of (v, weight) neighbors.
     pub adj: Vec<Vec<(usize, i64)>>,
 }
 impl DiGraph {
@@ -350,7 +350,7 @@ impl DiGraph {
         components
     }
     /// Dijkstra's shortest paths from source s (non-negative weights only).
-    /// Returns (dist, parent) where dist[v] = shortest distance, parent[v] = predecessor.
+    /// Returns (dist, parent) where dist\[v\] = shortest distance, parent\[v\] = predecessor.
     pub fn dijkstra(&self, s: usize) -> (Vec<i64>, Vec<Option<usize>>) {
         use super::functions::*;
         use std::cmp::Reverse;
@@ -447,7 +447,7 @@ impl DiGraph {
 pub struct UndirectedGraph {
     /// Number of vertices.
     pub n: usize,
-    /// Adjacency sets: adj[u] = set of neighbors
+    /// Adjacency sets: adj\[u\] = set of neighbors
     pub adj: Vec<HashSet<usize>>,
 }
 impl UndirectedGraph {
@@ -722,14 +722,14 @@ impl ExpanderChecker {
         self.approximate_cheeger() >= threshold
     }
 }
-/// Samples a simple graph from a graphon W : [0,1]² → [0,1].
+/// Samples a simple graph from a graphon W : \[0,1\]² → \[0,1\].
 ///
 /// A graphon is represented as a symmetric function. We discretize by n sample points.
 #[allow(dead_code)]
 pub struct GraphonSampler {
     /// Number of vertices to sample.
     pub n: usize,
-    /// The graphon function W(x, y) ∈ [0, 1]; must satisfy W(x,y) = W(y,x).
+    /// The graphon function W(x, y) ∈ \[0, 1\]; must satisfy W(x,y) = W(y,x).
     pub graphon: Box<dyn Fn(f64, f64) -> f64>,
 }
 #[allow(dead_code)]
@@ -754,7 +754,7 @@ impl GraphonSampler {
         }
         g
     }
-    /// Sample by thresholding at a given value p ∈ [0, 1].
+    /// Sample by thresholding at a given value p ∈ \[0, 1\].
     pub fn sample_at_threshold(&self, p: f64) -> UndirectedGraph {
         let mut g = UndirectedGraph::new(self.n);
         for i in 0..self.n {

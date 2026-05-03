@@ -161,11 +161,11 @@ pub fn modular_group_ty() -> Expr {
 pub fn psl2z_ty() -> Expr {
     type0()
 }
-/// `GeneratorS : ModularGroup` — S = [[0,-1],[1,0]].
+/// `GeneratorS : ModularGroup` — S = [\[0,-1\],\[1,0\]].
 pub fn generator_s_ty() -> Expr {
     cst("ModularGroup")
 }
-/// `GeneratorT : ModularGroup` — T = [[1,1],[0,1]].
+/// `GeneratorT : ModularGroup` — T = [\[1,1\],\[0,1\]].
 pub fn generator_t_ty() -> Expr {
     cst("ModularGroup")
 }
@@ -177,15 +177,15 @@ pub fn fundamental_domain_ty() -> Expr {
 pub fn congruence_subgroup_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
-/// `Gamma0 : Nat → Type` — Γ₀(N) = {[[a,b],[c,d]] : N|c}.
+/// `Gamma0 : Nat → Type` — Γ₀(N) = {[\[a,b\],\[c,d\]] : N|c}.
 pub fn gamma0_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
-/// `Gamma1 : Nat → Type` — Γ₁(N) = {[[a,b],[c,d]] : N|c, a≡d≡1 mod N}.
+/// `Gamma1 : Nat → Type` — Γ₁(N) = {[\[a,b\],\[c,d\]] : N|c, a≡d≡1 mod N}.
 pub fn gamma1_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
-/// `SubgroupIndex : Nat → Nat` — index [SL₂(ℤ) : Γ₀(N)].
+/// `SubgroupIndex : Nat → Nat` — index \[SL₂(ℤ) : Γ₀(N)\].
 pub fn subgroup_index_ty() -> Expr {
     arrow(nat_ty(), nat_ty())
 }
@@ -454,7 +454,7 @@ pub fn nebentypus_character_ty() -> Expr {
     arrow(cst("Newform"), type0())
 }
 /// `HeckeTnMatrix : Nat → Nat → Type`
-/// — explicit Hecke matrix double coset [Γ diag(1,n) Γ] acting on q-expansions.
+/// — explicit Hecke matrix double coset \[Γ diag(1,n) Γ\] acting on q-expansions.
 pub fn hecke_tn_matrix_ty() -> Expr {
     arrow3(nat_ty(), nat_ty(), type0())
 }
@@ -625,7 +625,7 @@ pub fn gross_zagier_heegner_ty() -> Expr {
     arrow(nat_ty(), prop())
 }
 /// `SatoTateMeasure : Nat → Type`
-/// — the Sato-Tate measure μ_ST on [-2,2]: (2/π)√(1 - x²/4) dx.
+/// — the Sato-Tate measure μ_ST on \[-2,2\]: (2/π)√(1 - x²/4) dx.
 pub fn sato_tate_measure_ty() -> Expr {
     arrow(nat_ty(), type0())
 }
