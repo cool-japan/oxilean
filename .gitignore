@@ -36,3 +36,5 @@ Cargo.lock
 .DS_Store
 Thumbs.db
 cli_test
+
+target
