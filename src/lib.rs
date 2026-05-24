@@ -35,6 +35,9 @@
 //!     dot-ctor, paren, tuple).
 //!   - `fun BINDERS => body` / `λ BINDERS => body` /
 //!     `fun BINDERS -> body`.
+//!   - `do <stmts>` — monadic sequencing with `let x ← e`
+//!     (bind), `let x := e` (pure let), `return e` /
+//!     `pure e`, and bare expression statements.
 //!
 //! Structure/inductive field & ctor type annotations are
 //! fully parsed as `Expr` (including multi-line types via
@@ -169,6 +172,8 @@ pub enum Expr {
     /// `fun BINDERS -> BODY` (`->` body-arrow accepted as a
     /// synonym for `=>` for OX3 normalisation compatibility).
     Lam(Vec<LamBinder>, Box<Expr>),
+    /// `do <stmts>` — monadic sequencing block.
+    Do(Vec<DoStmt>),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -180,6 +185,23 @@ pub enum Expr {
 pub struct MatchArm {
     pub pattern: Pattern,
     pub body: Expr,
+}
+
+/// One statement inside a `do` block. v0 supports the
+/// four most common forms; multi-line statement bodies +
+/// embedded `if` / `match` statements are a follow-up.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DoStmt {
+    /// `let x ← e` / `let x <- e` (monadic bind).
+    Bind { name: String, value: Expr },
+    /// `let x := e` (pure let).
+    Let { name: String, value: Expr },
+    /// `return e` / `pure e` — semantically distinct in
+    /// some Lean 4 monads but collapsed here for simplicity
+    /// (elaborator can re-disambiguate from context).
+    Return(Expr),
+    /// Bare expression statement (its effect is sequenced).
+    Expr(Expr),
 }
 
 /// One lambda binder. Lambdas accept both untyped names and
@@ -256,8 +278,8 @@ pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
 
 mod grammar {
     use super::{
-        Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, Expr, LamBinder,
-        Literal, MatchArm, Pattern, StructField,
+        Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, DoStmt, Expr,
+        LamBinder, Literal, MatchArm, Pattern, StructField,
     };
 
     /// Sub-parse a captured raw-text region (a structure
@@ -645,6 +667,7 @@ mod grammar {
                 if_expr()
                 / match_expr()
                 / lam_expr()
+                / do_expr()
                 / paren_atom()
                 / lit_atom()
                 / ident_atom()
@@ -658,6 +681,85 @@ mod grammar {
 
             rule ident_atom() -> Expr =
                 s:ident_raw() { Expr::Ident(s) }
+
+            // ─── do notation ────────────────────────────────
+            //
+            // `do <stmts>` — monadic sequencing block. Each
+            // statement lives on its own line (v0); multi-
+            // line statement bodies are a follow-up commit.
+            //
+            // Statement forms (priority-ordered for the
+            // PEG):
+            //   1. `let NAME <- E` / `let NAME ← E`  (bind)
+            //   2. `let NAME := E`                    (let)
+            //   3. `return E` / `pure E`              (return)
+            //   4. bare E                             (effect)
+            //
+            // Each statement's expression text is captured
+            // to end-of-line and sub-parsed via
+            // `parse_expr_text` (same pattern as field /
+            // ctor type capture in OX6 step 7).
+            //
+            // Block boundary: next statement on a new line
+            // OR top-level decl keyword OR EOF.
+            rule do_expr() -> Expr =
+                "do" word_boundary() _ stmts:do_stmts() {
+                    Expr::Do(stmts)
+                }
+
+            rule do_stmts() -> Vec<DoStmt> =
+                first:do_stmt() rest:(do_stmt_sep() s:do_stmt() { s })* {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+
+            rule do_stmt_sep() =
+                "\n" _h() !do_block_end()
+
+            rule do_block_end() =
+                top_level_decl_starter() / ![_]
+
+            rule do_stmt() -> DoStmt =
+                do_let_bind()
+                / do_let_pure()
+                / do_return()
+                / do_expr_stmt()
+
+            rule do_let_bind() -> DoStmt =
+                "let" word_boundary() _h() name:ident() _h() ("<-" / "←") _h()
+                text:$((!"\n" [_])+)
+                {
+                    let value = parse_expr_text(text.trim())
+                        .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
+                    DoStmt::Bind { name, value }
+                }
+
+            rule do_let_pure() -> DoStmt =
+                "let" word_boundary() _h() name:ident() _h() ":=" _h()
+                text:$((!"\n" [_])+)
+                {
+                    let value = parse_expr_text(text.trim())
+                        .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
+                    DoStmt::Let { name, value }
+                }
+
+            rule do_return() -> DoStmt =
+                ("return" / "pure") word_boundary() _h()
+                text:$((!"\n" [_])+)
+                {
+                    let value = parse_expr_text(text.trim())
+                        .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
+                    DoStmt::Return(value)
+                }
+
+            rule do_expr_stmt() -> DoStmt =
+                text:$((!"\n" [_])+)
+                {
+                    let e = parse_expr_text(text.trim())
+                        .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
+                    DoStmt::Expr(e)
+                }
 
             // ─── lambda (`fun` / `λ`) ───────────────────────
             //
@@ -1608,6 +1710,142 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── do notation (OX6 step 8) ──────────────────────────
+
+    #[test]
+    fn do_single_return() {
+        let e = parse_value_expr("do return 0");
+        match e {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 1);
+                assert_eq!(stmts[0], DoStmt::Return(Expr::Lit(Literal::Nat(0))));
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_pure_collapsed_to_return() {
+        let e = parse_value_expr("do pure x");
+        match e {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 1);
+                match &stmts[0] {
+                    DoStmt::Return(inner) => assert_eq!(inner, &Expr::Ident("x".into())),
+                    other => panic!("expected Return, got {other:?}"),
+                }
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_let_bind_with_dash_arrow() {
+        let src = "def main : IO Unit := do\n  let x <- readLn\n  return x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 2);
+                match &stmts[0] {
+                    DoStmt::Bind { name, value } => {
+                        assert_eq!(name, "x");
+                        assert_eq!(value, &Expr::Ident("readLn".into()));
+                    }
+                    other => panic!("expected Bind, got {other:?}"),
+                }
+                assert!(matches!(stmts[1], DoStmt::Return(_)));
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_let_bind_with_unicode_arrow() {
+        let src = "def main : IO Unit := do\n  let x ← readLn\n  return x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                match &stmts[0] {
+                    DoStmt::Bind { name, .. } => assert_eq!(name, "x"),
+                    other => panic!("expected Bind, got {other:?}"),
+                }
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_let_pure() {
+        let src = "def main : IO Unit := do\n  let y := 42\n  return y";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                match &stmts[0] {
+                    DoStmt::Let { name, value } => {
+                        assert_eq!(name, "y");
+                        assert_eq!(value, &Expr::Lit(Literal::Nat(42)));
+                    }
+                    other => panic!("expected Let, got {other:?}"),
+                }
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_bare_expr_statement() {
+        let src = "def main : IO Unit := do\n  IO.println \"hello\"\n  return ()";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                match &stmts[0] {
+                    DoStmt::Expr(_) => {} // ok
+                    other => panic!("expected Expr stmt, got {other:?}"),
+                }
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_block_ends_at_top_level_decl() {
+        // do block must not eat the next def keyword line.
+        let src = "def main : IO Unit := do\n  return 0\ndef next : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => assert_eq!(stmts.len(), 1),
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_multi_stmt_mix() {
+        let src = "def main : IO Unit := do\n  let x <- readLn\n  let y := 1\n  return (x, y)";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 3);
+                assert!(matches!(stmts[0], DoStmt::Bind { .. }));
+                assert!(matches!(stmts[1], DoStmt::Let { .. }));
+                assert!(matches!(stmts[2], DoStmt::Return(_)));
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
     }
 
     // ─── attribute lists (OX6 step 6) ──────────────────────
