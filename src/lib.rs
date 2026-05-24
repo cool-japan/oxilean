@@ -292,6 +292,12 @@ pub enum Expr {
     /// `⟨1, 2⟩` for `Point.mk 1 2`). Elab resolves the
     /// target ctor from the expected type.
     AnonCtor(Vec<Expr>),
+    /// `@f` — explicit-args marker. In Lean 4, prefixing
+    /// a name (or any atom) with `@` switches the
+    /// elaborator from instance/implicit-resolving mode to
+    /// "supply every argument explicitly". The wrapped
+    /// expression is usually an Ident, but can be any atom.
+    At(Box<Expr>),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -1050,6 +1056,7 @@ mod grammar {
                 / forall_expr()
                 / exists_expr()
                 / do_expr()
+                / at_expr()
                 / interp_str_lit()
                 / list_lit()
                 / anon_ctor_lit()
@@ -1067,6 +1074,18 @@ mod grammar {
 
             rule ident_atom() -> Expr =
                 s:ident_raw() { Expr::Ident(s) }
+
+            // ─── `@f` explicit-args marker ──────────────────
+            //
+            // The `!"["` lookahead rejects `@[…]` (attribute
+            // prefix) — though `@[` only appears in decl
+            // position, never in atom position, the
+            // lookahead is a belt-and-suspenders guard
+            // against future grammar changes.
+            rule at_expr() -> Expr =
+                "@" !"[" _ a:atom() {
+                    Expr::At(Box::new(a))
+                }
 
             // ─── Anonymous ctor `⟨a, b, …⟩` ──────────────────
             //
@@ -2225,6 +2244,68 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── `@` explicit args (OX6 step 11j) ──────────────────
+
+    #[test]
+    fn at_explicit_simple_ident() {
+        let e = parse_value_expr("@id");
+        match e {
+            Expr::At(inner) => assert_eq!(*inner, Expr::Ident("id".into())),
+            other => panic!("expected At, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn at_explicit_with_args() {
+        // `@id Nat 0` — `@id` is the explicit-args form;
+        // `@id Nat 0` is `App(App(@id, Nat), 0)`.
+        let e = parse_value_expr("@id Nat 0");
+        match e {
+            Expr::App(fx, n) => {
+                assert_eq!(*n, Expr::Lit(Literal::Nat(0)));
+                match *fx {
+                    Expr::App(at_id, nat) => {
+                        assert!(matches!(*at_id, Expr::At(_)));
+                        assert_eq!(*nat, Expr::Ident("Nat".into()));
+                    }
+                    other => panic!("expected nested App, got {other:?}"),
+                }
+            }
+            other => panic!("expected App, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn at_explicit_dotted_ident() {
+        let e = parse_value_expr("@Nat.succ");
+        match e {
+            Expr::At(inner) => assert_eq!(*inner, Expr::Ident("Nat.succ".into())),
+            other => panic!("expected At, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn at_explicit_with_paren() {
+        let e = parse_value_expr("@(foo + bar)");
+        match e {
+            Expr::At(inner) => {
+                assert!(matches!(*inner, Expr::Paren(_)));
+            }
+            other => panic!("expected At, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn attribute_prefix_still_parses() {
+        // Regression guard — `@[…]` in decl-prefix position
+        // must NOT trigger the at-expr rule (which lives in
+        // atom position only).
+        let src = "@[simp]\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].attrs[0].name, "simp");
     }
 
     // ─── anonymous ctor `⟨…⟩` (OX6 step 11b) ───────────────
