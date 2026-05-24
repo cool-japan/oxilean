@@ -282,6 +282,10 @@ pub enum Expr {
     /// Lean 4 desugars to `List.cons` chains at elab time;
     /// the parser keeps the literal form for readability.
     List(Vec<Expr>),
+    /// Anonymous structure literal: `{ x := 1, y := 2 }`.
+    /// Each entry is `(field_name, value_expr)`; field
+    /// order is preserved (matters for some elab paths).
+    AnonStruct(Vec<(String, Expr)>),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -1042,6 +1046,7 @@ mod grammar {
                 / do_expr()
                 / interp_str_lit()
                 / list_lit()
+                / anon_struct_lit()
                 / paren_atom()
                 / lit_atom()
                 / ident_atom()
@@ -1055,6 +1060,34 @@ mod grammar {
 
             rule ident_atom() -> Expr =
                 s:ident_raw() { Expr::Ident(s) }
+
+            // ─── Anonymous structure literal `{ x := e, … }` ──
+            //
+            // Disambiguates from implicit binder `{T : Type}`
+            // by the field syntax `name := value` (the
+            // binder uses `name : type` with no `:=`). The
+            // anon-struct-literal rule looks for `:=` after
+            // the first ident to decide.
+            //
+            // Lives in expr atom position; implicit binder
+            // `{…}` lives in binder context — no collision.
+            rule anon_struct_lit() -> Expr =
+                "{" _ fields:anon_struct_fields() _ "}" {
+                    Expr::AnonStruct(fields)
+                }
+
+            rule anon_struct_fields() -> Vec<(String, Expr)> =
+                first:anon_struct_field()
+                rest:(_ "," _ f:anon_struct_field() { f })* {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+
+            rule anon_struct_field() -> (String, Expr) =
+                name:ident() _h() ":=" _ value:expr() {
+                    (name, value)
+                }
 
             // ─── List literal `[1, 2, 3]` / `[]` ─────────────
             //
@@ -2166,6 +2199,70 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── anonymous structure literal (OX6 step 11g) ────────
+
+    #[test]
+    fn anon_struct_two_fields() {
+        let e = parse_value_expr("{ x := 1, y := 2 }");
+        match e {
+            Expr::AnonStruct(fields) => {
+                assert_eq!(fields.len(), 2);
+                assert_eq!(fields[0].0, "x");
+                assert_eq!(fields[0].1, Expr::Lit(Literal::Nat(1)));
+                assert_eq!(fields[1].0, "y");
+                assert_eq!(fields[1].1, Expr::Lit(Literal::Nat(2)));
+            }
+            other => panic!("expected AnonStruct, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_struct_single_field() {
+        let e = parse_value_expr("{ value := 42 }");
+        match e {
+            Expr::AnonStruct(fields) => {
+                assert_eq!(fields.len(), 1);
+                assert_eq!(fields[0].0, "value");
+            }
+            other => panic!("expected AnonStruct, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_struct_field_with_complex_expr() {
+        let e = parse_value_expr("{ sum := a + b, doubled := 2 * x }");
+        match e {
+            Expr::AnonStruct(fields) => {
+                assert_eq!(fields.len(), 2);
+                assert!(matches!(fields[0].1, Expr::BinOp(ref o, _, _) if o == "+"));
+                assert!(matches!(fields[1].1, Expr::BinOp(ref o, _, _) if o == "*"));
+            }
+            other => panic!("expected AnonStruct, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_struct_in_def_value() {
+        let src = "def origin : Point := { x := 0, y := 0 }";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert!(matches!(value, Expr::AnonStruct(_)));
+    }
+
+    #[test]
+    fn implicit_binder_still_works() {
+        // `{T : Type}` in binder context must still parse
+        // as an implicit binder, NOT an anon struct literal.
+        // Disambiguator: binder uses `:` (no `:=`); anon
+        // struct uses `:=`.
+        let src = "def id {T : Type} (x : T) : T := x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { binders, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert_eq!(binders[0].kind, BinderKind::Implicit);
     }
 
     // ─── list literal (OX6 step 11h) ───────────────────────
