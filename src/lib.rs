@@ -206,6 +206,14 @@ pub enum DeclKind {
     Variable { binders: Vec<BinderGroup> },
     /// `mutual … end` — block of mutually-recursive decls.
     Mutual { decls: Vec<Decl> },
+    /// `#check expr` / `#eval expr` / `#print name` /
+    /// `#guard expr` / `#guard_msgs (cfg) in cmd`.
+    /// `cmd` is the leading `#…` keyword (without `#`).
+    /// `raw_args` is the tail captured verbatim until the
+    /// next top-level decl boundary (so multi-line arg
+    /// expressions are preserved as text — round-trip via
+    /// the same expr parser is the consumer's job).
+    HashCommand { cmd: String, raw_args: String },
 }
 
 /// Body of an `instance` decl — either a `where`-block of
@@ -735,6 +743,7 @@ mod grammar {
                 / d:open_decl() { d }
                 / d:import_decl() { d }
                 / d:variable_decl() { d }
+                / d:hash_command_decl() { d }
 
             // `example [binders]+ : TYPE := PROOF` —
             // anonymous theorem (smoke-test a proof
@@ -906,6 +915,29 @@ mod grammar {
                 binders:(b:binder_group() _ { b })+
                 {
                     Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Variable { binders } }
+                }
+
+            // `#check expr` / `#eval expr` / `#print name` /
+            // `#guard expr` / `#guard_msgs (cfg) in cmd` —
+            // debug / diagnostic top-level commands. The
+            // arg tail is captured raw to end of line; a
+            // multi-line `#guard_msgs in #check …` lands as
+            // *two* HashCommand decls (one per `#` prefix)
+            // — the consumer reassembles if needed.
+            rule hash_command_decl() -> Decl =
+                "#" cmd:$(['a'..='z' | 'A'..='Z' | '_']
+                          ['a'..='z' | 'A'..='Z' | '0'..='9' | '_']*)
+                args:$((!"\n" [_])*)
+                {
+                    Decl {
+                        attrs: vec![],
+                        univ_params: vec![],
+                        modifiers: vec![],
+                        kind: DeclKind::HashCommand {
+                            cmd: cmd.to_string(),
+                            raw_args: args.trim().to_string(),
+                        },
+                    }
                 }
 
             // ─── class ───────────────────────────────────────
@@ -2762,6 +2794,54 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── debug commands (OX6 step 11t) ─────────────────────
+
+    #[test]
+    fn hash_check_simple() {
+        let decls = parse_decls("#check 1 + 1").expect("must parse");
+        let DeclKind::HashCommand { cmd, raw_args } = &decls[0].kind
+            else { panic!("expected HashCommand") };
+        assert_eq!(cmd, "check");
+        assert_eq!(raw_args, "1 + 1");
+    }
+
+    #[test]
+    fn hash_eval_simple() {
+        let decls = parse_decls("#eval foo bar").expect("must parse");
+        let DeclKind::HashCommand { cmd, raw_args } = &decls[0].kind
+            else { panic!("expected HashCommand") };
+        assert_eq!(cmd, "eval");
+        assert_eq!(raw_args, "foo bar");
+    }
+
+    #[test]
+    fn hash_print_simple() {
+        let decls = parse_decls("#print Nat.succ").expect("must parse");
+        let DeclKind::HashCommand { cmd, raw_args } = &decls[0].kind
+            else { panic!("expected HashCommand") };
+        assert_eq!(cmd, "print");
+        assert_eq!(raw_args, "Nat.succ");
+    }
+
+    #[test]
+    fn hash_guard_msgs() {
+        let decls = parse_decls("#guard_msgs (info) in").expect("must parse");
+        let DeclKind::HashCommand { cmd, raw_args } = &decls[0].kind
+            else { panic!("expected HashCommand") };
+        assert_eq!(cmd, "guard_msgs");
+        assert_eq!(raw_args, "(info) in");
+    }
+
+    #[test]
+    fn hash_command_mixed_with_def() {
+        let src = "def x : Nat := 1\n#check x\ndef y : Nat := 2";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 3);
+        assert!(matches!(decls[0].kind, DeclKind::Definition { .. }));
+        assert!(matches!(decls[1].kind, DeclKind::HashCommand { .. }));
+        assert!(matches!(decls[2].kind, DeclKind::Definition { .. }));
     }
 
     // ─── multi-line do statements (OX6 step 11f) ───────────
