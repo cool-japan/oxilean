@@ -86,6 +86,13 @@ pub struct Decl {
     /// `modifiers` — `abbrev` is desugared to a reducible
     /// `def` at elab time.
     pub modifiers: Vec<String>,
+    /// Doc-comment prefix `/-- … -/` immediately preceding
+    /// this decl. `None` if the decl had no doc-comment
+    /// prefix. The captured text is the raw body between
+    /// `/--` and `-/` (whitespace not trimmed — consumers
+    /// decide their own normalisation; markdown / md-doc-
+    /// renderers preserve leading-space significance).
+    pub doc: Option<String>,
     pub kind: DeclKind,
 }
 
@@ -655,16 +662,27 @@ mod grammar {
             rule line_comment() = quiet!{"--" (!"\n" [_])* "\n"?}
             // Block comments — Lean 4 supports nested
             // `/- … /- inner -/ … -/`. Doc comments
-            // `/-- … -/` are a special block comment used
-            // for documentation; the parser skips them as
-            // ordinary block comments here. Semantic
-            // attachment to the following decl is OX6 step
-            // 11u (deferred).
+            // `/-- … -/` are SEMANTICALLY ATTACHED to the
+            // next decl (OX6 step 11u) — they are filtered
+            // out of `block_comment` via the `!"-"`
+            // lookahead so they reach the decl wrapper as
+            // an explicit `doc_comment()` capture instead
+            // of being consumed silently as whitespace.
             rule block_comment() = quiet!{
-                "/-" block_comment_body() "-/"
+                "/-" !"-" block_comment_body() "-/"
             }
             rule block_comment_body() =
                 (block_comment() / (!"-/" [_]))*
+
+            // `/-- BODY -/` — doc comment. Captured by the
+            // `decl` wrapper rule and attached to the next
+            // decl as its `doc` field. Body is the raw text
+            // between `/--` and `-/` (whitespace preserved
+            // — markdown / md-doc-rendering preserves
+            // leading-space significance).
+            rule doc_comment() -> String =
+                "/--" body:$(block_comment_body()) "-/"
+                { body.to_string() }
 
             // ─── Lexical atoms ───────────────────────────────
             rule ident_raw() -> String =
@@ -754,19 +772,28 @@ mod grammar {
                 _ ds:(d:decl() _ { d })* ![_] { ds }
 
             // A top-level decl with optional prefixes:
-            // `@[attrs]` attribute list, then any sequence
-            // of modifier keywords (`partial`,
-            // `noncomputable`, `private`, `protected`,
-            // `unsafe`). `decl_body` returns a `Decl` with
-            // empty attrs / modifiers; this wrapper
-            // attaches the parsed ones.
+            // `/-- doc -/` doc-comment, `@[attrs]` attribute
+            // list, then any sequence of modifier keywords
+            // (`partial`, `noncomputable`, `private`,
+            // `protected`, `unsafe`). `decl_body` returns a
+            // `Decl` with empty attrs / modifiers / doc;
+            // this wrapper attaches the parsed ones.
+            //
+            // Doc-comment ordering rationale (matches Lean 4
+            // convention): a doc-comment immediately
+            // preceding a decl attaches to that decl;
+            // attributes follow the doc, then modifiers.
+            // Whitespace between any two prefix pieces is
+            // permitted (the explicit `_` allows newlines).
             rule decl() -> Decl =
+                doc:(d:doc_comment() _ { d })?
                 attrs:(a:attribute_list() _ { a })?
                 prefix_mods:(m:modifier_keyword() _ { m })*
                 d:decl_body()
                 {
                     let mut decl = d;
                     decl.attrs = attrs.unwrap_or_default();
+                    decl.doc = doc;
                     // Prefix modifiers come first; inner-decl
                     // modifiers (e.g. the synthetic `"abbrev"`
                     // tag from `abbrev_decl`) follow.
@@ -813,6 +840,7 @@ mod grammar {
                         attrs: vec![],
                         univ_params: vec![],
                         modifiers: vec![],
+                        doc: None,
                         kind: DeclKind::Example { binders, ty, proof },
                     }
                 }
@@ -832,6 +860,7 @@ mod grammar {
                         attrs: vec![],
                         univ_params: univs,
                         modifiers: vec!["abbrev".to_string()],
+                        doc: None,
                         kind: DeclKind::Definition { name, binders, ty, value },
                     }
                 }
@@ -845,7 +874,7 @@ mod grammar {
                 binders:(b:binder_group() _ { b })*
                 ":" _ ty:expr() _ ":=" _ proof:expr()
                 {
-                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Theorem {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], doc: None, kind: DeclKind::Theorem {
                         name, binders, ty, proof,
                     }}
                 }
@@ -857,7 +886,7 @@ mod grammar {
                 binders:(b:binder_group() _ { b })*
                 ":" _ ty:expr()
                 {
-                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Axiom {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], doc: None, kind: DeclKind::Axiom {
                         name, binders, ty,
                     }}
                 }
@@ -877,7 +906,7 @@ mod grammar {
                 ":" _ ty:expr() _
                 body:instance_body()
                 {
-                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Instance {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], doc: None, kind: DeclKind::Instance {
                         name, binders, ty, body,
                     }}
                 }
@@ -906,7 +935,7 @@ mod grammar {
                 decls:(d:decl() _ { d })*
                 "end" word_boundary() (_ ident_raw())?
                 {
-                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Namespace {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], doc: None, kind: DeclKind::Namespace {
                         name, decls,
                     }}
                 }
@@ -918,7 +947,7 @@ mod grammar {
                 _ decls:(d:decl() _ { d })*
                 "end" word_boundary() (_ ident_raw())?
                 {
-                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Section {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], doc: None, kind: DeclKind::Section {
                         name, decls,
                     }}
                 }
@@ -931,7 +960,7 @@ mod grammar {
                 _ decls:(d:decl() _ { d })*
                 "end" word_boundary()
                 {
-                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Mutual {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], doc: None, kind: DeclKind::Mutual {
                         decls,
                     }}
                 }
@@ -951,7 +980,7 @@ mod grammar {
                 "open" word_boundary() _h() line:$((!"\n" [_])+)
                 {
                     let (items, raw_tail) = parse_open_line(line);
-                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Open {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], doc: None, kind: DeclKind::Open {
                         items, raw_tail,
                     }}
                 }
@@ -961,7 +990,7 @@ mod grammar {
             rule import_decl() -> Decl =
                 "import" word_boundary() _h() path:ident_raw()
                 {
-                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Import { path } }
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], doc: None, kind: DeclKind::Import { path } }
                 }
 
             // `variable [binders]+` — section / namespace
@@ -970,7 +999,7 @@ mod grammar {
                 "variable" word_boundary() _
                 binders:(b:binder_group() _ { b })+
                 {
-                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Variable { binders } }
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], doc: None, kind: DeclKind::Variable { binders } }
                 }
 
             // `omit ident+` — drops named section variables
@@ -981,7 +1010,7 @@ mod grammar {
                 items:(i:ident_raw() _ { i })+
                 {
                     Decl { attrs: vec![], univ_params: vec![], modifiers: vec![],
-                        kind: DeclKind::Omit { items } }
+                        doc: None, kind: DeclKind::Omit { items } }
                 }
 
             // `include ident+` — re-introduces section
@@ -991,7 +1020,7 @@ mod grammar {
                 items:(i:ident_raw() _ { i })+
                 {
                     Decl { attrs: vec![], univ_params: vec![], modifiers: vec![],
-                        kind: DeclKind::Include { items } }
+                        doc: None, kind: DeclKind::Include { items } }
                 }
 
             // `#check expr` / `#eval expr` / `#print name` /
@@ -1010,6 +1039,7 @@ mod grammar {
                         attrs: vec![],
                         univ_params: vec![],
                         modifiers: vec![],
+                        doc: None,
                         kind: DeclKind::HashCommand {
                             cmd: cmd.to_string(),
                             raw_args: args.trim().to_string(),
@@ -1035,7 +1065,7 @@ mod grammar {
                 fields:(_ f:struct_field() { f })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Class {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], doc: None, kind: DeclKind::Class {
                         name,
                         binders,
                         extends: extends.unwrap_or_default(),
@@ -1077,6 +1107,7 @@ mod grammar {
                         attrs: vec![],
                         univ_params: univs,
                         modifiers: vec![],
+                        doc: None,
                         kind: DeclKind::Definition { name, binders, ty, value },
                     }
                 }
@@ -1110,7 +1141,7 @@ mod grammar {
                 fields:(_ f:struct_field() { f })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Structure {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], doc: None, kind: DeclKind::Structure {
                         name,
                         extends: extends.unwrap_or_default(),
                         fields,
@@ -1169,7 +1200,7 @@ mod grammar {
                 ctors:(_ c:inductive_ctor() { c })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Inductive {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], doc: None, kind: DeclKind::Inductive {
                         name,
                         ty,
                         ctors,
@@ -3009,6 +3040,52 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
     }
 
+    // ─── doc-comment semantic binding (OX6 step 11u) ───────
+
+    #[test]
+    fn doc_comment_none_when_no_doc() {
+        let src = "def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert!(decls[0].doc.is_none());
+    }
+
+    #[test]
+    fn doc_comment_attaches_to_theorem() {
+        let src = "/-- Reflexivity for Nat. -/\ntheorem refl : a = a := rfl";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].doc.as_deref(), Some(" Reflexivity for Nat. "));
+        assert!(matches!(decls[0].kind, DeclKind::Theorem { .. }));
+    }
+
+    #[test]
+    fn doc_comment_with_attr_and_modifier_prefix() {
+        // Order: doc → attr → modifier → decl.
+        let src = "/-- docs -/\n@[simp]\nprivate def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].doc.as_deref(), Some(" docs "));
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].attrs[0].name, "simp");
+        assert!(decls[0].modifiers.contains(&"private".to_string()));
+    }
+
+    #[test]
+    fn block_comment_not_eaten_as_doc() {
+        // `/- regular -/` is NOT a doc comment (only `/-- … -/`
+        // attaches semantically).
+        let src = "/- regular comment -/\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert!(decls[0].doc.is_none());
+    }
+
+    #[test]
+    fn doc_comment_multi_line() {
+        let src = "/--\n  First line.\n  Second line.\n-/\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        let doc = decls[0].doc.as_deref().expect("doc must be present");
+        assert!(doc.contains("First line."));
+        assert!(doc.contains("Second line."));
+    }
+
     // ─── do-loops (OX6 step 11r) ───────────────────────────
 
     #[test]
@@ -4159,13 +4236,14 @@ world""""#);
     }
 
     #[test]
-    fn doc_comment_treated_as_block_comment() {
-        // `/-- … -/` parses as an ordinary block comment in
-        // v0; semantic attachment to the next decl is OX6
-        // step 11u.
+    fn doc_comment_attaches_to_next_decl() {
+        // OX6 step 11u: `/-- … -/` doc-comments
+        // semantically attach to the next decl's `doc`
+        // field.
         let src = "/-- doc string for f -/\ndef f : Nat := 1";
         let decls = parse_decls(src).expect("must parse");
         assert_eq!(decls.len(), 1);
+        assert_eq!(decls[0].doc.as_deref(), Some(" doc string for f "));
     }
 
     #[test]
