@@ -78,6 +78,14 @@ pub struct Decl {
     /// `inductive` / `class` / `instance` (anywhere a name
     /// gets a `.{…}` suffix in Lean 4).
     pub univ_params: Vec<String>,
+    /// Modifier-keyword prefix list: `private`, `protected`,
+    /// `partial`, `noncomputable`, `unsafe`. Order preserved
+    /// (Lean 4 syntax allows e.g. `private noncomputable def`
+    /// in either order). `abbrev`-style decls (`abbrev f :=
+    /// …`) surface as `Definition` with `"abbrev"` in
+    /// `modifiers` — `abbrev` is desugared to a reducible
+    /// `def` at elab time.
+    pub modifiers: Vec<String>,
     pub kind: DeclKind,
 }
 
@@ -573,19 +581,37 @@ mod grammar {
             pub rule source() -> Vec<Decl> =
                 _ ds:(d:decl() _ { d })* ![_] { ds }
 
-            // A top-level decl with an optional attribute
-            // prefix. `decl_body` returns a `Decl` with
-            // `attrs: vec![]`; this wrapper attaches the
-            // parsed attrs if present.
+            // A top-level decl with optional prefixes:
+            // `@[attrs]` attribute list, then any sequence
+            // of modifier keywords (`partial`,
+            // `noncomputable`, `private`, `protected`,
+            // `unsafe`). `decl_body` returns a `Decl` with
+            // empty attrs / modifiers; this wrapper
+            // attaches the parsed ones.
             rule decl() -> Decl =
-                attrs:(a:attribute_list() _ { a })? d:decl_body() {
+                attrs:(a:attribute_list() _ { a })?
+                prefix_mods:(m:modifier_keyword() _ { m })*
+                d:decl_body()
+                {
                     let mut decl = d;
                     decl.attrs = attrs.unwrap_or_default();
+                    // Prefix modifiers come first; inner-decl
+                    // modifiers (e.g. the synthetic `"abbrev"`
+                    // tag from `abbrev_decl`) follow.
+                    let mut combined = prefix_mods;
+                    combined.extend(std::mem::take(&mut decl.modifiers));
+                    decl.modifiers = combined;
                     decl
                 }
 
+            rule modifier_keyword() -> String =
+                s:$("private" / "protected" / "noncomputable"
+                    / "partial" / "unsafe")
+                word_boundary() { s.to_string() }
+
             rule decl_body() -> Decl =
                 d:definition() { d }
+                / d:abbrev_decl() { d }
                 / d:theorem_decl() { d }
                 / d:axiom_decl() { d }
                 / d:structure_decl() { d }
@@ -599,6 +625,25 @@ mod grammar {
                 / d:import_decl() { d }
                 / d:variable_decl() { d }
 
+            // `abbrev NAME [binders]+ [: TYPE] := VALUE` —
+            // surface synonym for `def` (elab treats the
+            // result as a reducible def). Lands as a
+            // `Definition` with `"abbrev"` in `modifiers`.
+            rule abbrev_decl() -> Decl =
+                "abbrev" word_boundary() _
+                name:ident() univs:univ_params_opt() _
+                binders:(b:binder_group() _ { b })*
+                ty:(":" _ t:expr() _ { t })?
+                ":=" _ value:expr()
+                {
+                    Decl {
+                        attrs: vec![],
+                        univ_params: univs,
+                        modifiers: vec!["abbrev".to_string()],
+                        kind: DeclKind::Definition { name, binders, ty, value },
+                    }
+                }
+
             // `theorem NAME [binders]+ : TYPE := PROOF` or
             // `lemma NAME [binders]+ : TYPE := PROOF` — same
             // shape as `def`; surface keyword not preserved.
@@ -608,7 +653,7 @@ mod grammar {
                 binders:(b:binder_group() _ { b })*
                 ":" _ ty:expr() _ ":=" _ proof:expr()
                 {
-                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Theorem {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Theorem {
                         name, binders, ty, proof,
                     }}
                 }
@@ -620,7 +665,7 @@ mod grammar {
                 binders:(b:binder_group() _ { b })*
                 ":" _ ty:expr()
                 {
-                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Axiom {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Axiom {
                         name, binders, ty,
                     }}
                 }
@@ -640,7 +685,7 @@ mod grammar {
                 ":" _ ty:expr() _
                 body:instance_body()
                 {
-                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Instance {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Instance {
                         name, binders, ty, body,
                     }}
                 }
@@ -669,7 +714,7 @@ mod grammar {
                 decls:(d:decl() _ { d })*
                 "end" word_boundary() (_ ident_raw())?
                 {
-                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Namespace {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Namespace {
                         name, decls,
                     }}
                 }
@@ -681,7 +726,7 @@ mod grammar {
                 _ decls:(d:decl() _ { d })*
                 "end" word_boundary() (_ ident_raw())?
                 {
-                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Section {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Section {
                         name, decls,
                     }}
                 }
@@ -694,7 +739,7 @@ mod grammar {
                 _ decls:(d:decl() _ { d })*
                 "end" word_boundary()
                 {
-                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Mutual {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Mutual {
                         decls,
                     }}
                 }
@@ -714,7 +759,7 @@ mod grammar {
                 "open" word_boundary() _h() line:$((!"\n" [_])+)
                 {
                     let (items, raw_tail) = parse_open_line(line);
-                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Open {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Open {
                         items, raw_tail,
                     }}
                 }
@@ -724,7 +769,7 @@ mod grammar {
             rule import_decl() -> Decl =
                 "import" word_boundary() _h() path:ident_raw()
                 {
-                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Import { path } }
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Import { path } }
                 }
 
             // `variable [binders]+` — section / namespace
@@ -733,7 +778,7 @@ mod grammar {
                 "variable" word_boundary() _
                 binders:(b:binder_group() _ { b })+
                 {
-                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Variable { binders } }
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Variable { binders } }
                 }
 
             // ─── class ───────────────────────────────────────
@@ -754,7 +799,7 @@ mod grammar {
                 fields:(_ f:struct_field() { f })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Class {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Class {
                         name,
                         binders,
                         extends: extends.unwrap_or_default(),
@@ -795,6 +840,7 @@ mod grammar {
                     Decl {
                         attrs: vec![],
                         univ_params: univs,
+                        modifiers: vec![],
                         kind: DeclKind::Definition { name, binders, ty, value },
                     }
                 }
@@ -828,7 +874,7 @@ mod grammar {
                 fields:(_ f:struct_field() { f })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Structure {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Structure {
                         name,
                         extends: extends.unwrap_or_default(),
                         fields,
@@ -887,7 +933,7 @@ mod grammar {
                 ctors:(_ c:inductive_ctor() { c })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Inductive {
+                    Decl { attrs: vec![], univ_params: univs, modifiers: vec![], kind: DeclKind::Inductive {
                         name,
                         ty,
                         ctors,
@@ -2263,6 +2309,86 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── modifier prefixes (OX6 step 11c) ──────────────────
+
+    #[test]
+    fn modifier_partial_def() {
+        let src = "partial def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].modifiers, vec!["partial".to_string()]);
+        assert!(matches!(decls[0].kind, DeclKind::Definition { .. }));
+    }
+
+    #[test]
+    fn modifier_noncomputable_def() {
+        let src = "noncomputable def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].modifiers, vec!["noncomputable".to_string()]);
+    }
+
+    #[test]
+    fn modifier_private_def() {
+        let src = "private def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].modifiers, vec!["private".to_string()]);
+    }
+
+    #[test]
+    fn modifier_protected_theorem() {
+        let src = "protected theorem t : True := True.intro";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].modifiers, vec!["protected".to_string()]);
+        assert!(matches!(decls[0].kind, DeclKind::Theorem { .. }));
+    }
+
+    #[test]
+    fn modifier_unsafe_def() {
+        let src = "unsafe def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].modifiers, vec!["unsafe".to_string()]);
+    }
+
+    #[test]
+    fn modifier_combined() {
+        let src = "private noncomputable def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(
+            decls[0].modifiers,
+            vec!["private".to_string(), "noncomputable".to_string()]
+        );
+    }
+
+    #[test]
+    fn modifier_with_attr_prefix() {
+        let src = "@[simp]\nprivate def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].modifiers, vec!["private".to_string()]);
+    }
+
+    #[test]
+    fn abbrev_decl_surfaces_as_definition_with_modifier() {
+        let src = "abbrev twice (n : Nat) : Nat := n";
+        let decls = parse_decls(src).expect("must parse");
+        assert!(matches!(decls[0].kind, DeclKind::Definition { .. }));
+        assert_eq!(decls[0].modifiers, vec!["abbrev".to_string()]);
+    }
+
+    #[test]
+    fn abbrev_with_universe_param() {
+        let src = "abbrev id.{u} : Nat := 0";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].univ_params, vec!["u".to_string()]);
+        assert_eq!(decls[0].modifiers, vec!["abbrev".to_string()]);
+    }
+
+    #[test]
+    fn no_modifier_yields_empty_vec() {
+        let src = "def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert!(decls[0].modifiers.is_empty());
     }
 
     // ─── universe annotation `.{u, v}` (OX6 step 11i) ──────
