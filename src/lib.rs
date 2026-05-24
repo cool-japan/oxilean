@@ -422,10 +422,21 @@ pub enum Pattern {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
-    /// Unsigned natural number literal (decimal).
+    /// Unsigned natural number literal. Source forms:
+    /// decimal `42`, hex `0x1F`, binary `0b1010`, octal
+    /// `0o17`, with optional `_` digit separators
+    /// (`1_000_000`).
     Nat(u64),
-    /// String literal (raw bytes between `"…"`, with `\\` /
-    /// `\"` escapes resolved).
+    /// Floating-point literal. Held as the original source
+    /// text (e.g. `"3.14"`, `"1.5e10"`, `"1.0e-3"`) rather
+    /// than `f64` so the AST's `Eq` derive stays sound
+    /// (`f64` is not `Eq` due to NaN).
+    Float(String),
+    /// String literal. Source forms: regular `"…"` (with
+    /// `\\n \\t \\r \\\\ \\" \\0` + `\\xHH` + `\\u{H+}`
+    /// escapes resolved) and triple-quoted `"""…"""`
+    /// (raw, no escape resolution; arbitrary content
+    /// including newlines).
     Str(String),
 }
 
@@ -475,6 +486,33 @@ mod grammar {
     /// newlines via the `_` rule).
     fn parse_expr_text(text: &str) -> Option<Expr> {
         lean4::expr(text.trim()).ok()
+    }
+
+    /// Parse a numeric literal source string with optional
+    /// hex / binary / octal prefix + `_` digit separators
+    /// stripped. Returns `None` on overflow / malformed
+    /// digit set (the PEG rule's character classes already
+    /// constrain the input to valid digits for the radix).
+    fn parse_numeric_literal(s: &str) -> Option<u64> {
+        let cleaned: String = s.chars().filter(|c| *c != '_').collect();
+        if let Some(hex) = cleaned
+            .strip_prefix("0x")
+            .or_else(|| cleaned.strip_prefix("0X"))
+        {
+            u64::from_str_radix(hex, 16).ok()
+        } else if let Some(bin) = cleaned
+            .strip_prefix("0b")
+            .or_else(|| cleaned.strip_prefix("0B"))
+        {
+            u64::from_str_radix(bin, 2).ok()
+        } else if let Some(oct) = cleaned
+            .strip_prefix("0o")
+            .or_else(|| cleaned.strip_prefix("0O"))
+        {
+            u64::from_str_radix(oct, 8).ok()
+        } else {
+            cleaned.parse().ok()
+        }
     }
 
     /// Split a `by`-block region into individual tactic
@@ -605,11 +643,34 @@ mod grammar {
                 ![ 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '\'' ]
             }
 
+            // Decimal / hex / binary / octal with optional
+            // `_` digit separators (`1_000_000`, `0xFF_FF`,
+            // `0b1010_0101`, `0o17_77`).
             rule nat_lit() -> u64 =
-                n:$(['0'..='9']+) {?
-                    n.parse().map_err(|_| "nat literal out of range")
-                }
+                n:$(("0x" / "0X") hex_digit() (['_']? hex_digit())*)
+                    {? parse_numeric_literal(n).ok_or("invalid hex literal") }
+                / n:$(("0b" / "0B") bin_digit() (['_']? bin_digit())*)
+                    {? parse_numeric_literal(n).ok_or("invalid binary literal") }
+                / n:$(("0o" / "0O") oct_digit() (['_']? oct_digit())*)
+                    {? parse_numeric_literal(n).ok_or("invalid octal literal") }
+                / n:$(['0'..='9'] (['_']? ['0'..='9'])*)
+                    {? parse_numeric_literal(n).ok_or("invalid decimal literal") }
 
+            rule hex_digit() = ['0'..='9' | 'a'..='f' | 'A'..='F']
+            rule bin_digit() = ['0' | '1']
+            rule oct_digit() = ['0'..='7']
+
+            // `3.14`, `1.5e10`, `2.0e-3`. The fractional
+            // part is mandatory (so float beats nat in the
+            // alternative ordering); the exponent is
+            // optional.
+            rule float_lit() -> String =
+                s:$(['0'..='9'] (['_']? ['0'..='9'])*
+                    "." ['0'..='9'] (['_']? ['0'..='9'])*
+                    (['e' | 'E'] ['+' | '-']? ['0'..='9']+)?)
+                    { s.to_string() }
+
+            // Single-line string `"…"` with escape resolution.
             rule str_lit() -> String =
                 "\"" s:str_body() "\"" { s }
 
@@ -617,6 +678,14 @@ mod grammar {
                 s:$((!"\"" str_char())*) { unescape(s) }
 
             rule str_char() = "\\" [_] / [_]
+
+            // Triple-quoted raw string `"""…"""`. Content
+            // is preserved verbatim (no escape resolution),
+            // including newlines.
+            rule multiline_str_lit() -> String =
+                "\"\"\"" body:$((!"\"\"\"" [_])*) "\"\"\"" {
+                    body.to_string()
+                }
 
             // ─── Top-level entry ─────────────────────────────
             pub rule source() -> Vec<Decl> =
@@ -1194,7 +1263,9 @@ mod grammar {
                 "(" _ e:expr() _ ")" { Expr::Paren(Box::new(e)) }
 
             rule lit_atom() -> Expr =
-                n:nat_lit() { Expr::Lit(Literal::Nat(n)) }
+                f:float_lit() { Expr::Lit(Literal::Float(f)) }
+                / n:nat_lit() { Expr::Lit(Literal::Nat(n)) }
+                / s:multiline_str_lit() { Expr::Lit(Literal::Str(s)) }
                 / s:str_lit() { Expr::Lit(Literal::Str(s)) }
 
             rule ident_atom() -> Expr =
@@ -1666,6 +1737,52 @@ mod grammar {
                     Some('\\') | None => out.push('\\'),
                     Some('"') => out.push('"'),
                     Some('0') => out.push('\0'),
+                    // `\xHH` — two hex digits → one byte.
+                    Some('x') => {
+                        let h1 = chars.next();
+                        let h2 = chars.next();
+                        if let (Some(a), Some(b)) = (h1, h2)
+                            && let Some(d1) = a.to_digit(16)
+                            && let Some(d2) = b.to_digit(16)
+                            && let Ok(code) = u8::try_from(d1 * 16 + d2)
+                        {
+                            out.push(code as char);
+                        } else {
+                            out.push_str("\\x");
+                            if let Some(a) = h1 {
+                                out.push(a);
+                            }
+                            if let Some(b) = h2 {
+                                out.push(b);
+                            }
+                        }
+                    }
+                    // `\u{HEX+}` — Unicode codepoint.
+                    Some('u') => {
+                        if chars.peek() == Some(&'{') {
+                            chars.next();
+                            let mut hex = String::new();
+                            while let Some(&peek) = chars.peek() {
+                                if peek == '}' {
+                                    chars.next();
+                                    break;
+                                }
+                                hex.push(peek);
+                                chars.next();
+                            }
+                            if let Ok(code) = u32::from_str_radix(&hex, 16)
+                                && let Some(c) = char::from_u32(code)
+                            {
+                                out.push(c);
+                            } else {
+                                out.push_str("\\u{");
+                                out.push_str(&hex);
+                                out.push('}');
+                            }
+                        } else {
+                            out.push_str("\\u");
+                        }
+                    }
                     Some(other) => {
                         out.push('\\');
                         out.push(other);
@@ -2458,6 +2575,132 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── literal extensions (OX6 step 11l) ─────────────────
+
+    #[test]
+    fn nat_hex_literal() {
+        assert_eq!(parse_value_expr("0xFF"), Expr::Lit(Literal::Nat(255)));
+        assert_eq!(parse_value_expr("0X10"), Expr::Lit(Literal::Nat(16)));
+    }
+
+    #[test]
+    fn nat_binary_literal() {
+        assert_eq!(parse_value_expr("0b1010"), Expr::Lit(Literal::Nat(10)));
+        assert_eq!(parse_value_expr("0B1111"), Expr::Lit(Literal::Nat(15)));
+    }
+
+    #[test]
+    fn nat_octal_literal() {
+        assert_eq!(parse_value_expr("0o17"), Expr::Lit(Literal::Nat(15)));
+        assert_eq!(parse_value_expr("0O777"), Expr::Lit(Literal::Nat(511)));
+    }
+
+    #[test]
+    fn nat_with_separator() {
+        assert_eq!(
+            parse_value_expr("1_000_000"),
+            Expr::Lit(Literal::Nat(1_000_000))
+        );
+        assert_eq!(
+            parse_value_expr("0xFF_FF"),
+            Expr::Lit(Literal::Nat(0xFFFF))
+        );
+        assert_eq!(
+            parse_value_expr("0b1010_1010"),
+            Expr::Lit(Literal::Nat(0b1010_1010))
+        );
+    }
+
+    #[test]
+    fn float_literal_simple() {
+        assert_eq!(
+            parse_value_expr("3.14"),
+            Expr::Lit(Literal::Float("3.14".to_string()))
+        );
+    }
+
+    #[test]
+    fn float_literal_scientific() {
+        assert_eq!(
+            parse_value_expr("1.5e10"),
+            Expr::Lit(Literal::Float("1.5e10".to_string()))
+        );
+        assert_eq!(
+            parse_value_expr("1.0e-3"),
+            Expr::Lit(Literal::Float("1.0e-3".to_string()))
+        );
+    }
+
+    #[test]
+    fn float_with_separator() {
+        assert_eq!(
+            parse_value_expr("1_000.5"),
+            Expr::Lit(Literal::Float("1_000.5".to_string()))
+        );
+    }
+
+    #[test]
+    fn float_takes_priority_over_nat() {
+        // `1.5` must parse as Float, not as Nat(1) then dot-shortcut.
+        let e = parse_value_expr("1.5");
+        assert!(matches!(e, Expr::Lit(Literal::Float(_))));
+    }
+
+    #[test]
+    fn multiline_string_literal() {
+        let e = parse_value_expr(r#""""hello
+world""""#);
+        match e {
+            Expr::Lit(Literal::Str(s)) => {
+                assert_eq!(s, "hello\nworld");
+            }
+            other => panic!("expected multiline Str, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn multiline_string_with_special_chars() {
+        // Triple-quoted is raw — backslashes / quotes
+        // pass through (until the closing `"""`).
+        let e = parse_value_expr(r#""""raw \n no escape""""#);
+        match e {
+            Expr::Lit(Literal::Str(s)) => {
+                // `\n` preserved as 2 chars (backslash + n).
+                assert!(s.contains("\\n"));
+            }
+            other => panic!("expected multiline Str, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn str_escape_hex_byte() {
+        let e = parse_value_expr(r#""x\x41y""#);
+        match e {
+            Expr::Lit(Literal::Str(s)) => assert_eq!(s, "xAy"),
+            other => panic!("expected Str, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn str_escape_unicode() {
+        let e = parse_value_expr(r#""\u{1F600}""#);
+        match e {
+            Expr::Lit(Literal::Str(s)) => {
+                assert_eq!(s, "\u{1F600}");
+            }
+            other => panic!("expected Str, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn def_with_hex_value() {
+        let src = "def color : UInt32 := 0xFF00AA";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert_eq!(*value, Expr::Lit(Literal::Nat(0xFF_00AA)));
     }
 
     // ─── multi-line do statements (OX6 step 11f) ───────────
