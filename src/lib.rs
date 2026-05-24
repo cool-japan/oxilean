@@ -146,6 +146,14 @@ pub enum DeclKind {
         binders: Vec<BinderGroup>,
         ty: Expr,
     },
+    /// `example [binders]+ : TYPE := PROOF` — anonymous
+    /// theorem. Used to type-check / smoke-test a proof
+    /// without binding a name.
+    Example {
+        binders: Vec<BinderGroup>,
+        ty: Expr,
+        proof: Expr,
+    },
     /// `instance [NAME] [binders]+ : TYPE BODY` — typeclass
     /// instance. The name is optional (Lean 4 auto-names
     /// anonymous instances).
@@ -614,6 +622,7 @@ mod grammar {
                 / d:abbrev_decl() { d }
                 / d:theorem_decl() { d }
                 / d:axiom_decl() { d }
+                / d:example_decl() { d }
                 / d:structure_decl() { d }
                 / d:class_decl() { d }
                 / d:inductive_decl() { d }
@@ -624,6 +633,22 @@ mod grammar {
                 / d:open_decl() { d }
                 / d:import_decl() { d }
                 / d:variable_decl() { d }
+
+            // `example [binders]+ : TYPE := PROOF` —
+            // anonymous theorem (smoke-test a proof
+            // without binding a name).
+            rule example_decl() -> Decl =
+                "example" word_boundary() _
+                binders:(b:binder_group() _ { b })*
+                ":" _ ty:expr() _ ":=" _ proof:expr()
+                {
+                    Decl {
+                        attrs: vec![],
+                        univ_params: vec![],
+                        modifiers: vec![],
+                        kind: DeclKind::Example { binders, ty, proof },
+                    }
+                }
 
             // `abbrev NAME [binders]+ [: TYPE] := VALUE` —
             // surface synonym for `def` (elab treats the
@@ -2309,6 +2334,47 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── `example` anonymous theorem (OX6 step 11k) ────────
+
+    #[test]
+    fn example_no_binders() {
+        let src = "example : True := True.intro";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Example { binders, ty, .. } = &decls[0].kind
+            else { panic!("expected Example") };
+        assert!(binders.is_empty());
+        assert_eq!(*ty, Expr::Ident("True".into()));
+    }
+
+    #[test]
+    fn example_with_binder() {
+        let src = "example (n : Nat) : n = n := rfl";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Example { binders, ty, proof } = &decls[0].kind
+            else { panic!("expected Example") };
+        assert_eq!(binders.len(), 1);
+        assert!(matches!(ty, Expr::BinOp(o, _, _) if o == "="));
+        assert_eq!(*proof, Expr::Ident("rfl".into()));
+    }
+
+    #[test]
+    fn example_with_attr_prefix() {
+        let src = "@[simp]\nexample : True := True.intro";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert!(matches!(decls[0].kind, DeclKind::Example { .. }));
+    }
+
+    #[test]
+    fn example_with_forall_proof() {
+        let src = "example : forall n, n = n := fun n => rfl";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Example { ty, proof, .. } = &decls[0].kind
+            else { panic!("expected Example") };
+        assert!(matches!(ty, Expr::Forall(_, _)));
+        assert!(matches!(proof, Expr::Lam(_, _)));
     }
 
     // ─── modifier prefixes (OX6 step 11c) ──────────────────
