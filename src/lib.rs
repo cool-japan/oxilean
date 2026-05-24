@@ -105,6 +105,74 @@ pub enum DeclKind {
         ctors: Vec<Ctor>,
         deriving: Vec<String>,
     },
+    /// `theorem NAME [binders]+ : TYPE := PROOF` or
+    /// `lemma NAME [binders]+ : TYPE := PROOF` — same shape,
+    /// semantically equivalent; the surface keyword used is
+    /// not preserved in the AST today (the elaborator
+    /// doesn't depend on it).
+    Theorem {
+        name: String,
+        binders: Vec<BinderGroup>,
+        ty: Expr,
+        proof: Expr,
+    },
+    /// `axiom NAME [binders]+ : TYPE` — declared without a
+    /// body. The elaborator trusts the type signature.
+    Axiom {
+        name: String,
+        binders: Vec<BinderGroup>,
+        ty: Expr,
+    },
+    /// `instance [NAME] [binders]+ : TYPE BODY` — typeclass
+    /// instance. The name is optional (Lean 4 auto-names
+    /// anonymous instances).
+    Instance {
+        name: Option<String>,
+        binders: Vec<BinderGroup>,
+        ty: Expr,
+        body: InstanceBody,
+    },
+    /// `class NAME [binders]+ [extends BASES] where FIELDS
+    /// [deriving ...]` — typeclass declaration, structurally
+    /// identical to a `structure` (a record of methods).
+    Class {
+        name: String,
+        extends: Vec<String>,
+        fields: Vec<StructField>,
+        deriving: Vec<String>,
+    },
+    /// `namespace NAME … end NAME` — scoped block of inner
+    /// declarations.
+    Namespace {
+        name: String,
+        decls: Vec<Decl>,
+    },
+    /// `open Foo Bar Baz` — opens identifiers into the
+    /// current namespace. v0 captures the open list as
+    /// space-separated tokens; selective `open Foo (x y)`
+    /// or renaming `open Foo renaming x → y` lands its tail
+    /// in `raw_tail` for downstream re-parsing.
+    Open {
+        items: Vec<String>,
+        raw_tail: String,
+    },
+    /// `import Foo.Bar.Baz` — single-path import. Multiple
+    /// imports = multiple `Import` decls.
+    Import { path: String },
+    /// `variable [binders]+` — binds variables for the
+    /// surrounding section / namespace.
+    Variable { binders: Vec<BinderGroup> },
+    /// `mutual … end` — block of mutually-recursive decls.
+    Mutual { decls: Vec<Decl> },
+}
+
+/// Body of an `instance` decl — either a `where`-block of
+/// field assignments (structurally like a `structure`'s
+/// field list) or a single term expression.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InstanceBody {
+    Where(Vec<StructField>),
+    Term(Expr),
 }
 
 /// One named field of a `structure`. The `ty` is the full
@@ -428,8 +496,36 @@ mod grammar {
 
             rule decl_body() -> Decl =
                 d:definition() { d }
+                / d:theorem_decl() { d }
+                / d:axiom_decl() { d }
                 / d:structure_decl() { d }
                 / d:inductive_decl() { d }
+
+            // `theorem NAME [binders]+ : TYPE := PROOF` or
+            // `lemma NAME [binders]+ : TYPE := PROOF` — same
+            // shape as `def`; surface keyword not preserved.
+            rule theorem_decl() -> Decl =
+                ("theorem" / "lemma") word_boundary() _
+                name:ident() _
+                binders:(b:binder_group() _ { b })*
+                ":" _ ty:expr() _ ":=" _ proof:expr()
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Theorem {
+                        name, binders, ty, proof,
+                    }}
+                }
+
+            // `axiom NAME [binders]+ : TYPE` — no body.
+            rule axiom_decl() -> Decl =
+                "axiom" word_boundary() _
+                name:ident() _
+                binders:(b:binder_group() _ { b })*
+                ":" _ ty:expr()
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Axiom {
+                        name, binders, ty,
+                    }}
+                }
 
             // ─── Attribute list `@[…]` ───────────────────────
             //
@@ -688,6 +784,13 @@ mod grammar {
                 lhs:(@) _ ">=" _ rhs:@ { Expr::BinOp(">=".into(), Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ "<"  _ rhs:@ { Expr::BinOp("<".into(),  Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ ">"  _ rhs:@ { Expr::BinOp(">".into(),  Box::new(lhs), Box::new(rhs)) }
+                // Lean 4's propositional equality `a = b` —
+                // single `=` (not `==` / not `:=`). The
+                // `!"="` lookahead excludes `==`; the
+                // following `_` rule eats whitespace so a
+                // bare `:=` later in the source can't be
+                // grabbed here.
+                lhs:(@) _ "=" !"=" _ rhs:@ { Expr::BinOp("=".into(),  Box::new(lhs), Box::new(rhs)) }
                 --
                 // ─── additive (left-assoc) ──────────────
                 lhs:(@) _ "+" _ rhs:@ { Expr::BinOp("+".into(), Box::new(lhs), Box::new(rhs)) }
@@ -1808,6 +1911,101 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── theorem / lemma / axiom (OX6 step 10a) ────────────
+
+    #[test]
+    fn theorem_simple() {
+        let src = "theorem t (n : Nat) : n = n := rfl";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { name, binders, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        assert_eq!(name, "t");
+        assert_eq!(binders.len(), 1);
+    }
+
+    #[test]
+    fn lemma_parses_as_theorem() {
+        let src = "lemma t (n : Nat) : n = n := rfl";
+        let decls = parse_decls(src).expect("must parse");
+        // `lemma` collapses into the same AST variant as
+        // `theorem` (semantically equivalent in Lean 4).
+        assert!(matches!(decls[0].kind, DeclKind::Theorem { .. }));
+    }
+
+    #[test]
+    fn theorem_no_binders() {
+        let src = "theorem foo : True := True.intro";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { name, binders, ty, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        assert_eq!(name, "foo");
+        assert!(binders.is_empty());
+        assert_eq!(*ty, Expr::Ident("True".into()));
+    }
+
+    #[test]
+    fn axiom_simple() {
+        // Simple type — `forall` / `∀` quantifier syntax is
+        // a separate future step (binder-style expr form).
+        let src = "axiom em : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Axiom { name, .. } = &decls[0].kind
+            else { panic!("expected Axiom") };
+        assert_eq!(name, "em");
+    }
+
+    #[test]
+    fn axiom_no_binders() {
+        let src = "axiom undefined : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Axiom { name, binders, ty } = &decls[0].kind
+            else { panic!("expected Axiom") };
+        assert_eq!(name, "undefined");
+        assert!(binders.is_empty());
+        assert_eq!(*ty, Expr::Ident("Nat".into()));
+    }
+
+    #[test]
+    fn axiom_with_binders() {
+        // Use ASCII `T` instead of Unicode `α` — single-char
+        // ident grammar covers ASCII; Unicode-ident support
+        // is a future grammar extension.
+        let src = "axiom choice {T : Type} : T -> T";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Axiom { binders, .. } = &decls[0].kind
+            else { panic!("expected Axiom") };
+        assert_eq!(binders.len(), 1);
+        assert_eq!(binders[0].kind, BinderKind::Implicit);
+    }
+
+    #[test]
+    fn theorem_with_attr_prefix() {
+        let src = "@[simp]\ntheorem t (n : Nat) : n = n := rfl";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert!(matches!(decls[0].kind, DeclKind::Theorem { .. }));
+    }
+
+    #[test]
+    fn axiom_with_attr_prefix() {
+        let src = "@[extern]\naxiom foo : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert!(matches!(decls[0].kind, DeclKind::Axiom { .. }));
+    }
+
+    #[test]
+    fn multi_decl_mixed_kinds() {
+        let src = "def f : Nat := 1\n\
+                   theorem t : True := True.intro\n\
+                   axiom a : Nat\n";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 3);
+        assert!(matches!(decls[0].kind, DeclKind::Definition { .. }));
+        assert!(matches!(decls[1].kind, DeclKind::Theorem { .. }));
+        assert!(matches!(decls[2].kind, DeclKind::Axiom { .. }));
     }
 
     // ─── string interpolation (OX6 step 9) ─────────────────
