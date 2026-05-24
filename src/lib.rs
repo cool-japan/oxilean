@@ -54,11 +54,16 @@
 //! Attribute lists with arguments parse natively (args
 //! preserved as raw text per-attribute).
 //!
-//! Out of scope until subsequent OX6 commits:
-//! `let`, `do` notation, string interpolation `s!"…"`,
-//! `theorem` / `lemma` / `axiom` / `instance` / `class` /
-//! `namespace` / `open` / `import` / `variable` / `mutual`
-//! decls.
+//! Decls: `def`, `structure`, `inductive`, `theorem` /
+//! `lemma`, `axiom`, `instance`, `class`, `namespace`,
+//! `section`, `mutual` parse. Still pending for v1.0 RC
+//! (see ROADMAP OX6 sub-steps 10d–13): `open` / `import`
+//! / `variable`, surface-coverage gaps (block comments,
+//! anonymous ctor `⟨…⟩`, modifier prefixes, let-in, by
+//! tactics, multi-line do statements, list literal,
+//! universe annotation, `@` explicit args, …), DSL /
+//! macro / debug-command decls, oxilean-parse cross-check,
+//! and the leo4-oxilean-build switchover.
 
 use leo4_abi::LeanError;
 
@@ -151,6 +156,15 @@ pub enum DeclKind {
     /// declarations.
     Namespace {
         name: String,
+        decls: Vec<Decl>,
+    },
+    /// `section [NAME] … end [NAME]` — section block. The
+    /// name is optional (Lean 4 allows anonymous sections).
+    /// Unlike `namespace`, `section` doesn't add a name
+    /// prefix to inner decls — it just scopes `variable`
+    /// declarations + opens.
+    Section {
+        name: Option<String>,
         decls: Vec<Decl>,
     },
     /// `open Foo Bar Baz` — opens identifiers into the
@@ -519,6 +533,9 @@ mod grammar {
                 / d:class_decl() { d }
                 / d:inductive_decl() { d }
                 / d:instance_decl() { d }
+                / d:namespace_decl() { d }
+                / d:section_decl() { d }
+                / d:mutual_decl() { d }
 
             // `theorem NAME [binders]+ : TYPE := PROOF` or
             // `lemma NAME [binders]+ : TYPE := PROOF` — same
@@ -577,6 +594,47 @@ mod grammar {
 
             rule instance_term() -> InstanceBody =
                 ":=" _ e:expr() { InstanceBody::Term(e) }
+
+            // ─── namespace / section / mutual ───────────────
+            //
+            // `namespace NAME … end [NAME]` — scoped block.
+            // The trailing `end NAME` matches the opener;
+            // the parser doesn't enforce name agreement
+            // (that's an elab-level check).
+            rule namespace_decl() -> Decl =
+                "namespace" word_boundary() _ name:ident_raw() _
+                decls:(d:decl() _ { d })*
+                "end" word_boundary() (_ ident_raw())?
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Namespace {
+                        name, decls,
+                    }}
+                }
+
+            // `section [NAME] … end [NAME]` — name optional.
+            rule section_decl() -> Decl =
+                "section" word_boundary()
+                name:(_ n:ident_raw() { n })?
+                _ decls:(d:decl() _ { d })*
+                "end" word_boundary() (_ ident_raw())?
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Section {
+                        name, decls,
+                    }}
+                }
+
+            // `mutual … end` — block of mutually-recursive
+            // decls. The terminator is bare `end`; the name
+            // is forbidden (mutual blocks aren't named).
+            rule mutual_decl() -> Decl =
+                "mutual" word_boundary()
+                _ decls:(d:decl() _ { d })*
+                "end" word_boundary()
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Mutual {
+                        decls,
+                    }}
+                }
 
             // ─── class ───────────────────────────────────────
             //
@@ -2013,6 +2071,135 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── namespace / section / mutual (OX6 step 10c) ──────
+
+    #[test]
+    fn namespace_with_inner_decls() {
+        let src = "namespace Foo\n\
+                   def x : Nat := 1\n\
+                   def y : Nat := 2\n\
+                   end Foo";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 1);
+        let DeclKind::Namespace { name, decls: inner } = &decls[0].kind
+            else { panic!("expected Namespace") };
+        assert_eq!(name, "Foo");
+        assert_eq!(inner.len(), 2);
+        assert!(matches!(inner[0].kind, DeclKind::Definition { .. }));
+        assert!(matches!(inner[1].kind, DeclKind::Definition { .. }));
+    }
+
+    #[test]
+    fn namespace_end_without_name() {
+        let src = "namespace Bar\n\
+                   def x : Nat := 1\n\
+                   end";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Namespace { name, decls: inner } = &decls[0].kind
+            else { panic!("expected Namespace") };
+        assert_eq!(name, "Bar");
+        assert_eq!(inner.len(), 1);
+    }
+
+    #[test]
+    fn namespace_dotted_name() {
+        // `namespace Foo.Bar` — qualified namespace.
+        let src = "namespace Foo.Bar\n\
+                   def x : Nat := 1\n\
+                   end Foo.Bar";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Namespace { name, .. } = &decls[0].kind
+            else { panic!("expected Namespace") };
+        assert_eq!(name, "Foo.Bar");
+    }
+
+    #[test]
+    fn section_anonymous() {
+        let src = "section\n\
+                   def helper : Nat := 0\n\
+                   end";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Section { name, decls: inner } = &decls[0].kind
+            else { panic!("expected Section") };
+        assert!(name.is_none());
+        assert_eq!(inner.len(), 1);
+    }
+
+    #[test]
+    fn section_named() {
+        let src = "section MySection\n\
+                   def helper : Nat := 0\n\
+                   end MySection";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Section { name, .. } = &decls[0].kind
+            else { panic!("expected Section") };
+        assert_eq!(name.as_deref(), Some("MySection"));
+    }
+
+    #[test]
+    fn mutual_two_decls() {
+        let src = "mutual\n\
+                   def f : Nat := 1\n\
+                   def g : Nat := 2\n\
+                   end";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Mutual { decls: inner } = &decls[0].kind
+            else { panic!("expected Mutual") };
+        assert_eq!(inner.len(), 2);
+    }
+
+    #[test]
+    fn nested_namespaces() {
+        let src = "namespace Outer\n\
+                   namespace Inner\n\
+                   def x : Nat := 1\n\
+                   end Inner\n\
+                   end Outer";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Namespace { name, decls: outer_decls } = &decls[0].kind
+            else { panic!("expected outer Namespace") };
+        assert_eq!(name, "Outer");
+        assert_eq!(outer_decls.len(), 1);
+        assert!(matches!(outer_decls[0].kind, DeclKind::Namespace { .. }));
+    }
+
+    #[test]
+    fn namespace_contains_structure_and_inductive() {
+        let src = "namespace M\n\
+                   structure P where\n  x : Nat\n\
+                   inductive Col where\n  | r\n  | b\n\
+                   end M";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Namespace { decls: inner, .. } = &decls[0].kind
+            else { panic!("expected Namespace") };
+        assert_eq!(inner.len(), 2);
+        assert!(matches!(inner[0].kind, DeclKind::Structure { .. }));
+        assert!(matches!(inner[1].kind, DeclKind::Inductive { .. }));
+    }
+
+    #[test]
+    fn mutual_with_attr_prefix() {
+        // Attribute prefix applies to the `mutual` block as
+        // a whole (or to its inner decls — Lean 4 spec is
+        // contextual; we attach to the mutual block).
+        let src = "@[macro_inline]\nmutual\n\
+                   def f : Nat := 1\n\
+                   end";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert!(matches!(decls[0].kind, DeclKind::Mutual { .. }));
+    }
+
+    #[test]
+    fn empty_namespace() {
+        let src = "namespace Empty\nend Empty";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Namespace { name, decls: inner } = &decls[0].kind
+            else { panic!("expected Namespace") };
+        assert_eq!(name, "Empty");
+        assert!(inner.is_empty());
     }
 
     // ─── instance / class (OX6 step 10b) ───────────────────
