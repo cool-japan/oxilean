@@ -305,6 +305,17 @@ pub enum Expr {
     },
     /// `match SCRUTINEE with | pat => body | ...`.
     Match(Box<Expr>, Vec<MatchArm>),
+    /// `match BINDING : SCRUTINEE with | pat => body | ...` —
+    /// scrutinee binding form. Lean 4 makes `BINDING` a
+    /// proof-of-equality `BINDING : SCRUTINEE = pat`
+    /// available inside each arm's body. Sibling of `Match`;
+    /// kept as a separate variant so plain `Match` consumers
+    /// (which never touch the binding) need no migration.
+    MatchBind {
+        binding: String,
+        scrutinee: Box<Expr>,
+        arms: Vec<MatchArm>,
+    },
     /// `fun BINDERS => BODY` / `λ BINDERS => BODY` /
     /// `fun BINDERS -> BODY` (`->` body-arrow accepted as a
     /// synonym for `=>` for OX3 normalisation compatibility).
@@ -1758,8 +1769,31 @@ mod grammar {
                 }
 
             // ─── match … with | … ───────────────────────────
+            //
+            // Two surface forms:
+            //
+            // 1. `match SCRUT with | …` — plain match.
+            // 2. `match BINDING : SCRUT with | …` —
+            //    scrutinee-binding form (Lean 4 makes the
+            //    binding's `eq` proof available in each arm).
+            //
+            // The bind-form is tried first; the
+            // `BINDING ":" !"="` lookahead distinguishes
+            // `match h : e with …` from `match e with …`
+            // (the scrutinee `e` might syntactically allow a
+            // bare `:` only inside parens, never at the top
+            // of a `match` head).
             rule match_expr() -> Expr =
-                "match" _ scrut:expr() _ "with" _ arms:match_arms() {
+                "match" _ binding:ident() _ ":" !"=" _
+                    scrut:expr() _ "with" _ arms:match_arms()
+                {
+                    Expr::MatchBind {
+                        binding,
+                        scrutinee: Box::new(scrut),
+                        arms,
+                    }
+                }
+                / "match" _ scrut:expr() _ "with" _ arms:match_arms() {
                     Expr::Match(Box::new(scrut), arms)
                 }
 
@@ -2882,6 +2916,43 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── match scrutinee binding (OX6 step 11n) ────────────
+
+    #[test]
+    fn match_bind_simple() {
+        let e = parse_value_expr("match h : opt with | some x => x | none => 0");
+        match e {
+            Expr::MatchBind { binding, scrutinee, arms } => {
+                assert_eq!(binding, "h");
+                assert!(matches!(*scrutinee, Expr::Ident(ref s) if s == "opt"));
+                assert_eq!(arms.len(), 2);
+            }
+            other => panic!("expected MatchBind, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plain_match_still_works() {
+        let e = parse_value_expr("match opt with | some x => x | none => 0");
+        assert!(matches!(e, Expr::Match(_, _)));
+    }
+
+    #[test]
+    fn match_bind_with_dot_ctor_arm() {
+        let e = parse_value_expr(
+            "match h : r with | .ok v => v | .err _ => fallback"
+        );
+        match e {
+            Expr::MatchBind { binding, arms, .. } => {
+                assert_eq!(binding, "h");
+                assert_eq!(arms.len(), 2);
+                assert!(matches!(arms[0].pattern, Pattern::DotCtor(ref s, _) if s == "ok"));
+                assert!(matches!(arms[1].pattern, Pattern::DotCtor(ref s, _) if s == "err"));
+            }
+            other => panic!("expected MatchBind, got {other:?}"),
+        }
     }
 
     // ─── if-let (OX6 step 11m) ─────────────────────────────
