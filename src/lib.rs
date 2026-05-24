@@ -35,6 +35,10 @@
 //!     dot-ctor, paren, tuple).
 //!   - `fun BINDERS => body` / `λ BINDERS => body` /
 //!     `fun BINDERS -> body`.
+//!   - Quantifiers: `forall x, body` / `∀ x, body`
+//!     (universal); `exists x, body` / `∃ x, body`
+//!     (existential). Binders share lambda's `LamBinder`
+//!     shape (untyped names or typed groups).
 //!   - `do <stmts>` — monadic sequencing with `let x ← e`
 //!     (bind), `let x := e` (pure let), `return e` /
 //!     `pure e`, and bare expression statements.
@@ -242,6 +246,15 @@ pub enum Expr {
     /// `fun BINDERS -> BODY` (`->` body-arrow accepted as a
     /// synonym for `=>` for OX3 normalisation compatibility).
     Lam(Vec<LamBinder>, Box<Expr>),
+    /// `forall BINDERS, BODY` / `∀ BINDERS, BODY` —
+    /// dependent function (Π) type. Binders share lambda's
+    /// `LamBinder` shape (untyped names or typed groups);
+    /// the body is the codomain type.
+    Forall(Vec<LamBinder>, Box<Expr>),
+    /// `exists BINDERS, BODY` / `∃ BINDERS, BODY` —
+    /// existential quantifier (Σ-shaped at the prop level).
+    /// Same binder grammar as `Forall`.
+    Exists(Vec<LamBinder>, Box<Expr>),
     /// `do <stmts>` — monadic sequencing block.
     Do(Vec<DoStmt>),
     /// Lean 4 string interpolation: `s!"hello {name}!"`.
@@ -462,7 +475,8 @@ mod grammar {
                  / "structure" / "class" / "instance" / "namespace"
                  / "section" / "end" / "open" / "import" / "variable"
                  / "where" / "with" / "match" / "fun" / "let"
-                 / "if" / "then" / "else" / "do")
+                 / "if" / "then" / "else" / "do"
+                 / "forall" / "exists")
                 ![ 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '\'' ]
             }
 
@@ -824,6 +838,8 @@ mod grammar {
                 if_expr()
                 / match_expr()
                 / lam_expr()
+                / forall_expr()
+                / exists_expr()
                 / do_expr()
                 / interp_str_lit()
                 / paren_atom()
@@ -960,6 +976,28 @@ mod grammar {
                     let e = parse_expr_text(text.trim())
                         .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
                     DoStmt::Expr(e)
+                }
+
+            // ─── quantifiers (`forall` / `∀` / `exists` / `∃`) ──
+            //
+            // Lean 4 dependent quantifiers. Binders share
+            // lambda's `LamBinder` shape (untyped names or
+            // typed groups in `()` / `{}` / `[]` brackets).
+            // The body is separated by `,` (not `=>` /
+            // `->`); the body expression takes the
+            // full-precedence parser.
+            rule forall_expr() -> Expr =
+                ("forall" word_boundary() / "∀") _
+                binders:lam_binders() _ "," _ body:expr()
+                {
+                    Expr::Forall(binders, Box::new(body))
+                }
+
+            rule exists_expr() -> Expr =
+                ("exists" word_boundary() / "∃") _
+                binders:lam_binders() _ "," _ body:expr()
+                {
+                    Expr::Exists(binders, Box::new(body))
                 }
 
             // ─── lambda (`fun` / `λ`) ───────────────────────
@@ -1913,6 +1951,122 @@ mod tests {
         assert!(fields.is_empty());
     }
 
+    // ─── quantifiers (OX6 step 9.5) ────────────────────────
+
+    #[test]
+    fn forall_untyped_binder() {
+        let e = parse_value_expr("forall x, P x");
+        match e {
+            Expr::Forall(binders, body) => {
+                assert_eq!(binders.len(), 1);
+                assert_eq!(binders[0], LamBinder::Untyped("x".into()));
+                assert!(matches!(*body, Expr::App(_, _)));
+            }
+            other => panic!("expected Forall, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn forall_unicode_symbol() {
+        let e = parse_value_expr("∀ x, P x");
+        assert!(matches!(e, Expr::Forall(_, _)));
+    }
+
+    #[test]
+    fn forall_typed_binder() {
+        let e = parse_value_expr("forall (n : Nat), P n");
+        match e {
+            Expr::Forall(binders, _) => {
+                assert_eq!(binders.len(), 1);
+                match &binders[0] {
+                    LamBinder::Typed { kind, names, ty } => {
+                        assert_eq!(*kind, BinderKind::Explicit);
+                        assert_eq!(names, &vec!["n".to_string()]);
+                        assert_eq!(*ty, Expr::Ident("Nat".into()));
+                    }
+                    LamBinder::Untyped(s) => panic!("expected Typed, got Untyped({s})"),
+                }
+            }
+            other => panic!("expected Forall, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn forall_multi_binder() {
+        let e = parse_value_expr("forall x y z, P x y z");
+        match e {
+            Expr::Forall(binders, _) => assert_eq!(binders.len(), 3),
+            other => panic!("expected Forall, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn forall_implicit_binder() {
+        let e = parse_value_expr("forall {T : Type}, T -> T");
+        match e {
+            Expr::Forall(binders, body) => {
+                assert_eq!(binders.len(), 1);
+                assert!(matches!(
+                    &binders[0],
+                    LamBinder::Typed { kind: BinderKind::Implicit, .. }
+                ));
+                // Body is `T -> T` arrow type.
+                assert!(matches!(*body, Expr::BinOp(ref o, _, _) if o == "->"));
+            }
+            other => panic!("expected Forall, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn exists_untyped_binder() {
+        let e = parse_value_expr("exists x, P x");
+        match e {
+            Expr::Exists(binders, _) => {
+                assert_eq!(binders.len(), 1);
+                assert_eq!(binders[0], LamBinder::Untyped("x".into()));
+            }
+            other => panic!("expected Exists, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn exists_unicode_symbol() {
+        let e = parse_value_expr("∃ x, P x");
+        assert!(matches!(e, Expr::Exists(_, _)));
+    }
+
+    #[test]
+    fn exists_typed_binder() {
+        let e = parse_value_expr("exists (n : Nat), n > 0");
+        match e {
+            Expr::Exists(_, body) => {
+                assert!(matches!(*body, Expr::BinOp(ref o, _, _) if o == ">"));
+            }
+            other => panic!("expected Exists, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn theorem_with_forall_in_signature() {
+        let src = "theorem id_eq : forall x, x = x := fun x => rfl";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { ty, proof, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        assert!(matches!(ty, Expr::Forall(_, _)));
+        assert!(matches!(proof, Expr::Lam(_, _)));
+    }
+
+    #[test]
+    fn nested_quantifiers() {
+        let e = parse_value_expr("forall x, exists y, x = y");
+        match e {
+            Expr::Forall(_, body) => {
+                assert!(matches!(*body, Expr::Exists(_, _)));
+            }
+            other => panic!("expected Forall, got {other:?}"),
+        }
+    }
+
     // ─── theorem / lemma / axiom (OX6 step 10a) ────────────
 
     #[test]
@@ -1947,13 +2101,12 @@ mod tests {
 
     #[test]
     fn axiom_simple() {
-        // Simple type — `forall` / `∀` quantifier syntax is
-        // a separate future step (binder-style expr form).
-        let src = "axiom em : Nat";
+        let src = "axiom em : forall p, p";
         let decls = parse_decls(src).expect("must parse");
-        let DeclKind::Axiom { name, .. } = &decls[0].kind
+        let DeclKind::Axiom { name, ty, .. } = &decls[0].kind
             else { panic!("expected Axiom") };
         assert_eq!(name, "em");
+        assert!(matches!(ty, Expr::Forall(_, _)));
     }
 
     #[test]
