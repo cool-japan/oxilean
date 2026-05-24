@@ -876,6 +876,7 @@ mod grammar {
                 / d:omit_decl() { d }
                 / d:include_decl() { d }
                 / d:fixity_decl() { d }
+                / d:dsl_multiline_decl() { d }
                 / d:hash_command_decl() { d }
 
             // `example [binders]+ : TYPE := PROOF` —
@@ -1105,6 +1106,58 @@ mod grammar {
                 / "infix"  word_boundary() { DslKind::Infix }
                 / "prefix" word_boundary() { DslKind::Prefix }
                 / "postfix" word_boundary() { DslKind::Postfix }
+
+            // Multi-line DSL decls: `notation` /
+            // `macro_rules` / `syntax` / `elab`. Body is
+            // captured raw across newlines until the next
+            // top-level decl boundary fires (a known decl
+            // keyword at a fresh line, EOF, or a `#`/`@[`
+            // marker). The body grammar of each kind
+            // diverges from the term-level expr grammar
+            // (these decls extend Lean's parser itself), so
+            // raw capture is the appropriate v1-RC fidelity
+            // bar — downstream consumers needing inner
+            // structure implement per-kind handlers.
+            rule dsl_multiline_decl() -> Decl =
+                kind:dsl_multiline_kind()
+                raw_text:$((!dsl_body_boundary() [_])*)
+                {
+                    Decl {
+                        attrs: vec![],
+                        univ_params: vec![],
+                        modifiers: vec![],
+                        doc: None,
+                        kind: DeclKind::Dsl {
+                            kind,
+                            raw: raw_text.trim().to_string(),
+                        },
+                    }
+                }
+
+            rule dsl_multiline_kind() -> DslKind =
+                "macro_rules" word_boundary() { DslKind::MacroRules }
+                / "notation"  word_boundary() { DslKind::Notation }
+                / "syntax"    word_boundary() { DslKind::Syntax }
+                / "elab"      word_boundary() { DslKind::Elab }
+
+            // Fires at the start of the next top-level
+            // construct so multi-line DSL body capture
+            // terminates cleanly. Includes the DSL keywords
+            // themselves so two adjacent `notation` /
+            // `macro_rules` etc. blocks land as separate
+            // decls.
+            rule dsl_body_boundary() =
+                "\n" _h() (dsl_next_decl_starter() / "@[" / "#")
+                / ![_]
+
+            rule dsl_next_decl_starter() =
+                ("def" / "theorem" / "lemma" / "axiom" / "inductive"
+                 / "structure" / "class" / "instance" / "namespace"
+                 / "section" / "end" / "open" / "import" / "variable"
+                 / "abbrev" / "example" / "mutual" / "omit" / "include"
+                 / "macro_rules" / "notation" / "syntax" / "elab"
+                 / "infixl" / "infixr" / "infix" / "prefix" / "postfix")
+                word_boundary()
 
             // `#check expr` / `#eval expr` / `#print name` /
             // `#guard expr` / `#guard_msgs (cfg) in cmd` —
@@ -3149,6 +3202,78 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── multi-line DSL decls (OX6 step 11s-b) ─────────────
+
+    #[test]
+    fn dsl_notation_single_line() {
+        let src = r#"notation:65 a " ⊕ " b => Sum.inl a b"#;
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, raw } => {
+                assert_eq!(*kind, DslKind::Notation);
+                assert!(raw.contains("Sum.inl"));
+            }
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dsl_macro_rules_multi_line() {
+        let src = "macro_rules\n  | `(foo $x) => `(bar $x)\n  | `(baz)   => `(qux)\ndef next : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, raw } => {
+                assert_eq!(*kind, DslKind::MacroRules);
+                assert!(raw.contains("foo"));
+                assert!(raw.contains("bar"));
+                assert!(raw.contains("baz"));
+            }
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+        assert!(matches!(decls[1].kind, DeclKind::Definition { .. }));
+    }
+
+    #[test]
+    fn dsl_syntax_decl() {
+        let src = "syntax \"myop\" term : term";
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, .. } => assert_eq!(*kind, DslKind::Syntax),
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dsl_elab_decl() {
+        let src = "elab \"reverseList\" : term => do return mkConst `List.reverse";
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, .. } => assert_eq!(*kind, DslKind::Elab),
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dsl_two_notation_back_to_back() {
+        // Boundary detection must split adjacent DSL decls.
+        let src = "notation a \" ⊕ \" b => Sum.inl a b\nnotation a \" ⊗ \" b => Pair.mk a b";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        for d in &decls {
+            assert!(matches!(d.kind, DeclKind::Dsl { kind: DslKind::Notation, .. }));
+        }
+    }
+
+    #[test]
+    fn dsl_notation_then_def() {
+        let src = "notation \"⊥\" => False\ndef x : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        assert!(matches!(decls[0].kind, DeclKind::Dsl { kind: DslKind::Notation, .. }));
+        assert!(matches!(decls[1].kind, DeclKind::Definition { .. }));
     }
 
     // ─── fixity decls (OX6 step 11s-a) ─────────────────────
