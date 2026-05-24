@@ -235,6 +235,16 @@ pub enum DeclKind {
     /// expressions are preserved as text — round-trip via
     /// the same expr parser is the consumer's job).
     HashCommand { cmd: String, raw_args: String },
+    /// Lean 4 DSL / metaprogramming declarations:
+    /// `notation`, `macro_rules`, `syntax`, `elab`,
+    /// `infix`/`infixl`/`infixr`/`prefix`/`postfix`. The
+    /// header + body are captured raw — these decls
+    /// extend Lean's parser itself, so their bodies are
+    /// written in a syntax that diverges from the term-
+    /// level grammar (sub-parsing is out of scope for v1
+    /// RC; consumers that need to understand the DSL body
+    /// implement their own per-kind handler).
+    Dsl { kind: DslKind, raw: String },
     /// `omit ident+` — locally drops one or more
     /// section-level `variable` bindings from the current
     /// scope. Only meaningful inside a `section` block.
@@ -242,6 +252,30 @@ pub enum DeclKind {
     /// `include ident+` — re-introduces previously
     /// `omit`-ed (or otherwise unused) section variables.
     Include { items: Vec<String> },
+}
+
+/// Kind tag for `DeclKind::Dsl` — which Lean 4 DSL /
+/// metaprogramming keyword introduced the decl.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DslKind {
+    /// `notation … => …` — declarative parser extension.
+    Notation,
+    /// `macro_rules | … => …` — syntactic macro rules.
+    MacroRules,
+    /// `syntax … : …` — register a new syntax production.
+    Syntax,
+    /// `elab … => …` — elaborator callback hook.
+    Elab,
+    /// `infix:NN " op " => target`.
+    Infix,
+    /// `infixl:NN " op " => target` — left-assoc.
+    Infixl,
+    /// `infixr:NN " op " => target` — right-assoc.
+    Infixr,
+    /// `prefix:NN " op " => target`.
+    Prefix,
+    /// `postfix:NN " op " => target`.
+    Postfix,
 }
 
 /// Body of an `instance` decl — either a `where`-block of
@@ -549,8 +583,8 @@ pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
 
 mod grammar {
     use super::{
-        Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, DoStmt, Expr,
-        InstanceBody, InterpPart, LamBinder, Literal, MatchArm, Pattern,
+        Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, DoStmt, DslKind,
+        Expr, InstanceBody, InterpPart, LamBinder, Literal, MatchArm, Pattern,
         StructField,
     };
 
@@ -841,6 +875,7 @@ mod grammar {
                 / d:variable_decl() { d }
                 / d:omit_decl() { d }
                 / d:include_decl() { d }
+                / d:fixity_decl() { d }
                 / d:hash_command_decl() { d }
 
             // `example [binders]+ : TYPE := PROOF` —
@@ -1037,6 +1072,39 @@ mod grammar {
                     Decl { attrs: vec![], univ_params: vec![], modifiers: vec![],
                         doc: None, kind: DeclKind::Include { items } }
                 }
+
+            // Fixity decls (`infix:NN " op " => target`,
+            // and the `infixl` / `infixr` / `prefix` /
+            // `postfix` variants). Header + body captured
+            // raw to end of line — fixity decls are
+            // single-line in idiomatic Lean 4. The
+            // word_boundary inside each alternative
+            // disambiguates `infixly` (would fail to find
+            // word_boundary after `infixl`) without
+            // tripping on `infixr`/`infixl` prefix overlap
+            // with `infix`.
+            rule fixity_decl() -> Decl =
+                kind:fixity_kind()
+                raw_text:$((!"\n" [_])*)
+                {
+                    Decl {
+                        attrs: vec![],
+                        univ_params: vec![],
+                        modifiers: vec![],
+                        doc: None,
+                        kind: DeclKind::Dsl {
+                            kind,
+                            raw: raw_text.trim().to_string(),
+                        },
+                    }
+                }
+
+            rule fixity_kind() -> DslKind =
+                "infixl" word_boundary() { DslKind::Infixl }
+                / "infixr" word_boundary() { DslKind::Infixr }
+                / "infix"  word_boundary() { DslKind::Infix }
+                / "prefix" word_boundary() { DslKind::Prefix }
+                / "postfix" word_boundary() { DslKind::Postfix }
 
             // `#check expr` / `#eval expr` / `#print name` /
             // `#guard expr` / `#guard_msgs (cfg) in cmd` —
@@ -3081,6 +3149,69 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── fixity decls (OX6 step 11s-a) ─────────────────────
+
+    #[test]
+    fn fixity_infixl() {
+        let src = r#"infixl:65 " + " => HAdd.hAdd"#;
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, raw } => {
+                assert_eq!(*kind, DslKind::Infixl);
+                assert!(raw.contains('+'));
+                assert!(raw.contains("HAdd.hAdd"));
+            }
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fixity_infixr() {
+        let src = r#"infixr:65 " :: " => List.cons"#;
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, .. } => assert_eq!(*kind, DslKind::Infixr),
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fixity_infix_disambiguates_from_infixl() {
+        // `infix:65 …` must NOT be parsed as `infixl` then
+        // backtrack — the word_boundary inside the kind
+        // alternative handles this.
+        let src = r#"infix:65 " == " => Eq"#;
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, .. } => assert_eq!(*kind, DslKind::Infix),
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fixity_prefix_postfix() {
+        let src = r#"prefix:100 " - " => Neg.neg
+postfix:max " !" => factorial"#;
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        match &decls[0].kind {
+            DeclKind::Dsl { kind, .. } => assert_eq!(*kind, DslKind::Prefix),
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+        match &decls[1].kind {
+            DeclKind::Dsl { kind, .. } => assert_eq!(*kind, DslKind::Postfix),
+            other => panic!("expected Dsl, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fixity_with_doc_prefix() {
+        let src = "/-- Addition. -/\ninfixl:65 \" + \" => HAdd.hAdd";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].doc.as_deref(), Some(" Addition. "));
+        assert!(matches!(decls[0].kind, DeclKind::Dsl { kind: DslKind::Infixl, .. }));
     }
 
     // ─── def pattern-matching form (OX6 step 11w) ──────────
