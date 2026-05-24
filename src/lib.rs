@@ -427,6 +427,18 @@ pub enum DoStmt {
     /// some Lean 4 monads but collapsed here for simplicity
     /// (elaborator can re-disambiguate from context).
     Return(Expr),
+    /// `for BINDING in ITER do BODY` — iteration over a
+    /// `ForIn`-conforming container. BODY is captured as
+    /// a single-line expression in v1 RC (multi-line body
+    /// is a follow-up — same layout-tracking challenge as
+    /// `do_expr_stmt`).
+    For { binding: String, iter: Expr, body: Expr },
+    /// `while COND do BODY` — pre-condition loop.
+    While { cond: Expr, body: Expr },
+    /// `until COND do BODY` — pre-condition negated-cond
+    /// loop. Less common than `while`; landed for surface
+    /// completeness.
+    Until { cond: Expr, body: Expr },
     /// Bare expression statement (its effect is sequenced).
     Expr(Expr),
 }
@@ -1577,7 +1589,10 @@ mod grammar {
                 top_level_decl_starter() / ![_]
 
             rule do_stmt() -> DoStmt =
-                do_let_bind()
+                do_for()
+                / do_while()
+                / do_until()
+                / do_let_bind()
                 / do_let_pure()
                 / do_return()
                 / do_expr_stmt()
@@ -1635,11 +1650,71 @@ mod grammar {
 
             // Boundary fires when a fresh line starts with
             // a keyword-prefix do-statement (`let` /
-            // `return` / `pure`) or when the broader
-            // do-block ends.
+            // `return` / `pure` / `for` / `while` /
+            // `until`) or when the broader do-block ends.
             rule do_keyword_stmt_boundary() =
-                "\n" _h() (("let" / "return" / "pure") word_boundary())
+                "\n" _h() (("let" / "return" / "pure"
+                          / "for" / "while" / "until")
+                    word_boundary())
                 / by_block_end()
+
+            // ─── do-loops (OX6 step 11r) ───────────────────
+            //
+            // `for BINDING in ITER do BODY` /
+            // `while COND do BODY` /
+            // `until COND do BODY`. The iter / cond head is
+            // captured raw up to the matching `do` keyword
+            // (`do` at a word boundary, not as a substring
+            // of a longer ident like `double`), then sub-
+            // parsed. The body is single-line in v1 RC
+            // (multi-line follow-up — see `do_expr_stmt`'s
+            // single-line limitation note).
+            rule do_for() -> DoStmt =
+                "for" word_boundary() _h() binding:ident() _h()
+                "in" word_boundary() _h()
+                iter_text:$((!do_keyword_in_head() [_])+)
+                "do" word_boundary() _h()
+                body_text:$((!"\n" [_])+)
+                {
+                    let iter = parse_expr_text(iter_text.trim())
+                        .unwrap_or_else(|| Expr::Raw(iter_text.trim().to_string()));
+                    let body = parse_expr_text(body_text.trim())
+                        .unwrap_or_else(|| Expr::Raw(body_text.trim().to_string()));
+                    DoStmt::For { binding, iter, body }
+                }
+
+            rule do_while() -> DoStmt =
+                "while" word_boundary() _h()
+                cond_text:$((!do_keyword_in_head() [_])+)
+                "do" word_boundary() _h()
+                body_text:$((!"\n" [_])+)
+                {
+                    let cond = parse_expr_text(cond_text.trim())
+                        .unwrap_or_else(|| Expr::Raw(cond_text.trim().to_string()));
+                    let body = parse_expr_text(body_text.trim())
+                        .unwrap_or_else(|| Expr::Raw(body_text.trim().to_string()));
+                    DoStmt::While { cond, body }
+                }
+
+            rule do_until() -> DoStmt =
+                "until" word_boundary() _h()
+                cond_text:$((!do_keyword_in_head() [_])+)
+                "do" word_boundary() _h()
+                body_text:$((!"\n" [_])+)
+                {
+                    let cond = parse_expr_text(cond_text.trim())
+                        .unwrap_or_else(|| Expr::Raw(cond_text.trim().to_string()));
+                    let body = parse_expr_text(body_text.trim())
+                        .unwrap_or_else(|| Expr::Raw(body_text.trim().to_string()));
+                    DoStmt::Until { cond, body }
+                }
+
+            // Stop the raw-iter / raw-cond capture at the
+            // `do` keyword that introduces the loop body —
+            // word_boundary prevents matching `do` inside a
+            // longer ident.
+            rule do_keyword_in_head() =
+                "do" word_boundary()
 
             // ─── let-in expression `let x := e ; body` ──────
             //
@@ -2932,6 +3007,90 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── do-loops (OX6 step 11r) ───────────────────────────
+
+    #[test]
+    fn do_for_in_simple() {
+        let src = "def main : IO Unit := do\n  for x in xs do print x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        let Expr::Do(stmts) = value else { panic!("expected Do") };
+        match &stmts[0] {
+            DoStmt::For { binding, iter, body } => {
+                assert_eq!(binding, "x");
+                assert!(matches!(iter, Expr::Ident(s) if s == "xs"));
+                assert!(matches!(body, Expr::App(_, _)));
+            }
+            other => panic!("expected For, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_while_simple() {
+        let src = "def main : IO Unit := do\n  while keepGoing do step";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        let Expr::Do(stmts) = value else { panic!("expected Do") };
+        match &stmts[0] {
+            DoStmt::While { cond, body } => {
+                assert!(matches!(cond, Expr::Ident(s) if s == "keepGoing"));
+                assert!(matches!(body, Expr::Ident(s) if s == "step"));
+            }
+            other => panic!("expected While, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_until_simple() {
+        let src = "def main : IO Unit := do\n  until done do work";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        let Expr::Do(stmts) = value else { panic!("expected Do") };
+        match &stmts[0] {
+            DoStmt::Until { cond, body } => {
+                assert!(matches!(cond, Expr::Ident(s) if s == "done"));
+                assert!(matches!(body, Expr::Ident(s) if s == "work"));
+            }
+            other => panic!("expected Until, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_for_then_let() {
+        // `for` followed by `let` — boundary must fire so
+        // the `let` lands as its own DoStmt.
+        let src = "def main : IO Unit := do\n  \
+                   for x in xs do print x\n  \
+                   let n := 1\n  \
+                   return n";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        let Expr::Do(stmts) = value else { panic!("expected Do") };
+        assert_eq!(stmts.len(), 3);
+        assert!(matches!(stmts[0], DoStmt::For { .. }));
+        assert!(matches!(stmts[1], DoStmt::Let { .. }));
+        assert!(matches!(stmts[2], DoStmt::Return(_)));
+    }
+
+    #[test]
+    fn do_for_with_complex_iter() {
+        let src = "def main : IO Unit := do\n  for x in List.range 10 do print x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        let Expr::Do(stmts) = value else { panic!("expected Do") };
+        match &stmts[0] {
+            DoStmt::For { iter, .. } => {
+                assert!(matches!(iter, Expr::App(_, _)));
+            }
+            other => panic!("expected For, got {other:?}"),
+        }
     }
 
     // ─── pattern guards (OX6 step 11o) ─────────────────────
