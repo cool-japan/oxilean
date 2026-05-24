@@ -1201,16 +1201,19 @@ mod grammar {
                 // ─── comparisons (left-assoc) ───────────
                 lhs:(@) _ "==" _ rhs:@ { Expr::BinOp("==".into(), Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ "!=" _ rhs:@ { Expr::BinOp("!=".into(), Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "≠"  _ rhs:@ { Expr::BinOp("≠".into(),  Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ "<=" _ rhs:@ { Expr::BinOp("<=".into(), Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "≤"  _ rhs:@ { Expr::BinOp("≤".into(),  Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ ">=" _ rhs:@ { Expr::BinOp(">=".into(), Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "≥"  _ rhs:@ { Expr::BinOp("≥".into(),  Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ "<"  _ rhs:@ { Expr::BinOp("<".into(),  Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ ">"  _ rhs:@ { Expr::BinOp(">".into(),  Box::new(lhs), Box::new(rhs)) }
+                // Set / membership operators at comparison level.
+                lhs:(@) _ "∈"  _ rhs:@ { Expr::BinOp("∈".into(),  Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "∉"  _ rhs:@ { Expr::BinOp("∉".into(),  Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "⊆"  _ rhs:@ { Expr::BinOp("⊆".into(),  Box::new(lhs), Box::new(rhs)) }
                 // Lean 4's propositional equality `a = b` —
-                // single `=` (not `==` / not `:=`). The
-                // `!"="` lookahead excludes `==`; the
-                // following `_` rule eats whitespace so a
-                // bare `:=` later in the source can't be
-                // grabbed here.
+                // single `=` (not `==` / not `:=`).
                 lhs:(@) _ "=" !"=" _ rhs:@ { Expr::BinOp("=".into(),  Box::new(lhs), Box::new(rhs)) }
                 --
                 // ─── additive (left-assoc) ──────────────
@@ -1219,8 +1222,12 @@ mod grammar {
                 --
                 // ─── multiplicative (left-assoc) ────────
                 lhs:(@) _ "*" _ rhs:@ { Expr::BinOp("*".into(), Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "×" _ rhs:@ { Expr::BinOp("×".into(), Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ "/" _ rhs:@ { Expr::BinOp("/".into(), Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "÷" _ rhs:@ { Expr::BinOp("÷".into(), Box::new(lhs), Box::new(rhs)) }
                 lhs:(@) _ "%" _ rhs:@ { Expr::BinOp("%".into(), Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "∪" _ rhs:@ { Expr::BinOp("∪".into(), Box::new(lhs), Box::new(rhs)) }
+                lhs:(@) _ "∩" _ rhs:@ { Expr::BinOp("∩".into(), Box::new(lhs), Box::new(rhs)) }
                 --
                 // ─── power (right-assoc) ────────────────
                 lhs:@ _ "^" _ rhs:(@) {
@@ -2701,6 +2708,60 @@ world""""#);
         let DeclKind::Definition { value, .. } = &decls[0].kind
             else { panic!("expected Definition") };
         assert_eq!(*value, Expr::Lit(Literal::Nat(0xFF_00AA)));
+    }
+
+    // ─── Unicode operators (OX6 step 11q) ──────────────────
+
+    #[test]
+    fn unicode_op_le() {
+        let e = parse_value_expr("a ≤ b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "≤"));
+    }
+
+    #[test]
+    fn unicode_op_ge() {
+        let e = parse_value_expr("a ≥ b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "≥"));
+    }
+
+    #[test]
+    fn unicode_op_ne() {
+        let e = parse_value_expr("a ≠ b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "≠"));
+    }
+
+    #[test]
+    fn unicode_op_times() {
+        let e = parse_value_expr("a × b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "×"));
+    }
+
+    #[test]
+    fn unicode_op_div() {
+        let e = parse_value_expr("a ÷ b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "÷"));
+    }
+
+    #[test]
+    fn unicode_op_membership() {
+        let e = parse_value_expr("x ∈ s");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∈"));
+        let e = parse_value_expr("x ∉ s");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∉"));
+    }
+
+    #[test]
+    fn unicode_op_subset() {
+        let e = parse_value_expr("a ⊆ b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "⊆"));
+    }
+
+    #[test]
+    fn unicode_op_set_ops() {
+        let e = parse_value_expr("a ∪ b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
+        let e = parse_value_expr("a ∩ b");
+        assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
     }
 
     // ─── multi-line do statements (OX6 step 11f) ───────────
