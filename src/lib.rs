@@ -1388,9 +1388,25 @@ mod grammar {
                 / do_return()
                 / do_expr_stmt()
 
+            // ─── Multi-line value capture (OX6 step 11f) ───
+            //
+            // Keyword-prefix statements (`let` / `return` /
+            // `pure`) accept a multi-line value expression:
+            // the capture continues across newlines until
+            // either (a) the next keyword-prefix statement
+            // begins (`let` / `return` / `pure` at the start
+            // of a fresh line) or (b) the do-block boundary
+            // fires (top-level decl keyword / EOF).
+            //
+            // Bare expression statements stay single-line —
+            // detecting the boundary between two consecutive
+            // bare expressions on separate lines without
+            // column-level indent tracking is genuinely
+            // ambiguous in PEG; v0 takes the safe single-
+            // line interpretation.
             rule do_let_bind() -> DoStmt =
                 "let" word_boundary() _h() name:ident() _h() ("<-" / "←") _h()
-                text:$((!"\n" [_])+)
+                text:$((!do_keyword_stmt_boundary() [_])+)
                 {
                     let value = parse_expr_text(text.trim())
                         .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
@@ -1399,7 +1415,7 @@ mod grammar {
 
             rule do_let_pure() -> DoStmt =
                 "let" word_boundary() _h() name:ident() _h() ":=" _h()
-                text:$((!"\n" [_])+)
+                text:$((!do_keyword_stmt_boundary() [_])+)
                 {
                     let value = parse_expr_text(text.trim())
                         .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
@@ -1408,7 +1424,7 @@ mod grammar {
 
             rule do_return() -> DoStmt =
                 ("return" / "pure") word_boundary() _h()
-                text:$((!"\n" [_])+)
+                text:$((!do_keyword_stmt_boundary() [_])+)
                 {
                     let value = parse_expr_text(text.trim())
                         .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
@@ -1422,6 +1438,14 @@ mod grammar {
                         .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
                     DoStmt::Expr(e)
                 }
+
+            // Boundary fires when a fresh line starts with
+            // a keyword-prefix do-statement (`let` /
+            // `return` / `pure`) or when the broader
+            // do-block ends.
+            rule do_keyword_stmt_boundary() =
+                "\n" _h() (("let" / "return" / "pure") word_boundary())
+                / by_block_end()
 
             // ─── let-in expression `let x := e ; body` ──────
             //
@@ -2434,6 +2458,133 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── multi-line do statements (OX6 step 11f) ───────────
+
+    #[test]
+    fn do_let_pure_multi_line_if_value() {
+        // The `let x := if … then … else …` spans 3 lines;
+        // the boundary must wait for the next `let`-prefix
+        // statement.
+        let src = "def main : IO Nat := do\n  \
+                   let x := if cond then\n    \
+                       1\n    \
+                     else\n    \
+                       2\n  \
+                   return x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 2);
+                match &stmts[0] {
+                    DoStmt::Let { name, value } => {
+                        assert_eq!(name, "x");
+                        // Value is a fully-parsed if-expr (multi-line OK).
+                        assert!(matches!(value, Expr::If(_, _, _)));
+                    }
+                    other => panic!("expected Let, got {other:?}"),
+                }
+                assert!(matches!(stmts[1], DoStmt::Return(_)));
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_bind_multi_line_value() {
+        let src = "def main : IO Nat := do\n  \
+                   let x <- if cond then\n    \
+                       readFirst\n    \
+                     else\n    \
+                       readSecond\n  \
+                   return x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 2);
+                match &stmts[0] {
+                    DoStmt::Bind { value, .. } => {
+                        assert!(matches!(value, Expr::If(_, _, _)));
+                    }
+                    other => panic!("expected Bind, got {other:?}"),
+                }
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_return_multi_line_value() {
+        let src = "def main : IO Nat := do\n  \
+                   return if cond then\n    \
+                       1\n    \
+                     else\n    \
+                       2";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 1);
+                match &stmts[0] {
+                    DoStmt::Return(e) => assert!(matches!(e, Expr::If(_, _, _))),
+                    other => panic!("expected Return, got {other:?}"),
+                }
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_existing_single_line_still_works() {
+        // Regression guard — step 8's multi-stmt-mix test
+        // pattern (each stmt on its own line) must still
+        // parse correctly under the new boundary rule.
+        let src = "def main : IO Unit := do\n  \
+                   let x <- readLn\n  \
+                   let y := 1\n  \
+                   return (x, y)";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 3);
+                assert!(matches!(stmts[0], DoStmt::Bind { .. }));
+                assert!(matches!(stmts[1], DoStmt::Let { .. }));
+                assert!(matches!(stmts[2], DoStmt::Return(_)));
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn do_let_value_match_multi_line() {
+        let src = "def main : IO Nat := do\n  \
+                   let r := match scrut with\n    \
+                     | A => 1\n    \
+                     | B => 2\n  \
+                   return r";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        match value {
+            Expr::Do(stmts) => {
+                assert_eq!(stmts.len(), 2);
+                match &stmts[0] {
+                    DoStmt::Let { value, .. } => {
+                        assert!(matches!(value, Expr::Match(_, _)));
+                    }
+                    other => panic!("expected Let, got {other:?}"),
+                }
+            }
+            other => panic!("expected Do, got {other:?}"),
+        }
     }
 
     // ─── `by …` tactic block (OX6 step 11e) ────────────────
