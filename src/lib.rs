@@ -1,22 +1,27 @@
 //! leo4-lean4-parse — PEG-based Lean 4 parser. See `README.md`
 //! for the strict-superset rationale + roadmap.
 //!
-//! ## Public API surface (v0.2 — expression grammar)
+//! ## Public API surface (v0.5)
 //!
 //! - [`parse_decls`] — parse a top-level Lean 4 source string
 //!   into a vector of [`Decl`]s.
-//! - [`Decl`] / [`Expr`] / [`Literal`] / [`BinderGroup`] —
-//!   the AST types designed to mirror `oxilean-parse`'s
-//!   shapes for downstream interop.
+//! - [`Decl`] / [`Expr`] / [`Literal`] / [`BinderGroup`] /
+//!   [`LamBinder`] / [`Pattern`] / [`MatchArm`] /
+//!   [`StructField`] / [`Ctor`] — the AST types designed to
+//!   mirror `oxilean-parse`'s shapes for downstream interop.
 //!
-//! ## v0.2 grammar coverage
+//! ## v0.5 grammar coverage
 //!
-//! - `def NAME [binders]+ [: TYPE] := VALUE` form.
-//! - Binders: explicit `(...)`, implicit `{...}`, named-
-//!   instance `[name : T]`, anonymous-instance `[T]`.
+//! - Decls: `def`, `structure`, `inductive` (both Lean 4
+//!   `where`-form and OxiLean `: Type | …`-form), with
+//!   `deriving Foo, Bar` clauses + `extends Base1, Base2`.
+//! - Binders (def + lambda): explicit `(...)`, implicit
+//!   `{...}`, named-instance `[name : T]`, anonymous-instance
+//!   `[T]`. Lambdas also accept bare untyped names.
 //! - Expression grammar (used in TYPE + VALUE positions):
-//!   - Literals: numeric (`42`), string (`"hello"`).
-//!   - Identifiers: `add`, `Nat.succ`.
+//!   - Literals: numeric (`42`), string (`"hello"` with
+//!     `\\n \\t \\r \\\\ \\" \\0` escapes).
+//!   - Identifiers: `add`, `Nat.succ` (dotted forms).
 //!   - Function application (left-associative): `f x y`.
 //!   - Binary operators with precedence (low → high):
 //!     `->`/`→` (arrow, right-assoc), `||`, `&&`,
@@ -24,11 +29,23 @@
 //!     `^` (right-assoc).
 //!   - Unary: `-x`, `!x`, `¬x`.
 //!   - Parenthesised: `(expr)`.
+//!   - `if cond then t else e`.
+//!   - `match scrut with | pat => body | …` with full
+//!     pattern AST (wildcard, var, lit, ctor with args,
+//!     dot-ctor, paren, tuple).
+//!   - `fun BINDERS => body` / `λ BINDERS => body` /
+//!     `fun BINDERS -> body`.
+//!
+//! Structure/inductive field & ctor type annotations are
+//! captured as raw `String` text in this v0 (full expression
+//! re-parsing is a follow-up — requires layout-sensitive
+//! parsing or a separate inline-expr grammar).
 //!
 //! Out of scope until subsequent OX6 commits:
-//! `if-then-else`, `match` arms, lambda / `fun`, `let`,
-//! `do` notation, string interpolation `s!"…"`, attribute
-//! lists, `structure`/`inductive` decls.
+//! `let`, `do` notation, string interpolation `s!"…"`,
+//! attribute lists (with args), `theorem` / `lemma` /
+//! `axiom` / `instance` / `class` / `namespace` / `open`
+//! / `import` / `variable` / `mutual` decls.
 
 use leo4_abi::LeanError;
 
@@ -46,6 +63,48 @@ pub enum DeclKind {
         ty: Option<Expr>,
         value: Expr,
     },
+    /// `structure NAME [extends BASE, ...] where FIELDS [deriving ...]`
+    Structure {
+        name: String,
+        extends: Vec<String>,
+        fields: Vec<StructField>,
+        deriving: Vec<String>,
+    },
+    /// `inductive NAME [: TYPE] where | CTOR ... [deriving ...]`
+    /// (Lean 4 `where`-form; the older OxiLean
+    /// `inductive NAME : Type | ctor : T` form is **also**
+    /// supported — both feed into the same AST.)
+    Inductive {
+        name: String,
+        ty: Option<Expr>,
+        ctors: Vec<Ctor>,
+        deriving: Vec<String>,
+    },
+}
+
+/// One named field of a `structure`. The type is held as
+/// raw source text in this v0 — full expression re-parsing
+/// is a follow-up commit (it requires either layout-sensitive
+/// parsing or a separate inline-expr grammar).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructField {
+    pub name: String,
+    /// Raw type-annotation text, with leading/trailing
+    /// whitespace trimmed.
+    pub ty: String,
+}
+
+/// One constructor of an `inductive`. The optional `ty` is
+/// the explicit type annotation (Lean 4 allows omitting it
+/// for unit-arity ctors, in which case the elaborator
+/// supplies the inductive type itself); held as raw source
+/// text for the same v0 reason as `StructField`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ctor {
+    pub name: String,
+    /// Raw type-annotation text (after `:`), or `None` for
+    /// bare ctor lines like `| red`.
+    pub ty: Option<String>,
 }
 
 /// A group of binders sharing a common type annotation:
@@ -180,8 +239,8 @@ pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
 
 mod grammar {
     use super::{
-        BinderGroup, BinderKind, Decl, DeclKind, Expr, LamBinder, Literal,
-        MatchArm, Pattern,
+        BinderGroup, BinderKind, Ctor, Decl, DeclKind, Expr, LamBinder, Literal,
+        MatchArm, Pattern, StructField,
     };
 
     peg::parser! {
@@ -246,7 +305,10 @@ mod grammar {
             pub rule source() -> Vec<Decl> =
                 _ ds:(d:decl() _ { d })* ![_] { ds }
 
-            rule decl() -> Decl = d:definition() { d }
+            rule decl() -> Decl =
+                d:definition() { d }
+                / d:structure_decl() { d }
+                / d:inductive_decl() { d }
 
             rule definition() -> Decl =
                 "def" _ name:ident() _ binders:(b:binder_group() _ { b })*
@@ -257,6 +319,101 @@ mod grammar {
                         kind: DeclKind::Definition { name, binders, ty, value },
                     }
                 }
+
+            // ─── Structure ───────────────────────────────────
+            //
+            // `structure NAME [extends BASE, ...] where
+            //     field1 : T1
+            //     field2 : T2
+            //     ...
+            //     [deriving Foo, Bar]`
+            //
+            // Fields are one-per-line in v0; the type annotation
+            // is captured as raw source text (full expression
+            // re-parsing on the type side needs layout-aware
+            // grammar — a follow-up commit).
+            rule structure_decl() -> Decl =
+                "structure" _ name:ident()
+                extends:(_ e:struct_extends() { e })?
+                _ "where"
+                fields:(_ f:struct_field() { f })*
+                deriving:(_ d:deriving_clause() { d })?
+                {
+                    Decl { kind: DeclKind::Structure {
+                        name,
+                        extends: extends.unwrap_or_default(),
+                        fields,
+                        deriving: deriving.unwrap_or_default(),
+                    }}
+                }
+
+            rule struct_extends() -> Vec<String> =
+                "extends" _ first:ident_raw() rest:(_ "," _ n:ident_raw() { n })* {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+
+            rule struct_field() -> StructField =
+                name:ident() _h() ":" _h()
+                ty_text:$((!"\n" [_])+)
+                {
+                    StructField { name, ty: ty_text.trim().to_string() }
+                }
+
+            // ─── Inductive ───────────────────────────────────
+            //
+            // Two surface forms, both fed into the same AST:
+            //
+            //   1. `inductive NAME [: TYPE] where
+            //        | ctor1
+            //        | ctor2 : T -> NAME
+            //        ...
+            //        [deriving ...]`
+            //
+            //   2. `inductive NAME [: TYPE]
+            //        | ctor1 : NAME
+            //        | ctor2 : T -> NAME
+            //        ...
+            //        [deriving ...]`
+            //
+            // The `where` keyword is optional; ctor `:` is
+            // also optional (bare `| red` ⇒ elaborator
+            // supplies the inductive type as ctor type).
+            rule inductive_decl() -> Decl =
+                "inductive" _ name:ident()
+                ty:(_ ":" _ t:expr() { t })?
+                _ "where"?
+                ctors:(_ c:inductive_ctor() { c })*
+                deriving:(_ d:deriving_clause() { d })?
+                {
+                    Decl { kind: DeclKind::Inductive {
+                        name,
+                        ty,
+                        ctors,
+                        deriving: deriving.unwrap_or_default(),
+                    }}
+                }
+
+            rule inductive_ctor() -> Ctor =
+                arm_bar() _ name:ident()
+                ty:(_h() ":" _h() t:$((!"\n" [_])+) { t.trim().to_string() })?
+                {
+                    Ctor { name, ty }
+                }
+
+            // ─── Deriving ────────────────────────────────────
+            rule deriving_clause() -> Vec<String> =
+                "deriving" _ first:ident_raw() rest:(_ "," _ n:ident_raw() { n })* {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+
+            // Horizontal-only whitespace (no newline). Used in
+            // single-line field / ctor parsing so the line-end
+            // boundary is exact.
+            rule _h() = ([' ' | '\t'])*
 
             // ─── Binders ────────────────────────────────────
             rule binder_group() -> BinderGroup =
@@ -568,17 +725,15 @@ mod tests {
         let src = "def identity (n : Nat) : Nat := n";
         let decls = parse_decls(src).expect("must parse");
         assert_eq!(decls.len(), 1);
-        match &decls[0].kind {
-            DeclKind::Definition { name, binders, ty, value } => {
-                assert_eq!(name, "identity");
-                assert_eq!(binders.len(), 1);
-                assert_eq!(binders[0].kind, BinderKind::Explicit);
-                assert_eq!(binders[0].names, vec!["n".to_string()]);
-                assert_eq!(binders[0].ty, Expr::Ident("Nat".into()));
-                assert_eq!(ty.as_ref().unwrap(), &Expr::Ident("Nat".into()));
-                assert_eq!(value, &Expr::Ident("n".into()));
-            }
-        }
+        let DeclKind::Definition { name, binders, ty, value } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert_eq!(name, "identity");
+        assert_eq!(binders.len(), 1);
+        assert_eq!(binders[0].kind, BinderKind::Explicit);
+        assert_eq!(binders[0].names, vec!["n".to_string()]);
+        assert_eq!(binders[0].ty, Expr::Ident("Nat".into()));
+        assert_eq!(ty.as_ref().unwrap(), &Expr::Ident("Nat".into()));
+        assert_eq!(value, &Expr::Ident("n".into()));
     }
 
     #[test]
@@ -586,7 +741,7 @@ mod tests {
         let src = "def add (a b : UInt64) : UInt64 := a + b";
         let decls = parse_decls(src).expect("must parse");
         assert_eq!(decls.len(), 1);
-        let DeclKind::Definition { name, binders, value, .. } = &decls[0].kind;
+        let DeclKind::Definition { name, binders, value, .. } = &decls[0].kind else { panic!("expected Definition") };
         assert_eq!(name, "add");
         assert_eq!(binders.len(), 1);
         assert_eq!(binders[0].names, vec!["a".to_string(), "b".to_string()]);
@@ -606,7 +761,7 @@ mod tests {
         // No `if-then-else` yet — keep the body within v0.2.
         let src = "def maxScalar {T : Type} [Ord T] (a b : T) : T := a";
         let decls = parse_decls(src).expect("must parse");
-        let DeclKind::Definition { binders, .. } = &decls[0].kind;
+        let DeclKind::Definition { binders, .. } = &decls[0].kind else { panic!("expected Definition") };
         assert_eq!(binders.len(), 3);
         assert_eq!(binders[0].kind, BinderKind::Implicit);
         assert_eq!(binders[1].kind, BinderKind::Instance);
@@ -617,7 +772,7 @@ mod tests {
     fn def_with_no_type_annotation() {
         let src = "def hello := \"world\"";
         let decls = parse_decls(src).expect("must parse");
-        let DeclKind::Definition { ty, value, .. } = &decls[0].kind;
+        let DeclKind::Definition { ty, value, .. } = &decls[0].kind else { panic!("expected Definition") };
         assert!(ty.is_none());
         assert_eq!(value, &Expr::Lit(Literal::Str("world".into())));
     }
@@ -635,7 +790,7 @@ mod tests {
         // `List (Option Nat)` parses as App(List, Paren(App(Option, Nat))).
         let src = "def f (xs : List (Option Nat)) : Nat := 0";
         let decls = parse_decls(src).expect("must parse");
-        let DeclKind::Definition { binders, .. } = &decls[0].kind;
+        let DeclKind::Definition { binders, .. } = &decls[0].kind else { panic!("expected Definition") };
         // The ty is an App(List, Paren(App(Option, Nat))).
         match &binders[0].ty {
             Expr::App(f, x) => {
@@ -667,7 +822,7 @@ mod tests {
     fn parse_value_expr(value_src: &str) -> Expr {
         let src = format!("def __probe : Nat := {value_src}");
         let mut decls = parse_decls(&src).expect("probe must parse");
-        let DeclKind::Definition { value, .. } = decls.remove(0).kind;
+        let DeclKind::Definition { value, .. } = decls.remove(0).kind else { panic!("expected Definition") };
         value
     }
 
@@ -1045,7 +1200,7 @@ mod tests {
         let src = "def colorName (c : Color) : String := \
                    match c with | .red => \"red\" | .green => \"green\" | .blue => \"blue\"";
         let decls = parse_decls(src).expect("must parse");
-        let DeclKind::Definition { value, .. } = &decls[0].kind;
+        let DeclKind::Definition { value, .. } = &decls[0].kind else { panic!("expected Definition") };
         assert!(matches!(value, Expr::Match(_, _)));
     }
 
@@ -1054,7 +1209,7 @@ mod tests {
         let src = "def safeDiv (a b : UInt64) : Option UInt64 := \
                    if b == 0 then none else some (a / b)";
         let decls = parse_decls(src).expect("must parse");
-        let DeclKind::Definition { value, .. } = &decls[0].kind;
+        let DeclKind::Definition { value, .. } = &decls[0].kind else { panic!("expected Definition") };
         assert!(matches!(value, Expr::If(_, _, _)));
     }
 
@@ -1163,7 +1318,7 @@ mod tests {
     fn expr_lam_inside_def_value() {
         let src = "def addOne : Nat -> Nat := fun n => n + 1";
         let decls = parse_decls(src).expect("must parse");
-        let DeclKind::Definition { value, .. } = &decls[0].kind;
+        let DeclKind::Definition { value, .. } = &decls[0].kind else { panic!("expected Definition") };
         assert!(matches!(value, Expr::Lam(_, _)));
     }
 
@@ -1194,12 +1349,146 @@ mod tests {
         assert_eq!(decls.len(), 2);
     }
 
+    // ─── structure / inductive / deriving (OX6 step 5) ────
+
+    #[test]
+    fn structure_basic() {
+        let src = "structure Point where\n  x : Float\n  y : Float";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 1);
+        let DeclKind::Structure { name, extends, fields, deriving } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(name, "Point");
+        assert!(extends.is_empty());
+        assert!(deriving.is_empty());
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].name, "x");
+        assert_eq!(fields[0].ty, "Float");
+        assert_eq!(fields[1].name, "y");
+        assert_eq!(fields[1].ty, "Float");
+    }
+
+    #[test]
+    fn structure_with_deriving() {
+        let src = "structure Point where\n  x : Float\n  y : Float\n  deriving LeanMarshal, Repr";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { fields, deriving, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(fields.len(), 2);
+        assert_eq!(deriving, &vec!["LeanMarshal".to_string(), "Repr".to_string()]);
+    }
+
+    #[test]
+    fn structure_with_extends() {
+        let src = "structure Point3D extends Point where\n  z : Float";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { extends, fields, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(extends, &vec!["Point".to_string()]);
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].name, "z");
+    }
+
+    #[test]
+    fn structure_with_multi_extends() {
+        let src = "structure Color extends Foo, Bar where\n  hex : UInt32";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { extends, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(extends, &vec!["Foo".to_string(), "Bar".to_string()]);
+    }
+
+    #[test]
+    fn inductive_where_form_all_bare() {
+        // Lean 4 `inductive ... where | r | g | b` (no ctor
+        // type annotations).
+        let src = "inductive Color where\n  | red\n  | green\n  | blue";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Inductive { name, ctors, deriving, .. } = &decls[0].kind
+            else { panic!("expected Inductive") };
+        assert_eq!(name, "Color");
+        assert!(deriving.is_empty());
+        assert_eq!(ctors.len(), 3);
+        for (c, expected) in ctors.iter().zip(["red", "green", "blue"]) {
+            assert_eq!(c.name, expected);
+            assert!(c.ty.is_none(), "bare ctor must have ty = None");
+        }
+    }
+
+    #[test]
+    fn inductive_where_form_mixed_annotations() {
+        // Some ctors carry explicit types, others don't.
+        let src = "inductive Tree where\n  | leaf\n  | node : Tree -> Tree -> Tree";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Inductive { ctors, .. } = &decls[0].kind
+            else { panic!("expected Inductive") };
+        assert_eq!(ctors.len(), 2);
+        assert_eq!(ctors[0].name, "leaf");
+        assert!(ctors[0].ty.is_none());
+        assert_eq!(ctors[1].name, "node");
+        assert_eq!(ctors[1].ty.as_deref(), Some("Tree -> Tree -> Tree"));
+    }
+
+    #[test]
+    fn inductive_oxilean_form_explicit_type_annot() {
+        // Older OxiLean form: `inductive NAME : Type | …`.
+        let src = "inductive Color : Type\n  | red : Color\n  | green : Color\n  | blue : Color";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Inductive { ty, ctors, .. } = &decls[0].kind
+            else { panic!("expected Inductive") };
+        assert!(ty.is_some(), "explicit type annotation must surface");
+        assert_eq!(ctors.len(), 3);
+        for c in ctors {
+            assert_eq!(c.ty.as_deref(), Some("Color"));
+        }
+    }
+
+    #[test]
+    fn inductive_with_deriving() {
+        let src = "inductive Color where\n  | red\n  | green\n  deriving LeanMarshal";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Inductive { ctors, deriving, .. } = &decls[0].kind
+            else { panic!("expected Inductive") };
+        assert_eq!(ctors.len(), 2);
+        assert_eq!(deriving, &vec!["LeanMarshal".to_string()]);
+    }
+
+    #[test]
+    fn multi_decl_with_struct_and_def() {
+        let src = "structure Point where\n  x : Float\n  y : Float\n\
+                   \n\
+                   def origin : Point := Point";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        assert!(matches!(decls[0].kind, DeclKind::Structure { .. }));
+        assert!(matches!(decls[1].kind, DeclKind::Definition { .. }));
+    }
+
+    #[test]
+    fn deriving_single_class() {
+        let src = "structure A where\n  x : Nat\n  deriving Repr";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { deriving, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(deriving, &vec!["Repr".to_string()]);
+    }
+
+    #[test]
+    fn struct_zero_fields() {
+        // Lean 4 allows `structure Empty where` (no fields).
+        let src = "structure Empty where";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { fields, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert!(fields.is_empty());
+    }
+
     #[test]
     fn expr_app_in_def_body() {
         // `def f (a b : Nat) : Nat := Nat.succ a` exercises
         // app + dotted ident in a real fixture.
         let decls = parse_decls("def f (a b : Nat) : Nat := Nat.succ a").expect("must parse");
-        let DeclKind::Definition { value, .. } = &decls[0].kind;
+        let DeclKind::Definition { value, .. } = &decls[0].kind else { panic!("expected Definition") };
         match value {
             Expr::App(f, x) => {
                 assert_eq!(**f, Expr::Ident("Nat.succ".into()));
