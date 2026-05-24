@@ -414,6 +414,27 @@ mod grammar {
         lean4::expr(text.trim()).ok()
     }
 
+    /// Split an `open` line's text into a list of opened-
+    /// namespace idents + a raw tail capturing any
+    /// selective / renaming / hiding / scoped clauses for
+    /// downstream re-parsing. The tail starts at the first
+    /// token that looks like a clause marker (`(`,
+    /// `renaming`, `hiding`, `scoped`).
+    fn parse_open_line(line: &str) -> (Vec<String>, String) {
+        let tokens: Vec<&str> = line.split_whitespace().collect();
+        let stop = tokens.iter().position(|t| {
+            t.starts_with('(')
+                || *t == "renaming"
+                || *t == "hiding"
+                || *t == "scoped"
+        });
+        let split_at = stop.unwrap_or(tokens.len());
+        let items: Vec<String> =
+            tokens[..split_at].iter().map(|s| (*s).to_string()).collect();
+        let raw_tail = tokens[split_at..].join(" ");
+        (items, raw_tail)
+    }
+
     /// Decode the literal-text segment of a `s!"…"` string:
     /// `{{` → `{`, `}}` → `}`, plus the standard `\\n \\t
     /// \\r \\\\ \\"` escapes. Other escapes pass through
@@ -536,6 +557,9 @@ mod grammar {
                 / d:namespace_decl() { d }
                 / d:section_decl() { d }
                 / d:mutual_decl() { d }
+                / d:open_decl() { d }
+                / d:import_decl() { d }
+                / d:variable_decl() { d }
 
             // `theorem NAME [binders]+ : TYPE := PROOF` or
             // `lemma NAME [binders]+ : TYPE := PROOF` — same
@@ -634,6 +658,43 @@ mod grammar {
                     Decl { attrs: vec![], kind: DeclKind::Mutual {
                         decls,
                     }}
+                }
+
+            // ─── open / import / variable ───────────────────
+            //
+            // `open Foo Bar Baz` — opens namespaces. v0
+            // captures the line text and splits at the
+            // first selective / renaming / hiding / scoped
+            // marker; everything before that lands in
+            // `items`, everything after in `raw_tail` for
+            // downstream re-parsing (Lean 4's full open
+            // syntax is rich: `open Foo (x y)`, `open Foo
+            // renaming x → y`, `open Foo hiding z`,
+            // `open scoped Foo`).
+            rule open_decl() -> Decl =
+                "open" word_boundary() _h() line:$((!"\n" [_])+)
+                {
+                    let (items, raw_tail) = parse_open_line(line);
+                    Decl { attrs: vec![], kind: DeclKind::Open {
+                        items, raw_tail,
+                    }}
+                }
+
+            // `import Foo.Bar.Baz` — single dotted path per
+            // import (multiple imports = multiple decls).
+            rule import_decl() -> Decl =
+                "import" word_boundary() _h() path:ident_raw()
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Import { path } }
+                }
+
+            // `variable [binders]+` — section / namespace
+            // variable binding. Same binder grammar as `def`.
+            rule variable_decl() -> Decl =
+                "variable" word_boundary() _
+                binders:(b:binder_group() _ { b })+
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Variable { binders } }
                 }
 
             // ─── class ───────────────────────────────────────
@@ -2071,6 +2132,151 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── open / import / variable (OX6 step 10d) ──────────
+
+    #[test]
+    fn open_single_namespace() {
+        let src = "open Foo";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Open { items, raw_tail } = &decls[0].kind
+            else { panic!("expected Open") };
+        assert_eq!(items, &vec!["Foo".to_string()]);
+        assert!(raw_tail.is_empty());
+    }
+
+    #[test]
+    fn open_multiple_namespaces() {
+        let src = "open Foo Bar Baz";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Open { items, raw_tail } = &decls[0].kind
+            else { panic!("expected Open") };
+        assert_eq!(items, &vec!["Foo".to_string(), "Bar".to_string(), "Baz".to_string()]);
+        assert!(raw_tail.is_empty());
+    }
+
+    #[test]
+    fn open_dotted_namespace() {
+        let src = "open Foo.Bar.Baz";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Open { items, .. } = &decls[0].kind
+            else { panic!("expected Open") };
+        assert_eq!(items, &vec!["Foo.Bar.Baz".to_string()]);
+    }
+
+    #[test]
+    fn open_selective_in_raw_tail() {
+        let src = "open Foo (a b c)";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Open { items, raw_tail } = &decls[0].kind
+            else { panic!("expected Open") };
+        assert_eq!(items, &vec!["Foo".to_string()]);
+        assert!(raw_tail.contains("(a b c)"));
+    }
+
+    #[test]
+    fn open_renaming_in_raw_tail() {
+        let src = "open Foo renaming a → b, c → d";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Open { items, raw_tail } = &decls[0].kind
+            else { panic!("expected Open") };
+        assert_eq!(items, &vec!["Foo".to_string()]);
+        assert!(raw_tail.starts_with("renaming"));
+    }
+
+    #[test]
+    fn open_hiding_in_raw_tail() {
+        let src = "open Foo hiding x y";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Open { raw_tail, .. } = &decls[0].kind
+            else { panic!("expected Open") };
+        assert!(raw_tail.contains("hiding"));
+    }
+
+    #[test]
+    fn open_scoped_in_raw_tail() {
+        // Mathlib's `open scoped …`.
+        let src = "open scoped Foo";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Open { items, raw_tail } = &decls[0].kind
+            else { panic!("expected Open") };
+        assert!(items.is_empty(), "scoped is a clause marker, not a namespace");
+        assert!(raw_tail.starts_with("scoped"));
+    }
+
+    #[test]
+    fn import_single_dotted() {
+        let src = "import Foo.Bar.Baz";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Import { path } = &decls[0].kind
+            else { panic!("expected Import") };
+        assert_eq!(path, "Foo.Bar.Baz");
+    }
+
+    #[test]
+    fn import_init_core() {
+        let src = "import Init.Core";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Import { path } = &decls[0].kind
+            else { panic!("expected Import") };
+        assert_eq!(path, "Init.Core");
+    }
+
+    #[test]
+    fn multiple_imports_each_own_decl() {
+        let src = "import Foo\nimport Bar.Baz\nimport Qux";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 3);
+        for d in &decls {
+            assert!(matches!(d.kind, DeclKind::Import { .. }));
+        }
+    }
+
+    #[test]
+    fn variable_explicit_binder() {
+        let src = "variable (n : Nat)";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Variable { binders } = &decls[0].kind
+            else { panic!("expected Variable") };
+        assert_eq!(binders.len(), 1);
+        assert_eq!(binders[0].kind, BinderKind::Explicit);
+    }
+
+    #[test]
+    fn variable_implicit_binder() {
+        let src = "variable {T : Type}";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Variable { binders } = &decls[0].kind
+            else { panic!("expected Variable") };
+        assert_eq!(binders[0].kind, BinderKind::Implicit);
+    }
+
+    #[test]
+    fn variable_multiple_binder_groups() {
+        let src = "variable (n : Nat) {T : Type} [Inhabited T]";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Variable { binders } = &decls[0].kind
+            else { panic!("expected Variable") };
+        assert_eq!(binders.len(), 3);
+        assert_eq!(binders[0].kind, BinderKind::Explicit);
+        assert_eq!(binders[1].kind, BinderKind::Implicit);
+        assert_eq!(binders[2].kind, BinderKind::Instance);
+    }
+
+    #[test]
+    fn import_open_variable_section_combo() {
+        let src = "import Init.Core\n\
+                   open Foo\n\
+                   section\n\
+                   variable (n : Nat)\n\
+                   def use_n : Nat := n\n\
+                   end";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 3);
+        assert!(matches!(decls[0].kind, DeclKind::Import { .. }));
+        assert!(matches!(decls[1].kind, DeclKind::Open { .. }));
+        assert!(matches!(decls[2].kind, DeclKind::Section { .. }));
     }
 
     // ─── namespace / section / mutual (OX6 step 10c) ──────
