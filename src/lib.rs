@@ -286,6 +286,12 @@ pub enum Expr {
     /// Each entry is `(field_name, value_expr)`; field
     /// order is preserved (matters for some elab paths).
     AnonStruct(Vec<(String, Expr)>),
+    /// Anonymous constructor: `⟨a, b⟩` — Lean 4's
+    /// Unicode-angle-bracket shorthand for the unique
+    /// constructor of a single-ctor inductive (e.g.
+    /// `⟨1, 2⟩` for `Point.mk 1 2`). Elab resolves the
+    /// target ctor from the expected type.
+    AnonCtor(Vec<Expr>),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -1046,6 +1052,7 @@ mod grammar {
                 / do_expr()
                 / interp_str_lit()
                 / list_lit()
+                / anon_ctor_lit()
                 / anon_struct_lit()
                 / paren_atom()
                 / lit_atom()
@@ -1060,6 +1067,25 @@ mod grammar {
 
             rule ident_atom() -> Expr =
                 s:ident_raw() { Expr::Ident(s) }
+
+            // ─── Anonymous ctor `⟨a, b, …⟩` ──────────────────
+            //
+            // Unicode-angle-bracket shorthand for the unique
+            // ctor of a single-ctor inductive (Point.mk shape).
+            // Empty `⟨⟩` is `AnonCtor(vec![])`. Elab resolves
+            // the target ctor from the expected type.
+            rule anon_ctor_lit() -> Expr =
+                "⟨" _ items:anon_ctor_items() _ "⟩" {
+                    Expr::AnonCtor(items)
+                }
+
+            rule anon_ctor_items() -> Vec<Expr> =
+                first:expr() rest:(_ "," _ e:expr() { e })* {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+                / "" { Vec::new() }
 
             // ─── Anonymous structure literal `{ x := e, … }` ──
             //
@@ -2199,6 +2225,76 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── anonymous ctor `⟨…⟩` (OX6 step 11b) ───────────────
+
+    #[test]
+    fn anon_ctor_pair() {
+        let e = parse_value_expr("⟨1, 2⟩");
+        match e {
+            Expr::AnonCtor(items) => {
+                assert_eq!(items.len(), 2);
+                assert_eq!(items[0], Expr::Lit(Literal::Nat(1)));
+                assert_eq!(items[1], Expr::Lit(Literal::Nat(2)));
+            }
+            other => panic!("expected AnonCtor, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_ctor_single_field() {
+        let e = parse_value_expr("⟨42⟩");
+        match e {
+            Expr::AnonCtor(items) => {
+                assert_eq!(items.len(), 1);
+            }
+            other => panic!("expected AnonCtor, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_ctor_empty() {
+        let e = parse_value_expr("⟨⟩");
+        match e {
+            Expr::AnonCtor(items) => assert!(items.is_empty()),
+            other => panic!("expected AnonCtor, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_ctor_nested() {
+        let e = parse_value_expr("⟨⟨1, 2⟩, ⟨3, 4⟩⟩");
+        match e {
+            Expr::AnonCtor(outer) => {
+                assert_eq!(outer.len(), 2);
+                assert!(matches!(outer[0], Expr::AnonCtor(_)));
+                assert!(matches!(outer[1], Expr::AnonCtor(_)));
+            }
+            other => panic!("expected AnonCtor, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_ctor_with_complex_exprs() {
+        let e = parse_value_expr("⟨a + b, fun n => n⟩");
+        match e {
+            Expr::AnonCtor(items) => {
+                assert_eq!(items.len(), 2);
+                assert!(matches!(items[0], Expr::BinOp(ref o, _, _) if o == "+"));
+                assert!(matches!(items[1], Expr::Lam(_, _)));
+            }
+            other => panic!("expected AnonCtor, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn anon_ctor_in_def_value() {
+        let src = "def origin : Point := ⟨0, 0⟩";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert!(matches!(value, Expr::AnonCtor(_)));
     }
 
     // ─── anonymous structure literal (OX6 step 11g) ────────
