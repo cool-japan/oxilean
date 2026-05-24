@@ -11,7 +11,23 @@ name = "leo4-lean4-parse"
 version = "0.0.0"
 dependencies = [
  "leo4-abi",
+ "oxilean-parse",
  "peg",
+]
+
+[[package]]
+name = "oxilean-kernel"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a20763e6088a64a90b96310ae1bbb6672baabbd7c8205f19edeea2575fb10193"
+
+[[package]]
+name = "oxilean-parse"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25300831335df64a6bd669d86602a77ba828367b64cd803150b7327cea7622d0"
+dependencies = [
+ "oxilean-kernel",
 ]
 
 [[package]]
