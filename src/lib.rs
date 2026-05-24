@@ -397,6 +397,10 @@ pub enum Expr {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchArm {
     pub pattern: Pattern,
+    /// Optional `if EXPR` guard between the pattern and
+    /// the `=>` arrow: `| n if n > 0 => …`. `None` for
+    /// unguarded arms.
+    pub guard: Option<Expr>,
     pub body: Expr,
 }
 
@@ -1809,9 +1813,21 @@ mod grammar {
                     v
                 }
 
+            // Pattern guard (`| pat if cond => body`) —
+            // the `if EXPR` clause is captured raw between
+            // the `if` keyword and the `=>` arrow, then
+            // sub-parsed via `parse_expr_text`. Raw capture
+            // avoids `if … then … else` lookahead conflicts
+            // with the term-level `if_expr` rule.
             rule match_arm() -> MatchArm =
-                arm_bar() _ pat:pattern() _ "=>" _ body:expr() {
-                    MatchArm { pattern: pat, body }
+                arm_bar() _ pat:pattern() _
+                guard_text:("if" word_boundary() _h() t:$((!"=>" [_])+)
+                    { t.trim().to_string() })?
+                "=>" _ body:expr()
+                {
+                    let guard = guard_text
+                        .and_then(|t| parse_expr_text(&t));
+                    MatchArm { pattern: pat, guard, body }
                 }
 
             // Single `|` (not the binary-op `||`).
@@ -2916,6 +2932,51 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── pattern guards (OX6 step 11o) ─────────────────────
+
+    #[test]
+    fn match_arm_with_guard() {
+        let e = parse_value_expr(
+            "match n with | x if x > 0 => 1 | _ => 0"
+        );
+        match e {
+            Expr::Match(_, arms) => {
+                assert_eq!(arms.len(), 2);
+                assert!(arms[0].guard.is_some());
+                let g = arms[0].guard.as_ref().unwrap();
+                assert!(matches!(g, Expr::BinOp(op, _, _) if op == ">"));
+                assert!(arms[1].guard.is_none());
+            }
+            other => panic!("expected Match, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn match_arm_unguarded_has_none_guard() {
+        let e = parse_value_expr("match x with | 0 => 1 | _ => 2");
+        match e {
+            Expr::Match(_, arms) => {
+                assert!(arms[0].guard.is_none());
+                assert!(arms[1].guard.is_none());
+            }
+            other => panic!("expected Match, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn match_arm_guard_on_ctor() {
+        let e = parse_value_expr(
+            "match opt with | some x if x == 0 => 1 | _ => 0"
+        );
+        match e {
+            Expr::Match(_, arms) => {
+                assert!(matches!(arms[0].pattern, Pattern::Ctor(ref s, _) if s == "some"));
+                assert!(arms[0].guard.is_some());
+            }
+            other => panic!("expected Match, got {other:?}"),
+        }
     }
 
     // ─── match scrutinee binding (OX6 step 11n) ────────────
