@@ -38,6 +38,8 @@
 //!   - `do <stmts>` — monadic sequencing with `let x ← e`
 //!     (bind), `let x := e` (pure let), `return e` /
 //!     `pure e`, and bare expression statements.
+//!   - `s!"…{x}…"` — string interpolation with `{{` / `}}`
+//!     escapes for literal braces.
 //!
 //! Structure/inductive field & ctor type annotations are
 //! fully parsed as `Expr` (including multi-line types via
@@ -174,6 +176,11 @@ pub enum Expr {
     Lam(Vec<LamBinder>, Box<Expr>),
     /// `do <stmts>` — monadic sequencing block.
     Do(Vec<DoStmt>),
+    /// Lean 4 string interpolation: `s!"hello {name}!"`.
+    /// Alternating text and `{expr}` holes, in the order
+    /// they appear in the source. `{{` / `}}` decode to
+    /// literal `{` / `}` in the `Text` segments.
+    InterpStr(Vec<InterpPart>),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -185,6 +192,16 @@ pub enum Expr {
 pub struct MatchArm {
     pub pattern: Pattern,
     pub body: Expr,
+}
+
+/// One segment of a string interpolation. `Text` carries
+/// the literal-text bytes (with `{{` / `}}` decoded to `{`
+/// and `}`, and standard `\\n \\t \\r \\\\ \\"` escapes
+/// resolved); `Hole(expr)` is one `{…}` interpolation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InterpPart {
+    Text(String),
+    Hole(Expr),
 }
 
 /// One statement inside a `do` block. v0 supports the
@@ -279,7 +296,7 @@ pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
 mod grammar {
     use super::{
         Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, DoStmt, Expr,
-        LamBinder, Literal, MatchArm, Pattern, StructField,
+        InterpPart, LamBinder, Literal, MatchArm, Pattern, StructField,
     };
 
     /// Sub-parse a captured raw-text region (a structure
@@ -297,6 +314,43 @@ mod grammar {
     /// newlines via the `_` rule).
     fn parse_expr_text(text: &str) -> Option<Expr> {
         lean4::expr(text.trim()).ok()
+    }
+
+    /// Decode the literal-text segment of a `s!"…"` string:
+    /// `{{` → `{`, `}}` → `}`, plus the standard `\\n \\t
+    /// \\r \\\\ \\"` escapes. Other escapes pass through
+    /// verbatim.
+    fn decode_interp_text(s: &str) -> String {
+        let mut out = String::with_capacity(s.len());
+        let mut chars = s.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c == '{' && chars.peek() == Some(&'{') {
+                chars.next();
+                out.push('{');
+                continue;
+            }
+            if c == '}' && chars.peek() == Some(&'}') {
+                chars.next();
+                out.push('}');
+                continue;
+            }
+            if c == '\\' {
+                match chars.next() {
+                    Some('n') => out.push('\n'),
+                    Some('t') => out.push('\t'),
+                    Some('r') => out.push('\r'),
+                    Some('\\') | None => out.push('\\'),
+                    Some('"') => out.push('"'),
+                    Some(other) => {
+                        out.push('\\');
+                        out.push(other);
+                    }
+                }
+            } else {
+                out.push(c);
+            }
+        }
+        out
     }
 
     peg::parser! {
@@ -668,6 +722,7 @@ mod grammar {
                 / match_expr()
                 / lam_expr()
                 / do_expr()
+                / interp_str_lit()
                 / paren_atom()
                 / lit_atom()
                 / ident_atom()
@@ -681,6 +736,49 @@ mod grammar {
 
             rule ident_atom() -> Expr =
                 s:ident_raw() { Expr::Ident(s) }
+
+            // ─── String interpolation `s!"…{x}…"` ──────────
+            //
+            // Alternating text + `{expr}` holes. `{{` / `}}`
+            // are literal `{` / `}` in the text segments
+            // (matches Lean 4 + Rust convention). Standard
+            // `\\n \\t \\r \\\\ \\"` escapes are also
+            // resolved in text segments.
+            //
+            // Out of scope today: nested `s!` strings inside
+            // holes (which Lean 4 also accepts — recursive
+            // interpolation). Acceptable v0 limitation since
+            // it almost never appears in real code.
+            rule interp_str_lit() -> Expr =
+                "s!\"" parts:interp_part()* "\"" {
+                    Expr::InterpStr(parts)
+                }
+
+            rule interp_part() -> InterpPart =
+                interp_hole() / interp_text_part()
+
+            rule interp_hole() -> InterpPart =
+                // Real `{expr}` interpolation — but `{{` must
+                // *not* match here (it's an escape). The
+                // !"{" lookahead enforces single `{`.
+                "{" !"{" _ e:expr() _ "}" {
+                    InterpPart::Hole(e)
+                }
+
+            rule interp_text_part() -> InterpPart =
+                s:$((!"\"" !interp_hole_start() interp_text_char())+) {
+                    InterpPart::Text(decode_interp_text(s))
+                }
+
+            // Lookahead for the start of a real interpolation
+            // hole (single `{` not followed by another `{`).
+            rule interp_hole_start() = "{" !"{"
+
+            rule interp_text_char() =
+                "{{" {}    // literal `{`
+                / "}}" {}  // literal `}`
+                / "\\" [_] {}
+                / [_]
 
             // ─── do notation ────────────────────────────────
             //
@@ -1710,6 +1808,120 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── string interpolation (OX6 step 9) ─────────────────
+
+    #[test]
+    fn interp_single_hole_only() {
+        let e = parse_value_expr(r#"s!"{x}""#);
+        match e {
+            Expr::InterpStr(parts) => {
+                assert_eq!(parts.len(), 1);
+                assert_eq!(parts[0], InterpPart::Hole(Expr::Ident("x".into())));
+            }
+            other => panic!("expected InterpStr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn interp_text_then_hole() {
+        let e = parse_value_expr(r#"s!"hello {name}""#);
+        match e {
+            Expr::InterpStr(parts) => {
+                assert_eq!(parts.len(), 2);
+                assert_eq!(parts[0], InterpPart::Text("hello ".into()));
+                assert_eq!(parts[1], InterpPart::Hole(Expr::Ident("name".into())));
+            }
+            other => panic!("expected InterpStr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn interp_hole_with_complex_expr() {
+        let e = parse_value_expr(r#"s!"sum: {a + b}""#);
+        match e {
+            Expr::InterpStr(parts) => {
+                assert_eq!(parts.len(), 2);
+                match &parts[1] {
+                    InterpPart::Hole(Expr::BinOp(op, _, _)) => assert_eq!(op, "+"),
+                    other => panic!("expected BinOp hole, got {other:?}"),
+                }
+            }
+            other => panic!("expected InterpStr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn interp_multiple_holes() {
+        let e = parse_value_expr(r#"s!"x={x}, y={y}""#);
+        match e {
+            Expr::InterpStr(parts) => {
+                // text/hole/text/hole/(optional trailing text)
+                let holes: Vec<&InterpPart> = parts
+                    .iter()
+                    .filter(|p| matches!(p, InterpPart::Hole(_)))
+                    .collect();
+                assert_eq!(holes.len(), 2);
+            }
+            other => panic!("expected InterpStr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn interp_text_only_no_holes() {
+        // `s!"hello"` with no `{…}` — still parses as InterpStr
+        // (single Text part). Distinguishes from a plain
+        // `"hello"` Lit at the parser level even though they
+        // mean the same thing at the elaborator.
+        let e = parse_value_expr(r#"s!"hello""#);
+        match e {
+            Expr::InterpStr(parts) => {
+                assert_eq!(parts.len(), 1);
+                assert_eq!(parts[0], InterpPart::Text("hello".into()));
+            }
+            other => panic!("expected InterpStr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn interp_escaped_braces() {
+        // `{{` / `}}` decode to literal `{` / `}` in the text
+        // segment (matches Rust + Lean 4 convention).
+        let e = parse_value_expr(r#"s!"set {{x, y}} -> {result}""#);
+        match e {
+            Expr::InterpStr(parts) => {
+                // Text "set {x, y} -> " + Hole(result)
+                let first_text = match &parts[0] {
+                    InterpPart::Text(s) => s.clone(),
+                    InterpPart::Hole(e) => panic!("expected Text, got Hole({e:?})"),
+                };
+                assert!(first_text.contains("set {x, y} -> "));
+                assert!(matches!(parts.last(), Some(InterpPart::Hole(_))));
+            }
+            other => panic!("expected InterpStr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn interp_text_escape_sequences() {
+        let e = parse_value_expr(r#"s!"line1\nline2""#);
+        match e {
+            Expr::InterpStr(parts) => {
+                assert_eq!(parts.len(), 1);
+                assert_eq!(parts[0], InterpPart::Text("line1\nline2".into()));
+            }
+            other => panic!("expected InterpStr, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn interp_in_def_body() {
+        let src = r#"def greet (name : String) : String := s!"hi {name}!""#;
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert!(matches!(value, Expr::InterpStr(_)));
     }
 
     // ─── do notation (OX6 step 8) ──────────────────────────
