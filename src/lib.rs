@@ -118,6 +118,20 @@ pub enum DeclKind {
         ty: Option<Expr>,
         value: Expr,
     },
+    /// `def NAME [binders]+ [: TYPE]\n  | pat₀ => body₀\n  …`
+    /// — equational pattern-matching definition. Each arm
+    /// destructures the *last* positional binder (Lean 4
+    /// convention; for multi-positional patterns the user
+    /// writes a tuple / multiple binder forms). Sibling of
+    /// `Definition`; kept distinct so consumers can choose
+    /// between source-faithful equation rendering vs.
+    /// match-desugared shape.
+    DefinitionByArms {
+        name: String,
+        binders: Vec<BinderGroup>,
+        ty: Option<Expr>,
+        arms: Vec<MatchArm>,
+    },
     /// `structure NAME [extends BASE, ...] where FIELDS [deriving ...]`
     Structure {
         name: String,
@@ -809,7 +823,8 @@ mod grammar {
                 word_boundary() { s.to_string() }
 
             rule decl_body() -> Decl =
-                d:definition() { d }
+                d:definition_by_arms() { d }
+                / d:definition() { d }
                 / d:abbrev_decl() { d }
                 / d:theorem_decl() { d }
                 / d:axiom_decl() { d }
@@ -1109,6 +1124,34 @@ mod grammar {
                         modifiers: vec![],
                         doc: None,
                         kind: DeclKind::Definition { name, binders, ty, value },
+                    }
+                }
+
+            // Equational pattern-matching `def` —
+            // `def NAME [binders] [: TYPE]\n  | pat => body | ...`.
+            // Distinct from `definition` by the trailing
+            // `|` arms (no `:=` separator). Dispatched
+            // before plain `definition` in `decl_body` so
+            // the arm-form commits when an `arm_bar`
+            // immediately follows the type annotation.
+            //
+            // The `&arm_bar()` lookahead ensures we don't
+            // accidentally swallow a `def` whose body is a
+            // plain expression (which would re-enter this
+            // rule and find no `|` after the type).
+            rule definition_by_arms() -> Decl =
+                "def" _ name:ident() univs:univ_params_opt() _
+                binders:(b:binder_group() _ { b })*
+                ty:(":" _ t:expr() _ { t })?
+                &arm_bar()
+                arms:match_arms()
+                {
+                    Decl {
+                        attrs: vec![],
+                        univ_params: univs,
+                        modifiers: vec![],
+                        doc: None,
+                        kind: DeclKind::DefinitionByArms { name, binders, ty, arms },
                     }
                 }
 
@@ -3038,6 +3081,52 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── def pattern-matching form (OX6 step 11w) ──────────
+
+    #[test]
+    fn def_by_arms_simple() {
+        let src = "def factorial : Nat -> Nat\n  | 0 => 1\n  | n => n * factorial n";
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::DefinitionByArms { name, arms, .. } => {
+                assert_eq!(name, "factorial");
+                assert_eq!(arms.len(), 2);
+                assert!(matches!(arms[0].pattern, Pattern::Lit(Literal::Nat(0))));
+            }
+            other => panic!("expected DefinitionByArms, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn def_by_arms_dot_ctor() {
+        let src = "def isJust : Option a -> Bool\n  | .some _ => true\n  | .none => false";
+        let decls = parse_decls(src).expect("must parse");
+        match &decls[0].kind {
+            DeclKind::DefinitionByArms { arms, .. } => {
+                assert_eq!(arms.len(), 2);
+                assert!(matches!(arms[0].pattern, Pattern::DotCtor(ref s, _) if s == "some"));
+                assert!(matches!(arms[1].pattern, Pattern::DotCtor(ref s, _) if s == "none"));
+            }
+            other => panic!("expected DefinitionByArms, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plain_def_still_works() {
+        let src = "def x : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert!(matches!(decls[0].kind, DeclKind::Definition { .. }));
+    }
+
+    #[test]
+    fn def_by_arms_with_doc_and_attr() {
+        let src = "/-- Identity. -/\n@[inline]\ndef id : a -> a\n  | x => x";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].doc.as_deref(), Some(" Identity. "));
+        assert_eq!(decls[0].attrs[0].name, "inline");
+        assert!(matches!(decls[0].kind, DeclKind::DefinitionByArms { .. }));
     }
 
     // ─── doc-comment semantic binding (OX6 step 11u) ───────
