@@ -356,6 +356,16 @@ pub enum Expr {
     /// "supply every argument explicitly". The wrapped
     /// expression is usually an Ident, but can be any atom.
     At(Box<Expr>),
+    /// `(· + 1)` / `(·.field)` — anonymous function
+    /// shorthand using the `·` (U+00B7 MIDDLE DOT)
+    /// placeholder. Each `·` in the body is one λ
+    /// parameter; `(· + ·)` is `λ x y => x + y`. The
+    /// body is captured as raw text up to the closing
+    /// `)`; consumer can re-parse via the same `expr`
+    /// rule. Nested parens inside the body are NOT
+    /// supported in v1 RC (typical shorthand uses are
+    /// single-level).
+    DotFn(String),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -1324,12 +1334,30 @@ mod grammar {
                 / list_lit()
                 / anon_ctor_lit()
                 / anon_struct_lit()
+                / dot_fn_lit()
                 / paren_atom()
                 / lit_atom()
                 / ident_atom()
 
             rule paren_atom() -> Expr =
                 "(" _ e:expr() _ ")" { Expr::Paren(Box::new(e)) }
+
+            // `(· + 1)` / `(·.field)` — Lean 4 anonymous
+            // function shorthand. Triggered iff the body
+            // between `(` and `)` contains at least one
+            // `·` (U+00B7 MIDDLE DOT) placeholder. Body is
+            // captured as raw text (consumer sub-parses if
+            // it cares). Nested parens NOT supported in
+            // v1 RC.
+            rule dot_fn_lit() -> Expr =
+                "(" &dot_fn_seek_placeholder()
+                    body:$((!")" [_])+) ")"
+                {
+                    Expr::DotFn(body.trim().to_string())
+                }
+
+            rule dot_fn_seek_placeholder() =
+                (!"·" !")" [_])* "·"
 
             rule lit_atom() -> Expr =
                 f:float_lit() { Expr::Lit(Literal::Float(f)) }
@@ -2824,6 +2852,52 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── anonymous fn shorthand (OX6 step 11p) ─────────────
+
+    #[test]
+    fn dot_fn_simple_binary() {
+        let e = parse_value_expr("(· + 1)");
+        match e {
+            Expr::DotFn(body) => assert_eq!(body, "· + 1"),
+            other => panic!("expected DotFn, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dot_fn_projection() {
+        let e = parse_value_expr("(·.field)");
+        match e {
+            Expr::DotFn(body) => assert_eq!(body, "·.field"),
+            other => panic!("expected DotFn, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dot_fn_two_placeholders() {
+        // `(· + ·)` — λ x y => x + y in Lean 4.
+        let e = parse_value_expr("(· + ·)");
+        match e {
+            Expr::DotFn(body) => assert_eq!(body, "· + ·"),
+            other => panic!("expected DotFn, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn dot_fn_placeholder_on_right() {
+        let e = parse_value_expr("(1 + ·)");
+        match e {
+            Expr::DotFn(body) => assert_eq!(body, "1 + ·"),
+            other => panic!("expected DotFn, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn paren_without_placeholder_is_paren_not_dot_fn() {
+        // `(1 + 1)` must still parse as Paren, NOT DotFn.
+        let e = parse_value_expr("(1 + 1)");
+        assert!(matches!(e, Expr::Paren(_)));
     }
 
     // ─── omit / include (OX6 step 11v) ─────────────────────
