@@ -313,6 +313,14 @@ pub enum Expr {
     /// they appear in the source. `{{` / `}}` decode to
     /// literal `{` / `}` in the `Text` segments.
     InterpStr(Vec<InterpPart>),
+    /// `by <tactics>` — term-level entry into tactic mode.
+    /// Each entry is the raw text of one tactic (split on
+    /// `;` for single-line sequenced form and on newlines
+    /// for multi-line form). Tactic sub-parsing (e.g.
+    /// `exact e` → `Tactic::Exact(e)`) is a future step;
+    /// v0 keeps the raw textual form so the surrounding
+    /// surface parses cleanly.
+    By(Vec<String>),
     /// List literal: `[1, 2, 3]`. Empty `[]` is `List(vec![])`.
     /// Lean 4 desugars to `List.cons` chains at elab time;
     /// the parser keeps the literal form for readability.
@@ -469,6 +477,18 @@ mod grammar {
         lean4::expr(text.trim()).ok()
     }
 
+    /// Split a `by`-block region into individual tactic
+    /// strings. The region may be empty (`:= by` with no
+    /// tactics — yields an empty Vec) or contain a mix of
+    /// `;`-sequenced and newline-separated tactics.
+    /// Whitespace and empty entries are trimmed away.
+    fn parse_by_region(text: &str) -> Vec<String> {
+        text.split([';', '\n'])
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    }
+
     /// Split an `open` line's text into a list of opened-
     /// namespace idents + a raw tail capturing any
     /// selective / renaming / hiding / scoped clauses for
@@ -581,7 +601,7 @@ mod grammar {
                  / "section" / "end" / "open" / "import" / "variable"
                  / "where" / "with" / "match" / "fun" / "let"
                  / "if" / "then" / "else" / "do"
-                 / "forall" / "exists")
+                 / "forall" / "exists" / "by")
                 ![ 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '\'' ]
             }
 
@@ -1160,6 +1180,7 @@ mod grammar {
                 / forall_expr()
                 / exists_expr()
                 / do_expr()
+                / by_expr()
                 / at_expr()
                 / interp_str_lit()
                 / list_lit()
@@ -1297,6 +1318,31 @@ mod grammar {
                 / "}}" {}  // literal `}`
                 / "\\" [_] {}
                 / [_]
+
+            // ─── `by …` tactic block ────────────────────────
+            //
+            // `by` enters tactic mode at the term level
+            // (`theorem t : T := by rfl`). v0 captures the
+            // tactic region as raw text up to the next top-
+            // level decl keyword or EOF, then splits on `;`
+            // (single-line sequenced) and newlines (multi-
+            // line) into individual tactic strings.
+            //
+            // Each `String` in `Expr::By(Vec<String>)` is one
+            // tactic in raw form. Tactic AST sub-parsing is
+            // a future step (Lean 4's tactic language is its
+            // own DSL with its own grammar).
+            rule by_expr() -> Expr =
+                "by" word_boundary() region:$(by_region()) {
+                    let tactics = parse_by_region(region);
+                    Expr::By(tactics)
+                }
+
+            rule by_region() = (!by_block_end() [_])*
+
+            rule by_block_end() =
+                "\n" _h() top_level_decl_starter()
+                / ![_]
 
             // ─── do notation ────────────────────────────────
             //
@@ -2388,6 +2434,115 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── `by …` tactic block (OX6 step 11e) ────────────────
+
+    #[test]
+    fn by_single_tactic_inline() {
+        let src = "theorem t : True := by exact True.intro";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { proof, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        match proof {
+            Expr::By(tactics) => {
+                assert_eq!(tactics.len(), 1);
+                assert_eq!(tactics[0], "exact True.intro");
+            }
+            other => panic!("expected By, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn by_semicolon_sequenced() {
+        let src = "theorem t : Nat := by intro x; exact x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { proof, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        match proof {
+            Expr::By(tactics) => {
+                assert_eq!(tactics.len(), 2);
+                assert_eq!(tactics[0], "intro x");
+                assert_eq!(tactics[1], "exact x");
+            }
+            other => panic!("expected By, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn by_multi_line_block() {
+        let src = "theorem t : Nat := by\n  intro x\n  exact x";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { proof, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        match proof {
+            Expr::By(tactics) => {
+                assert_eq!(tactics.len(), 2);
+                assert_eq!(tactics[0], "intro x");
+                assert_eq!(tactics[1], "exact x");
+            }
+            other => panic!("expected By, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn by_in_example() {
+        let src = "example : True := by trivial";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Example { proof, .. } = &decls[0].kind
+            else { panic!("expected Example") };
+        match proof {
+            Expr::By(tactics) => {
+                assert_eq!(tactics[0], "trivial");
+            }
+            other => panic!("expected By, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn by_stops_at_next_top_level_decl() {
+        // Multi-decl source — the `by` block must not eat
+        // the next `def` line.
+        let src = "theorem t : True := by\n  exact True.intro\ndef next : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        let DeclKind::Theorem { proof, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        match proof {
+            Expr::By(tactics) => assert_eq!(tactics.len(), 1),
+            other => panic!("expected By, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn by_with_simp_brackets() {
+        // `simp [foo, bar]` — bracket content in the raw
+        // tactic text is preserved as-is (not split further).
+        let src = "theorem t : Nat := by simp [Nat.add_comm, Nat.zero_add]";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { proof, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        match proof {
+            Expr::By(tactics) => {
+                assert_eq!(tactics.len(), 1);
+                assert!(tactics[0].contains("simp"));
+                assert!(tactics[0].contains("Nat.add_comm"));
+            }
+            other => panic!("expected By, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn by_empty_block() {
+        // `:= by` with no tactic body — yields empty Vec.
+        let src = "theorem t : Nat := by";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Theorem { proof, .. } = &decls[0].kind
+            else { panic!("expected Theorem") };
+        match proof {
+            Expr::By(tactics) => assert!(tactics.is_empty()),
+            other => panic!("expected By, got {other:?}"),
+        }
     }
 
     // ─── let-in expression (OX6 step 11d) ──────────────────
