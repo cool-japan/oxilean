@@ -284,6 +284,19 @@ pub enum Expr {
     /// `fun BINDERS -> BODY` (`->` body-arrow accepted as a
     /// synonym for `=>` for OX3 normalisation compatibility).
     Lam(Vec<LamBinder>, Box<Expr>),
+    /// `let NAME [: TY] := VALUE; BODY` or
+    /// `let NAME [: TY] := VALUE \n BODY` — pure
+    /// (non-monadic) let-binding in expression position.
+    /// The monadic `let x ← e` inside `do` blocks lives
+    /// in `DoStmt::Bind` instead.
+    Let {
+        name: String,
+        /// Boxed so the recursive `Option<Expr>` doesn't
+        /// blow up the enum size.
+        ty: Option<Box<Expr>>,
+        value: Box<Expr>,
+        body: Box<Expr>,
+    },
     /// `forall BINDERS, BODY` / `∀ BINDERS, BODY` —
     /// dependent function (Π) type. Binders share lambda's
     /// `LamBinder` shape (untyped names or typed groups);
@@ -1141,6 +1154,7 @@ mod grammar {
 
             rule atom() -> Expr =
                 if_expr()
+                / let_expr()
                 / match_expr()
                 / lam_expr()
                 / forall_expr()
@@ -1362,6 +1376,46 @@ mod grammar {
                         .unwrap_or_else(|| Expr::Raw(text.trim().to_string()));
                     DoStmt::Expr(e)
                 }
+
+            // ─── let-in expression `let x := e ; body` ──────
+            //
+            // Pure (non-monadic) let-binding in expression
+            // position. The monadic `let x ← e` inside `do`
+            // blocks lives in `DoStmt::Bind`.
+            //
+            // v0 captures the `:= VALUE` region as raw text up
+            // to the separator (`;` or newline), then sub-
+            // parses it via `parse_expr_text`. Body is full
+            // expr (multi-line OK). The optional type
+            // annotation `: TY` is also raw-captured (up to
+            // `:=`) and sub-parsed.
+            //
+            // Multi-line value bodies (`let x := \n  big`) are
+            // not yet supported in v0 — single-line value
+            // before the separator.
+            rule let_expr() -> Expr =
+                "let" word_boundary() _ name:ident() _h()
+                ty_text:(":" !"=" _h() t:$((!":=" [_])+)
+                    { t.trim().to_string() })?
+                ":=" _h()
+                value_text:$((!";" !"\n" [_])+)
+                let_separator() _
+                body:expr()
+                {
+                    let ty = ty_text
+                        .and_then(|t| parse_expr_text(&t))
+                        .map(Box::new);
+                    let value = parse_expr_text(value_text.trim())
+                        .unwrap_or_else(|| Expr::Raw(value_text.trim().to_string()));
+                    Expr::Let {
+                        name,
+                        ty,
+                        value: Box::new(value),
+                        body: Box::new(body),
+                    }
+                }
+
+            rule let_separator() = ";" / "\n"
 
             // ─── quantifiers (`forall` / `∀` / `exists` / `∃`) ──
             //
@@ -2334,6 +2388,78 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── let-in expression (OX6 step 11d) ──────────────────
+
+    #[test]
+    fn let_in_simple_semicolon() {
+        let e = parse_value_expr("let x := 1; x");
+        match e {
+            Expr::Let { name, ty, value, body } => {
+                assert_eq!(name, "x");
+                assert!(ty.is_none());
+                assert_eq!(*value, Expr::Lit(Literal::Nat(1)));
+                assert_eq!(*body, Expr::Ident("x".into()));
+            }
+            other => panic!("expected Let, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn let_in_with_type_annotation() {
+        let e = parse_value_expr("let x : Nat := 1; x");
+        match e {
+            Expr::Let { name, ty, .. } => {
+                assert_eq!(name, "x");
+                assert_eq!(ty.as_deref(), Some(&Expr::Ident("Nat".into())));
+            }
+            other => panic!("expected Let, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn let_in_newline_separator() {
+        // Body on the next line — newline is a valid
+        // separator in addition to `;`.
+        let src = "def f : Nat := let x := 1\nx + 1";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert!(matches!(value, Expr::Let { .. }));
+    }
+
+    #[test]
+    fn let_in_value_is_complex_expr() {
+        let e = parse_value_expr("let s := a + b; s * 2");
+        match e {
+            Expr::Let { value, body, .. } => {
+                assert!(matches!(*value, Expr::BinOp(ref o, _, _) if o == "+"));
+                assert!(matches!(*body, Expr::BinOp(ref o, _, _) if o == "*"));
+            }
+            other => panic!("expected Let, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn nested_let() {
+        let e = parse_value_expr("let x := 1; let y := 2; x + y");
+        match e {
+            Expr::Let { name, body, .. } => {
+                assert_eq!(name, "x");
+                assert!(matches!(*body, Expr::Let { .. }));
+            }
+            other => panic!("expected Let, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn let_in_def_body() {
+        let src = "def compute : Nat := let n := 10; n * n";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert!(matches!(value, Expr::Let { .. }));
     }
 
     // ─── `example` anonymous theorem (OX6 step 11k) ────────
