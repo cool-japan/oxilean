@@ -89,6 +89,10 @@ pub enum Expr {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     /// `match SCRUTINEE with | pat => body | ...`.
     Match(Box<Expr>, Vec<MatchArm>),
+    /// `fun BINDERS => BODY` / `λ BINDERS => BODY` /
+    /// `fun BINDERS -> BODY` (`->` body-arrow accepted as a
+    /// synonym for `=>` for OX3 normalisation compatibility).
+    Lam(Vec<LamBinder>, Box<Expr>),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -100,6 +104,23 @@ pub enum Expr {
 pub struct MatchArm {
     pub pattern: Pattern,
     pub body: Expr,
+}
+
+/// One lambda binder. Lambdas accept both untyped names and
+/// typed groups (mirroring `def`'s binder syntax), so each
+/// binder is either a single bare ident or a parenthesised /
+/// braced / bracketed typed group.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LamBinder {
+    /// Bare untyped name: `fun x => ...`.
+    Untyped(String),
+    /// Typed group: `fun (x : T) => ...` / `fun (a b : T) => ...`.
+    /// `kind` distinguishes `()` / `{}` / `[]` brackets.
+    Typed {
+        kind: BinderKind,
+        names: Vec<String>,
+        ty: Expr,
+    },
 }
 
 /// `match` pattern AST.
@@ -159,7 +180,8 @@ pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
 
 mod grammar {
     use super::{
-        BinderGroup, BinderKind, Decl, DeclKind, Expr, Literal, MatchArm, Pattern,
+        BinderGroup, BinderKind, Decl, DeclKind, Expr, LamBinder, Literal,
+        MatchArm, Pattern,
     };
 
     peg::parser! {
@@ -342,6 +364,7 @@ mod grammar {
             rule atom() -> Expr =
                 if_expr()
                 / match_expr()
+                / lam_expr()
                 / paren_atom()
                 / lit_atom()
                 / ident_atom()
@@ -355,6 +378,50 @@ mod grammar {
 
             rule ident_atom() -> Expr =
                 s:ident_raw() { Expr::Ident(s) }
+
+            // ─── lambda (`fun` / `λ`) ───────────────────────
+            //
+            // `fun BINDERS => BODY` form. The body-arrow is
+            // either `=>` (Lean 4 native) or `->` (accepted
+            // as a synonym; OX3's `lean4_normalize` rewrites
+            // ` => ` to ` -> `, and `leo4-lean4-parse` should
+            // accept both so it can replace the textual
+            // normaliser later without surface regressions).
+            rule lam_expr() -> Expr =
+                ("fun" / "λ") _ binders:lam_binders() _ ("=>" / "->") _ body:expr() {
+                    Expr::Lam(binders, Box::new(body))
+                }
+
+            rule lam_binders() -> Vec<LamBinder> =
+                first:lam_binder() rest:(_ b:lam_binder() { b })* {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+
+            rule lam_binder() -> LamBinder =
+                lam_typed_explicit()
+                / lam_typed_implicit()
+                / lam_typed_instance()
+                / lam_untyped()
+
+            rule lam_typed_explicit() -> LamBinder =
+                "(" _ names:ident_list() _ ":" _ ty:expr() _ ")" {
+                    LamBinder::Typed { kind: BinderKind::Explicit, names, ty }
+                }
+
+            rule lam_typed_implicit() -> LamBinder =
+                "{" _ names:ident_list() _ ":" _ ty:expr() _ "}" {
+                    LamBinder::Typed { kind: BinderKind::Implicit, names, ty }
+                }
+
+            rule lam_typed_instance() -> LamBinder =
+                "[" _ names:ident_list() _ ":" _ ty:expr() _ "]" {
+                    LamBinder::Typed { kind: BinderKind::Instance, names, ty }
+                }
+
+            rule lam_untyped() -> LamBinder =
+                s:ident() { LamBinder::Untyped(s) }
 
             // ─── if-then-else ───────────────────────────────
             rule if_expr() -> Expr =
@@ -989,6 +1056,142 @@ mod tests {
         let decls = parse_decls(src).expect("must parse");
         let DeclKind::Definition { value, .. } = &decls[0].kind;
         assert!(matches!(value, Expr::If(_, _, _)));
+    }
+
+    // ─── lambda tests (OX6 step 4) ─────────────────────────
+
+    #[test]
+    fn expr_lam_identity() {
+        let e = parse_value_expr("fun x => x");
+        match e {
+            Expr::Lam(binders, body) => {
+                assert_eq!(binders.len(), 1);
+                assert_eq!(binders[0], LamBinder::Untyped("x".into()));
+                assert_eq!(*body, Expr::Ident("x".into()));
+            }
+            other => panic!("expected Lam, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn expr_lam_multi_arg() {
+        let e = parse_value_expr("fun a b => a + b");
+        match e {
+            Expr::Lam(binders, body) => {
+                assert_eq!(binders.len(), 2);
+                assert_eq!(binders[0], LamBinder::Untyped("a".into()));
+                assert_eq!(binders[1], LamBinder::Untyped("b".into()));
+                assert!(matches!(*body, Expr::BinOp(ref o, _, _) if o == "+"));
+            }
+            other => panic!("expected Lam, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn expr_lam_typed_explicit() {
+        let e = parse_value_expr("fun (x : Nat) => x");
+        match e {
+            Expr::Lam(binders, _) => {
+                assert_eq!(binders.len(), 1);
+                match &binders[0] {
+                    LamBinder::Typed { kind, names, ty } => {
+                        assert_eq!(*kind, BinderKind::Explicit);
+                        assert_eq!(names, &vec!["x".to_string()]);
+                        assert_eq!(*ty, Expr::Ident("Nat".into()));
+                    }
+                    LamBinder::Untyped(s) => panic!("expected Typed binder, got Untyped({s})"),
+                }
+            }
+            other => panic!("expected Lam, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn expr_lam_typed_multi_name() {
+        let e = parse_value_expr("fun (a b : Nat) => a + b");
+        match e {
+            Expr::Lam(binders, _) => {
+                assert_eq!(binders.len(), 1);
+                match &binders[0] {
+                    LamBinder::Typed { names, .. } => {
+                        assert_eq!(names, &vec!["a".to_string(), "b".to_string()]);
+                    }
+                    LamBinder::Untyped(s) => panic!("expected Typed, got Untyped({s})"),
+                }
+            }
+            other => panic!("expected Lam, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn expr_lam_mixed_typed_groups() {
+        let e = parse_value_expr("fun {T : Type} (x : T) => x");
+        match e {
+            Expr::Lam(binders, _) => {
+                assert_eq!(binders.len(), 2);
+                assert!(matches!(
+                    &binders[0],
+                    LamBinder::Typed { kind: BinderKind::Implicit, .. }
+                ));
+                assert!(matches!(
+                    &binders[1],
+                    LamBinder::Typed { kind: BinderKind::Explicit, .. }
+                ));
+            }
+            other => panic!("expected Lam, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn expr_lam_unicode_lambda() {
+        let e = parse_value_expr("λ x => x");
+        assert!(matches!(e, Expr::Lam(_, _)));
+    }
+
+    #[test]
+    fn expr_lam_dash_arrow_body() {
+        // OX3's textual normaliser rewrites `=>` → `->`; the
+        // PEG parser must accept both shapes natively so it
+        // can replace the normaliser later without surface
+        // regressions.
+        let dash = parse_value_expr("fun x -> x");
+        let arrow = parse_value_expr("fun x => x");
+        assert_eq!(dash, arrow);
+    }
+
+    #[test]
+    fn expr_lam_inside_def_value() {
+        let src = "def addOne : Nat -> Nat := fun n => n + 1";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind;
+        assert!(matches!(value, Expr::Lam(_, _)));
+    }
+
+    #[test]
+    fn expr_lam_body_is_full_expr() {
+        // The body slurps the entire trailing expression
+        // (including BinOps + App).
+        let e = parse_value_expr("fun a b c => f a + g b * h c");
+        match e {
+            Expr::Lam(_, body) => {
+                // Body is `f a + g b * h c` — BinOp `+` with
+                // `f a` on the left and `g b * h c` on the
+                // right.
+                assert!(matches!(*body, Expr::BinOp(ref o, _, _) if o == "+"));
+            }
+            other => panic!("expected Lam, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn expr_lam_no_collision_with_def_keyword() {
+        // Multi-decl source: a def whose body is a lambda
+        // followed by another def. The lambda body must not
+        // eat the next decl's `def` keyword.
+        let src = "def f : Nat -> Nat := fun n => n\n\
+                   def g (n : Nat) : Nat := n";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
     }
 
     #[test]
