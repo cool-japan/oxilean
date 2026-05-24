@@ -72,6 +72,12 @@ pub struct Decl {
     /// Attribute list prefix (`@[…]`) applied to this decl.
     /// Empty if the decl had no attribute prefix.
     pub attrs: Vec<Attribute>,
+    /// Universe-parameter list in `def foo.{u, v} : …` form.
+    /// Empty when the decl has no `.{…}` annotation. Applies
+    /// to `def` / `theorem` / `axiom` / `structure` /
+    /// `inductive` / `class` / `instance` (anywhere a name
+    /// gets a `.{…}` suffix in Lean 4).
+    pub univ_params: Vec<String>,
     pub kind: DeclKind,
 }
 
@@ -598,23 +604,23 @@ mod grammar {
             // shape as `def`; surface keyword not preserved.
             rule theorem_decl() -> Decl =
                 ("theorem" / "lemma") word_boundary() _
-                name:ident() _
+                name:ident() univs:univ_params_opt() _
                 binders:(b:binder_group() _ { b })*
                 ":" _ ty:expr() _ ":=" _ proof:expr()
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Theorem {
+                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Theorem {
                         name, binders, ty, proof,
                     }}
                 }
 
-            // `axiom NAME [binders]+ : TYPE` — no body.
+            // `axiom NAME[.{u}]* [binders]+ : TYPE` — no body.
             rule axiom_decl() -> Decl =
                 "axiom" word_boundary() _
-                name:ident() _
+                name:ident() univs:univ_params_opt() _
                 binders:(b:binder_group() _ { b })*
                 ":" _ ty:expr()
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Axiom {
+                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Axiom {
                         name, binders, ty,
                     }}
                 }
@@ -629,11 +635,12 @@ mod grammar {
             rule instance_decl() -> Decl =
                 "instance" word_boundary() _
                 name:(n:ident() _ { n })?
+                univs:univ_params_opt() _
                 binders:(b:binder_group() _ { b })*
                 ":" _ ty:expr() _
                 body:instance_body()
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Instance {
+                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Instance {
                         name, binders, ty, body,
                     }}
                 }
@@ -662,7 +669,7 @@ mod grammar {
                 decls:(d:decl() _ { d })*
                 "end" word_boundary() (_ ident_raw())?
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Namespace {
+                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Namespace {
                         name, decls,
                     }}
                 }
@@ -674,7 +681,7 @@ mod grammar {
                 _ decls:(d:decl() _ { d })*
                 "end" word_boundary() (_ ident_raw())?
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Section {
+                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Section {
                         name, decls,
                     }}
                 }
@@ -687,7 +694,7 @@ mod grammar {
                 _ decls:(d:decl() _ { d })*
                 "end" word_boundary()
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Mutual {
+                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Mutual {
                         decls,
                     }}
                 }
@@ -707,7 +714,7 @@ mod grammar {
                 "open" word_boundary() _h() line:$((!"\n" [_])+)
                 {
                     let (items, raw_tail) = parse_open_line(line);
-                    Decl { attrs: vec![], kind: DeclKind::Open {
+                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Open {
                         items, raw_tail,
                     }}
                 }
@@ -717,7 +724,7 @@ mod grammar {
             rule import_decl() -> Decl =
                 "import" word_boundary() _h() path:ident_raw()
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Import { path } }
+                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Import { path } }
                 }
 
             // `variable [binders]+` — section / namespace
@@ -726,7 +733,7 @@ mod grammar {
                 "variable" word_boundary() _
                 binders:(b:binder_group() _ { b })+
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Variable { binders } }
+                    Decl { attrs: vec![], univ_params: vec![], kind: DeclKind::Variable { binders } }
                 }
 
             // ─── class ───────────────────────────────────────
@@ -740,14 +747,14 @@ mod grammar {
             // type-level binders (e.g. `class Functor (f :
             // Type -> Type) where ...`).
             rule class_decl() -> Decl =
-                "class" word_boundary() _ name:ident()
+                "class" word_boundary() _ name:ident() univs:univ_params_opt()
                 binders:(_ b:binder_group() { b })*
                 extends:(_ e:struct_extends() { e })?
                 _ "where"
                 fields:(_ f:struct_field() { f })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Class {
+                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Class {
                         name,
                         binders,
                         extends: extends.unwrap_or_default(),
@@ -780,15 +787,27 @@ mod grammar {
                 }
 
             rule definition() -> Decl =
-                "def" _ name:ident() _ binders:(b:binder_group() _ { b })*
+                "def" _ name:ident() univs:univ_params_opt() _
+                binders:(b:binder_group() _ { b })*
                 ty:(":" _ t:expr() _ { t })?
                 ":=" _ value:expr()
                 {
                     Decl {
                         attrs: vec![],
+                        univ_params: univs,
                         kind: DeclKind::Definition { name, binders, ty, value },
                     }
                 }
+
+            // Optional universe-parameter list: `.{u, v, …}`.
+            // Empty vec if absent.
+            rule univ_params_opt() -> Vec<String> =
+                ".{" _ first:ident() rest:(_ "," _ n:ident() { n })* _ "}" {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+                / "" { Vec::new() }
 
             // ─── Structure ───────────────────────────────────
             //
@@ -803,13 +822,13 @@ mod grammar {
             // re-parsing on the type side needs layout-aware
             // grammar — a follow-up commit).
             rule structure_decl() -> Decl =
-                "structure" _ name:ident()
+                "structure" _ name:ident() univs:univ_params_opt()
                 extends:(_ e:struct_extends() { e })?
                 _ "where"
                 fields:(_ f:struct_field() { f })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Structure {
+                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Structure {
                         name,
                         extends: extends.unwrap_or_default(),
                         fields,
@@ -862,13 +881,13 @@ mod grammar {
             // also optional (bare `| red` ⇒ elaborator
             // supplies the inductive type as ctor type).
             rule inductive_decl() -> Decl =
-                "inductive" _ name:ident()
+                "inductive" _ name:ident() univs:univ_params_opt()
                 ty:(_ ":" _ t:expr() { t })?
                 _ "where"?
                 ctors:(_ c:inductive_ctor() { c })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { attrs: vec![], kind: DeclKind::Inductive {
+                    Decl { attrs: vec![], univ_params: univs, kind: DeclKind::Inductive {
                         name,
                         ty,
                         ctors,
@@ -2244,6 +2263,77 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── universe annotation `.{u, v}` (OX6 step 11i) ──────
+
+    #[test]
+    fn def_with_single_universe_param() {
+        let src = "def id.{u} : Nat := 0";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].univ_params, vec!["u".to_string()]);
+    }
+
+    #[test]
+    fn def_with_multi_universe_params() {
+        let src = "def pair.{u, v} : Nat := 0";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(
+            decls[0].univ_params,
+            vec!["u".to_string(), "v".to_string()]
+        );
+    }
+
+    #[test]
+    fn def_without_universe_params() {
+        let src = "def f : Nat := 0";
+        let decls = parse_decls(src).expect("must parse");
+        assert!(decls[0].univ_params.is_empty());
+    }
+
+    #[test]
+    fn theorem_with_universe_param() {
+        let src = "theorem t.{u} : True := True.intro";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].univ_params, vec!["u".to_string()]);
+    }
+
+    #[test]
+    fn axiom_with_universe_param() {
+        let src = "axiom choice.{u} : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].univ_params, vec!["u".to_string()]);
+    }
+
+    #[test]
+    fn structure_with_universe_params() {
+        let src = "structure Pair.{u, v} where\n  fst : Nat\n  snd : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].univ_params.len(), 2);
+        assert!(matches!(decls[0].kind, DeclKind::Structure { .. }));
+    }
+
+    #[test]
+    fn inductive_with_universe_param() {
+        let src = "inductive Tree.{u} where\n  | leaf\n  | node";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].univ_params, vec!["u".to_string()]);
+    }
+
+    #[test]
+    fn class_with_universe_param() {
+        let src = "class Functor.{u} (f : Nat) where\n  map : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].univ_params, vec!["u".to_string()]);
+    }
+
+    #[test]
+    fn def_universe_params_then_attr_prefix() {
+        // Combined: attr prefix + universe params.
+        let src = "@[simp]\ndef foo.{u} : Nat := 0";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].univ_params, vec!["u".to_string()]);
     }
 
     // ─── `@` explicit args (OX6 step 11j) ──────────────────
