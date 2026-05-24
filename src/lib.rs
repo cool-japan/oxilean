@@ -138,9 +138,11 @@ pub enum DeclKind {
     },
     /// `class NAME [binders]+ [extends BASES] where FIELDS
     /// [deriving ...]` — typeclass declaration, structurally
-    /// identical to a `structure` (a record of methods).
+    /// identical to a `structure` (a record of methods)
+    /// plus type-level binders for parametric classes.
     Class {
         name: String,
+        binders: Vec<BinderGroup>,
         extends: Vec<String>,
         fields: Vec<StructField>,
         deriving: Vec<String>,
@@ -377,7 +379,8 @@ pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
 mod grammar {
     use super::{
         Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, DoStmt, Expr,
-        InterpPart, LamBinder, Literal, MatchArm, Pattern, StructField,
+        InstanceBody, InterpPart, LamBinder, Literal, MatchArm, Pattern,
+        StructField,
     };
 
     /// Sub-parse a captured raw-text region (a structure
@@ -513,7 +516,9 @@ mod grammar {
                 / d:theorem_decl() { d }
                 / d:axiom_decl() { d }
                 / d:structure_decl() { d }
+                / d:class_decl() { d }
                 / d:inductive_decl() { d }
+                / d:instance_decl() { d }
 
             // `theorem NAME [binders]+ : TYPE := PROOF` or
             // `lemma NAME [binders]+ : TYPE := PROOF` — same
@@ -538,6 +543,65 @@ mod grammar {
                 {
                     Decl { attrs: vec![], kind: DeclKind::Axiom {
                         name, binders, ty,
+                    }}
+                }
+
+            // ─── instance ────────────────────────────────────
+            //
+            // `instance [NAME] [binders]+ : TYPE BODY`.
+            // The name is optional (Lean 4 auto-names
+            // anonymous instances). Body is either a
+            // `where`-block (structure-style field list) or
+            // `:= TERM`.
+            rule instance_decl() -> Decl =
+                "instance" word_boundary() _
+                name:(n:ident() _ { n })?
+                binders:(b:binder_group() _ { b })*
+                ":" _ ty:expr() _
+                body:instance_body()
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Instance {
+                        name, binders, ty, body,
+                    }}
+                }
+
+            rule instance_body() -> InstanceBody =
+                instance_where() / instance_term()
+
+            rule instance_where() -> InstanceBody =
+                "where"
+                fields:(_ f:struct_field() { f })*
+                {
+                    InstanceBody::Where(fields)
+                }
+
+            rule instance_term() -> InstanceBody =
+                ":=" _ e:expr() { InstanceBody::Term(e) }
+
+            // ─── class ───────────────────────────────────────
+            //
+            // `class NAME [binders]+ [extends BASES] where
+            //     field1 : T1
+            //     …
+            //     [deriving Foo, Bar]`
+            //
+            // Structurally identical to `structure` plus
+            // type-level binders (e.g. `class Functor (f :
+            // Type -> Type) where ...`).
+            rule class_decl() -> Decl =
+                "class" word_boundary() _ name:ident()
+                binders:(_ b:binder_group() { b })*
+                extends:(_ e:struct_extends() { e })?
+                _ "where"
+                fields:(_ f:struct_field() { f })*
+                deriving:(_ d:deriving_clause() { d })?
+                {
+                    Decl { attrs: vec![], kind: DeclKind::Class {
+                        name,
+                        binders,
+                        extends: extends.unwrap_or_default(),
+                        fields,
+                        deriving: deriving.unwrap_or_default(),
                     }}
                 }
 
@@ -1949,6 +2013,122 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── instance / class (OX6 step 10b) ───────────────────
+
+    #[test]
+    fn instance_anonymous_where_form() {
+        let src = "instance : ToString Foo where\n  toString := fun _ => \"foo\"";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Instance { name, body, .. } = &decls[0].kind
+            else { panic!("expected Instance") };
+        assert!(name.is_none());
+        match body {
+            InstanceBody::Where(fields) => {
+                assert_eq!(fields.len(), 1);
+                assert_eq!(fields[0].name, "toString");
+            }
+            InstanceBody::Term(e) => panic!("expected Where body, got Term({e:?})"),
+        }
+    }
+
+    #[test]
+    fn instance_named_with_term_body() {
+        let src = "instance addPair : Add Pair := wrap";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Instance { name, body, ty, .. } = &decls[0].kind
+            else { panic!("expected Instance") };
+        assert_eq!(name.as_deref(), Some("addPair"));
+        match body {
+            InstanceBody::Term(e) => assert_eq!(*e, Expr::Ident("wrap".into())),
+            InstanceBody::Where(fs) => panic!("expected Term body, got Where({} fields)", fs.len()),
+        }
+        // ty `Add Pair` is App(Add, Pair).
+        assert!(matches!(ty, Expr::App(_, _)));
+    }
+
+    #[test]
+    fn instance_with_instance_binder() {
+        let src = "instance [Inhabited T] : Inhabited Pair where\n  default := def_pair";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Instance { binders, .. } = &decls[0].kind
+            else { panic!("expected Instance") };
+        assert_eq!(binders.len(), 1);
+        assert_eq!(binders[0].kind, BinderKind::Instance);
+    }
+
+    #[test]
+    fn instance_with_attr_prefix() {
+        let src = "@[default_instance]\ninstance : ToString Foo := mk";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert!(matches!(decls[0].kind, DeclKind::Instance { .. }));
+    }
+
+    #[test]
+    fn class_no_binders() {
+        // No binders form — `class NAME where ...`.
+        let src = "class Trivial where\n  marker : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Class { name, binders, fields, .. } = &decls[0].kind
+            else { panic!("expected Class") };
+        assert_eq!(name, "Trivial");
+        assert!(binders.is_empty());
+        assert_eq!(fields[0].name, "marker");
+    }
+
+    #[test]
+    fn class_with_typed_binder() {
+        let src = "class Functor (f : Type -> Type) where\n  map : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Class { name, binders, fields, .. } = &decls[0].kind
+            else { panic!("expected Class") };
+        assert_eq!(name, "Functor");
+        assert_eq!(binders.len(), 1);
+        assert_eq!(binders[0].kind, BinderKind::Explicit);
+        assert_eq!(binders[0].names, vec!["f".to_string()]);
+        assert_eq!(fields.len(), 1);
+    }
+
+    #[test]
+    fn class_extends_other_class() {
+        let src = "class Monad extends Functor where\n  bind : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Class { extends, .. } = &decls[0].kind
+            else { panic!("expected Class") };
+        assert_eq!(extends, &vec!["Functor".to_string()]);
+    }
+
+    #[test]
+    fn class_with_deriving() {
+        let src = "class Foo where\n  x : Nat\n  deriving Repr";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Class { deriving, .. } = &decls[0].kind
+            else { panic!("expected Class") };
+        assert_eq!(deriving, &vec!["Repr".to_string()]);
+    }
+
+    #[test]
+    fn class_with_attr_prefix() {
+        // `class` itself is a keyword so it can't be used as
+        // an attribute name. Use `builtin_class` (a common
+        // attribute name shape).
+        let src = "@[builtin_class]\nclass Foo where\n  x : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert!(matches!(decls[0].kind, DeclKind::Class { .. }));
+    }
+
+    #[test]
+    fn multi_decl_with_class_and_instance() {
+        let src = "class Foo where\n  x : Nat\n\
+                   \n\
+                   instance : Foo where\n  x := 42";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        assert!(matches!(decls[0].kind, DeclKind::Class { .. }));
+        assert!(matches!(decls[1].kind, DeclKind::Instance { .. }));
     }
 
     // ─── quantifiers (OX6 step 9.5) ────────────────────────
