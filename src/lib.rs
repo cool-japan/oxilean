@@ -278,6 +278,10 @@ pub enum Expr {
     /// they appear in the source. `{{` / `}}` decode to
     /// literal `{` / `}` in the `Text` segments.
     InterpStr(Vec<InterpPart>),
+    /// List literal: `[1, 2, 3]`. Empty `[]` is `List(vec![])`.
+    /// Lean 4 desugars to `List.cons` chains at elab time;
+    /// the parser keeps the literal form for readability.
+    List(Vec<Expr>),
     /// Anything we couldn't further analyse — emitted as
     /// the raw source span. As the PEG grammar extends,
     /// fewer expressions land here.
@@ -1037,6 +1041,7 @@ mod grammar {
                 / exists_expr()
                 / do_expr()
                 / interp_str_lit()
+                / list_lit()
                 / paren_atom()
                 / lit_atom()
                 / ident_atom()
@@ -1050,6 +1055,23 @@ mod grammar {
 
             rule ident_atom() -> Expr =
                 s:ident_raw() { Expr::Ident(s) }
+
+            // ─── List literal `[1, 2, 3]` / `[]` ─────────────
+            //
+            // Lives in atom position. Inside binder context
+            // (e.g. `[Inhabited T]` instance binders) the
+            // grammar uses its own binder rules, so there's
+            // no ambiguity.
+            rule list_lit() -> Expr =
+                "[" _ items:list_items() _ "]" { Expr::List(items) }
+
+            rule list_items() -> Vec<Expr> =
+                first:expr() rest:(_ "," _ e:expr() { e })* {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+                / "" { Vec::new() }
 
             // ─── String interpolation `s!"…{x}…"` ──────────
             //
@@ -2144,6 +2166,79 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── list literal (OX6 step 11h) ───────────────────────
+
+    #[test]
+    fn list_lit_empty() {
+        let e = parse_value_expr("[]");
+        match e {
+            Expr::List(items) => assert!(items.is_empty()),
+            other => panic!("expected List, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn list_lit_three_nat() {
+        let e = parse_value_expr("[1, 2, 3]");
+        match e {
+            Expr::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], Expr::Lit(Literal::Nat(1)));
+                assert_eq!(items[2], Expr::Lit(Literal::Nat(3)));
+            }
+            other => panic!("expected List, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn list_lit_with_expressions() {
+        let e = parse_value_expr("[a + b, f x, 42]");
+        match e {
+            Expr::List(items) => {
+                assert_eq!(items.len(), 3);
+                assert!(matches!(items[0], Expr::BinOp(ref o, _, _) if o == "+"));
+                assert!(matches!(items[1], Expr::App(_, _)));
+                assert_eq!(items[2], Expr::Lit(Literal::Nat(42)));
+            }
+            other => panic!("expected List, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn list_lit_nested() {
+        let e = parse_value_expr("[[1, 2], [3, 4]]");
+        match e {
+            Expr::List(outer) => {
+                assert_eq!(outer.len(), 2);
+                assert!(matches!(outer[0], Expr::List(_)));
+                assert!(matches!(outer[1], Expr::List(_)));
+            }
+            other => panic!("expected List, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn def_with_list_value() {
+        let src = "def primes : List Nat := [2, 3, 5, 7, 11]";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { value, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert!(matches!(value, Expr::List(_)));
+    }
+
+    #[test]
+    fn list_instance_binder_still_works() {
+        // `[Ord T]` in binder context must still parse as
+        // an instance binder, NOT a list literal — binders
+        // use their own grammar, not the expr atom path.
+        let src = "def f [Ord T] (a b : T) : T := a";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { binders, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert_eq!(binders.len(), 2);
+        assert_eq!(binders[0].kind, BinderKind::Instance);
     }
 
     // ─── block + doc comments (OX6 step 11a) ───────────────
