@@ -293,6 +293,16 @@ pub enum Expr {
     Paren(Box<Expr>),
     /// `if COND then THEN else ELSE`.
     If(Box<Expr>, Box<Expr>, Box<Expr>),
+    /// `if let PATTERN := SCRUT then THEN else ELSE` —
+    /// pattern-matching `if`. Equivalent to a single-arm
+    /// `match` with a default fallback branch:
+    /// `match SCRUT with | PATTERN => THEN | _ => ELSE`.
+    IfLet {
+        pattern: Box<Pattern>,
+        scrutinee: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Box<Expr>,
+    },
     /// `match SCRUTINEE with | pat => body | ...`.
     Match(Box<Expr>, Vec<MatchArm>),
     /// `fun BINDERS => BODY` / `λ BINDERS => BODY` /
@@ -1321,7 +1331,8 @@ mod grammar {
             }
 
             rule atom() -> Expr =
-                if_expr()
+                if_let_expr()
+                / if_expr()
                 / let_expr()
                 / match_expr()
                 / lam_expr()
@@ -1725,6 +1736,25 @@ mod grammar {
             rule if_expr() -> Expr =
                 "if" _ cond:expr() _ "then" _ t:expr() _ "else" _ e:expr() {
                     Expr::If(Box::new(cond), Box::new(t), Box::new(e))
+                }
+
+            // `if let pat := e then a else b` — pattern-
+            // matching if (sibling of `match` with a binary
+            // success-vs-fallback split). The `let` keyword
+            // must follow `if` directly (no other tokens),
+            // so this rule is tried *before* `if_expr` in
+            // `atom` to avoid spurious matches against the
+            // plain `if cond then …` form.
+            rule if_let_expr() -> Expr =
+                "if" _ "let" word_boundary() _ pat:pattern() _ ":=" _
+                scrut:expr() _ "then" _ t:expr() _ "else" _ e:expr()
+                {
+                    Expr::IfLet {
+                        pattern: Box::new(pat),
+                        scrutinee: Box::new(scrut),
+                        then_branch: Box::new(t),
+                        else_branch: Box::new(e),
+                    }
                 }
 
             // ─── match … with | … ───────────────────────────
@@ -2852,6 +2882,49 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── if-let (OX6 step 11m) ─────────────────────────────
+
+    #[test]
+    fn if_let_simple_some() {
+        let e = parse_value_expr("if let some x := opt then x else 0");
+        match e {
+            Expr::IfLet { pattern, then_branch, else_branch, .. } => {
+                assert!(matches!(*pattern, Pattern::Ctor(ref s, _) if s == "some"));
+                assert!(matches!(*then_branch, Expr::Ident(ref s) if s == "x"));
+                assert!(matches!(*else_branch, Expr::Lit(Literal::Nat(0))));
+            }
+            other => panic!("expected IfLet, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn if_let_with_dot_ctor() {
+        let e = parse_value_expr("if let .ok v := r then v else 0");
+        match e {
+            Expr::IfLet { pattern, .. } => {
+                assert!(matches!(*pattern, Pattern::DotCtor(ref s, _) if s == "ok"));
+            }
+            other => panic!("expected IfLet, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn if_let_wildcard() {
+        let e = parse_value_expr("if let _ := x then 1 else 2");
+        match e {
+            Expr::IfLet { pattern, .. } => {
+                assert!(matches!(*pattern, Pattern::Wildcard));
+            }
+            other => panic!("expected IfLet, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plain_if_still_works() {
+        let e = parse_value_expr("if cond then 1 else 2");
+        assert!(matches!(e, Expr::If(_, _, _)));
     }
 
     // ─── anonymous fn shorthand (OX6 step 11p) ─────────────
