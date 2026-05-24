@@ -214,6 +214,13 @@ pub enum DeclKind {
     /// expressions are preserved as text — round-trip via
     /// the same expr parser is the consumer's job).
     HashCommand { cmd: String, raw_args: String },
+    /// `omit ident+` — locally drops one or more
+    /// section-level `variable` bindings from the current
+    /// scope. Only meaningful inside a `section` block.
+    Omit { items: Vec<String> },
+    /// `include ident+` — re-introduces previously
+    /// `omit`-ed (or otherwise unused) section variables.
+    Include { items: Vec<String> },
 }
 
 /// Body of an `instance` decl — either a `where`-block of
@@ -743,6 +750,8 @@ mod grammar {
                 / d:open_decl() { d }
                 / d:import_decl() { d }
                 / d:variable_decl() { d }
+                / d:omit_decl() { d }
+                / d:include_decl() { d }
                 / d:hash_command_decl() { d }
 
             // `example [binders]+ : TYPE := PROOF` —
@@ -915,6 +924,27 @@ mod grammar {
                 binders:(b:binder_group() _ { b })+
                 {
                     Decl { attrs: vec![], univ_params: vec![], modifiers: vec![], kind: DeclKind::Variable { binders } }
+                }
+
+            // `omit ident+` — drops named section variables
+            // from the surrounding scope. Each whitespace-
+            // separated ident is captured into `items`.
+            rule omit_decl() -> Decl =
+                "omit" word_boundary() _
+                items:(i:ident_raw() _ { i })+
+                {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![],
+                        kind: DeclKind::Omit { items } }
+                }
+
+            // `include ident+` — re-introduces section
+            // variables (mirror of `omit`).
+            rule include_decl() -> Decl =
+                "include" word_boundary() _
+                items:(i:ident_raw() _ { i })+
+                {
+                    Decl { attrs: vec![], univ_params: vec![], modifiers: vec![],
+                        kind: DeclKind::Include { items } }
                 }
 
             // `#check expr` / `#eval expr` / `#print name` /
@@ -2794,6 +2824,48 @@ world""""#);
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∪"));
         let e = parse_value_expr("a ∩ b");
         assert!(matches!(e, Expr::BinOp(ref o, _, _) if o == "∩"));
+    }
+
+    // ─── omit / include (OX6 step 11v) ─────────────────────
+
+    #[test]
+    fn omit_single() {
+        let decls = parse_decls("omit x").expect("must parse");
+        let DeclKind::Omit { items } = &decls[0].kind
+            else { panic!("expected Omit") };
+        assert_eq!(items, &["x"]);
+    }
+
+    #[test]
+    fn omit_multiple() {
+        let decls = parse_decls("omit x y z").expect("must parse");
+        let DeclKind::Omit { items } = &decls[0].kind
+            else { panic!("expected Omit") };
+        assert_eq!(items, &["x", "y", "z"]);
+    }
+
+    #[test]
+    fn include_single() {
+        let decls = parse_decls("include foo").expect("must parse");
+        let DeclKind::Include { items } = &decls[0].kind
+            else { panic!("expected Include") };
+        assert_eq!(items, &["foo"]);
+    }
+
+    #[test]
+    fn include_multiple() {
+        let decls = parse_decls("include x y").expect("must parse");
+        let DeclKind::Include { items } = &decls[0].kind
+            else { panic!("expected Include") };
+        assert_eq!(items, &["x", "y"]);
+    }
+
+    #[test]
+    fn omit_dotted_ident() {
+        let decls = parse_decls("omit Foo.Bar").expect("must parse");
+        let DeclKind::Omit { items } = &decls[0].kind
+            else { panic!("expected Omit") };
+        assert_eq!(items, &["Foo.Bar"]);
     }
 
     // ─── debug commands (OX6 step 11t) ─────────────────────
