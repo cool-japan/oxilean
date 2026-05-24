@@ -475,9 +475,21 @@ mod grammar {
     peg::parser! {
         pub grammar lean4() for str {
             // ─── Whitespace + comment skipping ──────────────
-            rule _ = (whitespace() / line_comment())* {}
+            rule _ = (whitespace() / line_comment() / block_comment())* {}
             rule whitespace() = quiet!{[' ' | '\t' | '\n' | '\r']}
             rule line_comment() = quiet!{"--" (!"\n" [_])* "\n"?}
+            // Block comments — Lean 4 supports nested
+            // `/- … /- inner -/ … -/`. Doc comments
+            // `/-- … -/` are a special block comment used
+            // for documentation; the parser skips them as
+            // ordinary block comments here. Semantic
+            // attachment to the following decl is OX6 step
+            // 11u (deferred).
+            rule block_comment() = quiet!{
+                "/-" block_comment_body() "-/"
+            }
+            rule block_comment_body() =
+                (block_comment() / (!"-/" [_]))*
 
             // ─── Lexical atoms ───────────────────────────────
             rule ident_raw() -> String =
@@ -2132,6 +2144,63 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── block + doc comments (OX6 step 11a) ───────────────
+
+    #[test]
+    fn block_comment_skipped() {
+        let src = "/- top-level block comment -/\n\
+                   def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 1);
+    }
+
+    #[test]
+    fn block_comment_inside_decl() {
+        let src = "def f /- inline -/ : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Definition { name, .. } = &decls[0].kind
+            else { panic!("expected Definition") };
+        assert_eq!(name, "f");
+    }
+
+    #[test]
+    fn nested_block_comment() {
+        let src = "/- outer /- inner -/ still outer -/\n\
+                   def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 1);
+    }
+
+    #[test]
+    fn deeply_nested_block_comment() {
+        let src = "/- a /- b /- c -/ b -/ a -/\n\
+                   def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 1);
+    }
+
+    #[test]
+    fn doc_comment_treated_as_block_comment() {
+        // `/-- … -/` parses as an ordinary block comment in
+        // v0; semantic attachment to the next decl is OX6
+        // step 11u.
+        let src = "/-- doc string for f -/\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 1);
+    }
+
+    #[test]
+    fn block_comment_multi_line() {
+        let src = "/-\n\
+                   multi-line\n\
+                   block\n\
+                   comment\n\
+                   -/\n\
+                   def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 1);
     }
 
     // ─── open / import / variable (OX6 step 10d) ──────────
