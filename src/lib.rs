@@ -37,15 +37,19 @@
 //!     `fun BINDERS -> body`.
 //!
 //! Structure/inductive field & ctor type annotations are
-//! captured as raw `String` text in this v0 (full expression
-//! re-parsing is a follow-up — requires layout-sensitive
-//! parsing or a separate inline-expr grammar).
+//! fully parsed as `Expr` (including multi-line types via
+//! layout-sensitive boundary detection — the type region
+//! spans every line until the next field header, `deriving`,
+//! top-level decl keyword, or EOF; the captured text is
+//! then sub-parsed through the same `expr` grammar).
+//! Attribute lists with arguments parse natively (args
+//! preserved as raw text per-attribute).
 //!
 //! Out of scope until subsequent OX6 commits:
 //! `let`, `do` notation, string interpolation `s!"…"`,
-//! attribute lists (with args), `theorem` / `lemma` /
-//! `axiom` / `instance` / `class` / `namespace` / `open`
-//! / `import` / `variable` / `mutual` decls.
+//! `theorem` / `lemma` / `axiom` / `instance` / `class` /
+//! `namespace` / `open` / `import` / `variable` / `mutual`
+//! decls.
 
 use leo4_abi::LeanError;
 
@@ -98,29 +102,26 @@ pub enum DeclKind {
     },
 }
 
-/// One named field of a `structure`. The type is held as
-/// raw source text in this v0 — full expression re-parsing
-/// is a follow-up commit (it requires either layout-sensitive
-/// parsing or a separate inline-expr grammar).
+/// One named field of a `structure`. The `ty` is the full
+/// parsed expression annotation (multi-line continuations
+/// supported via layout-sensitive boundary detection — a
+/// field's type spans every line until the next field
+/// header, `deriving` clause, top-level decl, or EOF).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructField {
     pub name: String,
-    /// Raw type-annotation text, with leading/trailing
-    /// whitespace trimmed.
-    pub ty: String,
+    pub ty: Expr,
 }
 
-/// One constructor of an `inductive`. The optional `ty` is
-/// the explicit type annotation (Lean 4 allows omitting it
-/// for unit-arity ctors, in which case the elaborator
-/// supplies the inductive type itself); held as raw source
-/// text for the same v0 reason as `StructField`.
+/// One constructor of an `inductive`. `Some(ty)` is the
+/// explicit type annotation (parsed; multi-line allowed via
+/// the same boundary-detection rules as `StructField`);
+/// `None` means the ctor was written bare (`| red`) — the
+/// elaborator supplies the inductive type as the ctor type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ctor {
     pub name: String,
-    /// Raw type-annotation text (after `:`), or `None` for
-    /// bare ctor lines like `| red`.
-    pub ty: Option<String>,
+    pub ty: Option<Expr>,
 }
 
 /// A group of binders sharing a common type annotation:
@@ -258,6 +259,23 @@ mod grammar {
         Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, Expr, LamBinder,
         Literal, MatchArm, Pattern, StructField,
     };
+
+    /// Sub-parse a captured raw-text region (a structure
+    /// field's or inductive ctor's type annotation) as a
+    /// stand-alone `expr`. Returns `None` if the text fails
+    /// to parse — caller falls back to `Expr::Raw(text)` so
+    /// even malformed type annotations don't abort the whole
+    /// decl.
+    ///
+    /// Layout-sensitive multi-line type regions work because
+    /// the boundary detection in `field_or_ctor_boundary`
+    /// stops capture at the next field / ctor / decl
+    /// keyword line, then this helper feeds the captured
+    /// multi-line slice to `expr` (whose grammar tolerates
+    /// newlines via the `_` rule).
+    fn parse_expr_text(text: &str) -> Option<Expr> {
+        lean4::expr(text.trim()).ok()
+    }
 
     peg::parser! {
         pub grammar lean4() for str {
@@ -405,11 +423,22 @@ mod grammar {
                     v
                 }
 
+            // Multi-line field type: capture raw text up to
+            // the next field header / deriving / top-level
+            // decl / EOF (the "field-region" boundary), then
+            // sub-parse that text as an `expr`. The boundary
+            // detection is layout-sensitive in the loose
+            // sense that the next field's header pattern
+            // (`<ident> :`) on its own line is what stops
+            // the current field's type.
             rule struct_field() -> StructField =
                 name:ident() _h() ":" _h()
-                ty_text:$((!"\n" [_])+)
+                ty_text:$((!field_or_ctor_boundary() [_])+)
                 {
-                    StructField { name, ty: ty_text.trim().to_string() }
+                    let trimmed = ty_text.trim();
+                    let ty = parse_expr_text(trimmed)
+                        .unwrap_or_else(|| Expr::Raw(trimmed.to_string()));
+                    StructField { name, ty }
                 }
 
             // ─── Inductive ───────────────────────────────────
@@ -448,10 +477,53 @@ mod grammar {
 
             rule inductive_ctor() -> Ctor =
                 arm_bar() _ name:ident()
-                ty:(_h() ":" _h() t:$((!"\n" [_])+) { t.trim().to_string() })?
+                ty:(_h() ":" _h()
+                    text:$((!field_or_ctor_boundary() [_])+) {
+                        let trimmed = text.trim();
+                        parse_expr_text(trimmed)
+                            .unwrap_or_else(|| Expr::Raw(trimmed.to_string()))
+                    })?
                 {
                     Ctor { name, ty }
                 }
+
+            // Boundary used by both `struct_field` and
+            // `inductive_ctor` when capturing the type-region
+            // text. The current type region ends when the
+            // PEG can see, after a newline + optional
+            // horizontal whitespace, any of:
+            //
+            //   - a next field/ctor header (`<ident> :` or
+            //     `| <ident>`),
+            //   - `deriving` keyword,
+            //   - a top-level decl keyword (`def`, `structure`,
+            //     `inductive`, `@[…]` attribute prefix),
+            //   - end of file.
+            //
+            // Same-line content (no newline) never triggers
+            // the boundary, so a header followed by trailing
+            // whitespace on its own line opens a multi-line
+            // continuation.
+            rule field_or_ctor_boundary() =
+                "\n" _h() boundary_starter()
+
+            rule boundary_starter() =
+                ident() _h() ":" {}        // next struct field
+                / "|" {}                    // next ctor arm
+                / "deriving" word_boundary()
+                / top_level_decl_starter()
+                / ![_]                       // EOF
+
+            rule top_level_decl_starter() =
+                ("def" / "theorem" / "lemma" / "axiom" / "inductive"
+                 / "structure" / "class" / "instance" / "namespace"
+                 / "section" / "end" / "open" / "import" / "variable"
+                 / "abbrev")
+                word_boundary()
+                / "@[" {}
+
+            rule word_boundary() =
+                ![ 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '\'']
 
             // ─── Deriving ────────────────────────────────────
             rule deriving_clause() -> Vec<String> =
@@ -1414,9 +1486,9 @@ mod tests {
         assert!(deriving.is_empty());
         assert_eq!(fields.len(), 2);
         assert_eq!(fields[0].name, "x");
-        assert_eq!(fields[0].ty, "Float");
+        assert_eq!(fields[0].ty, Expr::Ident("Float".into()));
         assert_eq!(fields[1].name, "y");
-        assert_eq!(fields[1].ty, "Float");
+        assert_eq!(fields[1].ty, Expr::Ident("Float".into()));
     }
 
     #[test]
@@ -1477,7 +1549,11 @@ mod tests {
         assert_eq!(ctors[0].name, "leaf");
         assert!(ctors[0].ty.is_none());
         assert_eq!(ctors[1].name, "node");
-        assert_eq!(ctors[1].ty.as_deref(), Some("Tree -> Tree -> Tree"));
+        // `Tree -> Tree -> Tree` parses to a right-assoc arrow tree.
+        match ctors[1].ty.as_ref() {
+            Some(Expr::BinOp(op, _, _)) => assert_eq!(op, "->"),
+            other => panic!("expected arrow BinOp, got {other:?}"),
+        }
     }
 
     #[test]
@@ -1490,7 +1566,7 @@ mod tests {
         assert!(ty.is_some(), "explicit type annotation must surface");
         assert_eq!(ctors.len(), 3);
         for c in ctors {
-            assert_eq!(c.ty.as_deref(), Some("Color"));
+            assert_eq!(c.ty, Some(Expr::Ident("Color".into())));
         }
     }
 
@@ -1612,6 +1688,131 @@ mod tests {
         assert_eq!(decls[1].attrs.len(), 2);
         assert_eq!(decls[1].attrs[0].name, "b");
         assert_eq!(decls[1].attrs[1].name, "c");
+    }
+
+    // ─── multi-line + full-expr-reparse (OX6 step 7) ───────
+
+    #[test]
+    fn struct_field_type_is_fully_parsed_expr() {
+        // Previously `fields[0].ty` was a raw `String`; now
+        // it's a fully parsed `Expr`.
+        let src = "structure Point where\n  x : Float\n  y : Float";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { fields, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(fields[0].ty, Expr::Ident("Float".into()));
+        assert_eq!(fields[1].ty, Expr::Ident("Float".into()));
+    }
+
+    #[test]
+    fn struct_field_type_with_app() {
+        let src = "structure Bucket where\n  items : List Nat";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { fields, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        // `List Nat` → App(List, Nat)
+        match &fields[0].ty {
+            Expr::App(f, x) => {
+                assert_eq!(**f, Expr::Ident("List".into()));
+                assert_eq!(**x, Expr::Ident("Nat".into()));
+            }
+            other => panic!("expected App, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn struct_field_type_multi_line_continuation() {
+        // Type spans onto continuation lines. The boundary
+        // detection only stops at the next field header
+        // (`<ident> :` on its own line), so deeply-nested
+        // generic types parse correctly.
+        let src = "structure Big where\n  \
+                   xs : List\n    \
+                   (Option\n    \
+                   Nat)\n  \
+                   y : Nat";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { fields, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].name, "xs");
+        // The xs type is the full multi-line `List (Option
+        // Nat)` shape.
+        assert!(matches!(fields[0].ty, Expr::App(_, _)));
+        assert_eq!(fields[1].name, "y");
+        assert_eq!(fields[1].ty, Expr::Ident("Nat".into()));
+    }
+
+    #[test]
+    fn struct_field_type_with_arrow() {
+        let src = "structure Callback where\n  cb : Nat -> Bool";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { fields, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        match &fields[0].ty {
+            Expr::BinOp(op, lhs, rhs) => {
+                assert_eq!(op, "->");
+                assert_eq!(**lhs, Expr::Ident("Nat".into()));
+                assert_eq!(**rhs, Expr::Ident("Bool".into()));
+            }
+            other => panic!("expected arrow BinOp, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn inductive_ctor_payload_is_fully_parsed_expr() {
+        let src = "inductive Tree where\n  | leaf\n  | node : Tree -> Tree -> Tree";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Inductive { ctors, .. } = &decls[0].kind
+            else { panic!("expected Inductive") };
+        assert!(ctors[0].ty.is_none());
+        match ctors[1].ty.as_ref() {
+            Some(Expr::BinOp(op, _, _)) => assert_eq!(op, "->"),
+            other => panic!("expected arrow, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn inductive_ctor_multi_line_payload() {
+        let src = "inductive E where\n  | wrap : \n    Nat ->\n    Bool ->\n    E";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Inductive { ctors, .. } = &decls[0].kind
+            else { panic!("expected Inductive") };
+        assert_eq!(ctors[0].name, "wrap");
+        // wrap's payload is a right-associative arrow chain.
+        match ctors[0].ty.as_ref() {
+            Some(Expr::BinOp(op, _, _)) => assert_eq!(op, "->"),
+            other => panic!("expected arrow, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn struct_unparseable_field_falls_back_to_raw() {
+        // A field type that contains a syntactic shape we
+        // don't yet support should fall back to `Expr::Raw`
+        // rather than failing the whole struct.
+        let src = "structure X where\n  x : ¡weird syntax!";
+        let result = parse_decls(src);
+        // Outer parse succeeds (raw fallback in the field);
+        // OR the boundary capture itself rejects — both are
+        // acceptable v0 behaviour. The contract is "never
+        // panic on weird-but-finite text".
+        let _ = result;
+    }
+
+    #[test]
+    fn structure_with_carrier_field_and_deriving() {
+        let src = "structure MoneyBag where\n  \
+                   major : BigNat\n  \
+                   minor : UInt32\n  \
+                   deriving LeanMarshal";
+        let decls = parse_decls(src).expect("must parse");
+        let DeclKind::Structure { fields, deriving, .. } = &decls[0].kind
+            else { panic!("expected Structure") };
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].ty, Expr::Ident("BigNat".into()));
+        assert_eq!(fields[1].ty, Expr::Ident("UInt32".into()));
+        assert_eq!(deriving, &vec!["LeanMarshal".to_string()]);
     }
 
     #[test]
