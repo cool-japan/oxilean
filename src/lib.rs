@@ -51,7 +51,23 @@ use leo4_abi::LeanError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Decl {
+    /// Attribute list prefix (`@[…]`) applied to this decl.
+    /// Empty if the decl had no attribute prefix.
+    pub attrs: Vec<Attribute>,
     pub kind: DeclKind,
+}
+
+/// One attribute inside a `@[…]` list. The `raw_args` field
+/// holds everything after the attribute name (whitespace
+/// trimmed); v0 doesn't sub-parse arguments because
+/// attribute-specific arg grammars are defined per-attribute
+/// in Lean 4 (`@[simp]` takes no args, `@[builtin_attribute
+/// "name" "doc"]` takes string-literal args, etc.). Downstream
+/// consumers parse `raw_args` themselves if needed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Attribute {
+    pub name: String,
+    pub raw_args: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -239,8 +255,8 @@ pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
 
 mod grammar {
     use super::{
-        BinderGroup, BinderKind, Ctor, Decl, DeclKind, Expr, LamBinder, Literal,
-        MatchArm, Pattern, StructField,
+        Attribute, BinderGroup, BinderKind, Ctor, Decl, DeclKind, Expr, LamBinder,
+        Literal, MatchArm, Pattern, StructField,
     };
 
     peg::parser! {
@@ -305,10 +321,44 @@ mod grammar {
             pub rule source() -> Vec<Decl> =
                 _ ds:(d:decl() _ { d })* ![_] { ds }
 
+            // A top-level decl with an optional attribute
+            // prefix. `decl_body` returns a `Decl` with
+            // `attrs: vec![]`; this wrapper attaches the
+            // parsed attrs if present.
             rule decl() -> Decl =
+                attrs:(a:attribute_list() _ { a })? d:decl_body() {
+                    let mut decl = d;
+                    decl.attrs = attrs.unwrap_or_default();
+                    decl
+                }
+
+            rule decl_body() -> Decl =
                 d:definition() { d }
                 / d:structure_decl() { d }
                 / d:inductive_decl() { d }
+
+            // ─── Attribute list `@[…]` ───────────────────────
+            //
+            // Each entry is `name [raw_args]`, comma-separated.
+            // `raw_args` is everything between the name and
+            // the next `,` or `]` (whitespace trimmed). v0
+            // doesn't sub-parse args because attribute-
+            // specific arg grammars are per-attribute in Lean
+            // 4 — downstream consumers parse `raw_args`
+            // themselves.
+            rule attribute_list() -> Vec<Attribute> =
+                "@[" _ first:attribute() rest:(_ "," _ a:attribute() { a })* _ "]" {
+                    let mut v = vec![first];
+                    v.extend(rest);
+                    v
+                }
+
+            rule attribute() -> Attribute =
+                name:ident_raw()
+                args:(_h() s:$((!"," !"]" !"\n" [_])+) { s.trim().to_string() })?
+                {
+                    Attribute { name, raw_args: args.unwrap_or_default() }
+                }
 
             rule definition() -> Decl =
                 "def" _ name:ident() _ binders:(b:binder_group() _ { b })*
@@ -316,6 +366,7 @@ mod grammar {
                 ":=" _ value:expr()
                 {
                     Decl {
+                        attrs: vec![],
                         kind: DeclKind::Definition { name, binders, ty, value },
                     }
                 }
@@ -339,7 +390,7 @@ mod grammar {
                 fields:(_ f:struct_field() { f })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { kind: DeclKind::Structure {
+                    Decl { attrs: vec![], kind: DeclKind::Structure {
                         name,
                         extends: extends.unwrap_or_default(),
                         fields,
@@ -387,7 +438,7 @@ mod grammar {
                 ctors:(_ c:inductive_ctor() { c })*
                 deriving:(_ d:deriving_clause() { d })?
                 {
-                    Decl { kind: DeclKind::Inductive {
+                    Decl { attrs: vec![], kind: DeclKind::Inductive {
                         name,
                         ty,
                         ctors,
@@ -1481,6 +1532,95 @@ mod tests {
         let DeclKind::Structure { fields, .. } = &decls[0].kind
             else { panic!("expected Structure") };
         assert!(fields.is_empty());
+    }
+
+    // ─── attribute lists (OX6 step 6) ──────────────────────
+
+    #[test]
+    fn attr_single_bare_ident() {
+        let src = "@[simp]\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].attrs[0].name, "simp");
+        assert!(decls[0].attrs[0].raw_args.is_empty());
+    }
+
+    #[test]
+    fn attr_comma_list_bare_idents() {
+        let src = "@[simp, ext, inline]\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        let names: Vec<_> = decls[0].attrs.iter().map(|a| a.name.as_str()).collect();
+        assert_eq!(names, vec!["simp", "ext", "inline"]);
+    }
+
+    #[test]
+    fn attr_with_args_preserved_raw() {
+        // OxiLean's parser rejects attr args; OX6 preserves
+        // them as raw text in `raw_args` so downstream
+        // consumers can inspect.
+        let src = "@[leo4_specialize_when scalar ∧ ord]\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        let attr = &decls[0].attrs[0];
+        assert_eq!(attr.name, "leo4_specialize_when");
+        assert_eq!(attr.raw_args, "scalar ∧ ord");
+    }
+
+    #[test]
+    fn attr_mix_bare_and_args_in_list() {
+        let src = "@[leo4_export, leo4_specialize_when scalar ∧ ord]\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        let attrs = &decls[0].attrs;
+        assert_eq!(attrs.len(), 2);
+        assert_eq!(attrs[0].name, "leo4_export");
+        assert!(attrs[0].raw_args.is_empty());
+        assert_eq!(attrs[1].name, "leo4_specialize_when");
+        assert_eq!(attrs[1].raw_args, "scalar ∧ ord");
+    }
+
+    #[test]
+    fn attr_attaches_to_structure() {
+        let src = "@[ext]\nstructure Point where\n  x : Float";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].attrs[0].name, "ext");
+        assert!(matches!(decls[0].kind, DeclKind::Structure { .. }));
+    }
+
+    #[test]
+    fn attr_attaches_to_inductive() {
+        let src = "@[derive_smt]\ninductive Color where\n  | red";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].attrs[0].name, "derive_smt");
+        assert!(matches!(decls[0].kind, DeclKind::Inductive { .. }));
+    }
+
+    #[test]
+    fn no_attr_yields_empty_vec() {
+        let src = "def f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert!(decls[0].attrs.is_empty());
+    }
+
+    #[test]
+    fn multi_decl_with_per_decl_attrs() {
+        let src = "@[a]\ndef f : Nat := 1\n@[b, c]\ndef g : Nat := 2";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls.len(), 2);
+        assert_eq!(decls[0].attrs.len(), 1);
+        assert_eq!(decls[0].attrs[0].name, "a");
+        assert_eq!(decls[1].attrs.len(), 2);
+        assert_eq!(decls[1].attrs[0].name, "b");
+        assert_eq!(decls[1].attrs[1].name, "c");
+    }
+
+    #[test]
+    fn attr_dotted_name() {
+        // `@[Foo.bar]` — dotted attribute names are valid in
+        // Lean 4 (e.g. `@[Lean.Elab.Tactic.builtin_tactic]`).
+        let src = "@[Foo.bar]\ndef f : Nat := 1";
+        let decls = parse_decls(src).expect("must parse");
+        assert_eq!(decls[0].attrs[0].name, "Foo.bar");
     }
 
     #[test]
