@@ -384,6 +384,30 @@ pub(super) fn convert_to_atomic(
                 Ok(LcnfArg::Type(ty))
             }
         }
+        // OX7 (1b-β, 2026-05-27): mirror the
+        // `convert_proj` fast path here. Without this,
+        // a `Proj("add", _, Const("UInt64"))` head in
+        // an App falls through to the general arm,
+        // emits a let-binding via `convert_expr`, and
+        // the App's head ends up as a fresh `_xN`
+        // placeholder instead of the composite kernel
+        // name.
+        Expr::Proj(name, _idx, base) => {
+            if let Expr::Const(base_name, _) = base.as_ref() {
+                let mangled = mangle_name(
+                    &base_name.clone().append_str(name_to_string(name)),
+                );
+                if let Some(var_id) = state.lookup_name(&mangled) {
+                    return Ok(LcnfArg::Var(var_id));
+                }
+                let var_id = state.fresh_named_var(&mangled);
+                state.name_map.insert(mangled, var_id);
+                return Ok(LcnfArg::Var(var_id));
+            }
+            let lcnf = convert_expr(expr, state, false)?;
+            let id = bind_expr_to_var(lcnf, state, hint)?;
+            Ok(LcnfArg::Var(id))
+        }
         _ => {
             let lcnf = convert_expr(expr, state, false)?;
             let id = bind_expr_to_var(lcnf, state, hint)?;
@@ -582,6 +606,28 @@ pub(super) fn convert_proj(
     base: &Expr,
     state: &mut ToLcnfState,
 ) -> Result<LcnfExpr, ConversionError> {
+    // OX7 (1b-β, 2026-05-27): `oxilean-elab` lowers
+    // namespace lookups like `UInt64.add` as a
+    // `Proj("add", _, Const("UInt64"))` rather than a
+    // direct `Const("UInt64.add")`. When the projection
+    // base is a `Const`, treat the projection as a
+    // composite kernel-name reference (the dot-joined
+    // form) so the Rust backend can emit
+    // `UInt64_add(_x0, _x1)` instead of stranding the
+    // head in a fresh `_xN` placeholder.
+    //
+    // Heuristic limitation: a *real* field projection
+    // whose base happens to be a 0-ary `Const` (rare —
+    // would require the type itself to inhabit a
+    // structure, not just be a structure type) would
+    // also take this branch. For the rust-transpile
+    // path's actual fixtures (primitive method calls,
+    // user-namespaced fns) the heuristic is correct.
+    if let Expr::Const(base_name, _) = base {
+        let composite = base_name.clone().append_str(name_to_string(name));
+        let _ = idx;
+        return convert_const(&composite, &[], state);
+    }
     let name_str = name_to_string(name);
     let base_arg = convert_to_atomic(base, state, "proj_base")?;
     let base_var = match base_arg {
@@ -1405,6 +1451,59 @@ mod tests {
     /// the *correct* invariants so once the underlying
     /// bug is fixed this test stays green.
     ///
+    /// OX7 spike (1b-β, 2026-05-27) — ensure that a
+    /// `Proj("add", _, Const("UInt64"))` head (the way
+    /// oxilean-elab lowers `UInt64.add`) emits as the
+    /// composite kernel name `UInt64_add` rather than
+    /// the bound-let placeholder `_xN`. Pairs with
+    /// `convert_to_atomic`'s fast-path branch.
+    #[test]
+    pub(super) fn spike_ox7_proj_const_base_emits_composite_name() {
+        use crate::rust_target_backend::RustTargetBackend;
+        let config = default_config();
+        let name = Name::str("add");
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let params = vec![
+            (Name::str("a"), uint64.clone()),
+            (Name::str("b"), uint64.clone()),
+        ];
+        // body = Proj("add", 0, Const("UInt64")) a b
+        // — the shape oxilean-elab produces for
+        // `UInt64.add a b`.
+        let proj = Expr::Proj(
+            Name::str("add"),
+            0,
+            Box::new(Expr::Const(Name::str("UInt64"), vec![])),
+        );
+        let body = Expr::App(
+            Box::new(Expr::App(Box::new(proj), Box::new(Expr::BVar(1)))),
+            Box::new(Expr::BVar(0)),
+        );
+
+        let (decl, const_names) = decl_to_lcnf_full(
+            &name, &params, Some(&uint64), &body, &config,
+        )
+        .expect("conversion must succeed");
+
+        eprintln!("OX7 (1b-β) const_names = {:?}", const_names);
+        assert!(
+            const_names.values().any(|n| n == "UInt64_add"),
+            "const_names must contain `UInt64_add`, got: {:?}",
+            const_names
+        );
+
+        let mut backend = RustTargetBackend::new();
+        backend.set_const_names(const_names);
+        let rust_fn = backend.compile_decl(&decl).expect("compile must succeed");
+        let emitted = rust_fn.emit();
+        eprintln!("OX7 (1b-β) emitted Rust:\n{}", emitted);
+        assert!(
+            emitted.contains("UInt64_add(_x0, _x1)"),
+            "body must call `UInt64_add(_x0, _x1)`: {}",
+            emitted
+        );
+    }
+
     /// OX7 spike (#1 + #2, 2026-05-26) — end-to-end
     /// check that `decl_to_lcnf_full` produces emitted
     /// Rust where (a) the declared return type is
