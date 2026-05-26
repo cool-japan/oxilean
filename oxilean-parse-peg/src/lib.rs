@@ -1,4 +1,4 @@
-//! leo4-lean4-parse — PEG-based Lean 4 parser. See `README.md`
+//! oxilean-parse-peg — PEG-based Lean 4 parser. See `README.md`
 //! for the strict-superset rationale + roadmap.
 //!
 //! ## Public API surface (v0.5)
@@ -65,7 +65,26 @@
 //! macro / debug-command decls, oxilean-parse cross-check,
 //! and the leo4-oxilean-build switchover.
 
-use leo4_abi::LeanError;
+/// Crate-local error type. Donated upstream from
+/// leo4-lean4-parse (which used `leo4-abi`'s `LeanError`)
+/// in OX7, 2026-05-26 — the `oxilean-parse-peg` crate
+/// is now leo4-independent. Downstream consumers wrap
+/// this into their own error type at the boundary
+/// (leo4 wraps it back into `LeanError(DECODE_ERROR)`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseError {
+    /// Human-readable diagnostic (the PEG error
+    /// rendered via `Display`).
+    pub message: String,
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for ParseError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Decl {
@@ -570,14 +589,11 @@ impl Expr {
 /// top-level declarations.
 ///
 /// # Errors
-/// `LeanError(DECODE_ERROR)` on parse failure with the
-/// underlying PEG diagnostic in the message.
-pub fn parse_decls(src: &str) -> Result<Vec<Decl>, LeanError> {
-    grammar::lean4::source(src.trim()).map_err(|e| {
-        LeanError::new(
-            leo4_abi::error::error_codes::DECODE_ERROR,
-            format!("leo4-lean4-parse: {e}"),
-        )
+/// `ParseError` on parse failure with the underlying
+/// PEG diagnostic in the message.
+pub fn parse_decls(src: &str) -> Result<Vec<Decl>, ParseError> {
+    grammar::lean4::source(src.trim()).map_err(|e| ParseError {
+        message: format!("oxilean-parse-peg: {e}"),
     })
 }
 
@@ -1978,7 +1994,7 @@ mod grammar {
             // `fun BINDERS => BODY` form. The body-arrow is
             // either `=>` (Lean 4 native) or `->` (accepted
             // as a synonym; OX3's `lean4_normalize` rewrites
-            // ` => ` to ` -> `, and `leo4-lean4-parse` should
+            // ` => ` to ` -> `, and `oxilean-parse-peg` should
             // accept both so it can replace the textual
             // normaliser later without surface regressions).
             rule lam_expr() -> Expr =
@@ -2347,11 +2363,17 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_surfaces_as_lean_error() {
+    fn parse_error_carries_diagnostic_message() {
         // Missing `:=` — should fail.
         let src = "def bad (n : Nat) : Nat";
         let err = parse_decls(src).expect_err("must fail");
-        assert_eq!(err.code, leo4_abi::error::error_codes::DECODE_ERROR);
+        // Diagnostic prefix kept stable for downstream
+        // consumers grepping logs.
+        assert!(
+            err.message.starts_with("oxilean-parse-peg:"),
+            "expected oxilean-parse-peg prefix, got: {}",
+            err.message
+        );
     }
 
     // ─── Expression grammar tests (OX6 step 2) ────────────

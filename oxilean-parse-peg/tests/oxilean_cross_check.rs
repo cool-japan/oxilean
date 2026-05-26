@@ -1,14 +1,14 @@
-//! OX6 step 12 — cross-check `leo4-lean4-parse` against
+//! OX6 step 12 — cross-check `oxilean-parse-peg` against
 //! `oxilean-parse` v0.1.2.
 //!
 //! **Strict-superset invariant**: for every source that
-//! `oxilean-parse` accepts, `leo4-lean4-parse` must also
+//! `oxilean-parse` accepts, `oxilean-parse-peg` must also
 //! accept it, the two parsers must agree on the decl
 //! count, and corresponding decls must share a `name` and
 //! a compatible `kind` tag.
 //!
 //! `oxilean-parse` rejecting a source is fine — that is
-//! the "strict" half of the invariant; leo4-lean4-parse
+//! the "strict" half of the invariant; oxilean-parse-peg
 //! extends the surface beyond what upstream accepts.
 //!
 //! AST field-level equivalence is NOT asserted: the two
@@ -20,7 +20,7 @@
 //! Decl-level identity (name + kind tag) is the contract
 //! consumers of leo4-oxilean-build actually depend on.
 
-use leo4_lean4_parse::{parse_decls as our_parse, DeclKind as OurKind};
+use oxilean_parse_peg::{parse_decls as our_parse, DeclKind as OurKind};
 use oxilean_parse::{parse_file as their_parse, Decl as TheirDecl};
 
 /// A single corpus entry.
@@ -34,7 +34,7 @@ struct Case {
 /// The corpus. Each entry MUST be in `oxilean-parse`'s
 /// accepted subset of Lean 4 — that is the precondition
 /// for cross-checking. Sources designed to exercise the
-/// shared surface, not leo4-lean4-parse's extensions.
+/// shared surface, not oxilean-parse-peg's extensions.
 const CORPUS: &[Case] = &[
     Case {
         label: "single def",
@@ -99,7 +99,7 @@ fn strict_superset_corpus() {
             Ok(v) => v,
             Err(e) => {
                 failures.push(format!(
-                    "case `{}`: oxilean-parse accepted but leo4-lean4-parse \
+                    "case `{}`: oxilean-parse accepted but oxilean-parse-peg \
                      REJECTED with {e:?} — strict-superset invariant violated",
                     case.label
                 ));
@@ -110,7 +110,7 @@ fn strict_superset_corpus() {
         if theirs.len() != ours.len() {
             failures.push(format!(
                 "case `{}`: decl count mismatch — oxilean-parse {} vs \
-                 leo4-lean4-parse {}",
+                 oxilean-parse-peg {}",
                 case.label,
                 theirs.len(),
                 ours.len()
@@ -124,7 +124,7 @@ fn strict_superset_corpus() {
             if t_name != o_name.as_deref() {
                 failures.push(format!(
                     "case `{}` decl[{}]: name mismatch — \
-                     oxilean-parse `{:?}` vs leo4-lean4-parse `{:?}`",
+                     oxilean-parse `{:?}` vs oxilean-parse-peg `{:?}`",
                     case.label, i, t_name, o_name
                 ));
                 continue;
@@ -132,7 +132,7 @@ fn strict_superset_corpus() {
             if !kind_tags_compatible(&t.value, &o.kind) {
                 failures.push(format!(
                     "case `{}` decl[{}]: kind tag mismatch — \
-                     oxilean-parse `{}` vs leo4-lean4-parse `{}`",
+                     oxilean-parse `{}` vs oxilean-parse-peg `{}`",
                     case.label,
                     i,
                     their_kind_tag(&t.value),
@@ -150,7 +150,7 @@ fn strict_superset_corpus() {
     );
 }
 
-/// Project a leo4-lean4-parse `DeclKind` onto its
+/// Project a oxilean-parse-peg `DeclKind` onto its
 /// declaration name (the shape that `oxilean-parse`'s
 /// `Decl::name()` returns).
 fn our_decl_name(k: &OurKind) -> Option<String> {

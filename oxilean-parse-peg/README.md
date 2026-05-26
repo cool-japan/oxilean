@@ -1,4 +1,4 @@
-# leo4-lean4-parse
+# oxilean-parse-peg
 
 PEG-based Lean 4 parser. Built from scratch (using the [`peg`](https://crates.io/crates/peg) parser-generator crate) to escape the narrow subset of Lean 4 syntax that `oxilean-parse` v0.1.2 accepts — the parser that `leo4-oxilean-build`'s OX3 / OX4 textual pre-rewrites were trying to lift Lean 4 source *into*.
 
@@ -16,7 +16,7 @@ Once the surface coverage gap got this deep, vendoring + patching `oxilean-parse
 
 ## Strict superset invariant
 
-Where `leo4-lean4-parse` and `oxilean-parse` cover the same input shape, both **must produce equivalent ASTs** (modulo type-name differences). For inputs only `leo4-lean4-parse` accepts, `oxilean-parse` may legitimately reject — that's the strict-superset direction. A future test suite cross-checks the overlap.
+Where `oxilean-parse-peg` and `oxilean-parse` cover the same input shape, both **must produce equivalent ASTs** (modulo type-name differences). For inputs only `oxilean-parse-peg` accepts, `oxilean-parse` may legitimately reject — that's the strict-superset direction. A future test suite cross-checks the overlap.
 
 ## AST shape
 
@@ -46,11 +46,11 @@ Each step is a separate commit:
 8. String interpolation.
 9. Full `Decl` enum (theorem / lemma / axiom / instance / class / namespace / open / variable / mutual).
 10. Cross-check against `oxilean-parse` on shared corpus.
-11. leo4-oxilean-build switches default parser to `leo4-lean4-parse`.
+11. leo4-oxilean-build switches default parser to `oxilean-parse-peg`.
 
 ## Future: replacing oxilean-elab too
 
-`oxilean-elab` is the next narrow-subset bottleneck (OX5 — elab env bootstrap, ctor-name resolution, etc.). Once `leo4-lean4-parse` is mature, an analogous `leo4-lean4-elab` sibling would close the elab gap by either binding to Lean 4's reference elaborator (via `lean_proc`-style export) or implementing a stripped-down elaborator over our AST. Tracked separately.
+`oxilean-elab` is the next narrow-subset bottleneck (OX5 — elab env bootstrap, ctor-name resolution, etc.). Once `oxilean-parse-peg` is mature, an analogous `leo4-lean4-elab` sibling would close the elab gap by either binding to Lean 4's reference elaborator (via `lean_proc`-style export) or implementing a stripped-down elaborator over our AST. Tracked separately.
 
 ## License
 
