@@ -887,6 +887,18 @@ impl RustDominatorTree {
 pub struct RustTargetBackend {
     pub(super) fresh_counter: u64,
     pub(super) name_cache: HashMap<std::string::String, std::string::String>,
+    /// OX7 (1a, 2026-05-26): map from `LcnfVarId` →
+    /// kernel-name string for variables that represent
+    /// `Const(name, _)` references rather than ordinary
+    /// locals. Populated by callers via
+    /// [`set_const_names`](Self::set_const_names) before
+    /// [`emit_module`](Self::emit_module) /
+    /// [`compile_decl`](Self::compile_decl). When the
+    /// backend emits a `LcnfArg::Var(id)` whose ID is in
+    /// this map, the mangled name is used; otherwise the
+    /// usual `LcnfVarId::to_string()` (e.g. `_x4`) is
+    /// emitted.
+    pub(super) const_names: HashMap<crate::lcnf::types::LcnfVarId, std::string::String>,
 }
 impl RustTargetBackend {
     /// Create a new `RustTargetBackend`.
@@ -894,7 +906,19 @@ impl RustTargetBackend {
         RustTargetBackend {
             fresh_counter: 0,
             name_cache: HashMap::new(),
+            const_names: HashMap::new(),
         }
+    }
+    /// OX7 (1a, 2026-05-26): install the
+    /// `LcnfVarId → kernel-name` map for `Const`
+    /// references. Typically obtained from
+    /// [`crate::to_lcnf::decl_to_lcnf_with_const_names`].
+    /// Replaces any previously-installed map.
+    pub fn set_const_names(
+        &mut self,
+        const_names: HashMap<crate::lcnf::types::LcnfVarId, std::string::String>,
+    ) {
+        self.const_names = const_names;
     }
     /// Generate a fresh variable name.
     pub fn fresh_var(&mut self) -> std::string::String {
@@ -995,9 +1019,19 @@ impl RustTargetBackend {
         }
     }
     /// Compile an LCNF argument to a Rust expression.
+    ///
+    /// OX7 (1a): when `id` is registered in
+    /// [`const_names`](Self::const_names) (populated by
+    /// [`set_const_names`](Self::set_const_names)), emit
+    /// the kernel name mangled to a valid Rust
+    /// identifier (e.g. `Nat_add`) instead of the
+    /// internal placeholder (`_x4`).
     pub fn compile_arg(&mut self, arg: &LcnfArg) -> RustExpr {
         match arg {
-            LcnfArg::Var(id) => RustExpr::Var(id.to_string()),
+            LcnfArg::Var(id) => match self.const_names.get(id).cloned() {
+                Some(kernel_name) => RustExpr::Var(self.mangle_name(&kernel_name)),
+                None => RustExpr::Var(id.to_string()),
+            },
             LcnfArg::Lit(lit) => Self::compile_lit(lit),
             LcnfArg::Erased => RustExpr::Lit(RustLit::Unit),
             LcnfArg::Type(_) => RustExpr::Lit(RustLit::Unit),

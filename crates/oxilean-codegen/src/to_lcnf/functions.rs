@@ -683,6 +683,65 @@ pub fn decl_to_lcnf(
     body: &Expr,
     config: &ToLcnfConfig,
 ) -> Result<LcnfFunDecl, ConversionError> {
+    let (decl, _state) = decl_to_lcnf_inner(name, params, body, config)?;
+    Ok(decl)
+}
+
+/// OX7 (1a, 2026-05-26) — same as [`decl_to_lcnf`] but
+/// also returns the `LcnfVarId → kernel-name` mapping
+/// built during conversion. Target backends that want
+/// to emit `Nat.add` instead of `_x2` for `Const`
+/// references consume this entry point and feed the
+/// map to the backend (e.g.
+/// `RustTargetBackend::set_const_names`).
+///
+/// The returned map excludes:
+/// - Parameter IDs — their names are already on
+///   `LcnfParam.name`; emitting them as their source
+///   names would replace `_x0(_x1)` with `a(b)` for
+///   variable references, which is wrong.
+/// - Synthetic `fv_<N>` keys produced by
+///   [`convert_fvar`] — those aren't real `Const`
+///   references.
+///
+/// # Errors
+/// Same as [`decl_to_lcnf`].
+pub fn decl_to_lcnf_with_const_names(
+    name: &Name,
+    params: &[(Name, Expr)],
+    body: &Expr,
+    config: &ToLcnfConfig,
+) -> Result<
+    (
+        LcnfFunDecl,
+        std::collections::HashMap<LcnfVarId, String>,
+    ),
+    ConversionError,
+> {
+    let (decl, state) = decl_to_lcnf_inner(name, params, body, config)?;
+    let param_ids: std::collections::HashSet<LcnfVarId> =
+        decl.params.iter().map(|p| p.id).collect();
+    let const_names: std::collections::HashMap<LcnfVarId, String> = state
+        .name_map
+        .iter()
+        .filter(|(mangled, id)| {
+            !param_ids.contains(id) && !mangled.starts_with("fv_")
+        })
+        .map(|(mangled, id)| (*id, mangled.clone()))
+        .collect();
+    Ok((decl, const_names))
+}
+
+/// Internal helper shared by [`decl_to_lcnf`] and
+/// [`decl_to_lcnf_with_const_names`]. Returns the
+/// converted decl alongside the final `ToLcnfState` so
+/// the caller can extract auxiliary maps if needed.
+fn decl_to_lcnf_inner(
+    name: &Name,
+    params: &[(Name, Expr)],
+    body: &Expr,
+    config: &ToLcnfConfig,
+) -> Result<(LcnfFunDecl, ToLcnfState), ConversionError> {
     let mut state = ToLcnfState::new(config);
     let name_str = mangle_name(name);
     let mut lcnf_params = Vec::new();
@@ -730,7 +789,7 @@ pub fn decl_to_lcnf(
         let mut lifter = LambdaLifter::new(config.max_inline_size);
         lifter.lift_module(&mut lifted);
     }
-    Ok(decl)
+    Ok((decl, state))
 }
 /// Convert a collection of kernel declarations to an LCNF module.
 ///
@@ -1297,6 +1356,76 @@ mod tests {
     /// the *correct* invariants so once the underlying
     /// bug is fixed this test stays green.
     ///
+    /// OX7 spike (1a, 2026-05-26) — end-to-end check
+    /// of the const-name preservation path. Same fixture
+    /// as `spike_ox7_nat_add_var_id_tracking` but goes
+    /// all the way through `decl_to_lcnf_with_const_names`
+    /// + `RustTargetBackend::compile_decl` and asserts
+    /// the body emits `Nat_add(_x0, _x1)` instead of
+    /// `_x2(_x0, _x1)`.
+    #[test]
+    pub(super) fn spike_ox7_nat_add_emit_uses_kernel_name() {
+        use crate::rust_target_backend::RustTargetBackend;
+        let config = default_config();
+        let name = Name::str("add");
+        let nat = Expr::Const(Name::str("Nat"), vec![]);
+        let params = vec![
+            (Name::str("a"), nat.clone()),
+            (Name::str("b"), nat.clone()),
+        ];
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                Box::new(Expr::BVar(1)),
+            )),
+            Box::new(Expr::BVar(0)),
+        );
+
+        let (decl, const_names) =
+            decl_to_lcnf_with_const_names(&name, &params, &body, &config)
+                .expect("conversion must succeed");
+
+        // The Const reference `Nat.add` must be in the
+        // map keyed by its var_id; `a`/`b` (params) must
+        // NOT be present. Names in the map are already
+        // run through `mangle_name` by `convert_const`
+        // (kernel `.`/`:`/`'` get replaced with `_`), so
+        // we check for `Nat_add` rather than `Nat.add`.
+        eprintln!("OX7 emit spike: const_names = {:?}", const_names);
+        eprintln!("OX7 emit spike: body = {:?}", decl.body);
+        assert!(
+            const_names.values().any(|n| n == "Nat_add"),
+            "const_names should contain `Nat_add` (mangled), got: {:?}",
+            const_names
+        );
+        for p in &decl.params {
+            assert!(
+                !const_names.contains_key(&p.id),
+                "param id {:?} ({}) must NOT be in const_names",
+                p.id,
+                p.name
+            );
+        }
+
+        // Emit and verify the body uses `Nat_add` rather
+        // than `_x2` (or whichever fresh id the head got).
+        let mut backend = RustTargetBackend::new();
+        backend.set_const_names(const_names);
+        let rust_fn = backend.compile_decl(&decl).expect("compile must succeed");
+        let emitted = rust_fn.emit();
+        eprintln!("OX7 emit spike: emitted Rust:\n{}", emitted);
+        assert!(
+            emitted.contains("Nat_add"),
+            "emitted Rust must reference `Nat_add`, got:\n{}",
+            emitted
+        );
+        assert!(
+            !emitted.contains("_x2("),
+            "emitted Rust must NOT call `_x2(`, got:\n{}",
+            emitted
+        );
+    }
+
     /// Fixture: `def add (a b : Nat) : Nat := Nat.add a b`
     /// in raw kernel form (no elab).
     #[test]
