@@ -967,7 +967,39 @@ impl RustTargetBackend {
             }
             LcnfType::Ctor(name, args) => {
                 if args.is_empty() {
-                    RustType::Custom(name.clone())
+                    // OX7 (#2, 2026-05-26): Lean kernel
+                    // sized integer / float / Char primitive
+                    // types arrive here as 0-ary `Ctor("UInt64",
+                    // [])` etc. (`to_lcnf::convert_type` matches
+                    // `Const("UInt64")` → `Ctor("UInt64", [])`).
+                    // Map them to the native Rust scalar so
+                    // downstream code (function signatures,
+                    // arithmetic operations) compiles without
+                    // an extra `pub type UInt64 = …` alias.
+                    //
+                    // Names match Lean stdlib spelling, not
+                    // the mangled `UInt64` form (mangling
+                    // doesn't touch ASCII alnum chars, so the
+                    // two coincide for these primitives).
+                    match name.as_str() {
+                        "UInt8"   => RustType::U8,
+                        "UInt16"  => RustType::U16,
+                        "UInt32"  => RustType::U32,
+                        "UInt64"  => RustType::U64,
+                        "UInt128" => RustType::U128,
+                        "USize"   => RustType::Usize,
+                        "Int8"   => RustType::I8,
+                        "Int16"  => RustType::I16,
+                        "Int32"  => RustType::I32,
+                        "Int64"  => RustType::I64,
+                        "Int128" => RustType::I128,
+                        "ISize"  => RustType::Isize,
+                        "Float32" => RustType::F32,
+                        "Float64" => RustType::F64,
+                        "Char"    => RustType::Char,
+                        "Bool"    => RustType::Bool,
+                        _ => RustType::Custom(name.clone()),
+                    }
                 } else {
                     let a: Vec<_> = args.iter().map(Self::lcnf_to_rust_type).collect();
                     RustType::Generic(name.clone(), a)
