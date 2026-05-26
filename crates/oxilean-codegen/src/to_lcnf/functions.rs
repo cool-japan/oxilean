@@ -1454,6 +1454,55 @@ mod tests {
     /// the *correct* invariants so once the underlying
     /// bug is fixed this test stays green.
     ///
+    /// OX7 typeclass step (2026-05-27) — ensure that a
+    /// `Const("HAdd.hAdd")`-headed app lowers to a
+    /// native Rust `BinOp { op: "+", ... }` instead of
+    /// an opaque `Call(HAdd_hAdd, ...)`. Pairs with
+    /// `RustTargetBackend::try_builtin_app` +
+    /// `tc_projection_to_rust_binop`.
+    #[test]
+    pub(super) fn spike_ox7_hadd_lowers_to_native_binop() {
+        use crate::rust_target_backend::RustTargetBackend;
+        let config = default_config();
+        let name = Name::str("add");
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let params = vec![
+            (Name::str("a"), uint64.clone()),
+            (Name::str("b"), uint64.clone()),
+        ];
+        // body = HAdd.hAdd a b
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::from_str("HAdd.hAdd"), vec![])),
+                Box::new(Expr::BVar(1)),
+            )),
+            Box::new(Expr::BVar(0)),
+        );
+
+        let (decl, const_names) = decl_to_lcnf_full(
+            &name, &params, Some(&uint64), &body, &config,
+        )
+        .expect("conversion must succeed");
+
+        let mut backend = RustTargetBackend::new();
+        backend.set_const_names(const_names);
+        let rust_fn = backend.compile_decl(&decl).expect("compile must succeed");
+        let emitted = rust_fn.emit();
+        eprintln!("OX7 (HAdd → native BinOp) emitted:\n{}", emitted);
+        // The head `HAdd_hAdd` should NOT appear — it's
+        // replaced by a native `+` BinOp on the args.
+        assert!(
+            !emitted.contains("HAdd_hAdd"),
+            "head must be folded away into native BinOp: {}",
+            emitted
+        );
+        assert!(
+            emitted.contains("_x0 + _x1"),
+            "body must contain native `_x0 + _x1`: {}",
+            emitted
+        );
+    }
+
     /// OX7 spike (1b-β, 2026-05-27) — ensure that a
     /// `Proj("add", _, Const("UInt64"))` head (the way
     /// oxilean-elab lowers `UInt64.add`) emits as the
