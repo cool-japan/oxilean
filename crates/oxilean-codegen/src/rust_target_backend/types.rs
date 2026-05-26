@@ -1014,10 +1014,62 @@ impl RustTargetBackend {
             LcnfLit::Str(s) => RustExpr::Lit(RustLit::Str(s.clone())),
         }
     }
+    /// OX7 typeclass step (2026-05-27) — when an
+    /// LCNF `App(func, args)` (whether at `LetValue::App`
+    /// or `Expr::TailCall` position) targets a head
+    /// whose kernel name is a Lean stdlib
+    /// typeclass-projection identifier
+    /// (`HAdd.hAdd`, `HSub.hSub`, …), lower the call to
+    /// a native Rust [`RustExpr::BinOp`] /
+    /// [`RustExpr::UnaryOp`] instead of an opaque
+    /// `RustExpr::Call(_x4, …)`. Returns `None` when the
+    /// head isn't a known projection — caller falls
+    /// back to the regular Call lowering.
+    ///
+    /// The kernel-name lookup goes through
+    /// `self.const_names`, populated via
+    /// `set_const_names`. Names there are already
+    /// `mangle_name`d (`.` → `_`), so the match table
+    /// keys carry the mangled spelling.
+    fn try_builtin_app(
+        &mut self,
+        func: &LcnfArg,
+        args: &[LcnfArg],
+    ) -> Option<RustExpr> {
+        let LcnfArg::Var(id) = func else { return None };
+        let mangled = self.const_names.get(id)?.clone();
+        // Binary arithmetic / comparison.
+        if let Some(op) = tc_projection_to_rust_binop(&mangled) {
+            if args.len() == 2 {
+                let lhs = self.compile_arg(&args[0]);
+                let rhs = self.compile_arg(&args[1]);
+                return Some(RustExpr::BinOp {
+                    op: op.to_string(),
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                });
+            }
+        }
+        // Unary.
+        if let Some(op) = tc_projection_to_rust_unaryop(&mangled) {
+            if args.len() == 1 {
+                let operand = self.compile_arg(&args[0]);
+                return Some(RustExpr::UnaryOp {
+                    op: op.to_string(),
+                    operand: Box::new(operand),
+                });
+            }
+        }
+        None
+    }
+
     /// Compile an LCNF let-value to a Rust expression.
     pub fn compile_let_value(&mut self, value: &LcnfLetValue) -> RustExpr {
         match value {
             LcnfLetValue::App(func, args) => {
+                if let Some(builtin) = self.try_builtin_app(func, args) {
+                    return builtin;
+                }
                 let func_expr = self.compile_arg(func);
                 let rust_args: Vec<_> = args.iter().map(|a| self.compile_arg(a)).collect();
                 RustExpr::Call(Box::new(func_expr), rust_args)
@@ -1088,6 +1140,9 @@ impl RustTargetBackend {
                 self.compile_expr(body, stmts)
             }
             LcnfExpr::TailCall(func, args) => {
+                if let Some(builtin) = self.try_builtin_app(func, args) {
+                    return builtin;
+                }
                 let func_expr = self.compile_arg(func);
                 let rust_args: Vec<_> = args.iter().map(|a| self.compile_arg(a)).collect();
                 RustExpr::Call(Box::new(func_expr), rust_args)
@@ -1466,5 +1521,50 @@ impl RustPassConfig {
     pub fn max_iter(mut self, n: u32) -> Self {
         self.max_iterations = n;
         self
+    }
+}
+
+/// OX7 typeclass step (2026-05-27) — map a Lean stdlib
+/// arithmetic / comparison / bitwise typeclass-projection
+/// identifier (already mangled — `.` → `_`) to the native
+/// Rust binary-operator surface. Returns `None` when the
+/// projection isn't a 2-arg builtin (or isn't recognised).
+///
+/// Mirrors `leo4-oxilean-build::leo4_env_bootstrap::
+/// ARITHMETIC_TC_PROJECTIONS` and
+/// `leo4_translate::arith_op_to_tc_projection`.
+fn tc_projection_to_rust_binop(mangled: &str) -> Option<&'static str> {
+    match mangled {
+        // Arithmetic.
+        "HAdd_hAdd" => Some("+"),
+        "HSub_hSub" => Some("-"),
+        "HMul_hMul" => Some("*"),
+        "HDiv_hDiv" => Some("/"),
+        "HMod_hMod" => Some("%"),
+        // Bitwise.
+        "HAnd_hAnd" => Some("&"),
+        "HOr_hOr"   => Some("|"),
+        "HXor_hXor" => Some("^"),
+        "HShiftLeft_hShiftLeft"   => Some("<<"),
+        "HShiftRight_hShiftRight" => Some(">>"),
+        // Comparison.
+        "LT_lt"   => Some("<"),
+        "LE_le"   => Some("<="),
+        "BEq_beq" => Some("=="),
+        _ => None,
+    }
+}
+
+/// OX7 typeclass step (2026-05-27) — map a Lean stdlib
+/// unary typeclass-projection identifier (already
+/// mangled) to the native Rust unary-operator surface.
+/// `HPow.hPow` is binary but doesn't fit native Rust
+/// `BinOp` (uses `.pow()` method) — handled by the
+/// regular Call lowering for now.
+fn tc_projection_to_rust_unaryop(mangled: &str) -> Option<&'static str> {
+    match mangled {
+        "Neg_neg" => Some("-"),
+        "Not_not" => Some("!"),
+        _ => None,
     }
 }
