@@ -718,14 +718,66 @@ pub fn decl_to_lcnf_with_const_names(
     ),
     ConversionError,
 > {
-    let (decl, state) = decl_to_lcnf_inner(name, params, body, config)?;
+    decl_to_lcnf_full(name, params, None, body, config)
+}
+
+/// OX7 (#1+#2, 2026-05-26) — most flexible entry:
+/// caller may supply the declared return-type
+/// `Expr` (typically the rightmost codomain of the
+/// declaration's `Pi`-typed signature). When `Some`,
+/// `LcnfFunDecl::ret_type` reflects the declared type
+/// directly instead of being heuristically inferred
+/// from the body (which falls back to
+/// `LcnfType::Object` for `TailCall` results).
+/// Returns the same `LcnfVarId → kernel-name` map as
+/// [`decl_to_lcnf_with_const_names`].
+///
+/// # Errors
+/// Same as [`decl_to_lcnf`].
+pub fn decl_to_lcnf_full(
+    name: &Name,
+    params: &[(Name, Expr)],
+    ret_type_expr: Option<&Expr>,
+    body: &Expr,
+    config: &ToLcnfConfig,
+) -> Result<
+    (
+        LcnfFunDecl,
+        std::collections::HashMap<LcnfVarId, String>,
+    ),
+    ConversionError,
+> {
+    let (mut decl, state) = decl_to_lcnf_inner(name, params, body, config)?;
+    if let Some(rt_expr) = ret_type_expr {
+        decl.ret_type = convert_type(rt_expr, &state);
+    }
     let param_ids: std::collections::HashSet<LcnfVarId> =
         decl.params.iter().map(|p| p.id).collect();
+    // `fresh_named_var` registers BOTH the `hint` name
+    // AND the placeholder `_x<N>` (`name_<N>` in
+    // debug_names mode) — so for `Const("Nat.add")` the
+    // map contains both `Nat_add → 2` and `_x2 → 2`.
+    // Filter out the synthetic placeholders so a
+    // reverse map keyed by `LcnfVarId` always carries
+    // the kernel-name side.
     let const_names: std::collections::HashMap<LcnfVarId, String> = state
         .name_map
         .iter()
         .filter(|(mangled, id)| {
-            !param_ids.contains(id) && !mangled.starts_with("fv_")
+            if param_ids.contains(id) {
+                return false;
+            }
+            if mangled.starts_with("fv_") {
+                return false;
+            }
+            // `_x<N>` placeholder, possibly with the
+            // var_id `id.0` baked in.
+            if let Some(rest) = mangled.strip_prefix("_x") {
+                if rest.parse::<u64>().is_ok() {
+                    return false;
+                }
+            }
+            true
         })
         .map(|(mangled, id)| (*id, mangled.clone()))
         .collect();
@@ -1356,6 +1408,80 @@ mod tests {
     /// the *correct* invariants so once the underlying
     /// bug is fixed this test stays green.
     ///
+    /// OX7 spike (#1 + #2, 2026-05-26) — end-to-end
+    /// check that `decl_to_lcnf_full` produces emitted
+    /// Rust where (a) the declared return type is
+    /// honoured (no `Box<dyn Any>` fallback) and (b)
+    /// sized integer Lean primitives map to native
+    /// Rust scalars. Fixture:
+    /// `def add (a b : UInt64) : UInt64 := Nat.add a b`.
+    #[test]
+    pub(super) fn spike_ox7_uint64_native_mapping_and_ret_type() {
+        use crate::rust_target_backend::RustTargetBackend;
+        let config = default_config();
+        let name = Name::str("add");
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let params = vec![
+            (Name::str("a"), uint64.clone()),
+            (Name::str("b"), uint64.clone()),
+        ];
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                Box::new(Expr::BVar(1)),
+            )),
+            Box::new(Expr::BVar(0)),
+        );
+
+        let (decl, const_names) = decl_to_lcnf_full(
+            &name, &params, Some(&uint64), &body, &config,
+        )
+        .expect("conversion must succeed");
+
+        eprintln!("OX7 (#1+#2) ret_type = {:?}", decl.ret_type);
+        // #1: ret_type is the declared `UInt64`, not the
+        // body-inferred fallback `LcnfType::Object`.
+        match &decl.ret_type {
+            LcnfType::Ctor(n, args) if n == "UInt64" && args.is_empty() => {}
+            other => panic!("expected Ctor(UInt64, []), got: {:?}", other),
+        }
+
+        let mut backend = RustTargetBackend::new();
+        backend.set_const_names(const_names);
+        let rust_fn = backend.compile_decl(&decl).expect("compile must succeed");
+        let emitted = rust_fn.emit();
+        eprintln!("OX7 (#1+#2) emitted Rust:\n{}", emitted);
+        // #2: UInt64 maps to native `u64`.
+        assert!(
+            emitted.contains("_x0: u64"),
+            "param `a` must be `u64`: {}",
+            emitted
+        );
+        assert!(
+            emitted.contains("_x1: u64"),
+            "param `b` must be `u64`: {}",
+            emitted
+        );
+        // #1: return type is now `u64`, not the
+        // `Box<dyn std::any::Any>` fallback.
+        assert!(
+            emitted.contains("-> u64"),
+            "return type must be `u64`: {}",
+            emitted
+        );
+        assert!(
+            !emitted.contains("Box<dyn std::any::Any>"),
+            "no `Box<dyn Any>` fallback should leak: {}",
+            emitted
+        );
+        // (1a) sanity — head still emits as `Nat_add`.
+        assert!(
+            emitted.contains("Nat_add"),
+            "head must still be `Nat_add`: {}",
+            emitted
+        );
+    }
+
     /// OX7 spike (1a, 2026-05-26) — end-to-end check
     /// of the const-name preservation path. Same fixture
     /// as `spike_ox7_nat_add_var_id_tracking` but goes
