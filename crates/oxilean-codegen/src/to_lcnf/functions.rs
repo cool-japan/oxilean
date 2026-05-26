@@ -1288,6 +1288,84 @@ mod tests {
         assert!(!module.fun_decls.is_empty());
         assert_eq!(module.metadata.decl_count, 1);
     }
+    /// OX7 spike (2026-05-26) — reproduce the
+    /// `_x4(_x5, _x6)` body-corruption symptom and dump
+    /// every LcnfVarId allocation along the way. Asserts
+    /// the *correct* invariants so once the underlying
+    /// bug is fixed this test stays green.
+    ///
+    /// Fixture: `def add (a b : Nat) : Nat := Nat.add a b`
+    /// in raw kernel form (no elab).
+    #[test]
+    pub(super) fn spike_ox7_nat_add_var_id_tracking() {
+        let config = default_config();
+        let name = Name::str("add");
+        let nat = Expr::Const(Name::str("Nat"), vec![]);
+        let params = vec![
+            (Name::str("a"), nat.clone()),
+            (Name::str("b"), nat.clone()),
+        ];
+        // body = Nat.add a b
+        // = App(App(Const("Nat.add"), BVar(1)), BVar(0))
+        let nat_add = Expr::Const(Name::str("Nat.add"), vec![]);
+        let body = Expr::App(
+            Box::new(Expr::App(Box::new(nat_add), Box::new(Expr::BVar(1)))),
+            Box::new(Expr::BVar(0)),
+        );
+
+        let decl = decl_to_lcnf(&name, &params, &body, &config)
+            .expect("decl_to_lcnf must succeed");
+
+        // ── Invariant 1: params get var_ids 0 and 1.
+        assert_eq!(decl.params.len(), 2, "expect 2 params");
+        assert_eq!(decl.params[0].id.0, 0, "first param `a` must be _x0");
+        assert_eq!(decl.params[1].id.0, 1, "second param `b` must be _x1");
+
+        // ── Invariant 2: body's tail call references the
+        // *param* ids, not freshly-allocated ones. Failure
+        // mode (pre-fix): `_x5(_x6, _x7)` — head + args
+        // all get fresh var_ids unrelated to the params.
+        // Post-fix: body args should be Var(LcnfVarId(0))
+        // and Var(LcnfVarId(1)) for `a` and `b`.
+        match &decl.body {
+            LcnfExpr::TailCall(head, args) => {
+                eprintln!(
+                    "OX7 spike: head = {:?}, args = {:?}",
+                    head, args
+                );
+                assert_eq!(args.len(), 2, "expect 2 args (a, b)");
+                // `Nat.add a b` — args[0] is `a` (BVar 1
+                // in de Bruijn after the App reversal in
+                // flatten_app), args[1] is `b` (BVar 0).
+                // Wait — flatten_app un-reverses; check
+                // BVar order in body above:
+                // App(App(Const, BVar(1)), BVar(0))
+                // flatten yields head=Const, args=[BVar(1), BVar(0)].
+                // BVar(1) = `a` (outer binder, var_id 0).
+                // BVar(0) = `b` (inner binder, var_id 1).
+                if let LcnfArg::Var(a_id) = args[0] {
+                    assert_eq!(
+                        a_id.0, 0,
+                        "arg[0] should be param `a`'s var_id 0; got _x{}",
+                        a_id.0
+                    );
+                } else {
+                    panic!("arg[0] is not Var: {:?}", args[0]);
+                }
+                if let LcnfArg::Var(b_id) = args[1] {
+                    assert_eq!(
+                        b_id.0, 1,
+                        "arg[1] should be param `b`'s var_id 1; got _x{}",
+                        b_id.0
+                    );
+                } else {
+                    panic!("arg[1] is not Var: {:?}", args[1]);
+                }
+            }
+            other => panic!("expected TailCall body, got: {:?}", other),
+        }
+    }
+
     #[test]
     pub(super) fn test_conversion_error_display() {
         let err = ConversionError::UnboundVariable("x".to_string());
