@@ -1695,6 +1695,71 @@ mod tests {
         );
     }
 
+    /// OX7 HPow method-call step (2026-05-25) — ensure
+    /// that a `Const("HPow.hPow")`-headed 2-arg app
+    /// lowers to a native Rust
+    /// `RustExpr::MethodCall { method: "pow", … }`
+    /// (emits as `lhs.pow(rhs)`) instead of an opaque
+    /// `Call(HPow_hPow, …)`. Pairs with
+    /// `RustTargetBackend::try_builtin_app`'s
+    /// `mangled == "HPow_hPow"` arm.
+    ///
+    /// Fixture mirrors what oxilean-elab produces for
+    /// `def pow8 (n : UInt64) : UInt64 := n ^ 8`:
+    /// the `^` operator desugars (through the `HPow`
+    /// typeclass) to `App(App(Const("HPow.hPow"), n), 8)`.
+    /// We construct the App tree directly with
+    /// `Expr::BVar(0)` for `n` and a `Nat`-typed literal
+    /// `8` (modelled as `Expr::Lit(Literal::Nat(8))`).
+    #[test]
+    pub(super) fn spike_ox7_hpow_lowers_to_method_call() {
+        use crate::rust_target_backend::RustTargetBackend;
+        let config = default_config();
+        let name = Name::str("pow8");
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let params = vec![(Name::str("n"), uint64.clone())];
+        // body = HPow.hPow n 8
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::from_str("HPow.hPow"), vec![])),
+                Box::new(Expr::BVar(0)),
+            )),
+            Box::new(Expr::Lit(Literal::Nat(8))),
+        );
+
+        let (decl, const_names) = decl_to_lcnf_full(
+            &name, &params, Some(&uint64), &body, &config,
+        )
+        .expect("conversion must succeed");
+
+        let mut backend = RustTargetBackend::new();
+        backend.set_const_names(const_names);
+        let rust_fn = backend.compile_decl(&decl).expect("compile must succeed");
+        let emitted = rust_fn.emit();
+        eprintln!("OX7 (HPow → .pow method call) emitted:\n{}", emitted);
+        // The head `HPow_hPow` should NOT appear — it's
+        // replaced by a native Rust `.pow(…)` method
+        // call on the lhs.
+        assert!(
+            !emitted.contains("HPow_hPow"),
+            "head must be folded away into native .pow method call: {}",
+            emitted
+        );
+        // The emitted body should call `.pow(...)` on the
+        // lhs (`_x0`, the BVar(0) param slot for `n`).
+        assert!(
+            emitted.contains("_x0.pow("),
+            "body must contain native `_x0.pow(…)` method call: {}",
+            emitted
+        );
+        // And the rhs `8` should appear inside the call.
+        assert!(
+            emitted.contains(".pow(8)"),
+            "method call must pass the rhs `8` as the exponent: {}",
+            emitted
+        );
+    }
+
     /// OX7 spike (1b-β, 2026-05-27) — ensure that a
     /// `Proj("add", _, Const("UInt64"))` head (the way
     /// oxilean-elab lowers `UInt64.add`) emits as the
