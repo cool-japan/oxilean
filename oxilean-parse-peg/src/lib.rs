@@ -1584,9 +1584,29 @@ mod grammar {
                 / anon_ctor_lit()
                 / anon_struct_lit()
                 / dot_fn_lit()
+                / unit_atom()
                 / paren_atom()
                 / lit_atom()
                 / ident_atom()
+
+            // Lean 4 `()` — Unit literal / `Unit.unit`'s
+            // anonymous ctor. Must come before
+            // `paren_atom` since `()` would otherwise fail
+            // the `expr()` inside the paren rule and the
+            // alternation would back-track all the way to
+            // a `Raw(...)` fallback. Lowers to an empty
+            // anonymous-ctor; downstream consumers
+            // (`leo4_translate`, etc.) already handle
+            // `AnonCtor(vec![])` as the trivial Unit value.
+            //
+            // OX7 PEG bug fix (2026-05-27): the prior
+            // grammar required at least one element
+            // between `(` and `)`, so `def f : IO Unit :=
+            // do return ()` parsed the body as
+            // `Do([Return(Raw("()"))])` and the `Raw`
+            // arm tripped the translate-path fallback.
+            rule unit_atom() -> Expr =
+                "(" _ ")" { Expr::AnonCtor(vec![]) }
 
             rule paren_atom() -> Expr =
                 "(" _ e:expr() _ ")" { Expr::Paren(Box::new(e)) }
@@ -2107,14 +2127,27 @@ mod grammar {
             // with the term-level `if_expr` rule.
             rule match_arm() -> MatchArm =
                 arm_bar() _ pat:pattern() _
-                guard_text:("if" word_boundary() _h() t:$((!"=>" [_])+)
+                guard_text:("if" word_boundary() _h() t:$((!"=>" !"->" [_])+)
                     { t.trim().to_string() })?
-                "=>" _ body:expr()
+                arm_arrow() _ body:expr()
                 {
                     let guard = guard_text
                         .and_then(|t| parse_expr_text(&t));
                     MatchArm { pattern: pat, guard, body }
                 }
+
+            // OX7 PEG bug fix (2026-05-27): leo4-side
+            // `lean4_normalize` rewrites ` => ` → ` -> `
+            // before handing source to the parser, so any
+            // grammar position that originally required
+            // `=>` (lambda body-arrow, match arm separator)
+            // also needs to accept `->`. The lambda rule
+            // already does this via `("=>" / "->")`; the
+            // match-arm rule did not, so post-normalise
+            // sources tripped at the arm-separator
+            // boundary. `arm_arrow` centralises the
+            // alternation.
+            rule arm_arrow() = "=>" / "->"
 
             // Single `|` (not the binary-op `||`).
             rule arm_bar() = "|" !"|"
