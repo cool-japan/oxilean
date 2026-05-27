@@ -1138,7 +1138,29 @@ impl RustTargetBackend {
     pub fn compile_arg(&mut self, arg: &LcnfArg) -> RustExpr {
         match arg {
             LcnfArg::Var(id) => match self.const_names.get(id).cloned() {
-                Some(kernel_name) => RustExpr::Var(self.mangle_name(&kernel_name)),
+                Some(kernel_name) => {
+                    // OX7 Bool literal fold (2026-05-25) —
+                    // Lean's `Bool.true` / `Bool.false` reach
+                    // here as a zero-arg `Const(...)`
+                    // registered in `const_names` under the
+                    // mangled spelling `Bool_true` /
+                    // `Bool_false`. Without special-casing
+                    // they emit as a bare identifier
+                    // (`Bool_true`, possibly re-mangled to
+                    // `true_` for the keyword form `true`)
+                    // that doesn't resolve in Rust — the
+                    // emitted crate fails to link. Fold them
+                    // to native `RustLit::Bool` so the
+                    // corresponding Lean-level
+                    // `if true then … else …` surfaces as
+                    // `if true { … } else { … }` (after the
+                    // existing OX7 ite fold).
+                    if let Some(b) = bool_ctor_to_native(&kernel_name) {
+                        RustExpr::Lit(RustLit::Bool(b))
+                    } else {
+                        RustExpr::Var(self.mangle_name(&kernel_name))
+                    }
+                }
                 None => RustExpr::Var(id.to_string()),
             },
             LcnfArg::Lit(lit) => Self::compile_lit(lit),
@@ -1592,6 +1614,33 @@ fn tc_projection_to_rust_unaryop(mangled: &str) -> Option<&'static str> {
     match mangled {
         "Neg_neg" => Some("-"),
         "Not_not" => Some("!"),
+        _ => None,
+    }
+}
+
+/// OX7 Bool literal fold (2026-05-25) — map a Lean
+/// `Bool.true` / `Bool.false` const reference (mangled
+/// at the `to_lcnf` boundary to `Bool_true` /
+/// `Bool_false`) to the corresponding native Rust
+/// `bool` literal. Returns `None` for any other kernel
+/// name — callers fall back to the regular `Var`
+/// lowering.
+///
+/// Rationale: there is no Rust definition of
+/// `Bool_true` (or `true_`, the form `mangle_name`
+/// would produce if the namespace prefix were
+/// stripped — `true` collides with the Rust keyword),
+/// so referencing it produces a link-time error. The
+/// fold runs in [`RustTargetBackend::compile_arg`]'s
+/// `LcnfArg::Var` arm, before `mangle_name`, so it
+/// catches both the composite-name spelling
+/// (`Bool_true`) and the hypothetical short-name
+/// spelling (`true`/`false` → keyword-escaped to
+/// `true_`/`false_`).
+fn bool_ctor_to_native(kernel_name: &str) -> Option<bool> {
+    match kernel_name {
+        "Bool_true" | "true" | "true_" => Some(true),
+        "Bool_false" | "false" | "false_" => Some(false),
         _ => None,
     }
 }

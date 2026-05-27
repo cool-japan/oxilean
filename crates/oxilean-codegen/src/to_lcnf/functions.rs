@@ -1596,6 +1596,105 @@ mod tests {
         );
     }
 
+    /// OX7 Bool literal fold (2026-05-25) — ensure that
+    /// Lean's `Bool.true` / `Bool.false` const
+    /// references emit as native Rust `true` / `false`
+    /// literals rather than bare identifiers (which
+    /// have no Rust definition and break linking).
+    ///
+    /// The fixture is the original problem fixture:
+    /// `def constU64 : UInt64 := if true then 1 else 0`.
+    /// After elab + OX7 ite fold the kernel body is
+    /// `ite α Bool.true inst 1 0`. The Bool literal
+    /// fold must transform the slot-1 (cond) reference
+    /// to `Bool.true` from an opaque
+    /// `RustExpr::Var("Bool_true")` (or `"true_"`, if
+    /// the namespace were stripped) into
+    /// `RustExpr::Lit(RustLit::Bool(true))`, so the
+    /// emitted Rust is `if true { 1 } else { 0 }`.
+    ///
+    /// The Bool argument has no FFI-relevant type info
+    /// — Lean infers `α = UInt64` from the branches,
+    /// and the `Decidable Bool.true` instance is
+    /// `Bool.decEq` (an axiomised `instImplicit`
+    /// metavar). We model both as fresh `FVar`
+    /// placeholders (same trick as
+    /// `spike_ox7_ite_lowers_to_native_if`).
+    #[test]
+    pub(super) fn spike_ox7_bool_lit_folds_to_native() {
+        use crate::rust_target_backend::RustTargetBackend;
+        use oxilean_kernel::FVarId;
+        let config = default_config();
+        let name = Name::str("constU64");
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let params: Vec<(Name, Expr)> = vec![];
+        // body = ite α Bool.true inst 1 0
+        let alpha = Expr::FVar(FVarId(9_100_001));
+        let inst = Expr::FVar(FVarId(9_100_002));
+        let bool_true = Expr::Const(Name::str("Bool.true"), vec![]);
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::App(
+                        Box::new(Expr::App(
+                            Box::new(Expr::Const(Name::str("ite"), vec![])),
+                            Box::new(alpha),
+                        )),
+                        Box::new(bool_true),
+                    )),
+                    Box::new(inst),
+                )),
+                Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(1))),
+            )),
+            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(0))),
+        );
+
+        let (decl, const_names) =
+            decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
+                .expect("conversion must succeed");
+
+        eprintln!("OX7 (bool lit fold) const_names = {:?}", const_names);
+        // const_names MUST register `Bool_true` — that's
+        // what the fold matches on.
+        assert!(
+            const_names.values().any(|n| n == "Bool_true"),
+            "const_names must contain `Bool_true`, got: {:?}",
+            const_names
+        );
+
+        let mut backend = RustTargetBackend::new();
+        backend.set_const_names(const_names);
+        let rust_fn = backend.compile_decl(&decl).expect("compile must succeed");
+        let emitted = rust_fn.emit();
+        eprintln!("OX7 (bool lit fold) emitted:\n{}", emitted);
+
+        // After the fold, the emitted body must be a
+        // native `if true { … } else { … }` — neither
+        // `Bool_true` nor the keyword-escaped `true_`
+        // may appear as identifiers in the output.
+        assert!(
+            emitted.contains("if true"),
+            "cond slot must emit as native `true` literal: {}",
+            emitted
+        );
+        assert!(
+            !emitted.contains("Bool_true"),
+            "no residual `Bool_true` identifier may remain: {}",
+            emitted
+        );
+        assert!(
+            !emitted.contains("true_"),
+            "no residual `true_` identifier (keyword-escaped form) \
+             may remain: {}",
+            emitted
+        );
+        assert!(
+            !emitted.contains("ite("),
+            "ite head must be folded away by the ite step: {}",
+            emitted
+        );
+    }
+
     /// OX7 spike (1b-β, 2026-05-27) — ensure that a
     /// `Proj("add", _, Const("UInt64"))` head (the way
     /// oxilean-elab lowers `UInt64.add`) emits as the
