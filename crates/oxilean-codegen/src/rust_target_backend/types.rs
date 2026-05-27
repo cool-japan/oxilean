@@ -1060,6 +1060,41 @@ impl RustTargetBackend {
                 });
             }
         }
+        // OX7 HPow method-call step (2026-05-25) — Lean's
+        // `^` desugars to `HPow.hPow lhs rhs` through the
+        // `HPow` typeclass projection. Rust has no native
+        // `**` binary operator, but every integer / float
+        // primitive ships an inherent `.pow(rhs)` method
+        // (`u64::pow`, `f64::powi`, etc.). Fold the
+        // 2-arg App into a native
+        // `RustExpr::MethodCall { receiver: lhs, method: "pow", args: [rhs] }`
+        // so the emitted crate doesn't reference an
+        // undefined `HPow_hPow` symbol.
+        //
+        // NOTE — Rust's integer `pow` expects `u32`
+        // exponent. The current fold emits the `rhs` raw,
+        // relying on the Lean-side type already matching
+        // (Nat literal → `RustLit::UInt`, which coerces
+        // to `u32` only when the literal fits and the
+        // surrounding context demands it). For the
+        // `def pow8 (n : UInt64) : UInt64 := n ^ 8`
+        // fixture, the exponent is a `Nat` literal that
+        // Rust accepts without an explicit cast. Other
+        // numeric types (signed integers' `i*::pow`,
+        // float `f*::powi` / `f*::powf`) need exponent
+        // typing that the current spike doesn't yet
+        // emit — tracked as a future-work item; the
+        // monomorphic UInt64 path is sufficient for the
+        // OX7 typeclass step.
+        if mangled == "HPow_hPow" && args.len() == 2 {
+            let lhs = self.compile_arg(&args[0]);
+            let rhs = self.compile_arg(&args[1]);
+            return Some(RustExpr::MethodCall {
+                receiver: Box::new(lhs),
+                method: "pow".to_string(),
+                args: vec![rhs],
+            });
+        }
         // OX7 ite step (2026-05-25) — Lean's `if c then t
         // else e` is desugared by oxilean-elab to
         // `@ite α c inst t e` (see
@@ -1606,8 +1641,12 @@ fn tc_projection_to_rust_binop(mangled: &str) -> Option<&'static str> {
 /// unary typeclass-projection identifier (already
 /// mangled) to the native Rust unary-operator surface.
 /// `HPow.hPow` is binary but doesn't fit native Rust
-/// `BinOp` (uses `.pow()` method) — handled by the
-/// regular Call lowering for now.
+/// `BinOp` (Rust has no `**`) — folded into a
+/// `RustExpr::MethodCall { method: "pow", … }` by the
+/// `HPow_hPow` arm of `try_builtin_app` (OX7 HPow
+/// method-call step, 2026-05-25). Other numeric types
+/// (signed `i*::pow`, float `f*::powi` / `f*::powf`)
+/// are future work.
 fn tc_projection_to_rust_unaryop(mangled: &str) -> Option<&'static str> {
     match mangled {
         "Neg_neg" => Some("-"),
