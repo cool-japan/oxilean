@@ -1500,6 +1500,99 @@ mod tests {
         );
     }
 
+    /// OX7 ite step (2026-05-25) — ensure that a
+    /// `Const("ite")`-headed 5-arg app lowers to a
+    /// native Rust `if … { … } else { … }` expression
+    /// instead of an opaque `Call(ite, [α, c, inst, t, e])`.
+    /// Pairs with `RustTargetBackend::try_builtin_app` +
+    /// the `mangled == "ite"` arm.
+    ///
+    /// Fixture mirrors what `oxilean_elab::elaborate::
+    /// elaborate_if` produces for
+    /// `def chooseU64 (b : Bool) (a c : UInt64) : UInt64
+    ///    := if b then a else c`:
+    ///   `App(App(App(App(App(Const("ite"), α), b), inst), a), c)`.
+    /// The α / inst slots are erased FVars; using
+    /// `Expr::FVar` placeholders keeps the test
+    /// realistic without needing a full Decidable
+    /// instance.
+    #[test]
+    pub(super) fn spike_ox7_ite_lowers_to_native_if() {
+        use crate::rust_target_backend::RustTargetBackend;
+        use oxilean_kernel::FVarId;
+        let config = default_config();
+        let name = Name::str("chooseU64");
+        let bool_ty = Expr::Const(Name::str("Bool"), vec![]);
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let params = vec![
+            (Name::str("b"), bool_ty.clone()),
+            (Name::str("a"), uint64.clone()),
+            (Name::str("c"), uint64.clone()),
+        ];
+        // body = ite α b inst a c
+        // — α and inst arrive as fresh FVar placeholders
+        //   from elab's metavar resolution.
+        let alpha = Expr::FVar(FVarId(9_000_001));
+        let inst = Expr::FVar(FVarId(9_000_002));
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::App(
+                        Box::new(Expr::App(
+                            Box::new(Expr::Const(Name::str("ite"), vec![])),
+                            Box::new(alpha),
+                        )),
+                        Box::new(Expr::BVar(2)),
+                    )),
+                    Box::new(inst),
+                )),
+                Box::new(Expr::BVar(1)),
+            )),
+            Box::new(Expr::BVar(0)),
+        );
+
+        let (decl, const_names) = decl_to_lcnf_full(
+            &name, &params, Some(&uint64), &body, &config,
+        )
+        .expect("conversion must succeed");
+
+        let mut backend = RustTargetBackend::new();
+        backend.set_const_names(const_names);
+        let rust_fn = backend.compile_decl(&decl).expect("compile must succeed");
+        let emitted = rust_fn.emit();
+        eprintln!("OX7 (ite → native if) emitted:\n{}", emitted);
+        // The opaque `ite(...)` head must NOT remain —
+        // it's replaced by a native Rust `if`-expression
+        // on the cond / then / else slots.
+        assert!(
+            !emitted.contains("ite("),
+            "head must be folded away into native If expr: {}",
+            emitted
+        );
+        assert!(
+            emitted.contains("if _x0"),
+            "body must start the if-expr on cond `_x0` (b): {}",
+            emitted
+        );
+        // Then/else branches reference the BVar(1)/BVar(0)
+        // parameter slots — `_x1` / `_x2`.
+        assert!(
+            emitted.contains("_x1"),
+            "then-branch must reference `_x1` (a): {}",
+            emitted
+        );
+        assert!(
+            emitted.contains("_x2"),
+            "else-branch must reference `_x2` (c): {}",
+            emitted
+        );
+        assert!(
+            emitted.contains("} else {"),
+            "must have a Rust-native else-block: {}",
+            emitted
+        );
+    }
+
     /// OX7 spike (1b-β, 2026-05-27) — ensure that a
     /// `Proj("add", _, Const("UInt64"))` head (the way
     /// oxilean-elab lowers `UInt64.add`) emits as the

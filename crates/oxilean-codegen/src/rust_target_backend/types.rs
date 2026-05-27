@@ -1060,6 +1060,31 @@ impl RustTargetBackend {
                 });
             }
         }
+        // OX7 ite step (2026-05-25) — Lean's `if c then t
+        // else e` is desugared by oxilean-elab to
+        // `@ite α c inst t e` (see
+        // `oxilean_elab::elaborate::elaborate_if`), which
+        // arrives here as a 5-arg App with head
+        // `Const("ite")`. Fold it back to a native Rust
+        // `if c { t } else { e }` so the emitted crate
+        // doesn't reference an undefined `ite` symbol.
+        //
+        // Slot layout:
+        //   args[0] = α        (motive / result type — discarded)
+        //   args[1] = c        (Bool / Prop condition)
+        //   args[2] = inst     (Decidable c instance — discarded)
+        //   args[3] = t        (then branch)
+        //   args[4] = e        (else branch)
+        if mangled == "ite" && args.len() == 5 {
+            let cond = self.compile_arg(&args[1]);
+            let then_expr = self.compile_arg(&args[3]);
+            let else_expr = self.compile_arg(&args[4]);
+            return Some(RustExpr::If {
+                cond: Box::new(cond),
+                then_block: vec![RustStmt::ExprNoSemi(then_expr)],
+                else_block: Some(vec![RustStmt::ExprNoSemi(else_expr)]),
+            });
+        }
         None
     }
 
