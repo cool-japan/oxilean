@@ -1250,7 +1250,7 @@ mod grammar {
                 }
 
             rule definition() -> Decl =
-                "def" _ name:ident() univs:univ_params_opt() _
+                "def" _ name:ident_raw() univs:univ_params_opt() _
                 binders:(b:binder_group() _ { b })*
                 ty:(":" _ t:expr() _ { t })?
                 ":=" _ value:expr()
@@ -1277,7 +1277,7 @@ mod grammar {
             // plain expression (which would re-enter this
             // rule and find no `|` after the type).
             rule definition_by_arms() -> Decl =
-                "def" _ name:ident() univs:univ_params_opt() _
+                "def" _ name:ident_raw() univs:univ_params_opt() _
                 binders:(b:binder_group() _ { b })*
                 ty:(":" _ t:expr() _ { t })?
                 &arm_bar()
