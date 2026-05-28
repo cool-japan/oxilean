@@ -1016,6 +1016,27 @@ impl RustTargetBackend {
             LcnfLit::Str(s) => RustExpr::Lit(RustLit::Str(s.clone())),
         }
     }
+    /// OX7 String-literal coercion (2026-05-28) — string literals
+    /// land as `RustExpr::Lit(RustLit::Str(_))`, which emits as a
+    /// `&'static str`. When the surrounding context types the
+    /// binding as `RustType::RustString` (e.g. Lean
+    /// `def hello : String := "…"`), rustc rejects the implicit
+    /// `&str` → `String` coercion. Wrap the literal in
+    /// `.to_string()` only in that exact pattern; every other
+    /// expression / type combination passes through unchanged.
+    fn coerce_string_literal_if_needed(expr: RustExpr, ty: &RustType) -> RustExpr {
+        if !matches!(ty, RustType::RustString) {
+            return expr;
+        }
+        if !matches!(&expr, RustExpr::Lit(RustLit::Str(_))) {
+            return expr;
+        }
+        RustExpr::MethodCall {
+            receiver: Box::new(expr),
+            method: "to_string".to_string(),
+            args: Vec::new(),
+        }
+    }
     /// OX7 typeclass step (2026-05-27) — when an
     /// LCNF `App(func, args)` (whether at `LetValue::App`
     /// or `Expr::TailCall` position) targets a head
@@ -1216,6 +1237,7 @@ impl RustTargetBackend {
             } => {
                 let val_expr = self.compile_let_value(value);
                 let rust_ty = Self::lcnf_to_rust_type(ty);
+                let val_expr = Self::coerce_string_literal_if_needed(val_expr, &rust_ty);
                 stmts.push(RustStmt::Let {
                     pat: RustPattern::Var(id.to_string(), false),
                     ty: Some(rust_ty),
