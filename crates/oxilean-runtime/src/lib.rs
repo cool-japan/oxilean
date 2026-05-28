@@ -37,6 +37,7 @@ pub mod arena;
 pub mod bytecode_interp;
 pub mod closure;
 pub mod distributed_rpc;
+pub mod driver;
 pub mod eval_error;
 pub mod extern_resolver;
 pub mod gc_strategies;
