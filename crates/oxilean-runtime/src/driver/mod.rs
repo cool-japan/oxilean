@@ -50,7 +50,7 @@ use std::sync::Arc;
 
 use oxilean_kernel::{
     env::{Declaration, Environment},
-    Name,
+    Expr, Name,
 };
 
 use crate::extern_resolver::SharedExternResolver;
@@ -137,7 +137,7 @@ pub fn run_main_with_args(
         name: main_name.to_string(),
     })?;
 
-    let (_ty, _val) = match decl {
+    let (_ty, val) = match decl {
         Declaration::Definition { ty, val, .. } => (ty.clone(), val.clone()),
         Declaration::Axiom { .. } => {
             return Err(DriverError::NotADefinition {
@@ -159,19 +159,125 @@ pub fn run_main_with_args(
         }
     };
 
-    // Keep the resolver + args slots used so the public API
-    // can't drift away from the eventual real wiring.
-    let _ = Arc::clone(&resolver);
-    let _ = args;
+    let _ = args; // program-args slot reserved for `main :
+                  // List String → IO α`; v0 minimal walker
+                  // accepts only `main : IO α` (no-arg).
 
-    Err(DriverError::NotYetImplemented {
-        reason: "IO walker — `IO.bind` sequence + `@[extern]` dispatch — \
-                 lands in the follow-up implementation commit; this stub \
-                 only locks the public signature so downstream consumers \
-                 (leo4-oxilean-runner) can wire against the final API \
-                 ahead of the body"
-            .to_string(),
-    })
+    walk_io_action(&val, env, &resolver, /*depth=*/ 0)?;
+    Ok(())
+}
+
+/// v0 minimal IO action walker. Recognises a narrow set of
+/// reductions and surfaces explicit
+/// [`DriverError::NotYetImplemented`] for anything outside
+/// that set so downstream callers can distinguish "walker
+/// doesn't know this shape yet" from real failures.
+///
+/// Recognised today:
+///   - `Expr::Const("IO.pure", _)`: nullary "do nothing"
+///     terminal — accepted, action complete.
+///   - `Expr::App(Expr::Const("IO.pure", _), [_α, _x])`:
+///     `IO.pure x` — accepted, result discarded
+///     (`main : IO Unit` only; `IO α` with α ≠ Unit
+///     ignores the result here and stops).
+///
+/// Everything else returns `NotYetImplemented` with the
+/// reduced expression shape's debug repr in the reason
+/// field. The shapes that still need wiring (in order of
+/// motivating use cases):
+///   - `Expr::App(Expr::Const("IO.bind", _), [α, β, m, k])`:
+///     monadic sequence. Walk `m`, apply `k` to its result,
+///     recurse.
+///   - `Expr::App(Expr::Const(name, _), args)` where `name`
+///     resolves to an `@[extern]` declaration: decode args
+///     via canonical-ABI, dispatch through `resolver`,
+///     encode the return, continue.
+///   - The `EStateM Error IO.RealWorld α` reductions Lean
+///     emits when an IO action goes through the standard
+///     library (`println`, `IO.FS.*`, etc.) — these need
+///     either OxiLean's builtin-dispatch surface
+///     (`FunctionEntry::builtin`) wired into this walker,
+///     or an explicit recognition layer per builtin name.
+///
+/// Recursion is depth-limited (`MAX_WALK_DEPTH`) to keep a
+/// degenerate `IO.bind` chain from blowing the stack
+/// before it becomes obvious that the walker isn't
+/// progressing.
+const MAX_WALK_DEPTH: usize = 1024;
+
+#[allow(clippy::needless_pass_by_value)] // resolver intentionally cloned for future recursion
+fn walk_io_action(
+    expr: &Expr,
+    _env: &Environment,
+    _resolver: &SharedExternResolver,
+    depth: usize,
+) -> Result<(), DriverError> {
+    if depth > MAX_WALK_DEPTH {
+        return Err(DriverError::NotYetImplemented {
+            reason: format!(
+                "walker recursion exceeded {MAX_WALK_DEPTH}; \
+                 likely a non-terminating `IO.bind` chain or \
+                 a shape the v0 walker doesn't reduce"
+            ),
+        });
+    }
+    match expr {
+        // Bare `IO.pure` / `Pure.pure` const — nullary terminal.
+        Expr::Const(name, _) if is_io_pure_name(name) => Ok(()),
+        // `IO.pure x` / `Pure.pure x` — single-arg application.
+        // Lean's elaborator typically lifts this through
+        // `Pure.pure` instance projection, so the const
+        // arrives mangled differently; the helper checks
+        // both the dotted and underscore forms.
+        Expr::App(head, _arg) => {
+            // Unwrap left-leaning App chain to find the
+            // ultimate head; we only act on the
+            // outermost `IO.pure` / `Pure.pure` recognised
+            // form for now.
+            let mut cursor: &Expr = head;
+            while let Expr::App(h, _) = cursor {
+                cursor = h;
+            }
+            if let Expr::Const(name, _) = cursor {
+                if is_io_pure_name(name) {
+                    // Result discarded — `main : IO Unit`
+                    // is the v0 target; non-Unit returns
+                    // get silently dropped at this level.
+                    return Ok(());
+                }
+            }
+            Err(DriverError::NotYetImplemented {
+                reason: format!(
+                    "walker can't reduce App-headed expression \
+                     yet (`IO.bind` / `@[extern]` dispatch / \
+                     `EStateM` lowering pending). Head reduced to: {cursor:?}"
+                ),
+            })
+        }
+        other => Err(DriverError::NotYetImplemented {
+            reason: format!(
+                "walker can't reduce non-App expression yet. \
+                 Expression: {other:?}"
+            ),
+        }),
+    }
+}
+
+/// Recognise the `IO.pure` / `Pure.pure` const name in any
+/// of the spellings OxiLean's elaborator can produce. The
+/// canonical Lean name is `IO.pure`; the prelude lifts
+/// some calls through `Pure.pure` with `Monad IO` dictionary
+/// resolution. v0 walker accepts both as the same terminal.
+fn is_io_pure_name(name: &Name) -> bool {
+    let s = name.to_string();
+    matches!(
+        s.as_str(),
+        "IO.pure"
+            | "Pure.pure"
+            | "IO_pure"
+            | "Pure_pure"
+            | "pure"
+    )
 }
 
 #[cfg(test)]
@@ -236,7 +342,65 @@ mod tests {
     }
 
     #[test]
-    fn run_main_definition_surfaces_not_yet_implemented() {
+    fn run_main_io_pure_const_succeeds() {
+        // `def main : IO Unit := IO.pure ()` lowered to the
+        // bare `IO.pure` const (the kernel form when no
+        // explicit application is present). Walker accepts.
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let io_unit_ty = Expr::App(
+            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+        );
+        let body = Expr::Const(Name::str("IO.pure"), Vec::new());
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: io_unit_ty,
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+        let resolver = make_resolver();
+        run_main(&env, resolver, &main)
+            .expect("IO.pure const should walk to completion");
+    }
+
+    #[test]
+    fn run_main_io_pure_app_succeeds() {
+        // `def main : IO Unit := IO.pure ()` lowered to
+        // `App(IO.pure, Unit.unit)`. Walker unwraps the
+        // App-head chain to find `IO.pure`, accepts.
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let io_unit_ty = Expr::App(
+            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+        );
+        let body = Expr::App(
+            Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+        );
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: io_unit_ty,
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+        let resolver = make_resolver();
+        run_main(&env, resolver, &main)
+            .expect("IO.pure app should walk to completion");
+    }
+
+    #[test]
+    fn run_main_unsupported_shape_surfaces_not_yet_implemented() {
+        // Non-IO-pure body (e.g. bare Unit.unit, or any
+        // shape outside the v0 walker's recognised set)
+        // surfaces an explicit NotYetImplemented so
+        // downstream knows the gap is "this shape", not
+        // "everything".
         let mut env = empty_env();
         let main = Name::str("main");
         let unit_ty = Expr::Const(Name::str("Unit"), Vec::new());
@@ -253,7 +417,10 @@ mod tests {
         let err = run_main(&env, resolver, &main).unwrap_err();
         match err {
             DriverError::NotYetImplemented { reason } => {
-                assert!(reason.contains("IO walker"));
+                assert!(
+                    reason.contains("walker"),
+                    "reason should mention the walker, got: {reason}"
+                );
             }
             other => panic!("expected NotYetImplemented, got: {other:?}"),
         }
