@@ -518,6 +518,13 @@ fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>) -> Option<()> {
                 "Bool.true" | "Bool_true" | "true" => out.push(0x01),
                 "Bool.false" | "Bool_false" | "false" => out.push(0x00),
                 "Unit.unit" | "Unit_unit" => { /* zero-byte payload */ }
+                // Nullary variant ctors at the bare-Const
+                // level (no App-chain) — same wire format
+                // as the App-headed `encode_typeclass_projection`
+                // arms but with zero payload.
+                "Option.none" | "Option_none" => {
+                    out.extend_from_slice(&0u32.to_le_bytes());
+                }
                 _ => return None,
             }
         }
@@ -630,6 +637,76 @@ fn encode_typeclass_projection(
             };
             let cp = u32::try_from(n).ok()?;
             out.extend_from_slice(&cp.to_le_bytes());
+        }
+        // Canonical record / variant ctors. Walker only
+        // recognises the small fixed set defined here; user-
+        // defined structures + inductives require IDL-side
+        // knowledge of which fields cross the boundary and
+        // are therefore left to the embedder.
+        "Prod.mk" | "Prod_mk" => {
+            // `@Prod.mk α β a b` — wire format per
+            // SPEC/canonical-abi.md §7 (tuple): `a ‖ b`,
+            // no framing. Decomposed arity is 4 (type α,
+            // type β, value a, value b); take the trailing
+            // two as the encodable values.
+            if head_args.len() < 2 {
+                return None;
+            }
+            let a = head_args[head_args.len() - 2];
+            let b = head_args[head_args.len() - 1];
+            encode_one_arg(a, out)?;
+            encode_one_arg(b, out)?;
+        }
+        "Subtype.mk" | "Subtype_mk" => {
+            // `@Subtype.mk α p val proof` — proof is
+            // erased on the wire; `val` is the only
+            // observable payload. SPEC/canonical-abi.md
+            // §11.2 (proof-carrying record): `val` alone.
+            // Decomposed arity 4: type, predicate, value,
+            // proof. Take the second-from-last as the
+            // value; last is the proof (ignored).
+            if head_args.len() < 2 {
+                return None;
+            }
+            let val = head_args[head_args.len() - 2];
+            encode_one_arg(val, out)?;
+        }
+        "Option.none" | "Option_none" => {
+            // SPEC/canonical-abi.md §10 (variant tag):
+            // 4 bytes u32 LE = 0. `Option.none` is the
+            // null arm. App-chain may carry one type
+            // implicit arg; ignored.
+            out.extend_from_slice(&0u32.to_le_bytes());
+        }
+        "Option.some" | "Option_some" => {
+            // 4 bytes u32 LE = 1, then the payload
+            // value. Decomposed arity is 2 (type α,
+            // value); take the trailing one.
+            if head_args.is_empty() {
+                return None;
+            }
+            out.extend_from_slice(&1u32.to_le_bytes());
+            let val = head_args[head_args.len() - 1];
+            encode_one_arg(val, out)?;
+        }
+        "Sum.inl" | "Sum_inl" => {
+            // 4 bytes u32 LE = 0, then the payload.
+            // Decomposed arity is 3 (type α, type β,
+            // value); take the trailing one.
+            if head_args.is_empty() {
+                return None;
+            }
+            out.extend_from_slice(&0u32.to_le_bytes());
+            let val = head_args[head_args.len() - 1];
+            encode_one_arg(val, out)?;
+        }
+        "Sum.inr" | "Sum_inr" => {
+            if head_args.is_empty() {
+                return None;
+            }
+            out.extend_from_slice(&1u32.to_le_bytes());
+            let val = head_args[head_args.len() - 1];
+            encode_one_arg(val, out)?;
         }
         _ => return None,
     }
@@ -1600,6 +1677,140 @@ mod tests {
         expected.extend_from_slice(&1u32.to_le_bytes());
         expected.push(b'x');
         assert_eq!(out, expected);
+    }
+
+    // ─── Composite-type ctors ──────────────────────────
+
+    fn prod_mk(a: Expr, b: Expr) -> Expr {
+        // `@Prod.mk α β a b` — type implicits use sentinel
+        // Const placeholders that the encoder ignores.
+        let alpha = Expr::Const(Name::str("_α"), Vec::new());
+        let beta = Expr::Const(Name::str("_β"), Vec::new());
+        Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::App(
+                        Box::new(Expr::Const(Name::str("Prod.mk"), Vec::new())),
+                        Box::new(alpha),
+                    )),
+                    Box::new(beta),
+                )),
+                Box::new(a),
+            )),
+            Box::new(b),
+        )
+    }
+
+    #[test]
+    fn encode_prod_mk_concatenates_fields() {
+        // `(true, 0x2A : Bool × UInt8)` → 0x01 ‖ 0x2A.
+        let arg = prod_mk(
+            Expr::Const(Name::str("Bool.true"), Vec::new()),
+            ofnat_of("UInt8", 0x2A),
+        );
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![0x01, 0x2A]);
+    }
+
+    #[test]
+    fn encode_prod_mk_nested_recurses_correctly() {
+        // `((1, 2), 3) : (UInt8 × UInt8) × UInt8` → 1 ‖ 2 ‖ 3.
+        let inner = prod_mk(ofnat_of("UInt8", 1), ofnat_of("UInt8", 2));
+        let outer = prod_mk(inner, ofnat_of("UInt8", 3));
+        let out = encode_leaf_args_for_extern(&[&outer]).unwrap();
+        assert_eq!(out, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn encode_subtype_mk_writes_only_val_dropping_proof() {
+        // `@Subtype.mk Nat _pred 42 _proof` — proof
+        // erased; val = 42 wrapped via OfNat.ofNat over
+        // Int8 for a determinate byte width.
+        let val = ofnat_of("Int8", 42);
+        let arg = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::App(
+                        Box::new(Expr::Const(Name::str("Subtype.mk"), Vec::new())),
+                        Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+                    )),
+                    Box::new(Expr::Const(Name::str("_pred"), Vec::new())),
+                )),
+                Box::new(val),
+            )),
+            Box::new(Expr::Const(Name::str("_proof"), Vec::new())),
+        );
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![42]);
+    }
+
+    #[test]
+    fn encode_option_none_writes_zero_tag() {
+        let arg = Expr::Const(Name::str("Option.none"), Vec::new());
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn encode_option_some_writes_tag_then_payload() {
+        // `Option.some (42 : UInt8)` → tag 1 ‖ 0x2A.
+        let arg = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("Option.some"), Vec::new())),
+                Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+            )),
+            Box::new(ofnat_of("UInt8", 0x2A)),
+        );
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![1, 0, 0, 0, 0x2A]);
+    }
+
+    #[test]
+    fn encode_sum_inl_inr_distinguish_tags() {
+        // `Sum.inl (0xFF : UInt8) : Sum UInt8 UInt16` →
+        // tag 0 ‖ 0xFF.
+        let inl = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::Const(Name::str("Sum.inl"), Vec::new())),
+                    Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+                )),
+                Box::new(Expr::Const(Name::str("_β"), Vec::new())),
+            )),
+            Box::new(ofnat_of("UInt8", 0xFF)),
+        );
+        let out = encode_leaf_args_for_extern(&[&inl]).unwrap();
+        assert_eq!(out, vec![0, 0, 0, 0, 0xFF]);
+
+        // `Sum.inr (0x4242 : UInt16) : Sum UInt8 UInt16`
+        // → tag 1 ‖ 0x42 0x42 (little-endian).
+        let inr = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::Const(Name::str("Sum.inr"), Vec::new())),
+                    Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+                )),
+                Box::new(Expr::Const(Name::str("_β"), Vec::new())),
+            )),
+            Box::new(ofnat_of("UInt16", 0x4242)),
+        );
+        let out = encode_leaf_args_for_extern(&[&inr]).unwrap();
+        assert_eq!(out, vec![1, 0, 0, 0, 0x42, 0x42]);
+    }
+
+    #[test]
+    fn encode_user_defined_struct_ctor_falls_back_to_none() {
+        // `Foo.mk a b` for an unknown `Foo` returns None;
+        // the walker forwards `&[]` so embedder-side IDL-
+        // aware encoding can layer on top.
+        let arg = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("Foo.mk"), Vec::new())),
+                Box::new(Expr::Lit(Literal::Nat(1))),
+            )),
+            Box::new(Expr::Lit(Literal::Nat(2))),
+        );
+        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
     }
 
     #[test]
