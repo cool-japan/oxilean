@@ -83,6 +83,7 @@ use std::sync::Arc;
 use oxilean_kernel::{
     env::{Declaration, Environment},
     ffi::ExternRegistry,
+    instantiate::instantiate_one,
     Expr, Name,
 };
 
@@ -213,7 +214,12 @@ pub fn run_main_with_args(
         extern_registry,
         resolver: &resolver,
     };
-    walk_io_action(&val, &mut ctx, /*depth=*/ 0)?;
+    let _final_result = walk_io_action(&val, &mut ctx, /*depth=*/ 0)?;
+    // We discard the action's final pure result at the
+    // driver level — `main : IO α` is driven for its
+    // effects, not its return value. Embedders that
+    // want the return can layer on top of `walk_io_action`
+    // directly.
     Ok(())
 }
 
@@ -260,11 +266,20 @@ struct WalkCtx<'a> {
 /// progressing.
 const MAX_WALK_DEPTH: usize = 1024;
 
+/// Walker outcome: action complete + the pure result the
+/// action evaluated to, when statically known. `None`
+/// means the result is opaque (e.g. an `@[extern]` call
+/// returning bytes the walker doesn't decode) — beta-
+/// application of a continuation against an opaque result
+/// can't make progress, so the walker falls back to walking
+/// the continuation as another opaque IO action.
+type WalkResult = Result<Option<Expr>, DriverError>;
+
 fn walk_io_action(
     expr: &Expr,
     ctx: &mut WalkCtx<'_>,
     depth: usize,
-) -> Result<(), DriverError> {
+) -> WalkResult {
     if depth > MAX_WALK_DEPTH {
         return Err(DriverError::NotYetImplemented {
             reason: format!(
@@ -282,10 +297,14 @@ fn walk_io_action(
     if let Expr::Const(name, _) = head {
         // ── `IO.pure` / `Pure.pure` — terminal ─────────
         if is_io_pure_name(name) {
-            // Result discarded — `main : IO Unit` is the
-            // v0 target; non-Unit α ignores the result at
-            // this level.
-            return Ok(());
+            // The pure value (last App arg) is the
+            // action's static result. Surface it so
+            // `IO.bind m k` can beta-apply `k` to it.
+            // Nullary const form (zero App args) has no
+            // explicit value; report `None` (opaque
+            // Unit-ish).
+            let result = head_args.last().map(|a| (*a).clone());
+            return Ok(result);
         }
 
         // ── `IO.bind m k` — monadic sequence ───────────
@@ -303,17 +322,44 @@ fn walk_io_action(
             if head_args.len() >= 2 {
                 let m = head_args[head_args.len() - 2];
                 let k = head_args[head_args.len() - 1];
-                // v0: walk m for its effects; result is
-                // discarded — we don't beta-apply k yet
-                // because we don't have a Lean-side value
-                // to feed it without the `@[extern]` arm
-                // returning real bytes. Walk k as well
-                // (its body, treated as another IO
-                // action) so trivial `m >>= fun _ => k'`
-                // chains still drive both halves.
-                walk_io_action(m, ctx, depth + 1)?;
-                walk_io_action(k, ctx, depth + 1)?;
-                return Ok(());
+                // Walk m. When it returns a concrete
+                // result (e.g. `m = IO.pure x`), the
+                // continuation `k` typically has shape
+                // `Lam(_, _, _, body)`; beta-apply by
+                // instantiating `BVar(0)` in body with
+                // x, then walk the result. Otherwise
+                // fall back to walking `k` as another
+                // opaque IO action (the v0 behaviour
+                // from `d357a01`).
+                let m_result = walk_io_action(m, ctx, depth + 1)?;
+                let k_result = match (m_result, k) {
+                    (Some(x), Expr::Lam(_, _, _, body)) => {
+                        // Concrete result + lambda continuation —
+                        // beta-reduce by instantiating BVar(0)
+                        // with x, then walk the substituted body.
+                        let inst = instantiate_one(body, &x);
+                        walk_io_action(&inst, ctx, depth + 1)?
+                    }
+                    (None, Expr::Lam(_, _, _, body)) => {
+                        // Opaque result + lambda continuation —
+                        // we don't have a concrete `x` to feed
+                        // in. Substitute a placeholder
+                        // (`Unit.unit`) for `BVar(0)` so any
+                        // dangling de-Bruijn index in the body
+                        // resolves to a valid Expr, then walk.
+                        // If the body actually depends on the
+                        // (opaque) result value, the walker will
+                        // surface an unrecognised-shape error
+                        // deep in `body`'s reduction — exactly
+                        // the "this shape's gap is visible per-
+                        // shape" contract.
+                        let placeholder = Expr::Const(Name::str("Unit.unit"), Vec::new());
+                        let inst = instantiate_one(body, &placeholder);
+                        walk_io_action(&inst, ctx, depth + 1)?
+                    }
+                    (_, other) => walk_io_action(other, ctx, depth + 1)?,
+                };
+                return Ok(k_result);
             }
         }
 
@@ -330,13 +376,16 @@ fn walk_io_action(
         // style nullary).
         match dispatch_extern_const(ctx.env, ctx.extern_registry, Some(ctx.resolver), name, &[]) {
             ExternDispatch::Resolved(_bytes) => {
-                // Effect fired; result currently
-                // discarded at the driver level. The
-                // canonical-ABI re-pack + apply-result-to-
-                // continuation arc lands when the leo4-
-                // side adapter wires args/return bytes
-                // through here.
-                return Ok(());
+                // Effect fired. The result bytes don't
+                // decode into a Lean Expr at the
+                // walker level — the canonical-ABI
+                // boundary lives one layer up
+                // (leo4-side). Surface `None` so any
+                // enclosing `IO.bind m k` sees an
+                // opaque result and walks `k` as an
+                // opaque IO action without trying to
+                // beta-apply.
+                return Ok(None);
             }
             ExternDispatch::NotExtern => {
                 // Not `@[extern]` — fall through to the
@@ -757,6 +806,150 @@ mod tests {
         let resolver = make_resolver();
         run_main(&env, &empty_extern_registry(), resolver, &main)
             .expect("StateT.pure should walk to completion");
+    }
+
+    #[test]
+    fn run_main_io_bind_beta_applies_k_to_m_result() {
+        // `def main : IO Unit := IO.bind (IO.pure Unit.unit) (fun x => IO.pure x)`.
+        // The walker should:
+        //   1. Walk m = `App(IO.pure, Unit.unit)` → `Some(Unit.unit)`.
+        //   2. Beta-apply k = `Lam(_, "x", _, App(IO.pure, BVar 0))`
+        //      by instantiating BVar(0) with Unit.unit →
+        //      `App(IO.pure, Unit.unit)`.
+        //   3. Walk the substituted body → terminal.
+        //
+        // No extern dispatch needed; the test exercises
+        // the beta path itself.
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let io_unit_ty = Expr::App(
+            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+        );
+        let unit = Expr::Const(Name::str("Unit.unit"), Vec::new());
+        let m = Expr::App(
+            Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+            Box::new(unit.clone()),
+        );
+        // k = `fun x : Unit => IO.pure (BVar 0)`.
+        let unit_ty = Expr::Const(Name::str("Unit"), Vec::new());
+        let k = Expr::Lam(
+            oxilean_kernel::BinderInfo::Default,
+            Name::str("x"),
+            Box::new(unit_ty),
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+                Box::new(Expr::BVar(0)),
+            )),
+        );
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
+                Box::new(m),
+            )),
+            Box::new(k),
+        );
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: io_unit_ty,
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+        let resolver = make_resolver();
+        run_main(&env, &empty_extern_registry(), resolver, &main)
+            .expect("IO.bind (IO.pure x) (fun x => IO.pure x) should walk");
+    }
+
+    #[test]
+    fn run_main_io_bind_opaque_extern_falls_back_to_opaque_k_walk() {
+        // `def main : IO Unit := IO.bind myExtern (fun _ => IO.pure ())`.
+        // myExtern is `@[extern]` so the walker dispatches
+        // through the resolver and gets opaque bytes (we
+        // don't know the Lean Expr). The walker then walks
+        // k as an opaque action — k's body discards the
+        // result (`_` binder) so the action still walks
+        // to completion.
+        use crate::extern_resolver::ExternResolver;
+        use oxilean_kernel::ffi::{
+            CallingConvention, ExternDecl, FfiSafety, FfiSignature, FfiType,
+        };
+
+        struct OkResolver;
+        impl ExternResolver for OkResolver {
+            fn resolve(
+                &self,
+                _decl_name: &Name,
+                _args: &[u8],
+            ) -> Result<Vec<u8>, oxilean_kernel::ffi::ExternCallError> {
+                Ok(Vec::new())
+            }
+        }
+
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let extern_name = Name::str("myExtern");
+
+        env.add(Declaration::Axiom {
+            name: extern_name.clone(),
+            univ_params: Vec::new(),
+            ty: Expr::App(
+                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            ),
+        })
+        .unwrap();
+
+        let m = Expr::Const(extern_name.clone(), Vec::new());
+        // k = `fun _ : Unit => IO.pure ()` — body ignores
+        // BVar(0), so even though the walker passes "opaque"
+        // through, the body walks to completion.
+        let k = Expr::Lam(
+            oxilean_kernel::BinderInfo::Default,
+            Name::str("_"),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+                Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+            )),
+        );
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
+                Box::new(m),
+            )),
+            Box::new(k),
+        );
+
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: Expr::App(
+                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            ),
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+
+        let mut registry = ExternRegistry::new();
+        registry
+            .register(ExternDecl::new(
+                extern_name.clone(),
+                Expr::Const(Name::str("ByteArray"), Vec::new()),
+                "leo4-rust-bridge".to_string(),
+                "myExtern".to_string(),
+                FfiSafety::Safe,
+                CallingConvention::Rust,
+                FfiSignature::new(vec![FfiType::ByteArray], Box::new(FfiType::ByteArray)),
+            ))
+            .unwrap();
+
+        let resolver: SharedExternResolver = Arc::new(OkResolver);
+        run_main(&env, &registry, resolver, &main)
+            .expect("opaque-extern IO.bind should walk with discarded k binder");
     }
 
     #[test]
