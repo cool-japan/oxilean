@@ -40,20 +40,35 @@
 //! - `Expr::Const(name, _)` (and App-chains to it) where
 //!   `name` resolves to an `@[extern]`-attributed
 //!   declaration — `dispatch_extern_const(env, registry,
-//!   resolver, name, &[])` fires the effect; `Resolved`
-//!   advances the action, `NoResolverInstalled` surfaces a
-//!   clean diagnostic, `Failed(e)` becomes
-//!   [`DriverError::ExternFailed`].
+//!   resolver, name, encode_leaf_args_for_extern(args))`
+//!   fires the effect. The arg encoder covers the leaf
+//!   shapes the walker can statically lower (Nat / String
+//!   literals, `Bool.true` / `Bool.false`, `Unit.unit`);
+//!   anything richer falls back to the empty buffer so
+//!   nullary callbacks keep firing while composite
+//!   encoding lands incrementally.
+//! - **`IO.bind m k` beta-application** — when `m` walks
+//!   to `Some(x)` (statically known result, e.g.
+//!   `m = IO.pure x`) and `k` is a `Lam(_, _, _, body)`,
+//!   the walker `instantiate_one`'s `body` with `x` and
+//!   walks the substituted body. Opaque `m`-results
+//!   substitute a `Unit.unit` placeholder for `BVar(0)`
+//!   so `fun _ => …`-style continuations still walk
+//!   cleanly.
 //!
 //! Still open (`NotYetImplemented` arms):
-//! - `EStateM Error IO.RealWorld α` lowerings (Lean stdlib
-//!   funnels IO through this monad).
-//! - Beta-application of `k` in `IO.bind m k` with the
-//!   concrete result feed from `m`.
-//! - Walker-side canonical-ABI encoding of `head_args` into
-//!   the resolver's args buffer (the empty buffer suffices
-//!   for nullary callbacks; embedder-side re-pack lands
-//!   alongside the leo4 adapter's full wiring).
+//! - Sized-integer / signed-integer / float / char arg
+//!   encoding at the `@[extern]` arm. Lean wraps these
+//!   as `OfNat.ofNat n` Apps after elaboration, which
+//!   `encode_leaf_args_for_extern` doesn't yet decompose.
+//! - Composite-type arg encoding (tuples, structures,
+//!   inductives). These need access to the user-side
+//!   IDL to know the wire shape; the walker stops at
+//!   the kernel-level leaves.
+//! - Builtin-table dispatch (`IO.println` → `println!`,
+//!   `IO.FS.*`, etc.) — needs a per-builtin recognition
+//!   layer or OxiLean's `FunctionEntry::builtin`
+//!   surface wired into the walker.
 //!
 //! ## Upstream-PR viability
 //!
@@ -84,7 +99,7 @@ use oxilean_kernel::{
     env::{Declaration, Environment},
     ffi::ExternRegistry,
     instantiate::instantiate_one,
-    Expr, Name,
+    Expr, Literal, Name,
 };
 
 use crate::extern_resolver::{dispatch_extern_const, ExternDispatch, SharedExternResolver};
@@ -366,15 +381,18 @@ fn walk_io_action(
         // ── `@[extern]`-attributed Const ───────────────
         // Reduce to the resolver-supplied bytes when
         // `dispatch_extern_const` recognises the name.
-        // Currently the walker forwards an empty arg
-        // buffer because the IO walker doesn't yet
-        // canonical-ABI-encode `head_args` for the
-        // resolver; that encoding lives at the
-        // canonical-ABI layer one level up (leo4-side).
-        // The empty buffer is enough to fire callbacks
-        // that take no arguments (e.g. `IO.getStdin`-
-        // style nullary).
-        match dispatch_extern_const(ctx.env, ctx.extern_registry, Some(ctx.resolver), name, &[]) {
+        // Args are canonical-ABI-encoded by
+        // `encode_leaf_args_for_extern` — this covers
+        // the leaf shapes (Lit / Bool ctor / Unit /
+        // BVar-placeholder-substituted const) the walker
+        // can reduce statically. When *any* arg falls
+        // outside the recognised set, the walker
+        // forwards `&[]` for backward compatibility
+        // with the v0 (nullary-callback-only) path —
+        // the resolver still fires; embedders that need
+        // richer encoding can layer on top.
+        let encoded_args = encode_leaf_args_for_extern(&head_args).unwrap_or_default();
+        match dispatch_extern_const(ctx.env, ctx.extern_registry, Some(ctx.resolver), name, &encoded_args) {
             ExternDispatch::Resolved(_bytes) => {
                 // Effect fired. The result bytes don't
                 // decode into a Lean Expr at the
@@ -429,6 +447,73 @@ fn walk_io_action(
             arity = head_args.len()
         ),
     })
+}
+
+/// Canonical-ABI encode the walker-visible leaf shapes of
+/// an `@[extern]` Const's arg list. Returns `Some(bytes)`
+/// when *every* arg lowers to a recognised leaf, `None`
+/// otherwise — the caller falls back to forwarding an
+/// empty buffer for backward compatibility with the
+/// pre-encoding walker (`d357a01` `IO.bind` + extern
+/// dispatch).
+///
+/// Recognised leaf shapes + their wire format (matching
+/// `SPEC/canonical-abi.md` §7):
+///
+/// - `Expr::Lit(Literal::Nat(n))` — 8 bytes, u64 LE.
+/// - `Expr::Lit(Literal::Str(s))` — 4 bytes u32 LE
+///   length prefix + UTF-8 bytes.
+/// - `Expr::Const("Bool.true", _)` / `Bool.false` —
+///   1 byte (0x01 / 0x00).
+/// - `Expr::Const("Unit.unit", _)` — zero bytes (unit
+///   type has no payload).
+///
+/// Anything else — App-headed expressions, Lam, Pi, Let,
+/// Proj, FVar, BVar (post-instantiate), other Const names
+/// — returns `None`. The walker then falls back to the
+/// empty-arg-buffer dispatch path so callbacks that
+/// don't read their args still fire.
+///
+/// Not yet covered (each surfaces as `None`, hence
+/// fallback to empty):
+///
+/// - Signed integers / floats / chars — straightforward
+///   to add when a fixture surfaces them.
+/// - Sized integers (`UInt8` / `UInt16` / `UInt32` /
+///   `UInt64` / `UInt128`) — Lean wraps these as
+///   `OfNat.ofNat n`-shaped Apps, which decompose to a
+///   typeclass projection App-chain rather than a bare
+///   `Lit(Nat)` after elaboration.
+/// - Composite types — tuples, structures, inductives.
+///   These need access to the user-side IDL to know the
+///   wire shape; the walker stops at the kernel-level
+///   leaves.
+fn encode_leaf_args_for_extern(args: &[&Expr]) -> Option<Vec<u8>> {
+    let mut out = Vec::new();
+    for arg in args {
+        match arg {
+            Expr::Lit(Literal::Nat(n)) => {
+                out.extend_from_slice(&n.to_le_bytes());
+            }
+            Expr::Lit(Literal::Str(s)) => {
+                let bytes = s.as_bytes();
+                let len = u32::try_from(bytes.len()).ok()?;
+                out.extend_from_slice(&len.to_le_bytes());
+                out.extend_from_slice(bytes);
+            }
+            Expr::Const(name, _) => {
+                let s = name.to_string();
+                match s.as_str() {
+                    "Bool.true" | "Bool_true" | "true" => out.push(0x01),
+                    "Bool.false" | "Bool_false" | "false" => out.push(0x00),
+                    "Unit.unit" | "Unit_unit" => { /* zero-byte payload */ }
+                    _ => return None,
+                }
+            }
+            _ => return None,
+        }
+    }
+    Some(out)
 }
 
 /// Decompose a left-leaning `App` chain into the ultimate
@@ -1062,5 +1147,154 @@ mod tests {
             }
             other => panic!("expected NotYetImplemented, got: {other:?}"),
         }
+    }
+
+    // ─── encode_leaf_args_for_extern unit tests ───────
+
+    #[test]
+    fn encode_nat_literal_is_u64_le() {
+        let arg = Expr::Lit(Literal::Nat(0xDEAD_BEEF));
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![0xEF, 0xBE, 0xAD, 0xDE, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn encode_string_literal_is_len_prefix_plus_utf8() {
+        let arg = Expr::Lit(Literal::Str("hi".to_string()));
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        // u32 LE length (2) + "hi" bytes.
+        assert_eq!(out, vec![2, 0, 0, 0, b'h', b'i']);
+    }
+
+    #[test]
+    fn encode_bool_ctors_are_one_byte_each() {
+        let bt = Expr::Const(Name::str("Bool.true"), Vec::new());
+        let bf = Expr::Const(Name::str("Bool.false"), Vec::new());
+        let out = encode_leaf_args_for_extern(&[&bt, &bf]).unwrap();
+        assert_eq!(out, vec![0x01, 0x00]);
+    }
+
+    #[test]
+    fn encode_unit_is_zero_bytes() {
+        let u = Expr::Const(Name::str("Unit.unit"), Vec::new());
+        let out = encode_leaf_args_for_extern(&[&u]).unwrap();
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn encode_unknown_const_returns_none() {
+        // `Foo.bar` isn't in the recognised leaf set —
+        // walker falls back to `&[]` and the resolver
+        // still fires.
+        let arg = Expr::Const(Name::str("Foo.bar"), Vec::new());
+        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+    }
+
+    #[test]
+    fn encode_app_headed_arg_returns_none() {
+        // `(IO.pure x)` is App-headed; encoder bails so
+        // the walker forwards `&[]`.
+        let arg = Expr::App(
+            Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+        );
+        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+    }
+
+    #[test]
+    fn encode_concatenates_multiple_args_in_order() {
+        let a = Expr::Lit(Literal::Nat(1));
+        let b = Expr::Const(Name::str("Bool.true"), Vec::new());
+        let c = Expr::Lit(Literal::Str("x".to_string()));
+        let out = encode_leaf_args_for_extern(&[&a, &b, &c]).unwrap();
+        // u64 LE 1 ‖ 0x01 ‖ u32 LE 1 ‖ 'x'
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&1u64.to_le_bytes());
+        expected.push(0x01);
+        expected.extend_from_slice(&1u32.to_le_bytes());
+        expected.push(b'x');
+        assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn run_main_extern_const_with_encodable_args_passes_them_through() {
+        use crate::extern_resolver::ExternResolver;
+        use oxilean_kernel::ffi::{
+            CallingConvention, ExternDecl, FfiSafety, FfiSignature, FfiType,
+        };
+
+        struct ArgTracker {
+            last_args: std::sync::Mutex<Vec<u8>>,
+        }
+        impl ExternResolver for ArgTracker {
+            fn resolve(
+                &self,
+                _decl_name: &Name,
+                args: &[u8],
+            ) -> Result<Vec<u8>, oxilean_kernel::ffi::ExternCallError> {
+                *self.last_args.lock().unwrap() = args.to_vec();
+                Ok(Vec::new())
+            }
+        }
+
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let extern_name = Name::str("nat_extern");
+
+        env.add(Declaration::Axiom {
+            name: extern_name.clone(),
+            univ_params: Vec::new(),
+            ty: Expr::App(
+                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            ),
+        })
+        .unwrap();
+
+        // `main := nat_extern 42 Bool.true`
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(extern_name.clone(), Vec::new())),
+                Box::new(Expr::Lit(Literal::Nat(42))),
+            )),
+            Box::new(Expr::Const(Name::str("Bool.true"), Vec::new())),
+        );
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: Expr::App(
+                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            ),
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+
+        let mut registry = ExternRegistry::new();
+        registry
+            .register(ExternDecl::new(
+                extern_name.clone(),
+                Expr::Const(Name::str("ByteArray"), Vec::new()),
+                "leo4-rust-bridge".to_string(),
+                "nat_extern".to_string(),
+                FfiSafety::Safe,
+                CallingConvention::Rust,
+                FfiSignature::new(vec![FfiType::ByteArray], Box::new(FfiType::ByteArray)),
+            ))
+            .unwrap();
+
+        let tracker = Arc::new(ArgTracker {
+            last_args: std::sync::Mutex::new(Vec::new()),
+        });
+        let resolver: SharedExternResolver = tracker.clone();
+
+        run_main(&env, &registry, resolver, &main)
+            .expect("encodable-args extern call should dispatch");
+        let got = tracker.last_args.lock().unwrap().clone();
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&42u64.to_le_bytes());
+        expected.push(0x01);
+        assert_eq!(got, expected, "resolver should receive concatenated u64+bool bytes");
     }
 }
