@@ -22,12 +22,21 @@
 //! - `Expr::App(IO.pure, x)` — terminal with the result
 //!   discarded (`main : IO Unit` is the v0 target; non-Unit
 //!   α stops at this level without re-encoding `x`).
+//!   `EStateM.pure` / `EIO.pure` / `ExceptT.pure` /
+//!   `StateT.pure` / `ReaderT.pure` (and their underscore-
+//!   mangled forms) all accepted as the same terminal —
+//!   Lean's `def IO := EIO IO.Error` unfolds through the
+//!   monad-transformer family, and any rung can surface
+//!   depending on the elaborator's unfold aggressiveness.
 //! - `IO.bind α β m k` (arity-4 with implicits inserted by
 //!   the elaborator) and `Bind.bind m k` (arity-2 after
 //!   implicit erasure) — the trailing-two-args heuristic
-//!   picks `(m, k)` correctly in both cases. The walker
-//!   walks `m` then walks `k`; beta-application of `k` to
-//!   `m`'s concrete result is a follow-up.
+//!   picks `(m, k)` correctly in both cases. Same
+//!   monad-transformer-family lowerings recognised
+//!   (`EStateM.bind`, `EIO.bind`, `ExceptT.bind`,
+//!   `StateT.bind`, `ReaderT.bind`). The walker walks `m`
+//!   then walks `k`; beta-application of `k` to `m`'s
+//!   concrete result is a follow-up.
 //! - `Expr::Const(name, _)` (and App-chains to it) where
 //!   `name` resolves to an `@[extern]`-attributed
 //!   declaration — `dispatch_extern_const(env, registry,
@@ -401,6 +410,32 @@ fn is_io_pure_name(name: &Name) -> bool {
             | "IO_pure"
             | "Pure_pure"
             | "pure"
+            // EStateM / EIO lowerings (2026-06-01 walker
+            // shape grow). Lean's standard library defines
+            // `def EIO (ε : Type) : Type → Type := EStateM ε
+            // IO.RealWorld` and `def IO := EIO IO.Error`, so
+            // depending on how aggressively the elaborator
+            // unfolds the alias chain, an `IO.pure` lift can
+            // surface at any rung of the alias ladder.
+            // Accept every spelling as the same terminal.
+            | "EIO.pure"
+            | "EStateM.pure"
+            | "EIO_pure"
+            | "EStateM_pure"
+            // ExceptT / StateT / ReaderT analogues — same
+            // monad-transformer family Lean uses to define
+            // IO under the hood. Treated as terminals here
+            // since their effects (state mutation, error
+            // propagation) are flattened back into IO at
+            // the surface; the walker's job is to drive
+            // the IO action, not to interpret the inner
+            // monad's pure values.
+            | "ExceptT.pure"
+            | "StateT.pure"
+            | "ReaderT.pure"
+            | "ExceptT_pure"
+            | "StateT_pure"
+            | "ReaderT_pure"
     )
 }
 
@@ -422,6 +457,22 @@ fn is_io_bind_name(name: &Name) -> bool {
             | "Bind_bind"
             | "Monad_bind"
             | "bind"
+            // EStateM / EIO lowerings — same coverage
+            // rationale as `is_io_pure_name`.
+            | "EIO.bind"
+            | "EStateM.bind"
+            | "EIO_bind"
+            | "EStateM_bind"
+            // Monad transformer family. The walker
+            // sequences them the same way it sequences
+            // raw `IO.bind`; the inner monad's specific
+            // semantics don't affect IO-effect ordering.
+            | "ExceptT.bind"
+            | "StateT.bind"
+            | "ReaderT.bind"
+            | "ExceptT_bind"
+            | "StateT_bind"
+            | "ReaderT_bind"
     )
 }
 
@@ -618,6 +669,94 @@ mod tests {
         let resolver = make_resolver();
         run_main(&env, &empty_extern_registry(), resolver, &main)
             .expect("Bind.bind arity-2 form should walk");
+    }
+
+    #[test]
+    fn run_main_estatem_pure_terminal_succeeds() {
+        // `def main : IO Unit := EStateM.pure ()` — the
+        // form the elaborator can produce when it unfolds
+        // `IO.pure` through the `EIO` / `EStateM` alias
+        // chain. Walker accepts as the same terminal.
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let io_unit_ty = Expr::App(
+            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+        );
+        let body = Expr::App(
+            Box::new(Expr::Const(Name::str("EStateM.pure"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+        );
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: io_unit_ty,
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+        let resolver = make_resolver();
+        run_main(&env, &empty_extern_registry(), resolver, &main)
+            .expect("EStateM.pure should walk to completion");
+    }
+
+    #[test]
+    fn run_main_eio_bind_arity_2_succeeds() {
+        // `def main : IO Unit := EIO.bind (EIO.pure ()) (fun _ => EIO.pure ())`
+        // — chained through the `EIO` rung of the monad-
+        // transformer family. Walker treats it identically
+        // to the `Bind.bind` / `IO.bind` cases.
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let io_unit_ty = Expr::App(
+            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+        );
+        let m = Expr::Const(Name::str("EIO.pure"), Vec::new());
+        let k = Expr::Const(Name::str("EIO.pure"), Vec::new());
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("EIO.bind"), Vec::new())),
+                Box::new(m),
+            )),
+            Box::new(k),
+        );
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: io_unit_ty,
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+        let resolver = make_resolver();
+        run_main(&env, &empty_extern_registry(), resolver, &main)
+            .expect("EIO.bind arity-2 chain should walk");
+    }
+
+    #[test]
+    fn run_main_statet_pure_terminal_succeeds() {
+        // Spot-check one of the other monad transformer
+        // lowerings — `StateT.pure`. Same handling as
+        // `EStateM.pure` / `IO.pure`.
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let io_unit_ty = Expr::App(
+            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+        );
+        let body = Expr::Const(Name::str("StateT.pure"), Vec::new());
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: io_unit_ty,
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+        let resolver = make_resolver();
+        run_main(&env, &empty_extern_registry(), resolver, &main)
+            .expect("StateT.pure should walk to completion");
     }
 
     #[test]
