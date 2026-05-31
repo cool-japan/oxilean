@@ -9,30 +9,53 @@
 //! needs *something* to actually execute the resulting
 //! `main` decl so `@[extern]`-bound Rust callbacks fire.
 //!
-//! ## v0 scope (this commit — stub-only driver)
+//! ## Walker shape coverage (as of 2026-05-29)
 //!
-//! The full IO-monad interpreter is large enough to warrant
-//! a follow-up commit. This commit ships:
+//! The IO action walker recognises the following expression
+//! shapes, with everything else surfacing
+//! [`DriverError::NotYetImplemented`] + a debug repr of the
+//! offending sub-expression so callers can pinpoint the gap:
 //!
-//! - The module + the [`run_main`] / [`run_main_with_args`]
-//!   public entries.
-//! - A `DriverError` type and the basic decl-lookup +
-//!   "is this an `IO α` return type?" check.
-//! - The actual IO-sequence walker is a `todo!()`-equivalent
-//!   that returns `DriverError::NotYetImplemented`. The
-//!   leo4 runner already surfaces this as
-//!   `LeanError(0x0002_0005)` to the scaffold, so the user-
-//!   visible message stays identical pre/post landing.
+//! - `Expr::Const("IO.pure", _)` and the underscore /
+//!   `Pure.pure` spellings — nullary terminal, action
+//!   complete.
+//! - `Expr::App(IO.pure, x)` — terminal with the result
+//!   discarded (`main : IO Unit` is the v0 target; non-Unit
+//!   α stops at this level without re-encoding `x`).
+//! - `IO.bind α β m k` (arity-4 with implicits inserted by
+//!   the elaborator) and `Bind.bind m k` (arity-2 after
+//!   implicit erasure) — the trailing-two-args heuristic
+//!   picks `(m, k)` correctly in both cases. The walker
+//!   walks `m` then walks `k`; beta-application of `k` to
+//!   `m`'s concrete result is a follow-up.
+//! - `Expr::Const(name, _)` (and App-chains to it) where
+//!   `name` resolves to an `@[extern]`-attributed
+//!   declaration — `dispatch_extern_const(env, registry,
+//!   resolver, name, &[])` fires the effect; `Resolved`
+//!   advances the action, `NoResolverInstalled` surfaces a
+//!   clean diagnostic, `Failed(e)` becomes
+//!   [`DriverError::ExternFailed`].
+//!
+//! Still open (`NotYetImplemented` arms):
+//! - `EStateM Error IO.RealWorld α` lowerings (Lean stdlib
+//!   funnels IO through this monad).
+//! - Beta-application of `k` in `IO.bind m k` with the
+//!   concrete result feed from `m`.
+//! - Walker-side canonical-ABI encoding of `head_args` into
+//!   the resolver's args buffer (the empty buffer suffices
+//!   for nullary callbacks; embedder-side re-pack lands
+//!   alongside the leo4 adapter's full wiring).
 //!
 //! ## Upstream-PR viability
 //!
 //! Designed to land cleanly in cool-japan/oxilean — the
 //! module name + signatures don't reference any leo4
-//! concept. Once the IO walker is real, the same module
-//! works for any embedder, not just leo4. Fork commit lands
-//! the stub first so leo4-oxilean-runner can depend on the
-//! API shape; the implementation commit replaces the
-//! `todo!()` body without breaking that dependency.
+//! concept. The API shape (`run_main` / `run_main_with_args`
+//! / `DriverError` arms / `extern_registry` parameter) is
+//! posted at <https://github.com/cool-japan/oxilean/issues/2>
+//! for maintainer review. Once that discussion settles, the
+//! body (continuing to expand the recognised-shape set in
+//! this file) lands as a follow-up PR.
 //!
 //! ## Why a separate module from `bytecode_interp` /
 //! `lazy_eval` / `tco`
@@ -67,9 +90,12 @@ pub enum DriverError {
     /// `Theorem`, `Opaque` …). `main` must be a
     /// `def main : IO α := body`.
     NotADefinition { name: String, kind: &'static str },
-    /// The IO action's evaluator isn't wired yet. v0 stub —
-    /// implementation commit replaces this with a real
-    /// `IO.bind` walker.
+    /// The walker doesn't yet recognise the reduced
+    /// expression shape. v0 covers `IO.pure`, `IO.bind`
+    /// (arity-4 + arity-2 / `Bind.bind`), and `@[extern]`
+    /// Const dispatch; everything else surfaces this arm
+    /// with a debug repr of the offending sub-expression
+    /// so callers can pinpoint the missing shape.
     NotYetImplemented { reason: String },
     /// An `@[extern]` callback returned an error during
     /// IO execution.
@@ -92,9 +118,11 @@ impl std::fmt::Display for DriverError {
             Self::NotYetImplemented { reason } => {
                 write!(
                     f,
-                    "driver: IO action evaluator not yet wired ({reason}); \
-                     the fork commit that lands the IO walker replaces \
-                     this stub. ABI / resolver / lookup are all ready."
+                    "driver: IO walker doesn't yet cover this reduced \
+                     expression shape ({reason}). v0 covers `IO.pure`, \
+                     `IO.bind` (arity-4 + arity-2), and `@[extern]` Const \
+                     dispatch; expand walker coverage incrementally as new \
+                     shapes surface."
                 )
             }
             Self::ExternFailed(e) => {
@@ -190,23 +218,18 @@ struct WalkCtx<'a> {
     resolver: &'a SharedExternResolver,
 }
 
-/// v0 minimal IO action walker. Recognises a narrow set of
-/// reductions and surfaces explicit
+/// IO action walker. Recognises a small but non-empty set
+/// of reductions (`IO.pure` / `IO.bind` / `@[extern]` Const
+/// dispatch) and surfaces explicit
 /// [`DriverError::NotYetImplemented`] for anything outside
 /// that set so downstream callers can distinguish "walker
 /// doesn't know this shape yet" from real failures.
 ///
-/// Recognised today:
-///   - `Expr::Const("IO.pure", _)`: nullary "do nothing"
-///     terminal — accepted, action complete.
-///   - `Expr::App(Expr::Const("IO.pure", _), [_α, _x])`:
-///     `IO.pure x` — accepted, result discarded
-///     (`main : IO Unit` only; `IO α` with α ≠ Unit
-///     ignores the result here and stops).
+/// Full coverage list lives in the module-level docs at
+/// the top of this file; this docstring focuses on the
+/// internals of the recursion itself.
 ///
-/// Everything else returns `NotYetImplemented` with the
-/// reduced expression shape's debug repr in the reason
-/// field. The shapes that still need wiring (in order of
+/// The shapes that still need wiring (in order of
 /// motivating use cases):
 ///   - `Expr::App(Expr::Const("IO.bind", _), [α, β, m, k])`:
 ///     monadic sequence. Walk `m`, apply `k` to its result,
@@ -238,7 +261,7 @@ fn walk_io_action(
             reason: format!(
                 "walker recursion exceeded {MAX_WALK_DEPTH}; \
                  likely a non-terminating `IO.bind` chain or \
-                 a shape the v0 walker doesn't reduce"
+                 a shape the walker doesn't yet recognise"
             ),
         });
     }
