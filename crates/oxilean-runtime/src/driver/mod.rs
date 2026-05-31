@@ -40,7 +40,7 @@
 //! - `Expr::Const(name, _)` (and App-chains to it) where
 //!   `name` resolves to an `@[extern]`-attributed
 //!   declaration — `dispatch_extern_const(env, registry,
-//!   resolver, name, encode_leaf_args_for_extern(args))`
+//!   resolver, name, encode_leaf_args_for_extern(args, env))`
 //!   fires the effect. The arg encoder covers the leaf
 //!   shapes the walker can statically lower (Nat / String
 //!   literals, `Bool.true` / `Bool.false`, `Unit.unit`);
@@ -83,22 +83,54 @@
 //!   only handles the case where the arg decodes
 //!   through a `Lit(Str)` or trivial `toString` wrap;
 //!   richer shapes fall through to the resolver path.
+//! - **Stdlib `IO.FS.*` file-system dispatch**.
+//!   `IO.FS.readFile` / `writeFile` / `appendFile` /
+//!   `removeFile` / `createDir` / `createDirAll` /
+//!   `removeDir` / `removeDirAll` / `rename` (and the
+//!   underscore-mangled spellings) fire their effect
+//!   directly via `try_dispatch_io_fs_builtin` against
+//!   the host `std::fs`. `readFile` surfaces the
+//!   contents as `Ok(Some(Lit(Str)))` so an enclosing
+//!   `IO.bind m k` can beta-apply `k` against the
+//!   string. IO errors wrap into
+//!   `DriverError::ExternFailed` via
+//!   `ExternCallError::CallbackFailed`.
+//! - **User-defined record / inductive ctor encoding**.
+//!   `encode_user_defined_ctor` walks the ctor's
+//!   `ConstantInfo::Constructor` metadata in `env` to
+//!   skip type-param leading args, then emits SPEC §10
+//!   variant-tag discriminant (multi-ctor inductives
+//!   only) + each field encoded via `encode_one_arg`.
+//!   This covers both anonymous user records
+//!   (single-ctor structures) and sum-type inductives
+//!   without the walker needing the user-side IDL on
+//!   hand.
 //!
-//! Still open (`NotYetImplemented` arms):
-//! - User-defined record / inductive ctor encoding at
-//!   the `@[extern]` arg site. The walker doesn't have
-//!   the IDL on hand to know the field order or the
-//!   inductive's discriminant width; embedders wire
-//!   this through the `ExternResolver` instead.
-//! - File-system IO builtins (`IO.FS.readFile`,
-//!   `IO.FS.writeFile`, …). Needs path + handle
-//!   plumbing through the walker; embedders can layer
-//!   it through the resolver in the meantime.
-//! - Non-IO monad-class builtins (`StateT.run`,
-//!   `ReaderT.run`, `ExceptT.run`). The walker today
-//!   only fires once the outer `IO` action surfaces;
-//!   internal `runX` projections at the IO leaf would
-//!   need a separate recognition path.
+//! Out of scope by design (single fallthrough
+//! `NotYetImplemented` arm covers everything below — by
+//! intent, not by neglect):
+//!
+//! - **Non-IO monad-class run projections**
+//!   (`StateT.run` / `ReaderT.run` / `ExceptT.run`,
+//!   etc.). These belong at the LCNF / bytecode
+//!   interpreter layer, *below* the kernel-name walker.
+//!   The walker fires only on `IO` actions; transformer-
+//!   stack `runX` projections should reduce away inside
+//!   `bytecode_interp` / `lazy_eval` / `tco` before the
+//!   walker sees the resulting `IO α`. Wiring them at
+//!   the walker layer would double-implement reduction
+//!   that the lower layers already do.
+//! - **`IO.FS.Handle.*` family** (handle-based
+//!   readers/writers). Needs a host-side `File` lifetime
+//!   tied to a Lean value, which the walker doesn't
+//!   model. Embedders can intercept via the resolver.
+//! - **`dbg_trace` / `panic!` / `unreachable!`**.
+//!   Compile-time elaboration hooks, not IO-level —
+//!   OxiLean's elaborator handles them before the
+//!   walker sees the body.
+//! - **Float-literal lowering** (`Float.ofBinaryScientific`).
+//!   Constant-folded by OxiLean's reducer; not the
+//!   walker's responsibility.
 //!
 //! ## Upstream-PR viability
 //!
@@ -126,6 +158,7 @@
 use std::sync::Arc;
 
 use oxilean_kernel::{
+    declaration::ConstantInfo,
     env::{Declaration, Environment},
     ffi::ExternRegistry,
     instantiate::instantiate_one,
@@ -145,12 +178,19 @@ pub enum DriverError {
     /// `Theorem`, `Opaque` …). `main` must be a
     /// `def main : IO α := body`.
     NotADefinition { name: String, kind: &'static str },
-    /// The walker doesn't yet recognise the reduced
-    /// expression shape. v0 covers `IO.pure`, `IO.bind`
-    /// (arity-4 + arity-2 / `Bind.bind`), and `@[extern]`
-    /// Const dispatch; everything else surfaces this arm
-    /// with a debug repr of the offending sub-expression
-    /// so callers can pinpoint the missing shape.
+    /// The walker hit a reduced expression shape that
+    /// belongs to the "out of scope by design" set
+    /// documented in the module docstring (non-IO monad
+    /// transformer projections, `IO.FS.Handle.*`,
+    /// compile-time hooks like `dbg_trace`, …). The
+    /// embedder can either pre-reduce the body at the
+    /// LCNF / bytecode interpreter layer before driving
+    /// `run_main`, or intercept via the `@[extern]`
+    /// resolver path.
+    ///
+    /// The `reason` carries a debug repr of the offending
+    /// sub-expression so callers can pinpoint exactly
+    /// which shape escaped recognition.
     NotYetImplemented { reason: String },
     /// An `@[extern]` callback returned an error during
     /// IO execution.
@@ -173,13 +213,17 @@ impl std::fmt::Display for DriverError {
             Self::NotYetImplemented { reason } => {
                 write!(
                     f,
-                    "driver: IO walker doesn't yet cover this reduced \
-                     expression shape ({reason}). v0 covers `IO.pure`, \
-                     `IO.bind` (arity-4 + arity-2), `@[extern]` Const \
-                     dispatch, and the `IO.println` / `IO.eprintln` / \
-                     `IO.print` / `IO.eprint` stdlib builtins directly; \
-                     expand walker coverage incrementally as new shapes \
-                     surface."
+                    "driver: IO walker doesn't cover this reduced \
+                     expression shape ({reason}). The recognised set \
+                     covers `IO.pure`, `IO.bind` (arity-4 + arity-2) + \
+                     monad-transformer-family lowerings, `@[extern]` \
+                     Const dispatch (with canonical-ABI arg encoding \
+                     including user-defined record / inductive ctors via \
+                     env-lookup), and the stdlib `IO.println` family + \
+                     `IO.FS.*` file-system builtins. Shapes outside that \
+                     set are out-of-scope by design — either pre-reduce \
+                     at the LCNF / bytecode interpreter layer or \
+                     intercept via the resolver."
                 )
             }
             Self::ExternFailed(e) => {
@@ -425,6 +469,21 @@ fn walk_io_action(
             return Ok(None);
         }
 
+        // ── Stdlib IO.FS file-system builtins ─────────
+        // Same shape as `try_dispatch_io_builtin` but for
+        // file-system effects (`IO.FS.readFile` /
+        // `writeFile` / `appendFile` / `removeFile` /
+        // `createDir` / `removeDir`). `readFile` surfaces
+        // the file contents as `Ok(Some(Lit(Str)))` so a
+        // surrounding `IO.bind m k` can beta-apply `k`
+        // against the contents; the write/remove/create
+        // variants return `Ok(None)`. std::fs errors
+        // surface as `DriverError::ExternFailed` via
+        // `ExternCallError::CallbackFailed`.
+        if let Some(result) = try_dispatch_io_fs_builtin(name, &head_args) {
+            return result;
+        }
+
         // ── `@[extern]`-attributed Const ───────────────
         // Reduce to the resolver-supplied bytes when
         // `dispatch_extern_const` recognises the name.
@@ -438,7 +497,7 @@ fn walk_io_action(
         // with the v0 (nullary-callback-only) path —
         // the resolver still fires; embedders that need
         // richer encoding can layer on top.
-        let encoded_args = encode_leaf_args_for_extern(&head_args).unwrap_or_default();
+        let encoded_args = encode_leaf_args_for_extern(&head_args, ctx.env).unwrap_or_default();
         match dispatch_extern_const(ctx.env, ctx.extern_registry, Some(ctx.resolver), name, &encoded_args) {
             ExternDispatch::Resolved(_bytes) => {
                 // Effect fired. The result bytes don't
@@ -505,7 +564,7 @@ fn walk_io_action(
 /// dispatch).
 ///
 /// Recognised leaf shapes + their wire format (matching
-/// `SPEC/canonical-abi.md` §7):
+/// `SPEC/canonical-abi.md` §6/§7/§10/§11):
 ///
 /// - `Expr::Lit(Literal::Nat(n))` — 8 bytes, u64 LE.
 /// - `Expr::Lit(Literal::Str(s))` — 4 bytes u32 LE
@@ -514,31 +573,45 @@ fn walk_io_action(
 ///   1 byte (0x01 / 0x00).
 /// - `Expr::Const("Unit.unit", _)` — zero bytes (unit
 ///   type has no payload).
+/// - `OfNat.ofNat <type> <Lit(Nat)> _` — sized integer
+///   (UInt8..128, USize, Int8..128, ISize, Char) at the
+///   matching canonical-ABI byte width LE.
+/// - `Neg.neg <type> _ <inner>` — signed integer with
+///   the inner Nat negated under two's complement.
+/// - `Char.ofNat <Lit(Nat)>` — u32 LE Unicode code
+///   point.
+/// - `Prod.mk` / `Subtype.mk` / `Option.some` /
+///   `Option.none` / `Sum.inl` / `Sum.inr` — canonical
+///   record / variant wire bytes by recursing into the
+///   payload.
+/// - **Any user-defined `Constructor` registered in
+///   `env`** — `encode_user_defined_ctor` walks the
+///   ctor's `ConstantInfo::Constructor` metadata to skip
+///   leading type-param args, emit the SPEC §10
+///   variant-tag discriminant (multi-ctor inductives
+///   only), and recursively encode each field. Covers
+///   anonymous user records (single-ctor structures)
+///   and sum-type inductives without leo4 IDL
+///   threading.
 ///
-/// Anything else — App-headed expressions, Lam, Pi, Let,
-/// Proj, FVar, BVar (post-instantiate), other Const names
-/// — returns `None`. The walker then falls back to the
-/// empty-arg-buffer dispatch path so callbacks that
-/// don't read their args still fire.
+/// Anything else — Lam, Pi, Let, Proj, FVar, BVar
+/// (post-instantiate), or a `Const` / App that doesn't
+/// resolve to a Constructor in `env` — returns `None`.
+/// The walker then falls back to the empty-arg-buffer
+/// dispatch path so callbacks that don't read their args
+/// still fire.
 ///
-/// Not yet covered (each surfaces as `None`, hence
-/// fallback to empty):
+/// Out of scope (each surfaces as `None`):
 ///
-/// - Signed integers / floats / chars — straightforward
-///   to add when a fixture surfaces them.
-/// - Sized integers (`UInt8` / `UInt16` / `UInt32` /
-///   `UInt64` / `UInt128`) — Lean wraps these as
-///   `OfNat.ofNat n`-shaped Apps, which decompose to a
-///   typeclass projection App-chain rather than a bare
-///   `Lit(Nat)` after elaboration.
-/// - Composite types — tuples, structures, inductives.
-///   These need access to the user-side IDL to know the
-///   wire shape; the walker stops at the kernel-level
-///   leaves.
-fn encode_leaf_args_for_extern(args: &[&Expr]) -> Option<Vec<u8>> {
+/// - `Float32.ofBinaryScientific` /
+///   `Float.ofBinaryScientific` — Lean's float literal
+///   shape. Constant-folded by OxiLean's reducer before
+///   the walker sees them; the walker doesn't replicate
+///   arithmetic at the kernel layer.
+fn encode_leaf_args_for_extern(args: &[&Expr], env: &Environment) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     for arg in args {
-        encode_one_arg(arg, &mut out)?;
+        encode_one_arg(arg, &mut out, env)?;
     }
     Some(out)
 }
@@ -548,7 +621,7 @@ fn encode_leaf_args_for_extern(args: &[&Expr]) -> Option<Vec<u8>> {
 /// projection arms (`OfNat.ofNat`, `Neg.neg`,
 /// `Char.ofNat`) can recurse on their inner value
 /// expressions.
-fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>) -> Option<()> {
+fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>, env: &Environment) -> Option<()> {
     match arg {
         Expr::Lit(Literal::Nat(n)) => {
             out.extend_from_slice(&n.to_le_bytes());
@@ -572,16 +645,29 @@ fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>) -> Option<()> {
                 "Option.none" | "Option_none" => {
                     out.extend_from_slice(&0u32.to_le_bytes());
                 }
-                _ => return None,
+                _ => {
+                    // Fall back to env-lookup: a bare
+                    // `Const(ctor)` with no App args is a
+                    // nullary user-defined ctor like
+                    // `Color.Red`. The encoder writes the
+                    // SPEC §10 variant-tag discriminant
+                    // when the parent inductive has > 1
+                    // ctor; single-ctor inductives (unit-
+                    // shaped values) emit nothing.
+                    encode_user_defined_ctor(name, &[], out, env)?;
+                }
             }
         }
         Expr::App(_, _) => {
             // App-headed args — typically a typeclass
             // projection like `OfNat.ofNat`, `Neg.neg`, or
-            // `Char.ofNat`. Decompose + recognise the
-            // head's named pattern.
+            // `Char.ofNat`, or a user-defined ctor App-
+            // chain like `Foo.mk a b`. Decompose +
+            // recognise the head's named pattern; the
+            // user-defined-ctor fallback lives in
+            // `encode_typeclass_projection`'s `_` arm.
             let (head, head_args) = decompose_app(arg);
-            encode_typeclass_projection(head, &head_args, out)?;
+            encode_typeclass_projection(head, &head_args, out, env)?;
         }
         _ => return None,
     }
@@ -642,6 +728,151 @@ fn try_dispatch_io_builtin(name: &Name, args: &[&Expr]) -> Option<()> {
         print!("{s}");
     }
     Some(())
+}
+
+/// Recognise the Lean stdlib `IO.FS.*` file-system
+/// `@[extern]` declarations + fire their effect against
+/// the host file system. Returns `Some(WalkResult)` when
+/// the head matches (regardless of whether the dispatch
+/// succeeded — IO errors surface as `Err(ExternFailed)`),
+/// `None` so the caller falls through to the regular
+/// resolver dispatch path.
+///
+/// Recognised heads + their host calls (Lean signatures
+/// abbreviated — `System.FilePath` reduces to `String` on
+/// the wire; the walker takes the trailing arg as the
+/// path via `decode_string_arg`):
+///
+/// - `IO.FS.readFile : FilePath → IO String` →
+///   `std::fs::read_to_string` → `Ok(Some(Lit(Str)))`.
+/// - `IO.FS.writeFile : FilePath → String → IO Unit` →
+///   `std::fs::write` → `Ok(None)`.
+/// - `IO.FS.appendFile : FilePath → String → IO Unit` →
+///   `std::fs::OpenOptions::append` → `Ok(None)`.
+/// - `IO.FS.removeFile : FilePath → IO Unit` →
+///   `std::fs::remove_file` → `Ok(None)`.
+/// - `IO.FS.createDir : FilePath → IO Unit` →
+///   `std::fs::create_dir` → `Ok(None)`.
+/// - `IO.FS.createDirAll : FilePath → IO Unit` →
+///   `std::fs::create_dir_all` → `Ok(None)`.
+/// - `IO.FS.removeDir : FilePath → IO Unit` →
+///   `std::fs::remove_dir` → `Ok(None)`.
+/// - `IO.FS.removeDirAll : FilePath → IO Unit` →
+///   `std::fs::remove_dir_all` → `Ok(None)`.
+/// - `IO.FS.rename : FilePath → FilePath → IO Unit` →
+///   `std::fs::rename` → `Ok(None)`.
+///
+/// `IO.FS.Handle.*` (handle-based readers/writers) and
+/// `IO.FS.DirEntry.*` are deliberately out of scope — they
+/// need handle plumbing (Rust `File` lifetime tied to a
+/// Lean value) that the walker doesn't model. Embedders
+/// can intercept those via the resolver.
+fn try_dispatch_io_fs_builtin(name: &Name, args: &[&Expr]) -> Option<WalkResult> {
+    let name_str = name.to_string();
+    match name_str.as_str() {
+        "IO.FS.readFile" | "IO_FS_readFile" => {
+            let path = decode_string_arg(args.last()?)?;
+            Some(match std::fs::read_to_string(&path) {
+                Ok(contents) => Ok(Some(Expr::Lit(Literal::Str(contents)))),
+                Err(e) => Err(extern_fs_error("IO.FS.readFile", &path, e)),
+            })
+        }
+        "IO.FS.writeFile" | "IO_FS_writeFile" => {
+            if args.len() < 2 {
+                return None;
+            }
+            let path = decode_string_arg(args[args.len() - 2])?;
+            let contents = decode_string_arg(args.last()?)?;
+            Some(match std::fs::write(&path, &contents) {
+                Ok(()) => Ok(None),
+                Err(e) => Err(extern_fs_error("IO.FS.writeFile", &path, e)),
+            })
+        }
+        "IO.FS.appendFile" | "IO_FS_appendFile" => {
+            if args.len() < 2 {
+                return None;
+            }
+            let path = decode_string_arg(args[args.len() - 2])?;
+            let contents = decode_string_arg(args.last()?)?;
+            use std::io::Write;
+            Some(
+                match std::fs::OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(&path)
+                    .and_then(|mut f| f.write_all(contents.as_bytes()))
+                {
+                    Ok(()) => Ok(None),
+                    Err(e) => Err(extern_fs_error("IO.FS.appendFile", &path, e)),
+                },
+            )
+        }
+        "IO.FS.removeFile" | "IO_FS_removeFile" => {
+            let path = decode_string_arg(args.last()?)?;
+            Some(match std::fs::remove_file(&path) {
+                Ok(()) => Ok(None),
+                Err(e) => Err(extern_fs_error("IO.FS.removeFile", &path, e)),
+            })
+        }
+        "IO.FS.createDir" | "IO_FS_createDir" => {
+            let path = decode_string_arg(args.last()?)?;
+            Some(match std::fs::create_dir(&path) {
+                Ok(()) => Ok(None),
+                Err(e) => Err(extern_fs_error("IO.FS.createDir", &path, e)),
+            })
+        }
+        "IO.FS.createDirAll" | "IO_FS_createDirAll" => {
+            let path = decode_string_arg(args.last()?)?;
+            Some(match std::fs::create_dir_all(&path) {
+                Ok(()) => Ok(None),
+                Err(e) => Err(extern_fs_error("IO.FS.createDirAll", &path, e)),
+            })
+        }
+        "IO.FS.removeDir" | "IO_FS_removeDir" => {
+            let path = decode_string_arg(args.last()?)?;
+            Some(match std::fs::remove_dir(&path) {
+                Ok(()) => Ok(None),
+                Err(e) => Err(extern_fs_error("IO.FS.removeDir", &path, e)),
+            })
+        }
+        "IO.FS.removeDirAll" | "IO_FS_removeDirAll" => {
+            let path = decode_string_arg(args.last()?)?;
+            Some(match std::fs::remove_dir_all(&path) {
+                Ok(()) => Ok(None),
+                Err(e) => Err(extern_fs_error("IO.FS.removeDirAll", &path, e)),
+            })
+        }
+        "IO.FS.rename" | "IO_FS_rename" => {
+            if args.len() < 2 {
+                return None;
+            }
+            let from = decode_string_arg(args[args.len() - 2])?;
+            let to = decode_string_arg(args.last()?)?;
+            Some(match std::fs::rename(&from, &to) {
+                Ok(()) => Ok(None),
+                Err(e) => {
+                    Err(extern_fs_error("IO.FS.rename", &format!("{from} -> {to}"), e))
+                }
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Wrap a `std::io::Error` into a `DriverError::ExternFailed`
+/// with a `CallbackFailed` payload describing the failed
+/// FS call. Matches the framing the resolver-side
+/// dispatch path uses for cdylib errors, so embedders that
+/// observe `ExternFailed` don't need to special-case
+/// builtin failures separately.
+fn extern_fs_error(
+    op: &str,
+    arg: &str,
+    err: std::io::Error,
+) -> DriverError {
+    DriverError::ExternFailed(oxilean_kernel::ffi::ExternCallError::CallbackFailed(
+        format!("{op}({arg}): {err}"),
+    ))
 }
 
 /// Extract a Rust `String` from an Expr shape the walker
@@ -715,6 +946,7 @@ fn encode_typeclass_projection(
     head: &Expr,
     head_args: &[&Expr],
     out: &mut Vec<u8>,
+    env: &Environment,
 ) -> Option<()> {
     let Expr::Const(name, _) = head else {
         return None;
@@ -791,8 +1023,8 @@ fn encode_typeclass_projection(
             }
             let a = head_args[head_args.len() - 2];
             let b = head_args[head_args.len() - 1];
-            encode_one_arg(a, out)?;
-            encode_one_arg(b, out)?;
+            encode_one_arg(a, out, env)?;
+            encode_one_arg(b, out, env)?;
         }
         "Subtype.mk" | "Subtype_mk" => {
             // `@Subtype.mk α p val proof` — proof is
@@ -806,7 +1038,7 @@ fn encode_typeclass_projection(
                 return None;
             }
             let val = head_args[head_args.len() - 2];
-            encode_one_arg(val, out)?;
+            encode_one_arg(val, out, env)?;
         }
         "Option.none" | "Option_none" => {
             // SPEC/canonical-abi.md §10 (variant tag):
@@ -824,7 +1056,7 @@ fn encode_typeclass_projection(
             }
             out.extend_from_slice(&1u32.to_le_bytes());
             let val = head_args[head_args.len() - 1];
-            encode_one_arg(val, out)?;
+            encode_one_arg(val, out, env)?;
         }
         "Sum.inl" | "Sum_inl" => {
             // 4 bytes u32 LE = 0, then the payload.
@@ -835,7 +1067,7 @@ fn encode_typeclass_projection(
             }
             out.extend_from_slice(&0u32.to_le_bytes());
             let val = head_args[head_args.len() - 1];
-            encode_one_arg(val, out)?;
+            encode_one_arg(val, out, env)?;
         }
         "Sum.inr" | "Sum_inr" => {
             if head_args.is_empty() {
@@ -843,9 +1075,90 @@ fn encode_typeclass_projection(
             }
             out.extend_from_slice(&1u32.to_le_bytes());
             let val = head_args[head_args.len() - 1];
-            encode_one_arg(val, out)?;
+            encode_one_arg(val, out, env)?;
         }
+        _ => {
+            // Fall back to user-defined ctor encoding via
+            // env lookup. When the name resolves to a
+            // `ConstantInfo::Constructor`, the encoder
+            // emits SPEC §10/§11 record / variant wire
+            // bytes against the parent inductive's ctor
+            // count (multi-ctor → u32 LE discriminant
+            // prefix + payload; single-ctor record → just
+            // the payload). Type-instantiation args at
+            // the head of the App-chain are skipped using
+            // the ctor's `num_params` count.
+            encode_user_defined_ctor(name, head_args, out, env)?;
+        }
+    }
+    Some(())
+}
+
+/// Encode a user-defined record / inductive ctor by
+/// walking its `ConstantInfo::Constructor` metadata in
+/// `env`. Recognises any ctor name registered as a
+/// `Constructor` decl (the lake plugin emits these when
+/// `@[leo4_export]` discovers user-defined types; OxiLean
+/// also synthesises them during inductive elaboration).
+///
+/// Wire format (matches SPEC/canonical-abi.md §10/§11):
+///
+/// - **Multi-ctor inductive** (`iv.ctors.len() > 1`,
+///   `Sum`-like): u32 LE discriminant (= `cv.cidx`) +
+///   each field encoded in order via `encode_one_arg`.
+/// - **Single-ctor inductive** (`iv.ctors.len() == 1`,
+///   structure / record): no discriminant; each field
+///   encoded in order via `encode_one_arg`. Matches
+///   `Prod.mk` / `Subtype.mk` shape — those are explicit
+///   arms above for symmetry with the SPEC's named
+///   record types, but anonymous user records share the
+///   wire format.
+///
+/// Skips the leading `cv.num_params` args (these are
+/// the inductive's type parameters, instantiated by
+/// the elaborator). The remaining `cv.num_fields` args
+/// are the actual field values.
+///
+/// Returns `None` (caller falls through to empty-buffer
+/// dispatch) when:
+///
+/// - `ctor_name` doesn't resolve to a `Constructor` in
+///   `env` (could be a Definition / Axiom / typeclass
+///   projection name — the caller's existing arms cover
+///   those).
+/// - The parent inductive isn't in `env` (env was
+///   incompletely populated).
+/// - Any value-arg fails to lower via `encode_one_arg`
+///   (recursive composition).
+/// - The arity check fails (too few args supplied;
+///   under-applied ctor App-chain).
+fn encode_user_defined_ctor(
+    ctor_name: &Name,
+    head_args: &[&Expr],
+    out: &mut Vec<u8>,
+    env: &Environment,
+) -> Option<()> {
+    let info = env.find(ctor_name)?;
+    let cv = match info {
+        ConstantInfo::Constructor(cv) => cv,
         _ => return None,
+    };
+    let parent = env.find(&cv.induct)?;
+    let iv = match parent {
+        ConstantInfo::Inductive(iv) => iv,
+        _ => return None,
+    };
+    // Multi-ctor inductive: prefix with discriminant.
+    if iv.ctors.len() > 1 {
+        out.extend_from_slice(&cv.cidx.to_le_bytes());
+    }
+    let nparams = cv.num_params as usize;
+    if head_args.len() < nparams {
+        return None;
+    }
+    let value_args = &head_args[nparams..];
+    for a in value_args {
+        encode_one_arg(a, out, env)?;
     }
     Some(())
 }
@@ -1584,14 +1897,14 @@ mod tests {
     #[test]
     fn encode_nat_literal_is_u64_le() {
         let arg = Expr::Lit(Literal::Nat(0xDEAD_BEEF));
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0xEF, 0xBE, 0xAD, 0xDE, 0, 0, 0, 0]);
     }
 
     #[test]
     fn encode_string_literal_is_len_prefix_plus_utf8() {
         let arg = Expr::Lit(Literal::Str("hi".to_string()));
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         // u32 LE length (2) + "hi" bytes.
         assert_eq!(out, vec![2, 0, 0, 0, b'h', b'i']);
     }
@@ -1600,14 +1913,14 @@ mod tests {
     fn encode_bool_ctors_are_one_byte_each() {
         let bt = Expr::Const(Name::str("Bool.true"), Vec::new());
         let bf = Expr::Const(Name::str("Bool.false"), Vec::new());
-        let out = encode_leaf_args_for_extern(&[&bt, &bf]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&bt, &bf], &empty_env()).unwrap();
         assert_eq!(out, vec![0x01, 0x00]);
     }
 
     #[test]
     fn encode_unit_is_zero_bytes() {
         let u = Expr::Const(Name::str("Unit.unit"), Vec::new());
-        let out = encode_leaf_args_for_extern(&[&u]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&u], &empty_env()).unwrap();
         assert!(out.is_empty());
     }
 
@@ -1617,7 +1930,7 @@ mod tests {
         // walker falls back to `&[]` and the resolver
         // still fires.
         let arg = Expr::Const(Name::str("Foo.bar"), Vec::new());
-        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+        assert!(encode_leaf_args_for_extern(&[&arg], &empty_env()).is_none());
     }
 
     #[test]
@@ -1628,7 +1941,7 @@ mod tests {
             Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
             Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
         );
-        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+        assert!(encode_leaf_args_for_extern(&[&arg], &empty_env()).is_none());
     }
 
     #[test]
@@ -1636,7 +1949,7 @@ mod tests {
         let a = Expr::Lit(Literal::Nat(1));
         let b = Expr::Const(Name::str("Bool.true"), Vec::new());
         let c = Expr::Lit(Literal::Str("x".to_string()));
-        let out = encode_leaf_args_for_extern(&[&a, &b, &c]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&a, &b, &c], &empty_env()).unwrap();
         // u64 LE 1 ‖ 0x01 ‖ u32 LE 1 ‖ 'x'
         let mut expected = Vec::new();
         expected.extend_from_slice(&1u64.to_le_bytes());
@@ -1701,7 +2014,7 @@ mod tests {
         ];
         for (ty, n, expected) in cases {
             let arg = ofnat_of(ty, n);
-            let out = encode_leaf_args_for_extern(&[&arg])
+            let out = encode_leaf_args_for_extern(&[&arg], &empty_env())
                 .unwrap_or_else(|| panic!("{ty} should encode"));
             assert_eq!(out, expected, "{ty} value {n}");
         }
@@ -1739,7 +2052,7 @@ mod tests {
         ];
         for (ty, n, expected) in cases {
             let arg = ofnat_of(ty, n);
-            let out = encode_leaf_args_for_extern(&[&arg])
+            let out = encode_leaf_args_for_extern(&[&arg], &empty_env())
                 .unwrap_or_else(|| panic!("{ty} should encode"));
             assert_eq!(out, expected, "{ty} value {n}");
         }
@@ -1750,17 +2063,17 @@ mod tests {
         // `(-42 : Int8)` → wire byte `0xD6` (two's
         // complement of 42 at 8 bits).
         let arg = neg_of("Int8", ofnat_of("Int8", 42));
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0xD6]);
 
         // `(-1 : Int32)` → `[0xFF, 0xFF, 0xFF, 0xFF]`.
         let arg = neg_of("Int32", ofnat_of("Int32", 1));
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0xFF, 0xFF, 0xFF, 0xFF]);
 
         // `(-1 : Int64)` → eight 0xFFs.
         let arg = neg_of("Int64", ofnat_of("Int64", 1));
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0xFF; 8]);
     }
 
@@ -1770,7 +2083,7 @@ mod tests {
         // `Neg UInt32` instance); the encoder bails so the
         // walker falls back to `&[]`.
         let arg = neg_of("UInt32", ofnat_of("UInt32", 5));
-        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+        assert!(encode_leaf_args_for_extern(&[&arg], &empty_env()).is_none());
     }
 
     #[test]
@@ -1780,7 +2093,7 @@ mod tests {
             Box::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
             Box::new(Expr::Lit(Literal::Nat(65))),
         );
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![65, 0, 0, 0]);
 
         // BMP-side code point check.
@@ -1788,7 +2101,7 @@ mod tests {
             Box::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
             Box::new(Expr::Lit(Literal::Nat(0x4E2D))), // 中
         );
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0x2D, 0x4E, 0, 0]);
     }
 
@@ -1798,7 +2111,7 @@ mod tests {
         // the walker falls back rather than wrapping
         // silently.
         let arg = ofnat_of("UInt8", 256);
-        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+        assert!(encode_leaf_args_for_extern(&[&arg], &empty_env()).is_none());
     }
 
     #[test]
@@ -1807,7 +2120,7 @@ mod tests {
         let bool_t = Expr::Const(Name::str("Bool.true"), Vec::new());
         let u32_42 = ofnat_of("UInt32", 42);
         let str_x = Expr::Lit(Literal::Str("x".to_string()));
-        let out = encode_leaf_args_for_extern(&[&bool_t, &u32_42, &str_x]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&bool_t, &u32_42, &str_x], &empty_env()).unwrap();
         let mut expected = Vec::new();
         expected.push(0x01);
         expected.extend_from_slice(&42u32.to_le_bytes());
@@ -1845,7 +2158,7 @@ mod tests {
             Expr::Const(Name::str("Bool.true"), Vec::new()),
             ofnat_of("UInt8", 0x2A),
         );
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0x01, 0x2A]);
     }
 
@@ -1854,7 +2167,7 @@ mod tests {
         // `((1, 2), 3) : (UInt8 × UInt8) × UInt8` → 1 ‖ 2 ‖ 3.
         let inner = prod_mk(ofnat_of("UInt8", 1), ofnat_of("UInt8", 2));
         let outer = prod_mk(inner, ofnat_of("UInt8", 3));
-        let out = encode_leaf_args_for_extern(&[&outer]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&outer], &empty_env()).unwrap();
         assert_eq!(out, vec![1, 2, 3]);
     }
 
@@ -1877,14 +2190,14 @@ mod tests {
             )),
             Box::new(Expr::Const(Name::str("_proof"), Vec::new())),
         );
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![42]);
     }
 
     #[test]
     fn encode_option_none_writes_zero_tag() {
         let arg = Expr::Const(Name::str("Option.none"), Vec::new());
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0, 0, 0, 0]);
     }
 
@@ -1898,7 +2211,7 @@ mod tests {
             )),
             Box::new(ofnat_of("UInt8", 0x2A)),
         );
-        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![1, 0, 0, 0, 0x2A]);
     }
 
@@ -1916,7 +2229,7 @@ mod tests {
             )),
             Box::new(ofnat_of("UInt8", 0xFF)),
         );
-        let out = encode_leaf_args_for_extern(&[&inl]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&inl], &empty_env()).unwrap();
         assert_eq!(out, vec![0, 0, 0, 0, 0xFF]);
 
         // `Sum.inr (0x4242 : UInt16) : Sum UInt8 UInt16`
@@ -1931,7 +2244,7 @@ mod tests {
             )),
             Box::new(ofnat_of("UInt16", 0x4242)),
         );
-        let out = encode_leaf_args_for_extern(&[&inr]).unwrap();
+        let out = encode_leaf_args_for_extern(&[&inr], &empty_env()).unwrap();
         assert_eq!(out, vec![1, 0, 0, 0, 0x42, 0x42]);
     }
 
@@ -1947,7 +2260,7 @@ mod tests {
             )),
             Box::new(Expr::Lit(Literal::Nat(2))),
         );
-        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+        assert!(encode_leaf_args_for_extern(&[&arg], &empty_env()).is_none());
     }
 
     // ─── IO builtin dispatch ───────────────────────────
@@ -2050,6 +2363,284 @@ mod tests {
         // first.
         run_main(&env, &empty_extern_registry(), resolver, &main)
             .expect("IO.println should dispatch via the builtin arm");
+    }
+
+    // ─── IO.FS builtin dispatch ─────────────────────────
+
+    /// Build a unique temp file path under the OS temp
+    /// dir. Combines pid + thread id + a counter so
+    /// parallel tests don't collide.
+    fn unique_tempfile_path(tag: &str) -> std::path::PathBuf {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let pid = std::process::id();
+        let tid = format!("{:?}", std::thread::current().id());
+        let tid_sanitized: String = tid
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '_')
+            .collect();
+        std::env::temp_dir().join(format!(
+            "oxilean-driver-test-{tag}-{pid}-{tid_sanitized}-{n}"
+        ))
+    }
+
+    #[test]
+    fn try_dispatch_io_fs_writefile_then_readfile_roundtrips() {
+        let path = unique_tempfile_path("rw.txt");
+        let path_str = path.to_string_lossy().into_owned();
+        let payload = "hello, IO.FS";
+
+        // writeFile path "hello, IO.FS"
+        let path_e = Expr::Lit(Literal::Str(path_str.clone()));
+        let payload_e = Expr::Lit(Literal::Str(payload.to_string()));
+        let name = Name::str("IO.FS.writeFile");
+        let r = try_dispatch_io_fs_builtin(&name, &[&path_e, &payload_e])
+            .expect("writeFile head should match");
+        assert!(matches!(r, Ok(None)), "writeFile returns Ok(None)");
+
+        // readFile path
+        let name = Name::str("IO.FS.readFile");
+        let r = try_dispatch_io_fs_builtin(&name, &[&path_e])
+            .expect("readFile head should match");
+        match r {
+            Ok(Some(Expr::Lit(Literal::Str(s)))) => {
+                assert_eq!(s, payload, "round-tripped contents must match");
+            }
+            other => panic!("readFile returned unexpected: {other:?}"),
+        }
+
+        // Cleanup.
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn try_dispatch_io_fs_removefile_returns_ok_none() {
+        let path = unique_tempfile_path("remove.txt");
+        std::fs::write(&path, "scratch").unwrap();
+        assert!(path.exists());
+
+        let path_e = Expr::Lit(Literal::Str(path.to_string_lossy().into_owned()));
+        let name = Name::str("IO.FS.removeFile");
+        let r = try_dispatch_io_fs_builtin(&name, &[&path_e])
+            .expect("removeFile head should match");
+        assert!(matches!(r, Ok(None)));
+        assert!(!path.exists(), "file must be gone after removeFile");
+    }
+
+    #[test]
+    fn try_dispatch_io_fs_createdir_then_removedir_roundtrips() {
+        let dir = unique_tempfile_path("dir");
+        let dir_e = Expr::Lit(Literal::Str(dir.to_string_lossy().into_owned()));
+
+        let name = Name::str("IO.FS.createDir");
+        let r = try_dispatch_io_fs_builtin(&name, &[&dir_e])
+            .expect("createDir head should match");
+        assert!(matches!(r, Ok(None)));
+        assert!(dir.is_dir(), "directory must exist after createDir");
+
+        let name = Name::str("IO.FS.removeDir");
+        let r = try_dispatch_io_fs_builtin(&name, &[&dir_e])
+            .expect("removeDir head should match");
+        assert!(matches!(r, Ok(None)));
+        assert!(!dir.exists(), "directory must be gone after removeDir");
+    }
+
+    #[test]
+    fn try_dispatch_io_fs_appendfile_appends_to_existing() {
+        let path = unique_tempfile_path("append.txt");
+        std::fs::write(&path, "first\n").unwrap();
+        let path_e = Expr::Lit(Literal::Str(path.to_string_lossy().into_owned()));
+        let payload_e = Expr::Lit(Literal::Str("second\n".to_string()));
+
+        let name = Name::str("IO.FS.appendFile");
+        let r = try_dispatch_io_fs_builtin(&name, &[&path_e, &payload_e])
+            .expect("appendFile head should match");
+        assert!(matches!(r, Ok(None)));
+
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(contents, "first\nsecond\n");
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn try_dispatch_io_fs_readfile_missing_path_returns_extern_failed() {
+        let path = unique_tempfile_path("does-not-exist.txt");
+        let path_e = Expr::Lit(Literal::Str(path.to_string_lossy().into_owned()));
+        let name = Name::str("IO.FS.readFile");
+        let r = try_dispatch_io_fs_builtin(&name, &[&path_e])
+            .expect("readFile head should match");
+        match r {
+            Err(DriverError::ExternFailed(e)) => {
+                let msg = e.to_string();
+                assert!(
+                    msg.contains("IO.FS.readFile") && msg.contains("does-not-exist"),
+                    "error message should reference op + path; got: {msg}"
+                );
+            }
+            other => panic!("expected ExternFailed, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn try_dispatch_io_fs_rejects_unknown_head() {
+        let path_e = Expr::Lit(Literal::Str("anything".to_string()));
+        let name = Name::str("IO.FS.notABuiltin");
+        assert!(try_dispatch_io_fs_builtin(&name, &[&path_e]).is_none());
+    }
+
+    // ─── User-defined ctor encoding ─────────────────────
+
+    /// Build an env populated with a multi-ctor enum-like
+    /// inductive `Color` with three nullary ctors, plus a
+    /// single-ctor record `Point` carrying a single `Nat`
+    /// field. Mirrors the shape leo4 plugin emits for
+    /// `@[leo4_export]`-discovered types.
+    fn env_with_user_ctors() -> Environment {
+        use oxilean_kernel::declaration::{
+            ConstantInfo, ConstantVal, ConstructorVal, InductiveVal,
+        };
+        let mut env = Environment::new();
+        let color_ty = Expr::Const(Name::str("Color"), Vec::new());
+        let red = ConstantInfo::Constructor(ConstructorVal {
+            common: ConstantVal {
+                name: Name::str("Color.Red"),
+                level_params: vec![],
+                ty: color_ty.clone(),
+            },
+            induct: Name::str("Color"),
+            cidx: 0,
+            num_params: 0,
+            num_fields: 0,
+            is_unsafe: false,
+        });
+        let green = ConstantInfo::Constructor(ConstructorVal {
+            common: ConstantVal {
+                name: Name::str("Color.Green"),
+                level_params: vec![],
+                ty: color_ty.clone(),
+            },
+            induct: Name::str("Color"),
+            cidx: 1,
+            num_params: 0,
+            num_fields: 0,
+            is_unsafe: false,
+        });
+        let blue = ConstantInfo::Constructor(ConstructorVal {
+            common: ConstantVal {
+                name: Name::str("Color.Blue"),
+                level_params: vec![],
+                ty: color_ty,
+            },
+            induct: Name::str("Color"),
+            cidx: 2,
+            num_params: 0,
+            num_fields: 0,
+            is_unsafe: false,
+        });
+        let color_ind = ConstantInfo::Inductive(InductiveVal {
+            common: ConstantVal {
+                name: Name::str("Color"),
+                level_params: vec![],
+                ty: Expr::Sort(oxilean_kernel::Level::succ(
+                    oxilean_kernel::Level::zero(),
+                )),
+            },
+            num_params: 0,
+            num_indices: 0,
+            all: vec![Name::str("Color")],
+            ctors: vec![
+                Name::str("Color.Red"),
+                Name::str("Color.Green"),
+                Name::str("Color.Blue"),
+            ],
+            num_nested: 0,
+            is_rec: false,
+            is_unsafe: false,
+            is_reflexive: false,
+            is_prop: false,
+        });
+        env.add_constant(color_ind).unwrap();
+        env.add_constant(red).unwrap();
+        env.add_constant(green).unwrap();
+        env.add_constant(blue).unwrap();
+
+        // Single-ctor record `Point` with one `Nat` field.
+        let point_ty = Expr::Const(Name::str("Point"), Vec::new());
+        let point_mk = ConstantInfo::Constructor(ConstructorVal {
+            common: ConstantVal {
+                name: Name::str("Point.mk"),
+                level_params: vec![],
+                ty: point_ty.clone(),
+            },
+            induct: Name::str("Point"),
+            cidx: 0,
+            num_params: 0,
+            num_fields: 1,
+            is_unsafe: false,
+        });
+        let point_ind = ConstantInfo::Inductive(InductiveVal {
+            common: ConstantVal {
+                name: Name::str("Point"),
+                level_params: vec![],
+                ty: Expr::Sort(oxilean_kernel::Level::succ(
+                    oxilean_kernel::Level::zero(),
+                )),
+            },
+            num_params: 0,
+            num_indices: 0,
+            all: vec![Name::str("Point")],
+            ctors: vec![Name::str("Point.mk")],
+            num_nested: 0,
+            is_rec: false,
+            is_unsafe: false,
+            is_reflexive: false,
+            is_prop: false,
+        });
+        env.add_constant(point_ind).unwrap();
+        env.add_constant(point_mk).unwrap();
+        env
+    }
+
+    #[test]
+    fn encode_user_defined_ctor_multi_writes_discriminant() {
+        let env = env_with_user_ctors();
+        // `Color.Red` is cidx=0 in a 3-ctor inductive →
+        // 4-byte u32 LE = 0.
+        let arg = Expr::Const(Name::str("Color.Red"), Vec::new());
+        let out = encode_leaf_args_for_extern(&[&arg], &env).unwrap();
+        assert_eq!(out, vec![0, 0, 0, 0]);
+
+        let arg = Expr::Const(Name::str("Color.Green"), Vec::new());
+        let out = encode_leaf_args_for_extern(&[&arg], &env).unwrap();
+        assert_eq!(out, vec![1, 0, 0, 0]);
+
+        let arg = Expr::Const(Name::str("Color.Blue"), Vec::new());
+        let out = encode_leaf_args_for_extern(&[&arg], &env).unwrap();
+        assert_eq!(out, vec![2, 0, 0, 0]);
+    }
+
+    #[test]
+    fn encode_user_defined_ctor_single_record_writes_just_payload() {
+        let env = env_with_user_ctors();
+        // `Point.mk 42` — single-ctor record → no
+        // discriminant prefix; payload is the Nat → 8
+        // bytes u64 LE.
+        let arg = Expr::App(
+            Box::new(Expr::Const(Name::str("Point.mk"), Vec::new())),
+            Box::new(Expr::Lit(Literal::Nat(42))),
+        );
+        let out = encode_leaf_args_for_extern(&[&arg], &env).unwrap();
+        assert_eq!(out, vec![42, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn encode_user_defined_ctor_unknown_ctor_returns_none() {
+        let env = env_with_user_ctors();
+        let arg = Expr::Const(Name::str("Unknown.Ctor"), Vec::new());
+        // No corresponding entry in env → falls through to
+        // returning None from encode_leaf_args_for_extern.
+        assert!(encode_leaf_args_for_extern(&[&arg], &env).is_none());
     }
 
     #[test]
