@@ -9,7 +9,7 @@
 //! needs *something* to actually execute the resulting
 //! `main` decl so `@[extern]`-bound Rust callbacks fire.
 //!
-//! ## Walker shape coverage (as of 2026-05-29)
+//! ## Walker shape coverage (as of 2026-05-31)
 //!
 //! The IO action walker recognises the following expression
 //! shapes, with everything else surfacing
@@ -55,20 +55,50 @@
 //!   substitute a `Unit.unit` placeholder for `BVar(0)`
 //!   so `fun _ => …`-style continuations still walk
 //!   cleanly.
+//! - **`@[extern]` arg encoding — sized integer /
+//!   signed / float / char path**. Lean wraps these as
+//!   `OfNat.ofNat n` / `Neg.neg x` / `Char.ofNat n`
+//!   typeclass-projection Apps after elaboration.
+//!   `encode_typeclass_projection` recognises the
+//!   sized-integer width by inspecting the type-class
+//!   Type arg (UInt8..128, USize, Int8..128, ISize,
+//!   Char) and writes the matching canonical-ABI byte
+//!   width LE. Float literals stay constant-folded by
+//!   OxiLean's reducer before the walker sees them.
+//! - **`@[extern]` arg encoding — composite ctor
+//!   path**. `Prod.mk a b` / `Subtype.mk x p` /
+//!   `Option.some x` / `Sum.inl/inr x` / `Option.none`
+//!   each recurse through `encode_one_arg` and emit
+//!   the SPEC §10/§11 record / variant wire bytes.
+//!   User-defined records + inductives stay out of
+//!   scope (embedder territory — needs the user-side
+//!   IDL).
+//! - **Stdlib IO builtin dispatch**. `IO.println` /
+//!   `IO.eprintln` / `IO.print` / `IO.eprint` (and
+//!   their underscore-mangled spellings) fire their
+//!   stdout / stderr effect directly in the walker via
+//!   `try_dispatch_io_builtin`, ahead of the regular
+//!   `@[extern]` resolver dispatch. Embedders that
+//!   want to intercept these still can — the walker
+//!   only handles the case where the arg decodes
+//!   through a `Lit(Str)` or trivial `toString` wrap;
+//!   richer shapes fall through to the resolver path.
 //!
 //! Still open (`NotYetImplemented` arms):
-//! - Sized-integer / signed-integer / float / char arg
-//!   encoding at the `@[extern]` arm. Lean wraps these
-//!   as `OfNat.ofNat n` Apps after elaboration, which
-//!   `encode_leaf_args_for_extern` doesn't yet decompose.
-//! - Composite-type arg encoding (tuples, structures,
-//!   inductives). These need access to the user-side
-//!   IDL to know the wire shape; the walker stops at
-//!   the kernel-level leaves.
-//! - Builtin-table dispatch (`IO.println` → `println!`,
-//!   `IO.FS.*`, etc.) — needs a per-builtin recognition
-//!   layer or OxiLean's `FunctionEntry::builtin`
-//!   surface wired into the walker.
+//! - User-defined record / inductive ctor encoding at
+//!   the `@[extern]` arg site. The walker doesn't have
+//!   the IDL on hand to know the field order or the
+//!   inductive's discriminant width; embedders wire
+//!   this through the `ExternResolver` instead.
+//! - File-system IO builtins (`IO.FS.readFile`,
+//!   `IO.FS.writeFile`, …). Needs path + handle
+//!   plumbing through the walker; embedders can layer
+//!   it through the resolver in the meantime.
+//! - Non-IO monad-class builtins (`StateT.run`,
+//!   `ReaderT.run`, `ExceptT.run`). The walker today
+//!   only fires once the outer `IO` action surfaces;
+//!   internal `runX` projections at the IO leaf would
+//!   need a separate recognition path.
 //!
 //! ## Upstream-PR viability
 //!
@@ -145,9 +175,11 @@ impl std::fmt::Display for DriverError {
                     f,
                     "driver: IO walker doesn't yet cover this reduced \
                      expression shape ({reason}). v0 covers `IO.pure`, \
-                     `IO.bind` (arity-4 + arity-2), and `@[extern]` Const \
-                     dispatch; expand walker coverage incrementally as new \
-                     shapes surface."
+                     `IO.bind` (arity-4 + arity-2), `@[extern]` Const \
+                     dispatch, and the `IO.println` / `IO.eprintln` / \
+                     `IO.print` / `IO.eprint` stdlib builtins directly; \
+                     expand walker coverage incrementally as new shapes \
+                     surface."
                 )
             }
             Self::ExternFailed(e) => {
@@ -378,6 +410,21 @@ fn walk_io_action(
             }
         }
 
+        // ── Stdlib IO builtins handled directly ─────
+        // `IO.println` / `IO.eprintln` / `IO.print` and
+        // their underscore-mangled spellings fire their
+        // effect directly here so embedders don't have
+        // to layer a resolver for the common stdout /
+        // stderr write path. When the arg is a `String`
+        // literal (or decodes through the leaf encoder),
+        // the walker writes it + returns `Ok(None)`.
+        // Anything richer falls through to the regular
+        // `dispatch_extern_const` arm so embedders can
+        // still customise.
+        if let Some(()) = try_dispatch_io_builtin(name, &head_args) {
+            return Ok(None);
+        }
+
         // ── `@[extern]`-attributed Const ───────────────
         // Reduce to the resolver-supplied bytes when
         // `dispatch_extern_const` recognises the name.
@@ -539,6 +586,96 @@ fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>) -> Option<()> {
         _ => return None,
     }
     Some(())
+}
+
+/// Recognise the small subset of Lean stdlib IO
+/// `@[extern]` functions whose effects the walker fires
+/// directly: stdout / stderr writes. When the head
+/// matches and the trailing string-shaped arg decodes
+/// cleanly, this writes the value + returns `Some(())`
+/// to signal "effect handled". Anything else returns
+/// `None` so the caller continues through the regular
+/// `dispatch_extern_const` arm.
+///
+/// Recognised heads (all share the `String → IO Unit`
+/// shape; arg decode reads a `Lit(Str)` or a constant-
+/// time-foldable string-typed expression at the
+/// trailing arg position):
+///
+/// - `IO.println` / `IO_println` — writes `s\n` to
+///   stdout.
+/// - `IO.eprintln` / `IO_eprintln` — writes `s\n` to
+///   stderr.
+/// - `IO.print` / `IO_print` — writes `s` (no newline)
+///   to stdout.
+/// - `IO.eprint` / `IO_eprint` — writes `s` (no newline)
+///   to stderr.
+///
+/// Doesn't yet recognise: `IO.FS.*` (file I/O — needs
+/// path + handle plumbing), `IO.getLine` / `IO.getEnv`
+/// (read-side primitives — need a result feed back into
+/// the walker), `dbg_trace` / `panic!` (compile-time
+/// elaboration, not IO-level).
+fn try_dispatch_io_builtin(name: &Name, args: &[&Expr]) -> Option<()> {
+    let name_str = name.to_string();
+    let (handler, has_newline, to_stderr): (&str, bool, bool) =
+        match name_str.as_str() {
+            "IO.println" | "IO_println" => ("println", true, false),
+            "IO.eprintln" | "IO_eprintln" => ("eprintln", true, true),
+            "IO.print" | "IO_print" => ("print", false, false),
+            "IO.eprint" | "IO_eprint" => ("eprint", false, true),
+            _ => return None,
+        };
+    let _ = handler;
+    // Last arg is the string payload.
+    let payload = args.last()?;
+    let s = decode_string_arg(payload)?;
+    if to_stderr {
+        if has_newline {
+            eprintln!("{s}");
+        } else {
+            eprint!("{s}");
+        }
+    } else if has_newline {
+        println!("{s}");
+    } else {
+        print!("{s}");
+    }
+    Some(())
+}
+
+/// Extract a Rust `String` from an Expr shape the walker
+/// can statically lower. Covers:
+///
+/// - `Expr::Lit(Literal::Str(s))` — direct string literal.
+/// - `Expr::App(Const("String.mk", _), <inner>)` — the
+///   String-constructor wrap Lean inserts when an
+///   elaborator round-trip goes through `List Char`. v0
+///   walker doesn't synthesise from `List Char` yet;
+///   returns `None`.
+/// - `Expr::App(Const("toString", _), <inner>)` — the
+///   `ToString` projection. v0 only handles the case
+///   where `inner` is itself a `Lit(Str)`.
+///
+/// Anything richer (composite types, user-defined
+/// `ToString` instances) returns `None` so the caller
+/// falls through to the regular resolver dispatch path.
+fn decode_string_arg(arg: &Expr) -> Option<String> {
+    match arg {
+        Expr::Lit(Literal::Str(s)) => Some(s.clone()),
+        Expr::App(head, inner) => {
+            let head_name = if let Expr::Const(n, _) = head.as_ref() {
+                n.to_string()
+            } else {
+                return None;
+            };
+            match head_name.as_str() {
+                "toString" | "ToString.toString" => decode_string_arg(inner),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
 }
 
 /// Encode the App-chain shape Lean's elaborator produces
@@ -1811,6 +1948,108 @@ mod tests {
             Box::new(Expr::Lit(Literal::Nat(2))),
         );
         assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+    }
+
+    // ─── IO builtin dispatch ───────────────────────────
+
+    #[test]
+    fn try_dispatch_io_builtin_recognises_println_with_lit_str() {
+        let name = Name::str("IO.println");
+        let s = Expr::Lit(Literal::Str("hello".to_string()));
+        // We don't actually want to assert on stdout
+        // capture here — `println!` is wired through
+        // process stdout. Verify the predicate returns
+        // `Some(())` (i.e. the walker would short-
+        // circuit) rather than the contents.
+        assert!(try_dispatch_io_builtin(&name, &[&s]).is_some());
+    }
+
+    #[test]
+    fn try_dispatch_io_builtin_recognises_eprintln_eprint_print() {
+        for builtin in [
+            "IO.println",
+            "IO.eprintln",
+            "IO.print",
+            "IO.eprint",
+        ] {
+            let n = Name::str(builtin);
+            let s = Expr::Lit(Literal::Str("x".to_string()));
+            assert!(
+                try_dispatch_io_builtin(&n, &[&s]).is_some(),
+                "{builtin} should dispatch"
+            );
+        }
+    }
+
+    #[test]
+    fn try_dispatch_io_builtin_rejects_non_string_arg() {
+        let name = Name::str("IO.println");
+        let arg = Expr::Lit(Literal::Nat(42));
+        assert!(try_dispatch_io_builtin(&name, &[&arg]).is_none());
+    }
+
+    #[test]
+    fn try_dispatch_io_builtin_rejects_unknown_name() {
+        let name = Name::str("Foo.bar");
+        let s = Expr::Lit(Literal::Str("hi".to_string()));
+        assert!(try_dispatch_io_builtin(&name, &[&s]).is_none());
+    }
+
+    #[test]
+    fn try_dispatch_io_builtin_walks_to_string_wrap() {
+        // `IO.println (toString s)` — the elaborator
+        // inserts the projection. Walker decodes through
+        // it.
+        let name = Name::str("IO.println");
+        let inner = Expr::Lit(Literal::Str("via toString".to_string()));
+        let to_string = Expr::App(
+            Box::new(Expr::Const(Name::str("toString"), Vec::new())),
+            Box::new(inner),
+        );
+        assert!(try_dispatch_io_builtin(&name, &[&to_string]).is_some());
+    }
+
+    #[test]
+    fn run_main_io_println_dispatches_without_resolver() {
+        // `def main : IO Unit := IO.println "hi"`
+        // — no resolver-side hook needed; the walker
+        // itself handles the effect.
+        let mut env = empty_env();
+        let main = Name::str("main");
+        let io_unit_ty = Expr::App(
+            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+        );
+        // Have to declare the extern axiom so env.find
+        // can resolve it, but the walker's IO-builtin arm
+        // fires *before* `dispatch_extern_const` so no
+        // matching ExternRegistry entry is needed.
+        env.add(Declaration::Axiom {
+            name: Name::str("IO.println"),
+            univ_params: Vec::new(),
+            ty: io_unit_ty.clone(),
+        })
+        .unwrap();
+        let body = Expr::App(
+            Box::new(Expr::Const(Name::str("IO.println"), Vec::new())),
+            Box::new(Expr::Lit(Literal::Str(
+                "[driver test] IO.println dispatch".to_string(),
+            ))),
+        );
+        env.add(Declaration::Definition {
+            name: main.clone(),
+            univ_params: Vec::new(),
+            ty: io_unit_ty,
+            val: body,
+            hint: oxilean_kernel::ReducibilityHint::Regular(0),
+        })
+        .unwrap();
+        let resolver = make_resolver();
+        // `empty_extern_registry()` deliberately has no
+        // entry for IO.println — the builtin arm runs
+        // first.
+        run_main(&env, &empty_extern_registry(), resolver, &main)
+            .expect("IO.println should dispatch via the builtin arm");
     }
 
     #[test]
