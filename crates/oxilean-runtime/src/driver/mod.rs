@@ -491,29 +491,245 @@ fn walk_io_action(
 fn encode_leaf_args_for_extern(args: &[&Expr]) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     for arg in args {
-        match arg {
-            Expr::Lit(Literal::Nat(n)) => {
-                out.extend_from_slice(&n.to_le_bytes());
-            }
-            Expr::Lit(Literal::Str(s)) => {
-                let bytes = s.as_bytes();
-                let len = u32::try_from(bytes.len()).ok()?;
-                out.extend_from_slice(&len.to_le_bytes());
-                out.extend_from_slice(bytes);
-            }
-            Expr::Const(name, _) => {
-                let s = name.to_string();
-                match s.as_str() {
-                    "Bool.true" | "Bool_true" | "true" => out.push(0x01),
-                    "Bool.false" | "Bool_false" | "false" => out.push(0x00),
-                    "Unit.unit" | "Unit_unit" => { /* zero-byte payload */ }
-                    _ => return None,
-                }
-            }
-            _ => return None,
-        }
+        encode_one_arg(arg, &mut out)?;
     }
     Some(out)
+}
+
+/// Encode a single leaf arg. Split out from
+/// `encode_leaf_args_for_extern` so the typeclass-
+/// projection arms (`OfNat.ofNat`, `Neg.neg`,
+/// `Char.ofNat`) can recurse on their inner value
+/// expressions.
+fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>) -> Option<()> {
+    match arg {
+        Expr::Lit(Literal::Nat(n)) => {
+            out.extend_from_slice(&n.to_le_bytes());
+        }
+        Expr::Lit(Literal::Str(s)) => {
+            let bytes = s.as_bytes();
+            let len = u32::try_from(bytes.len()).ok()?;
+            out.extend_from_slice(&len.to_le_bytes());
+            out.extend_from_slice(bytes);
+        }
+        Expr::Const(name, _) => {
+            let s = name.to_string();
+            match s.as_str() {
+                "Bool.true" | "Bool_true" | "true" => out.push(0x01),
+                "Bool.false" | "Bool_false" | "false" => out.push(0x00),
+                "Unit.unit" | "Unit_unit" => { /* zero-byte payload */ }
+                _ => return None,
+            }
+        }
+        Expr::App(_, _) => {
+            // App-headed args — typically a typeclass
+            // projection like `OfNat.ofNat`, `Neg.neg`, or
+            // `Char.ofNat`. Decompose + recognise the
+            // head's named pattern.
+            let (head, head_args) = decompose_app(arg);
+            encode_typeclass_projection(head, &head_args, out)?;
+        }
+        _ => return None,
+    }
+    Some(())
+}
+
+/// Encode the App-chain shape Lean's elaborator produces
+/// when it inserts a typeclass-projection method around a
+/// kernel-level leaf. The shapes the walker recognises:
+///
+/// **`@OfNat.ofNat <type> <Lit(Nat)> <instance>`** — Lean
+/// elaborates `(42 : UInt64)` as
+/// `@OfNat.ofNat UInt64 42 <instOfNatUInt64>`. The arity
+/// after decomposition is 3 (type, value, instance) with
+/// `head_args[0] = Const("<type>", _)`, `head_args[1] =
+/// Lit(Nat n)`, `head_args[2]` = the instance Expr (ignored
+/// — we read the size from the type). Wire form follows
+/// `SPEC/canonical-abi.md` §6: u8/16/32/64/128 (and i*) as
+/// little-endian 1/2/4/8/16 bytes, signed types via two's
+/// complement of the same byte width.
+///
+/// **`@Neg.neg <type> <inst> <inner>`** — `(-42 : Int64)`
+/// elaborates as `@Neg.neg Int64 _inst (@OfNat.ofNat Int64
+/// 42 _inst2)`. Decompose `inner` recursively; if it's an
+/// `OfNat.ofNat` over the same type, encode the **negated**
+/// value with the right signed width.
+///
+/// **`@Char.ofNat <Lit(Nat n)>`** — Lean elaborates `'A'`
+/// as `Char.ofNat 65`. Wire form is u32 LE Unicode code
+/// point. Arity 1 after decomposition.
+///
+/// **`@Float32.ofBinaryScientific …`** /
+/// **`@Float.ofBinaryScientific …`** — Lean's
+/// float-literal lowering. v0 walker doesn't statically
+/// fold these (constant-time arithmetic at the kernel
+/// layer is OxiLean's job, not the walker's), so they
+/// return `None` and the caller falls back to the empty
+/// buffer. A fixture surfacing this gap moves the
+/// boundary forward.
+fn encode_typeclass_projection(
+    head: &Expr,
+    head_args: &[&Expr],
+    out: &mut Vec<u8>,
+) -> Option<()> {
+    let Expr::Const(name, _) = head else {
+        return None;
+    };
+    let name_str = name.to_string();
+    match name_str.as_str() {
+        "OfNat.ofNat" | "OfNat_ofNat" => {
+            // arity 3: type, value, instance (instance
+            // ignored). Some elaborator paths leave only
+            // arity 2 (no instance) — accept both.
+            if head_args.len() < 2 {
+                return None;
+            }
+            let ty_expr = head_args[0];
+            let value_expr = head_args[1];
+            let n = match value_expr {
+                Expr::Lit(Literal::Nat(n)) => *n,
+                _ => return None,
+            };
+            encode_sized_integer(ty_expr, n, /*negate=*/ false, out)?;
+        }
+        "Neg.neg" | "Neg_neg" => {
+            // arity 3: type, instance, inner. inner is
+            // expected to be `@OfNat.ofNat <type>
+            // <Lit(Nat)> _`.
+            if head_args.len() < 3 {
+                return None;
+            }
+            let ty_expr = head_args[0];
+            let inner = head_args[2];
+            let (inner_head, inner_args) = decompose_app(inner);
+            let Expr::Const(inner_name, _) = inner_head else {
+                return None;
+            };
+            let inner_name_str = inner_name.to_string();
+            if !matches!(inner_name_str.as_str(), "OfNat.ofNat" | "OfNat_ofNat") {
+                return None;
+            }
+            if inner_args.len() < 2 {
+                return None;
+            }
+            let n = match inner_args[1] {
+                Expr::Lit(Literal::Nat(n)) => *n,
+                _ => return None,
+            };
+            encode_sized_integer(ty_expr, n, /*negate=*/ true, out)?;
+        }
+        "Char.ofNat" | "Char_ofNat" => {
+            // arity 1: a Nat literal that's the Unicode
+            // code point. Wire form is u32 LE.
+            if head_args.is_empty() {
+                return None;
+            }
+            let n = match head_args[head_args.len() - 1] {
+                Expr::Lit(Literal::Nat(n)) => *n,
+                _ => return None,
+            };
+            let cp = u32::try_from(n).ok()?;
+            out.extend_from_slice(&cp.to_le_bytes());
+        }
+        _ => return None,
+    }
+    Some(())
+}
+
+/// Encode a sized-integer value against the type Expr.
+/// `negate = true` means the wire bytes carry `-n` in two's
+/// complement at the type's width. Recognised types:
+/// UInt8/16/32/64/128, Int8/16/32/64/128, USize/ISize
+/// (host width).
+fn encode_sized_integer(
+    ty_expr: &Expr,
+    n: u64,
+    negate: bool,
+    out: &mut Vec<u8>,
+) -> Option<()> {
+    let Expr::Const(ty_name, _) = ty_expr else {
+        return None;
+    };
+    let ty_str = ty_name.to_string();
+    match ty_str.as_str() {
+        // Unsigned sized integers.
+        "UInt8" => {
+            if negate {
+                return None; // Neg.neg over an unsigned type doesn't elaborate.
+            }
+            let v = u8::try_from(n).ok()?;
+            out.push(v);
+        }
+        "UInt16" => {
+            if negate {
+                return None;
+            }
+            let v = u16::try_from(n).ok()?;
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        "UInt32" => {
+            if negate {
+                return None;
+            }
+            let v = u32::try_from(n).ok()?;
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        "UInt64" => {
+            if negate {
+                return None;
+            }
+            out.extend_from_slice(&n.to_le_bytes());
+        }
+        "UInt128" => {
+            if negate {
+                return None;
+            }
+            let v = u128::from(n);
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        "USize" => {
+            if negate {
+                return None;
+            }
+            let v = usize::try_from(n).ok()?;
+            out.extend_from_slice(&(v as u64).to_le_bytes());
+        }
+        // Signed sized integers. `negate = true` flips the
+        // sign; `negate = false` accepts the natural-number
+        // representation `(n : Int*)`.
+        "Int8" => {
+            let v = i8::try_from(n).ok()?;
+            let signed = if negate { v.checked_neg()? } else { v };
+            out.extend_from_slice(&signed.to_le_bytes());
+        }
+        "Int16" => {
+            let v = i16::try_from(n).ok()?;
+            let signed = if negate { v.checked_neg()? } else { v };
+            out.extend_from_slice(&signed.to_le_bytes());
+        }
+        "Int32" => {
+            let v = i32::try_from(n).ok()?;
+            let signed = if negate { v.checked_neg()? } else { v };
+            out.extend_from_slice(&signed.to_le_bytes());
+        }
+        "Int64" => {
+            let v = i64::try_from(n).ok()?;
+            let signed = if negate { v.checked_neg()? } else { v };
+            out.extend_from_slice(&signed.to_le_bytes());
+        }
+        "Int128" => {
+            let v = i128::try_from(n).ok()?;
+            let signed = if negate { v.checked_neg()? } else { v };
+            out.extend_from_slice(&signed.to_le_bytes());
+        }
+        "ISize" => {
+            let v = isize::try_from(n).ok()?;
+            let signed = if negate { v.checked_neg()? } else { v };
+            out.extend_from_slice(&(signed as i64).to_le_bytes());
+        }
+        _ => return None,
+    }
+    Some(())
 }
 
 /// Decompose a left-leaning `App` chain into the ultimate
@@ -1211,6 +1427,176 @@ mod tests {
         let mut expected = Vec::new();
         expected.extend_from_slice(&1u64.to_le_bytes());
         expected.push(0x01);
+        expected.extend_from_slice(&1u32.to_le_bytes());
+        expected.push(b'x');
+        assert_eq!(out, expected);
+    }
+
+    // ─── OfNat.ofNat / Neg.neg / Char.ofNat encoder ────
+
+    fn ofnat_of(ty: &str, n: u64) -> Expr {
+        // `@OfNat.ofNat <ty> <n> <instance>` — instance
+        // is opaque to the encoder; use a sentinel Const.
+        Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::Const(Name::str("OfNat.ofNat"), Vec::new())),
+                    Box::new(Expr::Const(Name::str(ty), Vec::new())),
+                )),
+                Box::new(Expr::Lit(Literal::Nat(n))),
+            )),
+            Box::new(Expr::Const(Name::str("_inst"), Vec::new())),
+        )
+    }
+
+    fn neg_of(ty: &str, inner: Expr) -> Expr {
+        // `@Neg.neg <ty> <inst> <inner>`.
+        Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(
+                    Box::new(Expr::Const(Name::str("Neg.neg"), Vec::new())),
+                    Box::new(Expr::Const(Name::str(ty), Vec::new())),
+                )),
+                Box::new(Expr::Const(Name::str("_inst"), Vec::new())),
+            )),
+            Box::new(inner),
+        )
+    }
+
+    #[test]
+    fn encode_ofnat_uint8_uint16_uint32_uint64_uint128_usize() {
+        let cases: Vec<(&str, u64, Vec<u8>)> = vec![
+            ("UInt8", 0x2A, vec![0x2A]),
+            ("UInt16", 0xBEEF, vec![0xEF, 0xBE]),
+            ("UInt32", 0xDEAD_BEEF, vec![0xEF, 0xBE, 0xAD, 0xDE]),
+            (
+                "UInt64",
+                0x0102_0304_0506_0708,
+                vec![0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01],
+            ),
+            (
+                "UInt128",
+                7,
+                vec![7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ),
+            (
+                "USize",
+                42,
+                vec![42, 0, 0, 0, 0, 0, 0, 0],
+            ),
+        ];
+        for (ty, n, expected) in cases {
+            let arg = ofnat_of(ty, n);
+            let out = encode_leaf_args_for_extern(&[&arg])
+                .unwrap_or_else(|| panic!("{ty} should encode"));
+            assert_eq!(out, expected, "{ty} value {n}");
+        }
+    }
+
+    #[test]
+    fn encode_ofnat_int_positive_sizes() {
+        // `(42 : Int8)` etc. without Neg.neg wrapping —
+        // signed types accept the positive natural-number
+        // OfNat path. Wire form is the same byte width as
+        // the matching unsigned.
+        let cases: Vec<(&str, u64, Vec<u8>)> = vec![
+            ("Int8", 42, vec![42]),
+            ("Int16", 0x07F0, vec![0xF0, 0x07]),
+            (
+                "Int32",
+                0x0102_0304,
+                vec![0x04, 0x03, 0x02, 0x01],
+            ),
+            (
+                "Int64",
+                0x1122_3344_5566_7788,
+                vec![0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11],
+            ),
+            (
+                "Int128",
+                1,
+                vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ),
+            (
+                "ISize",
+                100,
+                vec![100, 0, 0, 0, 0, 0, 0, 0],
+            ),
+        ];
+        for (ty, n, expected) in cases {
+            let arg = ofnat_of(ty, n);
+            let out = encode_leaf_args_for_extern(&[&arg])
+                .unwrap_or_else(|| panic!("{ty} should encode"));
+            assert_eq!(out, expected, "{ty} value {n}");
+        }
+    }
+
+    #[test]
+    fn encode_neg_negates_signed_integers_at_correct_width() {
+        // `(-42 : Int8)` → wire byte `0xD6` (two's
+        // complement of 42 at 8 bits).
+        let arg = neg_of("Int8", ofnat_of("Int8", 42));
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![0xD6]);
+
+        // `(-1 : Int32)` → `[0xFF, 0xFF, 0xFF, 0xFF]`.
+        let arg = neg_of("Int32", ofnat_of("Int32", 1));
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![0xFF, 0xFF, 0xFF, 0xFF]);
+
+        // `(-1 : Int64)` → eight 0xFFs.
+        let arg = neg_of("Int64", ofnat_of("Int64", 1));
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![0xFF; 8]);
+    }
+
+    #[test]
+    fn encode_neg_rejects_unsigned_types() {
+        // `Neg.neg` over `UInt32` doesn't elaborate (no
+        // `Neg UInt32` instance); the encoder bails so the
+        // walker falls back to `&[]`.
+        let arg = neg_of("UInt32", ofnat_of("UInt32", 5));
+        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+    }
+
+    #[test]
+    fn encode_char_ofnat_writes_u32_le_code_point() {
+        // `'A'` = `Char.ofNat 65` → 4 bytes LE.
+        let arg = Expr::App(
+            Box::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
+            Box::new(Expr::Lit(Literal::Nat(65))),
+        );
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![65, 0, 0, 0]);
+
+        // BMP-side code point check.
+        let arg = Expr::App(
+            Box::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
+            Box::new(Expr::Lit(Literal::Nat(0x4E2D))), // 中
+        );
+        let out = encode_leaf_args_for_extern(&[&arg]).unwrap();
+        assert_eq!(out, vec![0x2D, 0x4E, 0, 0]);
+    }
+
+    #[test]
+    fn encode_ofnat_overflowing_value_rejected() {
+        // `(256 : UInt8)` overflows — encoder bails so
+        // the walker falls back rather than wrapping
+        // silently.
+        let arg = ofnat_of("UInt8", 256);
+        assert!(encode_leaf_args_for_extern(&[&arg]).is_none());
+    }
+
+    #[test]
+    fn encode_mixed_leaf_and_ofnat_concatenates_correctly() {
+        // resolver receives `[Bool.true, (42 : UInt32), "x"]`
+        let bool_t = Expr::Const(Name::str("Bool.true"), Vec::new());
+        let u32_42 = ofnat_of("UInt32", 42);
+        let str_x = Expr::Lit(Literal::Str("x".to_string()));
+        let out = encode_leaf_args_for_extern(&[&bool_t, &u32_42, &str_x]).unwrap();
+        let mut expected = Vec::new();
+        expected.push(0x01);
+        expected.extend_from_slice(&42u32.to_le_bytes());
         expected.extend_from_slice(&1u32.to_le_bytes());
         expected.push(b'x');
         assert_eq!(out, expected);
