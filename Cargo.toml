@@ -33,7 +33,7 @@ proptest = "1.11.0"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 
 # SMT Solver (OxiZ - COOLJAPAN Pure Rust SMT solver, replaces Z3)
-oxiz-solver = "0.2.1"
+oxiz-solver = { git = "https://github.com/honey-be/oxiz", branch = "feat/enable-writer" }
 
 # Internal dependencies
 oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.2" }
