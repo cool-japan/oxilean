@@ -48,7 +48,7 @@ oxilean-doc --crate . -o docs/
 
 ```toml
 [dependencies]
-oxilean-doc = "0.1.3"
+oxilean-doc = "0.1.4"
 ```
 
 - License: Apache-2.0

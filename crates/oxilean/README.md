@@ -43,14 +43,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean = "0.1.3"
+oxilean = "0.1.4"
 ```
 
 Or with all library components:
 
 ```toml
 [dependencies]
-oxilean = { version = "0.1.3", features = ["full"] }
+oxilean = { version = "0.1.4", features = ["full"] }
 ```
 
 ## Feature Flags
@@ -84,7 +84,7 @@ use oxilean::meta::{MetaContext, TacticState, InstanceSynthesizer, DiscrTree};
 
 ```toml
 # Cargo.toml
-oxilean = { version = "0.1.3", features = ["full"] }
+oxilean = { version = "0.1.4", features = ["full"] }
 ```
 
 ```rust
@@ -105,7 +105,7 @@ Include only what you need to minimize compile times:
 
 ```toml
 # Cargo.toml -- kernel + standard library only
-oxilean = { version = "0.1.3", default-features = false, features = ["kernel", "std-lib"] }
+oxilean = { version = "0.1.4", default-features = false, features = ["kernel", "std-lib"] }
 ```
 
 ```rust

@@ -377,4 +377,4 @@ Copyright (c) COOLJAPAN OU (Team Kitasan). Licensed under [Apache-2.0](LICENSE).
 
 ---
 
-**v0.1.3** (2026-07-16) | Under active development
+**v0.1.4** (unreleased) | Under active development

@@ -1,7 +1,7 @@
 # OxiLean — TODO
 
 > Master task list for the OxiLean project.
-> Last updated: 2026-07-16
+> Last updated: 2026-07-17
 >
 > **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). The project has 17 crates and 1.35M+ lines implemented.
 >

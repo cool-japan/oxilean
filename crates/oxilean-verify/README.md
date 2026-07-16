@@ -68,7 +68,7 @@ code paths.
 
 ```toml
 [dependencies]
-oxilean-verify = "0.1.3"
+oxilean-verify = "0.1.4"
 ```
 
 - License: Apache-2.0

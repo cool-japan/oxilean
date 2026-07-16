@@ -92,7 +92,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-lint = "0.1.3"
+oxilean-lint = "0.1.4"
 ```
 
 ### Running the Engine

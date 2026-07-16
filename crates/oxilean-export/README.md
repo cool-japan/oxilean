@@ -57,7 +57,7 @@ list.
 
 ```toml
 [dependencies]
-oxilean-export = "0.1.3"
+oxilean-export = "0.1.4"
 ```
 
 - License: Apache-2.0

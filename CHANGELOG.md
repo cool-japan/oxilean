@@ -9,6 +9,14 @@ Copyright (c) COOLJAPAN OU (Team Kitasan)
 
 ---
 
+## [0.1.4] — Unreleased
+
+### Added
+
+### Changed
+
+### Fixed
+
 ## [0.1.3] — 2026-07-16
 
 Independent Lean 4 proof checker ("Kernel in a Tab"): oxilean-export NDJSON v3.1.0 reader, oxilean-verify three-bucket streaming CLI, oxilean-verify-wasm (144 KB gzip) + web/verify-demo static demo, BigNat arbitrary-precision literals, quotient and struct-eta soundness overhaul, re-derived recursors, complete universe-level definitional equality, CI/TCB gates, and fuzz infrastructure.
