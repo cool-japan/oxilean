@@ -224,6 +224,10 @@ pub struct Environment {
     declarations: HashMap<Name, Declaration>,
     /// All constants indexed by name (new LEAN 4-style format).
     constants: HashMap<Name, ConstantInfo>,
+    /// Whether the four `#QUOT` primitives have been installed via
+    /// [`Environment::add_quot`]. Quotient constants may only be added through
+    /// that once-only entry point (mirroring Lean's `environment::quot_initialized`).
+    quot_initialized: bool,
 }
 impl Environment {
     /// Create a new empty environment.
@@ -231,6 +235,7 @@ impl Environment {
         Self {
             declarations: HashMap::new(),
             constants: HashMap::new(),
+            quot_initialized: false,
         }
     }
     /// Add a legacy declaration to the environment.
@@ -247,13 +252,42 @@ impl Environment {
         Ok(())
     }
     /// Add a ConstantInfo to the environment.
+    ///
+    /// Quotient constants (`ConstantInfo::Quotient`) are rejected here: the four
+    /// `#QUOT` primitives may only be installed atomically through
+    /// [`Environment::add_quot`], which constructs their canonical types
+    /// in-kernel. This prevents a caller from smuggling a `Quotient` entry with
+    /// an arbitrary (possibly unsound) type past the checker.
     pub fn add_constant(&mut self, ci: ConstantInfo) -> Result<(), EnvError> {
+        if ci.is_quotient() {
+            return Err(EnvError::InvalidQuotient(
+                "quotient constants may only be added via Environment::add_quot".to_string(),
+            ));
+        }
         let name = ci.name().clone();
         if self.declarations.contains_key(&name) || self.constants.contains_key(&name) {
             return Err(EnvError::DuplicateDeclaration(name));
         }
         self.constants.insert(name, ci);
         Ok(())
+    }
+    /// Whether the four `#QUOT` primitives have been installed.
+    pub fn quot_initialized(&self) -> bool {
+        self.quot_initialized
+    }
+    /// Insert a pre-validated quotient constant.
+    ///
+    /// This bypasses the `add_constant` quotient guard and is used *only* by
+    /// [`Environment::add_quot`], which owns the canonical types and enforces
+    /// the once-only / atomicity invariants. It must never be exposed publicly.
+    pub(crate) fn insert_quotient(&mut self, ci: ConstantInfo) {
+        debug_assert!(ci.is_quotient());
+        let name = ci.name().clone();
+        self.constants.insert(name, ci);
+    }
+    /// Mark the quotient primitives as installed (used only by `add_quot`).
+    pub(crate) fn set_quot_initialized(&mut self) {
+        self.quot_initialized = true;
     }
     /// Look up a legacy declaration by name.
     pub fn get(&self, name: &Name) -> Option<&Declaration> {
@@ -873,7 +907,7 @@ impl<T> NonEmptyVec<T> {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -881,7 +915,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }
@@ -908,7 +942,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -918,7 +952,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -932,7 +966,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;
@@ -1291,6 +1325,10 @@ pub enum EnvError {
     DuplicateDeclaration(Name),
     /// The declaration was not found
     NotFound(Name),
+    /// A quotient-related precondition failed (e.g. quotients already
+    /// initialized, `Eq` missing or malformed, or an attempt to add a
+    /// `ConstantInfo::Quotient` outside of [`Environment::add_quot`]).
+    InvalidQuotient(String),
 }
 /// A pair of `StatSummary` values tracking before/after a transformation.
 #[allow(dead_code)]

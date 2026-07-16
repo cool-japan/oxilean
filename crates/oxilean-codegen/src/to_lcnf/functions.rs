@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::lcnf::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -354,7 +355,9 @@ pub(super) fn convert_to_atomic(
                 idx
             ))),
         },
-        Expr::Lit(Literal::Nat(n)) => Ok(LcnfArg::Lit(LcnfLit::Nat(*n))),
+        Expr::Lit(Literal::Nat(n)) => {
+            Ok(LcnfArg::Lit(LcnfLit::Nat(n.to_u64().unwrap_or(u64::MAX))))
+        }
         Expr::Lit(Literal::Str(s)) => Ok(LcnfArg::Lit(LcnfLit::Str(s.clone()))),
         Expr::Const(name, _levels) => {
             let mangled = mangle_name(name);
@@ -565,7 +568,7 @@ pub(super) fn convert_lit(
     state: &mut ToLcnfState,
 ) -> Result<LcnfExpr, ConversionError> {
     let lcnf_lit = match lit {
-        Literal::Nat(n) => LcnfLit::Nat(*n),
+        Literal::Nat(n) => LcnfLit::Nat(n.to_u64().unwrap_or(u64::MAX)),
         Literal::Str(s) => LcnfLit::Str(s.clone()),
     };
     let ty = match lit {
@@ -1040,7 +1043,7 @@ mod tests {
     #[test]
     pub(super) fn test_convert_literal_nat() {
         let config = default_config();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let result = expr_to_lcnf(&expr, &config).expect("result LCNF conversion should succeed");
         match &result {
             LcnfExpr::Let { value, .. } => match value {
@@ -1099,8 +1102,8 @@ mod tests {
     pub(super) fn test_convert_simple_app() {
         let config = default_config();
         let func = Expr::Const(Name::str("Nat.succ"), vec![]);
-        let arg = Expr::Lit(Literal::Nat(0));
-        let expr = Expr::App(Box::new(func), Box::new(arg));
+        let arg = Expr::Lit(Literal::nat(0));
+        let expr = Expr::App(Node::new(func), Node::new(arg));
         let result = expr_to_lcnf(&expr, &config).expect("result LCNF conversion should succeed");
         assert!(matches!(
             &result,
@@ -1112,9 +1115,9 @@ mod tests {
         let config = minimal_config();
         let expr = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(5))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(5))),
+            Node::new(Expr::BVar(0)),
         );
         let result = expr_to_lcnf(&expr, &config);
         assert!(result.is_ok());
@@ -1123,7 +1126,7 @@ mod tests {
     pub(super) fn test_convert_projection() {
         let config = default_config();
         let base = Expr::Const(Name::str("p"), vec![]);
-        let expr = Expr::Proj(Name::str("Prod"), 0, Box::new(base));
+        let expr = Expr::Proj(Name::str("Prod"), 0, Node::new(base));
         let result = expr_to_lcnf(&expr, &config);
         assert!(result.is_ok());
     }
@@ -1133,8 +1136,8 @@ mod tests {
         let expr = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let result = expr_to_lcnf(&expr, &config).expect("result LCNF conversion should succeed");
         match &result {
@@ -1169,8 +1172,8 @@ mod tests {
         let expr = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let ty = convert_type(&expr, &state);
         match ty {
@@ -1210,28 +1213,28 @@ mod tests {
     }
     #[test]
     pub(super) fn test_estimate_expr_size() {
-        let lit = Expr::Lit(Literal::Nat(1));
+        let lit = Expr::Lit(Literal::nat(1));
         assert_eq!(estimate_expr_size(&lit), 1);
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         assert_eq!(estimate_expr_size(&app), 3);
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(estimate_expr_size(&lam), 3);
     }
     #[test]
     pub(super) fn test_flatten_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
-        let app1 = Expr::App(Box::new(f), Box::new(a));
-        let app2 = Expr::App(Box::new(app1), Box::new(b));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
+        let app1 = Expr::App(Node::new(f), Node::new(a));
+        let app2 = Expr::App(Node::new(app1), Node::new(b));
         let inner_func = match &app2 {
             Expr::App(func, _) => func,
             _ => panic!("Expected App"),
@@ -1281,7 +1284,7 @@ mod tests {
     #[test]
     pub(super) fn test_module_to_lcnf_single() {
         let config = default_config();
-        let decls = vec![(Name::str("const42"), vec![], Expr::Lit(Literal::Nat(42)))];
+        let decls = vec![(Name::str("const42"), vec![], Expr::Lit(Literal::nat(42)))];
         let result = module_to_lcnf(&decls, &config);
         assert!(result.is_ok());
         let module = result.expect("module should be Some/Ok");
@@ -1338,8 +1341,8 @@ mod tests {
         let expr2 = Expr::Const(Name::str("Nat"), vec![]);
         assert!(!has_bvar_ref(&expr2, 0));
         let app = Expr::App(
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         assert!(has_bvar_ref(&app, 0));
     }
@@ -1503,12 +1506,12 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("y"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             )),
         );
         let (params, ret) = flatten_pi_type(&pi, &state);
@@ -1542,8 +1545,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         let result = expr_to_lcnf(&lam, &config);
         assert!(result.is_ok(), "Lambda conversion should succeed");
@@ -1557,7 +1560,7 @@ mod tests {
                 vec![(Name::str("x"), Expr::Const(Name::str("Nat"), vec![]))],
                 Expr::BVar(0),
             ),
-            (Name::str("g"), vec![], Expr::Lit(Literal::Nat(0))),
+            (Name::str("g"), vec![], Expr::Lit(Literal::nat(0))),
         ];
         let result = module_to_lcnf(&decls, &config);
         assert!(result.is_ok());
@@ -1568,11 +1571,11 @@ mod tests {
     pub(super) fn test_nested_app_conversion() {
         let config = default_config();
         let expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(1))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(2))),
+            Node::new(Expr::Lit(Literal::nat(2))),
         );
         let result = expr_to_lcnf(&expr, &config);
         assert!(result.is_ok());

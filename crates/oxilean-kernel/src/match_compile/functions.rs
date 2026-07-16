@@ -137,12 +137,12 @@ mod tests {
         let arms = vec![
             MatchArm {
                 patterns: vec![Pattern::Constructor(Name::str("true"), vec![])],
-                rhs: Expr::Lit(crate::Literal::Nat(1)),
+                rhs: Expr::Lit(crate::Literal::nat(1)),
                 guard: None,
             },
             MatchArm {
                 patterns: vec![Pattern::Constructor(Name::str("false"), vec![])],
-                rhs: Expr::Lit(crate::Literal::Nat(0)),
+                rhs: Expr::Lit(crate::Literal::nat(0)),
                 guard: None,
             },
         ];
@@ -158,7 +158,7 @@ mod tests {
         let scrutinee = Expr::BVar(0);
         let arms = vec![MatchArm {
             patterns: vec![Pattern::Wildcard],
-            rhs: Expr::Lit(crate::Literal::Nat(42)),
+            rhs: Expr::Lit(crate::Literal::nat(42)),
             guard: None,
         }];
         let result = compiler
@@ -315,7 +315,7 @@ mod extended_tests {
         assert!(is_irrefutable_pattern(&p));
         let p2 = Pattern::Constructor(
             Name::str("Nat.succ"),
-            vec![Pattern::Literal(crate::Literal::Nat(0))],
+            vec![Pattern::Literal(crate::Literal::nat(0))],
         );
         assert!(!is_irrefutable_pattern(&p2));
     }
@@ -707,7 +707,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

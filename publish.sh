@@ -81,15 +81,27 @@ fi
 echo ""
 
 # Tier definitions (dependency order)
+# Tier 1: no internal deps
 TIER1_CRATES=(oxilean-kernel)
+# Tier 2: depend only on Tier 1
 TIER2_CRATES=(oxilean-parse oxilean-meta oxilean-std oxilean-codegen oxilean-runtime)
-TIER3_CRATES=(oxilean-elab oxilean-build oxilean-lint)
-TIER4_CRATES=(oxilean-cli oxilean-wasm)
+# Tier 2b (TCB): export reader depends on kernel only
+TIER2B_CRATES=(oxilean-export)
+# Tier 3: depend on Tier 1+2
+# oxilean-doc: depends on oxilean-parse (Tier 2)
+# oxilean-verify: depends on kernel (T1) + export (T2b)
+TIER3_CRATES=(oxilean-elab oxilean-build oxilean-lint oxilean-doc oxilean-verify)
+# Tier 4: depend on Tier 1-3
+# oxilake: depends on oxilean-build (Tier 3)
+# oxilean-verify-wasm: depends on kernel+export+verify (TCB closure)
+TIER4_CRATES=(oxilean-cli oxilean-wasm oxilake oxilean-verify-wasm)
+# Tier 5: meta / umbrella crate
 TIER5_CRATES=(oxilean)
 
 ALL_TIERS=(
     "1:${TIER1_CRATES[*]}"
     "2:${TIER2_CRATES[*]}"
+    "2b:${TIER2B_CRATES[*]}"
     "3:${TIER3_CRATES[*]}"
     "4:${TIER4_CRATES[*]}"
     "5:${TIER5_CRATES[*]}"

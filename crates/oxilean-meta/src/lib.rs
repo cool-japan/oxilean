@@ -383,7 +383,7 @@ pub mod tc_synthesis;
 
 // --- Re-exports: Batch 4.3 ---
 pub use tactic::rewrite::RewriteDirection;
-pub use tactic::{GoalView, TacticError, TacticResult, TacticState};
+pub use tactic::{GoalView, ProofCertificate, TacticError, TacticResult, TacticState};
 
 // --- Re-exports: Batch 4.4 ---
 pub use tactic::calc::{CalcProof, CalcStep, ConvSide};

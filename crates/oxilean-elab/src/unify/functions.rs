@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_kernel::FVarId;
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::HashMap;
 
@@ -153,22 +154,22 @@ mod tests {
     }
     #[test]
     fn test_unify_lits() {
-        let lit1 = Expr::Lit(Literal::Nat(42));
-        let lit2 = Expr::Lit(Literal::Nat(42));
+        let lit1 = Expr::Lit(Literal::nat(42));
+        let lit2 = Expr::Lit(Literal::nat(42));
         assert!(unify(&lit1, &lit2).is_ok());
     }
     #[test]
     fn test_unify_different_lits() {
-        let lit1 = Expr::Lit(Literal::Nat(42));
-        let lit2 = Expr::Lit(Literal::Nat(100));
+        let lit1 = Expr::Lit(Literal::nat(42));
+        let lit2 = Expr::Lit(Literal::nat(100));
         assert!(unify(&lit1, &lit2).is_err());
     }
     #[test]
     fn test_unify_apps() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let app2 = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let app2 = Expr::App(Node::new(f), Node::new(a));
         assert!(unify(&app1, &app2).is_ok());
     }
     #[test]
@@ -241,7 +242,7 @@ mod tests {
     }
     #[test]
     fn test_occurs() {
-        let expr = Expr::App(Box::new(nat_const()), Box::new(Expr::BVar(3)));
+        let expr = Expr::App(Node::new(nat_const()), Node::new(Expr::BVar(3)));
         assert!(occurs(3, &expr));
         assert!(!occurs(7, &expr));
     }
@@ -280,8 +281,8 @@ mod tests {
         let pi1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_const()),
-            Box::new(nat_const()),
+            Node::new(nat_const()),
+            Node::new(nat_const()),
         );
         let pi2 = pi1.clone();
         assert!(unify(&pi1, &pi2).is_ok());
@@ -291,8 +292,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_const()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat_const()),
+            Node::new(Expr::BVar(0)),
         );
         assert!(unify(&lam, &lam).is_ok());
     }
@@ -374,14 +375,14 @@ mod tests_extra {
         let lam1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_const()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat_const()),
+            Node::new(Expr::BVar(0)),
         );
         let lam2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(nat_const()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat_const()),
+            Node::new(Expr::BVar(0)),
         );
         assert!(alpha_unify(&lam1, &lam2).is_ok());
     }
@@ -390,14 +391,14 @@ mod tests_extra {
         let pi1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(nat_const()),
-            Box::new(nat_const()),
+            Node::new(nat_const()),
+            Node::new(nat_const()),
         );
         let pi2 = Expr::Pi(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(nat_const()),
-            Box::new(nat_const()),
+            Node::new(nat_const()),
+            Node::new(nat_const()),
         );
         assert!(alpha_unify(&pi1, &pi2).is_ok());
     }
@@ -608,31 +609,31 @@ pub fn apply_meta_assignments(expr: &Expr, assignments: &HashMap<u64, Expr>) -> 
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(apply_meta_assignments(f, assignments)),
-            Box::new(apply_meta_assignments(a, assignments)),
+            Node::new(apply_meta_assignments(f, assignments)),
+            Node::new(apply_meta_assignments(a, assignments)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(apply_meta_assignments(ty, assignments)),
-            Box::new(apply_meta_assignments(body, assignments)),
+            Node::new(apply_meta_assignments(ty, assignments)),
+            Node::new(apply_meta_assignments(body, assignments)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(apply_meta_assignments(ty, assignments)),
-            Box::new(apply_meta_assignments(body, assignments)),
+            Node::new(apply_meta_assignments(ty, assignments)),
+            Node::new(apply_meta_assignments(body, assignments)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(apply_meta_assignments(ty, assignments)),
-            Box::new(apply_meta_assignments(val, assignments)),
-            Box::new(apply_meta_assignments(body, assignments)),
+            Node::new(apply_meta_assignments(ty, assignments)),
+            Node::new(apply_meta_assignments(val, assignments)),
+            Node::new(apply_meta_assignments(body, assignments)),
         ),
         Expr::Proj(name, idx, inner) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(apply_meta_assignments(inner, assignments)),
+            Node::new(apply_meta_assignments(inner, assignments)),
         ),
         _ => expr.clone(),
     }
@@ -843,15 +844,15 @@ mod mvar_unify_tests {
     fn test_occurs_check_prevents_cyclic() {
         let mut asgn = HashMap::new();
         let f = nat();
-        let rhs = Expr::App(Box::new(f), Box::new(mvar(0)));
+        let rhs = Expr::App(Node::new(f), Node::new(mvar(0)));
         let err = unify_meta_aware(&mvar(0), &rhs, &mut asgn);
         assert!(matches!(err, Err(UnifyError::OccursCheck)));
     }
     #[test]
     fn test_unify_app_with_meta() {
         let f = Expr::Const(oxilean_kernel::Name::str("f"), vec![]);
-        let lhs = Expr::App(Box::new(f.clone()), Box::new(mvar(0)));
-        let rhs = Expr::App(Box::new(f), Box::new(nat()));
+        let lhs = Expr::App(Node::new(f.clone()), Node::new(mvar(0)));
+        let rhs = Expr::App(Node::new(f), Node::new(nat()));
         let mut asgn = HashMap::new();
         unify_meta_aware(&lhs, &rhs, &mut asgn).expect("unification should succeed");
         assert_eq!(asgn.get(&0), Some(&nat()));
@@ -871,7 +872,7 @@ mod mvar_unify_tests {
     #[test]
     fn test_occurs_in_fvar_basic() {
         let id = MVAR_OFFSET + 3;
-        let expr = Expr::App(Box::new(nat()), Box::new(Expr::FVar(FVarId(id))));
+        let expr = Expr::App(Node::new(nat()), Node::new(Expr::FVar(FVarId(id))));
         assert!(occurs_in_fvar(id, &expr));
         assert!(!occurs_in_fvar(id + 1, &expr));
     }
@@ -1078,7 +1079,7 @@ pub fn app_spine_len(expr: &Expr) -> usize {
 #[allow(dead_code)]
 pub fn rebuild_app(head: Expr, args: Vec<Expr>) -> Expr {
     args.into_iter()
-        .fold(head, |acc, arg| Expr::App(Box::new(acc), Box::new(arg)))
+        .fold(head, |acc, arg| Expr::App(Node::new(acc), Node::new(arg)))
 }
 /// Reduce an expression to its weak-head normal form under a substitution.
 ///
@@ -1097,7 +1098,7 @@ pub fn whnf(expr: &Expr, subst: &Substitution) -> Expr {
                 let reduced = beta_subst(body, a, 0);
                 whnf(&reduced, subst)
             } else {
-                Expr::App(Box::new(f_whnf), a.clone())
+                Expr::App(Node::new(f_whnf), a.clone())
             }
         }
         _ => expr,
@@ -1117,31 +1118,31 @@ pub fn beta_subst(expr: &Expr, replacement: &Expr, depth: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(beta_subst(f, replacement, depth)),
-            Box::new(beta_subst(a, replacement, depth)),
+            Node::new(beta_subst(f, replacement, depth)),
+            Node::new(beta_subst(a, replacement, depth)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(beta_subst(ty, replacement, depth)),
-            Box::new(beta_subst(body, replacement, depth + 1)),
+            Node::new(beta_subst(ty, replacement, depth)),
+            Node::new(beta_subst(body, replacement, depth + 1)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(beta_subst(ty, replacement, depth)),
-            Box::new(beta_subst(body, replacement, depth + 1)),
+            Node::new(beta_subst(ty, replacement, depth)),
+            Node::new(beta_subst(body, replacement, depth + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(beta_subst(ty, replacement, depth)),
-            Box::new(beta_subst(val, replacement, depth)),
-            Box::new(beta_subst(body, replacement, depth + 1)),
+            Node::new(beta_subst(ty, replacement, depth)),
+            Node::new(beta_subst(val, replacement, depth)),
+            Node::new(beta_subst(body, replacement, depth + 1)),
         ),
         Expr::Proj(n, i, inner) => Expr::Proj(
             n.clone(),
             *i,
-            Box::new(beta_subst(inner, replacement, depth)),
+            Node::new(beta_subst(inner, replacement, depth)),
         ),
         other => other.clone(),
     }
@@ -1161,29 +1162,29 @@ pub fn lift_bvars(expr: &Expr, cutoff: u32, amount: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(lift_bvars(f, cutoff, amount)),
-            Box::new(lift_bvars(a, cutoff, amount)),
+            Node::new(lift_bvars(f, cutoff, amount)),
+            Node::new(lift_bvars(a, cutoff, amount)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(lift_bvars(ty, cutoff, amount)),
-            Box::new(lift_bvars(body, cutoff + 1, amount)),
+            Node::new(lift_bvars(ty, cutoff, amount)),
+            Node::new(lift_bvars(body, cutoff + 1, amount)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(lift_bvars(ty, cutoff, amount)),
-            Box::new(lift_bvars(body, cutoff + 1, amount)),
+            Node::new(lift_bvars(ty, cutoff, amount)),
+            Node::new(lift_bvars(body, cutoff + 1, amount)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(lift_bvars(ty, cutoff, amount)),
-            Box::new(lift_bvars(val, cutoff, amount)),
-            Box::new(lift_bvars(body, cutoff + 1, amount)),
+            Node::new(lift_bvars(ty, cutoff, amount)),
+            Node::new(lift_bvars(val, cutoff, amount)),
+            Node::new(lift_bvars(body, cutoff + 1, amount)),
         ),
         Expr::Proj(n, i, inner) => {
-            Expr::Proj(n.clone(), *i, Box::new(lift_bvars(inner, cutoff, amount)))
+            Expr::Proj(n.clone(), *i, Node::new(lift_bvars(inner, cutoff, amount)))
         }
         other => other.clone(),
     }
@@ -1199,8 +1200,8 @@ pub fn eta_expand(expr: &Expr, ty: &Expr) -> Option<Expr> {
             return None;
         }
         let lifted = lift_bvars(expr, 0, 1);
-        let app = Expr::App(Box::new(lifted), Box::new(Expr::BVar(0)));
-        Some(Expr::Lam(*bi, name.clone(), domain.clone(), Box::new(app)))
+        let app = Expr::App(Node::new(lifted), Node::new(Expr::BVar(0)));
+        Some(Expr::Lam(*bi, name.clone(), domain.clone(), Node::new(app)))
     } else {
         None
     }
@@ -1279,8 +1280,8 @@ mod unify_extended_tests {
     }
     fn succ(e: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(e),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(e),
         )
     }
     fn bvar(i: u32) -> Expr {
@@ -1290,7 +1291,7 @@ mod unify_extended_tests {
     fn test_substitution_apply_recursive() {
         let mut subst = Substitution::new();
         subst.insert(0, nat());
-        let expr = Expr::App(Box::new(bvar(0)), Box::new(bvar(0)));
+        let expr = Expr::App(Node::new(bvar(0)), Node::new(bvar(0)));
         let applied = subst.apply_recursive(&expr);
         assert!(matches!(applied, Expr::App(..)));
         if let Expr::App(f, a) = applied {
@@ -1408,8 +1409,8 @@ mod unify_extended_tests {
     fn test_collect_spine_two_args() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(f), Box::new(nat()))),
-            Box::new(bool_e()),
+            Node::new(Expr::App(Node::new(f), Node::new(nat()))),
+            Node::new(bool_e()),
         );
         let (head, args) = collect_spine(&expr);
         assert!(matches!(head, Expr::Const(..)));
@@ -1451,7 +1452,7 @@ mod unify_extended_tests {
     }
     #[test]
     fn test_contains_bvar_true() {
-        let e = Expr::App(Box::new(nat()), Box::new(bvar(0)));
+        let e = Expr::App(Node::new(nat()), Node::new(bvar(0)));
         assert!(contains_bvar(&e, 0));
     }
     #[test]
@@ -1472,10 +1473,10 @@ mod unify_extended_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(bvar(0)),
+            Node::new(nat()),
+            Node::new(bvar(0)),
         );
-        let app = Expr::App(Box::new(lam), Box::new(bool_e()));
+        let app = Expr::App(Node::new(lam), Node::new(bool_e()));
         let result = whnf(&app, &subst);
         assert_eq!(result, bool_e());
     }
@@ -1494,8 +1495,8 @@ mod unify_extended_tests {
     #[test]
     fn test_unification_state_decompose_app() {
         let mut state = UnificationState::new();
-        let lhs = Expr::App(Box::new(nat()), Box::new(nat()));
-        let rhs = Expr::App(Box::new(nat()), Box::new(nat()));
+        let lhs = Expr::App(Node::new(nat()), Node::new(nat()));
+        let rhs = Expr::App(Node::new(nat()), Node::new(nat()));
         state.add_eq(lhs, rhs);
         assert!(state.run().is_ok());
     }

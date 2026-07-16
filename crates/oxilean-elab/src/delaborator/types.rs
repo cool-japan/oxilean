@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
-use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Name};
+use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Literal, Name};
 use oxilean_parse::{Binder, BinderKind, Located, Span, SurfaceExpr};
 use std::collections::{HashMap, HashSet};
 
@@ -39,7 +39,7 @@ impl AbbreviationDetector {
     /// Try to detect a natural number literal from a kernel expression.
     pub fn try_nat_literal(expr: &Expr) -> Option<u64> {
         match expr {
-            Expr::Lit(oxilean_kernel::Literal::Nat(n)) => Some(*n),
+            Expr::Lit(Literal::Nat(n)) => n.to_u64(),
             Expr::Const(name, _) if name_is(name, "Nat.zero") => Some(0),
             Expr::App(f, arg) => {
                 if let Expr::Const(name, _) = f.as_ref() {
@@ -62,7 +62,7 @@ impl AbbreviationDetector {
                         if let Expr::Const(name, _) = f3.as_ref() {
                             if name_is(name, "List.cons") {
                                 let mut elems = Self::try_list_literal(arg).unwrap_or_default();
-                                elems.insert(0, *head.clone());
+                                elems.insert(0, (**head).clone());
                                 return Some(elems);
                             }
                         }
@@ -406,9 +406,9 @@ impl Delaborator {
     /// Delaborate a literal.
     fn delab_lit(lit: &oxilean_kernel::Literal) -> Located<SurfaceExpr> {
         match lit {
-            oxilean_kernel::Literal::Nat(n) => {
-                mk_located(SurfaceExpr::Lit(oxilean_parse::Literal::Nat(*n)))
-            }
+            Literal::Nat(n) => mk_located(SurfaceExpr::Lit(oxilean_parse::Literal::Nat(
+                n.to_u64().unwrap_or(u64::MAX),
+            ))),
             oxilean_kernel::Literal::Str(s) => {
                 mk_located(SurfaceExpr::Lit(oxilean_parse::Literal::String(s.clone())))
             }

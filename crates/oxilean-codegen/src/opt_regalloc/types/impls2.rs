@@ -297,6 +297,7 @@ impl VirtualReg {
         match &self.ty {
             LcnfType::Fun(_, _) => RegClass::Integer,
             LcnfType::Nat => RegClass::Integer,
+            LcnfType::Int => RegClass::Integer,
             LcnfType::LcnfString => RegClass::Integer,
             LcnfType::Object => RegClass::Integer,
             LcnfType::Ctor(_, _) => RegClass::Integer,

@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -17,8 +18,8 @@ pub fn build_io_env(env: &mut Environment) -> Result<(), String> {
     let io_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(type2.clone()),
+        Node::new(type1.clone()),
+        Node::new(type2.clone()),
     );
     env.add(Declaration::Axiom {
         name: Name::str("IO"),
@@ -29,14 +30,14 @@ pub fn build_io_env(env: &mut Environment) -> Result<(), String> {
     let pure_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("IO"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     );
@@ -49,33 +50,33 @@ pub fn build_io_env(env: &mut Environment) -> Result<(), String> {
     let bind_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("ma"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("IO"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("IO"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("IO"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("IO"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("IO"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("IO"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -90,10 +91,10 @@ pub fn build_io_env(env: &mut Environment) -> Result<(), String> {
     let println_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), vec![])),
-            Box::new(Expr::Const(Name::str("Unit"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("IO"), vec![])),
+            Node::new(Expr::Const(Name::str("Unit"), vec![])),
         )),
     );
     env.add(Declaration::Axiom {
@@ -103,8 +104,8 @@ pub fn build_io_env(env: &mut Environment) -> Result<(), String> {
     })
     .map_err(|e| e.to_string())?;
     let readline_ty = Expr::App(
-        Box::new(Expr::Const(Name::str("IO"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("IO"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("IO.readLine"),
@@ -120,14 +121,14 @@ pub fn build_io_throw(env: &mut Environment) -> Result<(), String> {
     let throw_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("msg"),
-            Box::new(Expr::Const(Name::str("String"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::Const(Name::str("String"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("IO"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     );
@@ -144,29 +145,29 @@ pub fn build_io_catch(env: &mut Environment) -> Result<(), String> {
     let catch_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("action"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("IO"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("handler"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("err"),
-                    Box::new(Expr::Const(Name::str("String"), vec![])),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("IO"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::Const(Name::str("String"), vec![])),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("IO"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("IO"), vec![])),
-                    Box::new(Expr::BVar(2)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("IO"), vec![])),
+                    Node::new(Expr::BVar(2)),
                 )),
             )),
         )),
@@ -187,8 +188,8 @@ pub fn build_io_getenv(env: &mut Environment) -> Result<(), String> {
         let option_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(type2.clone()),
+            Node::new(type1.clone()),
+            Node::new(type2.clone()),
         );
         env.add(Declaration::Axiom {
             name: Name::str("Option"),
@@ -200,12 +201,12 @@ pub fn build_io_getenv(env: &mut Environment) -> Result<(), String> {
     let getenv_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("key"),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Option"), vec![])),
-                Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("IO"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Option"), vec![])),
+                Node::new(Expr::Const(Name::str("String"), vec![])),
             )),
         )),
     );
@@ -548,8 +549,8 @@ pub fn io_ext_prop() -> Expr {
 }
 pub fn io_of(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("IO"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("IO"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn io_ext_unit() -> Expr {
@@ -566,34 +567,34 @@ pub fn io_ext_string() -> Expr {
 }
 pub fn io_ext_list(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("List"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn io_ext_option(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Option"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("Option"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn io_ext_alpha_implicit(inner: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(io_ext_type1()),
-        Box::new(inner),
+        Node::new(io_ext_type1()),
+        Node::new(inner),
     )
 }
 pub fn io_ext_ab_implicit(inner: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(io_ext_type1()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(io_ext_type1()),
-            Box::new(inner),
+            Node::new(io_ext_type1()),
+            Node::new(inner),
         )),
     )
 }
@@ -601,16 +602,16 @@ pub fn io_ext_abc_implicit(inner: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(io_ext_type1()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(io_ext_type1()),
-            Box::new(Expr::Pi(
+            Node::new(io_ext_type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(io_ext_type1()),
-                Box::new(inner),
+                Node::new(io_ext_type1()),
+                Node::new(inner),
             )),
         )),
     )
@@ -630,20 +631,20 @@ pub fn axiom_io_denote_ty() -> Expr {
     let world_fn = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                Box::new(Expr::BVar(1)),
+        Node::new(io_ext_nat()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(io_ext_nat()),
+            Node::new(io_ext_nat()),
         )),
     );
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(world_fn),
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(world_fn),
     ))
 }
 /// `IO.pure_denote : {α : Type} → ∀ x : α, ∀ w : World, denote (pure x) w = (x, w)`
@@ -653,8 +654,8 @@ pub fn axiom_io_pure_denote_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::BVar(0)),
-        Box::new(io_ext_prop()),
+        Node::new(Expr::BVar(0)),
+        Node::new(io_ext_prop()),
     ))
 }
 /// `IO.bind_denote : {α β : Type} → ∀ m f w, denote (bind m f) w = let (a,w') := denote m w in denote (f a) w'`
@@ -670,8 +671,8 @@ pub fn axiom_io_free_monad_inl_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::BVar(0)),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(0)),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.free_monad_inr : {α : Type} → (Nat → IO α) → IO α`
@@ -681,14 +682,14 @@ pub fn axiom_io_free_monad_inr_ty() -> Expr {
     let cont = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(io_ext_nat()),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(io_ext_nat()),
+        Node::new(io_of(Expr::BVar(1))),
     );
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("op"),
-        Box::new(cont),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(cont),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.hoare_pre : {α : Type} → (World → Prop) → IO α → (α → World → Prop) → Prop`
@@ -698,33 +699,33 @@ pub fn axiom_io_hoare_pre_ty() -> Expr {
     let pre = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(io_ext_nat()),
-        Box::new(io_ext_prop()),
+        Node::new(io_ext_nat()),
+        Node::new(io_ext_prop()),
     );
     let post = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::Pi(
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(io_ext_nat()),
-            Box::new(io_ext_prop()),
+            Node::new(io_ext_nat()),
+            Node::new(io_ext_prop()),
         )),
     );
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("P"),
-        Box::new(pre),
-        Box::new(Expr::Pi(
+        Node::new(pre),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(Expr::Pi(
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("Q"),
-                Box::new(post),
-                Box::new(io_ext_prop()),
+                Node::new(post),
+                Node::new(io_ext_prop()),
             )),
         )),
     ))
@@ -748,22 +749,22 @@ pub fn axiom_io_sep_star_ty() -> Expr {
     let pred = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(io_ext_nat()),
-        Box::new(io_ext_prop()),
+        Node::new(io_ext_nat()),
+        Node::new(io_ext_prop()),
     );
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("P"),
-        Box::new(pred.clone()),
-        Box::new(Expr::Pi(
+        Node::new(pred.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("Q"),
-            Box::new(pred),
-            Box::new(Expr::Pi(
+            Node::new(pred),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("h"),
-                Box::new(io_ext_nat()),
-                Box::new(io_ext_prop()),
+                Node::new(io_ext_nat()),
+                Node::new(io_ext_prop()),
             )),
         )),
     ))
@@ -779,21 +780,21 @@ pub fn axiom_io_sep_frame_ty() -> Expr {
 /// Concurrent IO: run two IO actions in parallel.
 pub fn axiom_io_conc_par_ty() -> Expr {
     let prod_ty = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Prod"), vec![])),
-            Box::new(Expr::BVar(1)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Prod"), vec![])),
+            Node::new(Expr::BVar(1)),
         )),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(0)),
     );
     io_ext_ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m1"),
-        Box::new(io_of(Expr::BVar(1))),
-        Box::new(Expr::Pi(
+        Node::new(io_of(Expr::BVar(1))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m2"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(io_of(prod_ty)),
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(io_of(prod_ty)),
         )),
     ))
 }
@@ -804,12 +805,12 @@ pub fn axiom_io_conc_race_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m1"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(Expr::Pi(
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m2"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(io_of(Expr::BVar(2))),
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(io_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -820,8 +821,8 @@ pub fn axiom_io_stm_atomically_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("tx"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.stm_retry : {α : Type} → IO α`
@@ -837,12 +838,12 @@ pub fn axiom_io_stm_or_else_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("tx1"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(Expr::Pi(
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("tx2"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(io_of(Expr::BVar(2))),
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(io_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -853,10 +854,10 @@ pub fn axiom_io_ioref_new_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("init"),
-        Box::new(Expr::BVar(0)),
-        Box::new(io_of(Expr::App(
-            Box::new(Expr::Const(Name::str("IORef"), vec![])),
-            Box::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(0)),
+        Node::new(io_of(Expr::App(
+            Node::new(Expr::Const(Name::str("IORef"), vec![])),
+            Node::new(Expr::BVar(1)),
         ))),
     ))
 }
@@ -867,11 +868,11 @@ pub fn axiom_io_ioref_read_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("r"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("IORef"), vec![])),
-            Box::new(Expr::BVar(0)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("IORef"), vec![])),
+            Node::new(Expr::BVar(0)),
         )),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.ioRef_write : {α : Type} → IORef α → α → IO Unit`
@@ -881,15 +882,15 @@ pub fn axiom_io_ioref_write_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("r"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("IORef"), vec![])),
-            Box::new(Expr::BVar(0)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("IORef"), vec![])),
+            Node::new(Expr::BVar(0)),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("v"),
-            Box::new(Expr::BVar(1)),
-            Box::new(io_of(io_ext_unit())),
+            Node::new(Expr::BVar(1)),
+            Node::new(io_of(io_ext_unit())),
         )),
     ))
 }
@@ -900,21 +901,21 @@ pub fn axiom_io_ioref_modify_ty() -> Expr {
     let fn_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(0)),
-        Box::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(1)),
     );
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("r"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("IORef"), vec![])),
-            Box::new(Expr::BVar(0)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("IORef"), vec![])),
+            Node::new(Expr::BVar(0)),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("f"),
-            Box::new(fn_ty),
-            Box::new(io_of(io_ext_unit())),
+            Node::new(fn_ty),
+            Node::new(io_of(io_ext_unit())),
         )),
     ))
 }
@@ -923,8 +924,8 @@ pub fn axiom_io_ioref_modify_ty() -> Expr {
 /// Allocate a new empty MVar.
 pub fn axiom_io_mvar_new_ty() -> Expr {
     io_ext_alpha_implicit(io_of(Expr::App(
-        Box::new(Expr::Const(Name::str("MVar"), vec![])),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Const(Name::str("MVar"), vec![])),
+        Node::new(Expr::BVar(0)),
     )))
 }
 /// `IO.mvar_take : {α : Type} → MVar α → IO α`
@@ -934,11 +935,11 @@ pub fn axiom_io_mvar_take_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("mv"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("MVar"), vec![])),
-            Box::new(Expr::BVar(0)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("MVar"), vec![])),
+            Node::new(Expr::BVar(0)),
         )),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.mvar_put : {α : Type} → MVar α → α → IO Unit`
@@ -948,15 +949,15 @@ pub fn axiom_io_mvar_put_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("mv"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("MVar"), vec![])),
-            Box::new(Expr::BVar(0)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("MVar"), vec![])),
+            Node::new(Expr::BVar(0)),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("v"),
-            Box::new(Expr::BVar(1)),
-            Box::new(io_of(io_ext_unit())),
+            Node::new(Expr::BVar(1)),
+            Node::new(io_of(io_ext_unit())),
         )),
     ))
 }
@@ -967,8 +968,8 @@ pub fn axiom_io_fd_open_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("path"),
-        Box::new(io_ext_string()),
-        Box::new(io_of(io_ext_nat())),
+        Node::new(io_ext_string()),
+        Node::new(io_of(io_ext_nat())),
     )
 }
 /// `IO.fd_close : Nat → IO Unit`
@@ -978,8 +979,8 @@ pub fn axiom_io_fd_close_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fd"),
-        Box::new(io_ext_nat()),
-        Box::new(io_of(io_ext_unit())),
+        Node::new(io_ext_nat()),
+        Node::new(io_of(io_ext_unit())),
     )
 }
 /// `IO.fd_read : Nat → Nat → IO (List Nat)`
@@ -989,12 +990,12 @@ pub fn axiom_io_fd_read_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fd"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_nat()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(io_ext_nat()),
-            Box::new(io_of(io_ext_list(io_ext_nat()))),
+            Node::new(io_ext_nat()),
+            Node::new(io_of(io_ext_list(io_ext_nat()))),
         )),
     )
 }
@@ -1005,12 +1006,12 @@ pub fn axiom_io_fd_write_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fd"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_nat()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("data"),
-            Box::new(io_ext_list(io_ext_nat())),
-            Box::new(io_of(io_ext_nat())),
+            Node::new(io_ext_list(io_ext_nat())),
+            Node::new(io_of(io_ext_nat())),
         )),
     )
 }
@@ -1021,10 +1022,10 @@ pub fn axiom_io_async_spawn_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(io_of(Expr::App(
-            Box::new(Expr::Const(Name::str("Promise"), vec![])),
-            Box::new(Expr::BVar(1)),
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(io_of(Expr::App(
+            Node::new(Expr::Const(Name::str("Promise"), vec![])),
+            Node::new(Expr::BVar(1)),
         ))),
     ))
 }
@@ -1035,11 +1036,11 @@ pub fn axiom_io_async_await_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Promise"), vec![])),
-            Box::new(Expr::BVar(0)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Promise"), vec![])),
+            Node::new(Expr::BVar(0)),
         )),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.effect_send : {α : Type} → Nat → α → IO Unit`
@@ -1049,12 +1050,12 @@ pub fn axiom_io_effect_send_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("label"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_nat()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("payload"),
-            Box::new(Expr::BVar(1)),
-            Box::new(io_of(io_ext_unit())),
+            Node::new(Expr::BVar(1)),
+            Node::new(io_of(io_ext_unit())),
         )),
     ))
 }
@@ -1065,23 +1066,23 @@ pub fn axiom_io_effect_handle_ty() -> Expr {
     let handler_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("lbl"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_nat()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("payload"),
-            Box::new(Expr::BVar(2)),
-            Box::new(io_of(Expr::BVar(3))),
+            Node::new(Expr::BVar(2)),
+            Node::new(io_of(Expr::BVar(3))),
         )),
     );
     io_ext_ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(1))),
-        Box::new(Expr::Pi(
+        Node::new(io_of(Expr::BVar(1))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("h"),
-            Box::new(handler_ty),
-            Box::new(io_of(Expr::BVar(3))),
+            Node::new(handler_ty),
+            Node::new(io_of(Expr::BVar(3))),
         )),
     ))
 }
@@ -1092,12 +1093,12 @@ pub fn axiom_io_capability_restrict_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("cap"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_nat()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(io_of(Expr::BVar(2))),
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(io_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -1108,8 +1109,8 @@ pub fn axiom_io_linear_use_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.session_send : {α β : Type} → α → IO β → IO β`
@@ -1119,12 +1120,12 @@ pub fn axiom_io_session_send_ty() -> Expr {
     io_ext_ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("v"),
-        Box::new(Expr::BVar(1)),
-        Box::new(Expr::Pi(
+        Node::new(Expr::BVar(1)),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("cont"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(io_of(Expr::BVar(2))),
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(io_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -1135,14 +1136,14 @@ pub fn axiom_io_session_recv_ty() -> Expr {
     let cont = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(1)),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(1)),
+        Node::new(io_of(Expr::BVar(1))),
     );
     io_ext_ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("k"),
-        Box::new(cont),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(cont),
+        Node::new(io_of(Expr::BVar(1))),
     ))
 }
 /// `IO.monad_left_id : {α β : Type} → ∀ x f, bind (pure x) f = f x`
@@ -1158,8 +1159,8 @@ pub fn axiom_io_monad_right_id_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(io_ext_prop()),
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(io_ext_prop()),
     ))
 }
 /// `IO.monad_assoc : {α β γ : Type} → ∀ m f g, bind (bind m f) g = bind m (fun x => bind (f x) g)`
@@ -1181,8 +1182,8 @@ pub fn axiom_io_map_id_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(io_ext_prop()),
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(io_ext_prop()),
     ))
 }
 /// `IO.map_comp : {α β γ : Type} → ∀ f g m, map (f ∘ g) m = map f (map g m)`
@@ -1210,8 +1211,8 @@ pub fn axiom_io_putstr_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(io_ext_string()),
-        Box::new(io_of(io_ext_unit())),
+        Node::new(io_ext_string()),
+        Node::new(io_of(io_ext_unit())),
     )
 }
 /// `IO.sleep_ms : Nat → IO Unit`
@@ -1221,8 +1222,8 @@ pub fn axiom_io_sleep_ms_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("ms"),
-        Box::new(io_ext_nat()),
-        Box::new(io_of(io_ext_unit())),
+        Node::new(io_ext_nat()),
+        Node::new(io_of(io_ext_unit())),
     )
 }
 /// `IO.exit_code : Nat → IO Unit`
@@ -1232,8 +1233,8 @@ pub fn axiom_io_exit_code_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("code"),
-        Box::new(io_ext_nat()),
-        Box::new(io_of(io_ext_unit())),
+        Node::new(io_ext_nat()),
+        Node::new(io_of(io_ext_unit())),
     )
 }
 /// `IO.stderr_write : String → IO Unit`
@@ -1243,8 +1244,8 @@ pub fn axiom_io_stderr_write_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(io_ext_string()),
-        Box::new(io_of(io_ext_unit())),
+        Node::new(io_ext_string()),
+        Node::new(io_of(io_ext_unit())),
     )
 }
 /// `IO.fork : {α : Type} → IO α → IO Nat`
@@ -1254,8 +1255,8 @@ pub fn axiom_io_fork_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(io_of(io_ext_nat())),
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(io_of(io_ext_nat())),
     ))
 }
 /// `IO.join_thread : Nat → IO Unit`
@@ -1265,8 +1266,8 @@ pub fn axiom_io_join_thread_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("tid"),
-        Box::new(io_ext_nat()),
-        Box::new(io_of(io_ext_unit())),
+        Node::new(io_ext_nat()),
+        Node::new(io_of(io_ext_unit())),
     )
 }
 /// `IO.timeout : {α : Type} → Nat → IO α → IO (Option α)`
@@ -1276,12 +1277,12 @@ pub fn axiom_io_timeout_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("ms"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_nat()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(io_of(io_ext_option(Expr::BVar(2)))),
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(io_of(io_ext_option(Expr::BVar(2)))),
         )),
     ))
 }
@@ -1292,12 +1293,12 @@ pub fn axiom_io_retry_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(io_ext_nat()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_nat()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m"),
-            Box::new(io_of(Expr::BVar(1))),
-            Box::new(io_of(io_ext_option(Expr::BVar(2)))),
+            Node::new(io_of(Expr::BVar(1))),
+            Node::new(io_of(io_ext_option(Expr::BVar(2)))),
         )),
     ))
 }
@@ -1308,28 +1309,28 @@ pub fn axiom_io_bracket_ty() -> Expr {
     let release = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(1)),
-        Box::new(io_of(io_ext_unit())),
+        Node::new(Expr::BVar(1)),
+        Node::new(io_of(io_ext_unit())),
     );
     let use_fn = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(1)),
-        Box::new(io_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(1)),
+        Node::new(io_of(Expr::BVar(1))),
     );
     io_ext_ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("acquire"),
-        Box::new(io_of(Expr::BVar(1))),
-        Box::new(Expr::Pi(
+        Node::new(io_of(Expr::BVar(1))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("release"),
-            Box::new(release),
-            Box::new(Expr::Pi(
+            Node::new(release),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("use_fn"),
-                Box::new(use_fn),
-                Box::new(io_of(Expr::BVar(3))),
+                Node::new(use_fn),
+                Node::new(io_of(Expr::BVar(3))),
             )),
         )),
     ))
@@ -1341,12 +1342,12 @@ pub fn axiom_io_finally_ty() -> Expr {
     io_ext_alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(io_of(Expr::BVar(0))),
-        Box::new(Expr::Pi(
+        Node::new(io_of(Expr::BVar(0))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("cleanup"),
-            Box::new(io_of(io_ext_unit())),
-            Box::new(io_of(Expr::BVar(2))),
+            Node::new(io_of(io_ext_unit())),
+            Node::new(io_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -1357,8 +1358,8 @@ pub fn axiom_io_read_file_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("path"),
-        Box::new(io_ext_string()),
-        Box::new(io_of(io_ext_string())),
+        Node::new(io_ext_string()),
+        Node::new(io_of(io_ext_string())),
     )
 }
 /// `IO.write_file : String → String → IO Unit`
@@ -1368,12 +1369,12 @@ pub fn axiom_io_write_file_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("path"),
-        Box::new(io_ext_string()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_string()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("content"),
-            Box::new(io_ext_string()),
-            Box::new(io_of(io_ext_unit())),
+            Node::new(io_ext_string()),
+            Node::new(io_of(io_ext_unit())),
         )),
     )
 }
@@ -1384,12 +1385,12 @@ pub fn axiom_io_append_file_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("path"),
-        Box::new(io_ext_string()),
-        Box::new(Expr::Pi(
+        Node::new(io_ext_string()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("content"),
-            Box::new(io_ext_string()),
-            Box::new(io_of(io_ext_unit())),
+            Node::new(io_ext_string()),
+            Node::new(io_of(io_ext_unit())),
         )),
     )
 }
@@ -1400,8 +1401,8 @@ pub fn axiom_io_file_exists_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("path"),
-        Box::new(io_ext_string()),
-        Box::new(io_of(io_ext_bool())),
+        Node::new(io_ext_string()),
+        Node::new(io_of(io_ext_bool())),
     )
 }
 /// `IO.list_dir : String → IO (List String)`
@@ -1411,8 +1412,8 @@ pub fn axiom_io_list_dir_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("path"),
-        Box::new(io_ext_string()),
-        Box::new(io_of(io_ext_list(io_ext_string()))),
+        Node::new(io_ext_string()),
+        Node::new(io_of(io_ext_list(io_ext_string()))),
     )
 }
 /// Register all extended IO axioms into the given environment.

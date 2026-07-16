@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 pub(super) fn prop() -> Expr {
@@ -14,8 +15,8 @@ pub(super) fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 pub fn nat_const() -> Expr {
@@ -48,121 +49,121 @@ pub fn rel_ty(alpha_bvar: u32) -> Expr {
 #[allow(dead_code)]
 pub fn mk_wellfounded(rel: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-        Box::new(rel),
+        Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+        Node::new(rel),
     )
 }
 /// Create `Acc rel x`.
 #[allow(dead_code)]
 pub fn mk_acc(rel: Expr, x: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Acc"), vec![])),
-            Box::new(rel),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Acc"), vec![])),
+            Node::new(rel),
         )),
-        Box::new(x),
+        Node::new(x),
     )
 }
 /// Create `Acc.intro x h`.
 #[allow(dead_code)]
 pub fn mk_acc_intro(x: Expr, h: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Acc.intro"), vec![])),
-            Box::new(x),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Acc.intro"), vec![])),
+            Node::new(x),
         )),
-        Box::new(h),
+        Node::new(h),
     )
 }
 /// Create `WellFounded.fix wf f a`.
 #[allow(dead_code)]
 pub fn mk_wf_fix(wf: Expr, f: Expr, a: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("WellFounded.fix"), vec![])),
-                Box::new(wf),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("WellFounded.fix"), vec![])),
+                Node::new(wf),
             )),
-            Box::new(f),
+            Node::new(f),
         )),
-        Box::new(a),
+        Node::new(a),
     )
 }
 /// Create `Measure f`.
 #[allow(dead_code)]
 pub fn mk_measure(f: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Measure"), vec![])),
-        Box::new(f),
+        Node::new(Expr::Const(Name::str("Measure"), vec![])),
+        Node::new(f),
     )
 }
 /// Create `InvImage r f`.
 #[allow(dead_code)]
 pub fn mk_inv_image(r: Expr, f: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("InvImage"), vec![])),
-            Box::new(r),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("InvImage"), vec![])),
+            Node::new(r),
         )),
-        Box::new(f),
+        Node::new(f),
     )
 }
 /// Create `Prod.Lex ra rb`.
 #[allow(dead_code)]
 pub fn mk_prod_lex(ra: Expr, rb: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
-            Box::new(ra),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
+            Node::new(ra),
         )),
-        Box::new(rb),
+        Node::new(rb),
     )
 }
 /// Create `@sizeOf ty a`.
 #[allow(dead_code)]
 pub fn mk_sizeof(ty: Expr, a: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("sizeOf"), vec![])),
-            Box::new(ty),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("sizeOf"), vec![])),
+            Node::new(ty),
         )),
-        Box::new(a),
+        Node::new(a),
     )
 }
 /// Create `PSigma beta`.
 #[allow(dead_code)]
 pub fn mk_psigma(alpha: Expr, beta: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("PSigma"), vec![])),
-            Box::new(alpha),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("PSigma"), vec![])),
+            Node::new(alpha),
         )),
-        Box::new(beta),
+        Node::new(beta),
     )
 }
 /// Create `PSigma.mk fst snd`.
 #[allow(dead_code)]
 pub fn mk_psigma_mk(fst: Expr, snd: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("PSigma.mk"), vec![])),
-            Box::new(fst),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("PSigma.mk"), vec![])),
+            Node::new(fst),
         )),
-        Box::new(snd),
+        Node::new(snd),
     )
 }
 /// Create `Decreasing rel x y`.
 #[allow(dead_code)]
 pub fn mk_decreasing(rel: Expr, x: Expr, y: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Decreasing"), vec![])),
-                Box::new(rel),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Decreasing"), vec![])),
+                Node::new(rel),
             )),
-            Box::new(x),
+            Node::new(x),
         )),
-        Box::new(y),
+        Node::new(y),
     )
 }
 /// Build well-founded recursion declarations in the environment.
@@ -175,8 +176,8 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(arrow(rel_ty(0), prop())),
+            Node::new(sort_u()),
+            Node::new(arrow(rel_ty(0), prop())),
         ),
     })
     .map_err(|e| e.to_string())?;
@@ -186,12 +187,12 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("r"),
-                Box::new(rel_ty(0)),
-                Box::new(arrow(Expr::BVar(1), prop())),
+                Node::new(rel_ty(0)),
+                Node::new(arrow(Expr::BVar(1), prop())),
             )),
         ),
     })
@@ -202,45 +203,45 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("r"),
-                Box::new(rel_ty(0)),
-                Box::new(Expr::Pi(
+                Node::new(rel_ty(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("h"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("y"),
-                            Box::new(Expr::BVar(2)),
-                            Box::new(arrow(
+                            Node::new(Expr::BVar(2)),
+                            Node::new(arrow(
                                 Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::BVar(2)),
-                                        Box::new(Expr::BVar(0)),
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::BVar(2)),
+                                        Node::new(Expr::BVar(0)),
                                     )),
-                                    Box::new(Expr::BVar(1)),
+                                    Node::new(Expr::BVar(1)),
                                 ),
                                 Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                                        Box::new(Expr::BVar(3)),
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                                        Node::new(Expr::BVar(3)),
                                     )),
-                                    Box::new(Expr::BVar(1)),
+                                    Node::new(Expr::BVar(1)),
                                 ),
                             )),
                         )),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                                Box::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                                Node::new(Expr::BVar(2)),
                             )),
-                            Box::new(Expr::BVar(1)),
+                            Node::new(Expr::BVar(1)),
                         )),
                     )),
                 )),
@@ -254,41 +255,41 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("r"),
-                Box::new(rel_ty(0)),
-                Box::new(Expr::Pi(
+                Node::new(rel_ty(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("C"),
-                    Box::new(arrow(Expr::BVar(1), sort_v())),
-                    Box::new(Expr::Pi(
+                    Node::new(arrow(Expr::BVar(1), sort_v())),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("step"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("x"),
-                            Box::new(Expr::BVar(2)),
-                            Box::new(arrow(
+                            Node::new(Expr::BVar(2)),
+                            Node::new(arrow(
                                 Expr::Pi(
                                     BinderInfo::Default,
                                     Name::str("y"),
-                                    Box::new(Expr::BVar(3)),
-                                    Box::new(arrow(
+                                    Node::new(Expr::BVar(3)),
+                                    Node::new(arrow(
                                         Expr::App(
-                                            Box::new(Expr::App(
-                                                Box::new(Expr::BVar(3)),
-                                                Box::new(Expr::BVar(0)),
+                                            Node::new(Expr::App(
+                                                Node::new(Expr::BVar(3)),
+                                                Node::new(Expr::BVar(0)),
                                             )),
-                                            Box::new(Expr::BVar(1)),
+                                            Node::new(Expr::BVar(1)),
                                         ),
                                         Expr::App(
-                                            Box::new(Expr::App(
-                                                Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                                                Box::new(Expr::BVar(3)),
+                                            Node::new(Expr::App(
+                                                Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                                                Node::new(Expr::BVar(3)),
                                             )),
-                                            Box::new(Expr::BVar(0)),
+                                            Node::new(Expr::BVar(0)),
                                         ),
                                     )),
                                 ),
@@ -296,38 +297,38 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
                                     Expr::Pi(
                                         BinderInfo::Default,
                                         Name::str("y"),
-                                        Box::new(Expr::BVar(4)),
-                                        Box::new(arrow(
+                                        Node::new(Expr::BVar(4)),
+                                        Node::new(arrow(
                                             Expr::App(
-                                                Box::new(Expr::App(
-                                                    Box::new(Expr::BVar(4)),
-                                                    Box::new(Expr::BVar(0)),
+                                                Node::new(Expr::App(
+                                                    Node::new(Expr::BVar(4)),
+                                                    Node::new(Expr::BVar(0)),
                                                 )),
-                                                Box::new(Expr::BVar(2)),
+                                                Node::new(Expr::BVar(2)),
                                             ),
                                             Expr::App(
-                                                Box::new(Expr::BVar(3)),
-                                                Box::new(Expr::BVar(0)),
+                                                Node::new(Expr::BVar(3)),
+                                                Node::new(Expr::BVar(0)),
                                             ),
                                         )),
                                     ),
-                                    Expr::App(Box::new(Expr::BVar(3)), Box::new(Expr::BVar(2))),
+                                    Expr::App(Node::new(Expr::BVar(3)), Node::new(Expr::BVar(2))),
                                 ),
                             )),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Implicit,
                             Name::str("a"),
-                            Box::new(Expr::BVar(3)),
-                            Box::new(arrow(
+                            Node::new(Expr::BVar(3)),
+                            Node::new(arrow(
                                 Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                                        Box::new(Expr::BVar(3)),
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                                        Node::new(Expr::BVar(3)),
                                     )),
-                                    Box::new(Expr::BVar(0)),
+                                    Node::new(Expr::BVar(0)),
                                 ),
-                                Expr::App(Box::new(Expr::BVar(2)), Box::new(Expr::BVar(1))),
+                                Expr::App(Node::new(Expr::BVar(2)), Node::new(Expr::BVar(1))),
                             )),
                         )),
                     )),
@@ -342,29 +343,29 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("r"),
-                Box::new(rel_ty(0)),
-                Box::new(Expr::Pi(
+                Node::new(rel_ty(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("h"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("a"),
-                        Box::new(Expr::BVar(1)),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                                Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         )),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
                 )),
             )),
@@ -377,28 +378,28 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("r"),
-                Box::new(rel_ty(0)),
-                Box::new(Expr::Pi(
+                Node::new(rel_ty(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("wf"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("a"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                                Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                                Node::new(Expr::BVar(2)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         )),
                     )),
                 )),
@@ -412,58 +413,58 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("C"),
-                Box::new(arrow(Expr::BVar(0), sort_v())),
-                Box::new(Expr::Pi(
+                Node::new(arrow(Expr::BVar(0), sort_v())),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("r"),
-                    Box::new(rel_ty(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(rel_ty(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("wf"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                            Box::new(Expr::BVar(0)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                            Node::new(Expr::BVar(0)),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("F"),
-                            Box::new(Expr::Pi(
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("x"),
-                                Box::new(Expr::BVar(3)),
-                                Box::new(arrow(
+                                Node::new(Expr::BVar(3)),
+                                Node::new(arrow(
                                     Expr::Pi(
                                         BinderInfo::Default,
                                         Name::str("y"),
-                                        Box::new(Expr::BVar(4)),
-                                        Box::new(arrow(
+                                        Node::new(Expr::BVar(4)),
+                                        Node::new(arrow(
                                             Expr::App(
-                                                Box::new(Expr::App(
-                                                    Box::new(Expr::BVar(3)),
-                                                    Box::new(Expr::BVar(0)),
+                                                Node::new(Expr::App(
+                                                    Node::new(Expr::BVar(3)),
+                                                    Node::new(Expr::BVar(0)),
                                                 )),
-                                                Box::new(Expr::BVar(1)),
+                                                Node::new(Expr::BVar(1)),
                                             ),
                                             Expr::App(
-                                                Box::new(Expr::BVar(5)),
-                                                Box::new(Expr::BVar(1)),
+                                                Node::new(Expr::BVar(5)),
+                                                Node::new(Expr::BVar(1)),
                                             ),
                                         )),
                                     ),
-                                    Expr::App(Box::new(Expr::BVar(4)), Box::new(Expr::BVar(1))),
+                                    Expr::App(Node::new(Expr::BVar(4)), Node::new(Expr::BVar(1))),
                                 )),
                             )),
-                            Box::new(Expr::Pi(
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("a"),
-                                Box::new(Expr::BVar(4)),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::BVar(4)),
-                                    Box::new(Expr::BVar(0)),
+                                Node::new(Expr::BVar(4)),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::BVar(4)),
+                                    Node::new(Expr::BVar(0)),
                                 )),
                             )),
                         )),
@@ -479,12 +480,12 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(arrow(Expr::BVar(0), nat_const())),
-                Box::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
+                Node::new(arrow(Expr::BVar(0), nat_const())),
+                Node::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
             )),
         ),
     })
@@ -495,20 +496,20 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("beta"),
-                Box::new(sort_u()),
-                Box::new(Expr::Pi(
+                Node::new(sort_u()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("r"),
-                    Box::new(arrow(Expr::BVar(0), arrow(Expr::BVar(1), prop()))),
-                    Box::new(Expr::Pi(
+                    Node::new(arrow(Expr::BVar(0), arrow(Expr::BVar(1), prop()))),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("f"),
-                        Box::new(arrow(Expr::BVar(2), Expr::BVar(1))),
-                        Box::new(arrow(Expr::BVar(3), arrow(Expr::BVar(4), prop()))),
+                        Node::new(arrow(Expr::BVar(2), Expr::BVar(1))),
+                        Node::new(arrow(Expr::BVar(3), arrow(Expr::BVar(4), prop()))),
                     )),
                 )),
             )),
@@ -521,34 +522,34 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("beta"),
-                Box::new(sort_u()),
-                Box::new(Expr::Pi(
+                Node::new(sort_u()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("ra"),
-                    Box::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
-                    Box::new(Expr::Pi(
+                    Node::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("rb"),
-                        Box::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
-                        Box::new(arrow(
+                        Node::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
+                        Node::new(arrow(
                             Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                                    Box::new(Expr::BVar(3)),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                                    Node::new(Expr::BVar(3)),
                                 )),
-                                Box::new(Expr::BVar(2)),
+                                Node::new(Expr::BVar(2)),
                             ),
                             arrow(
                                 Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                                        Box::new(Expr::BVar(4)),
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                                        Node::new(Expr::BVar(4)),
                                     )),
-                                    Box::new(Expr::BVar(3)),
+                                    Node::new(Expr::BVar(3)),
                                 ),
                                 prop(),
                             ),
@@ -571,15 +572,15 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("inst"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("SizeOf"), vec![])),
-                    Box::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("SizeOf"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(arrow(Expr::BVar(1), nat_const())),
+                Node::new(arrow(Expr::BVar(1), nat_const())),
             )),
         ),
     })
@@ -596,8 +597,8 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         name: Name::str("Nat.lt_wfRel"),
         univ_params: vec![],
         ty: Expr::App(
-            Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat.lt"), vec![])),
+            Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat.lt"), vec![])),
         ),
     })
     .map_err(|e| e.to_string())?;
@@ -607,16 +608,16 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(arrow(Expr::BVar(0), nat_const())),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Measure"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                Node::new(arrow(Expr::BVar(0), nat_const())),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Measure"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     )),
                 )),
             )),
@@ -629,34 +630,34 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("beta"),
-                Box::new(sort_u()),
-                Box::new(Expr::Pi(
+                Node::new(sort_u()),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("r"),
-                    Box::new(arrow(Expr::BVar(0), arrow(Expr::BVar(1), prop()))),
-                    Box::new(Expr::Pi(
+                    Node::new(arrow(Expr::BVar(0), arrow(Expr::BVar(1), prop()))),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("wf"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                            Box::new(Expr::BVar(0)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                            Node::new(Expr::BVar(0)),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("f"),
-                            Box::new(arrow(Expr::BVar(3), Expr::BVar(2))),
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("InvImage"), vec![])),
-                                        Box::new(Expr::BVar(2)),
+                            Node::new(arrow(Expr::BVar(3), Expr::BVar(2))),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("InvImage"), vec![])),
+                                        Node::new(Expr::BVar(2)),
                                     )),
-                                    Box::new(Expr::BVar(0)),
+                                    Node::new(Expr::BVar(0)),
                                 )),
                             )),
                         )),
@@ -672,41 +673,41 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("beta"),
-                Box::new(sort_u()),
-                Box::new(Expr::Pi(
+                Node::new(sort_u()),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("ra"),
-                    Box::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
-                    Box::new(Expr::Pi(
+                    Node::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
+                    Node::new(Expr::Pi(
                         BinderInfo::Implicit,
                         Name::str("rb"),
-                        Box::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
-                        Box::new(Expr::Pi(
+                        Node::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("wfa"),
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                                Box::new(Expr::BVar(1)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::Pi(
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("wfb"),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                                    Box::new(Expr::BVar(1)),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                                    Node::new(Expr::BVar(1)),
                                 )),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::App(
-                                            Box::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
-                                            Box::new(Expr::BVar(3)),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::App(
+                                            Node::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
+                                            Node::new(Expr::BVar(3)),
                                         )),
-                                        Box::new(Expr::BVar(2)),
+                                        Node::new(Expr::BVar(2)),
                                     )),
                                 )),
                             )),
@@ -723,12 +724,12 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("r"),
-                Box::new(rel_ty(0)),
-                Box::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
+                Node::new(rel_ty(0)),
+                Node::new(arrow(Expr::BVar(1), arrow(Expr::BVar(2), prop()))),
             )),
         ),
     })
@@ -739,8 +740,8 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(arrow(
+            Node::new(sort_u()),
+            Node::new(arrow(
                 arrow(Expr::BVar(0), sort_v()),
                 Expr::Sort(Level::max(
                     Level::Param(Name::str("u")),
@@ -756,22 +757,25 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("beta"),
-                Box::new(arrow(Expr::BVar(0), sort_v())),
-                Box::new(Expr::Pi(
+                Node::new(arrow(Expr::BVar(0), sort_v())),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("fst"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("snd"),
-                        Box::new(Expr::App(Box::new(Expr::BVar(1)), Box::new(Expr::BVar(0)))),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("PSigma"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::BVar(1)),
+                            Node::new(Expr::BVar(0)),
+                        )),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("PSigma"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
                 )),
@@ -785,15 +789,15 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("beta"),
-                Box::new(arrow(Expr::BVar(0), sort_v())),
-                Box::new(arrow(
+                Node::new(arrow(Expr::BVar(0), sort_v())),
+                Node::new(arrow(
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("PSigma"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                        Node::new(Expr::Const(Name::str("PSigma"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     ),
                     Expr::BVar(1),
                 )),
@@ -807,29 +811,29 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("beta"),
-                Box::new(arrow(Expr::BVar(0), sort_v())),
-                Box::new(Expr::Pi(
+                Node::new(arrow(Expr::BVar(0), sort_v())),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("p"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("PSigma"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("PSigma"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::BVar(1)),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("PSigma.fst"), vec![])),
-                                    Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::BVar(1)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("PSigma.fst"), vec![])),
+                                    Node::new(Expr::BVar(2)),
                                 )),
-                                Box::new(Expr::BVar(1)),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         )),
                     )),
                 )),
@@ -843,36 +847,36 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("alpha"),
-            Box::new(sort_u()),
-            Box::new(Expr::Pi(
+            Node::new(sort_u()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("r"),
-                Box::new(rel_ty(0)),
-                Box::new(Expr::Pi(
+                Node::new(rel_ty(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("C"),
-                    Box::new(arrow(Expr::BVar(1), sort_v())),
-                    Box::new(Expr::Pi(
+                    Node::new(arrow(Expr::BVar(1), sort_v())),
+                    Node::new(Expr::Pi(
                         BinderInfo::Implicit,
                         Name::str("a"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("acc"),
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                                    Box::new(Expr::BVar(3)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                                    Node::new(Expr::BVar(3)),
                                 )),
-                                Box::new(Expr::BVar(0)),
+                                Node::new(Expr::BVar(0)),
                             )),
-                            Box::new(Expr::Pi(
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("step"),
-                                Box::new(arrow(Expr::BVar(3), arrow(prop(), sort_v()))),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::BVar(3)),
-                                    Box::new(Expr::BVar(2)),
+                                Node::new(arrow(Expr::BVar(3), arrow(prop(), sort_v()))),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::BVar(3)),
+                                    Node::new(Expr::BVar(2)),
                                 )),
                             )),
                         )),
@@ -885,102 +889,105 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
     let fix_eq_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("alpha"),
-        Box::new(sort_u()),
-        Box::new(Expr::Pi(
+        Node::new(sort_u()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("r"),
-            Box::new(rel_ty(0)),
-            Box::new(Expr::Pi(
+            Node::new(rel_ty(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("C"),
-                Box::new(arrow(Expr::BVar(1), sort_v())),
-                Box::new(arrow(
+                Node::new(arrow(Expr::BVar(1), sort_v())),
+                Node::new(arrow(
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     ),
                     arrow(
                         Expr::Pi(
                             BinderInfo::Default,
                             Name::str("x"),
-                            Box::new(Expr::BVar(3)),
-                            Box::new(arrow(
+                            Node::new(Expr::BVar(3)),
+                            Node::new(arrow(
                                 Expr::Pi(
                                     BinderInfo::Default,
                                     Name::str("y"),
-                                    Box::new(Expr::BVar(4)),
-                                    Box::new(arrow(
+                                    Node::new(Expr::BVar(4)),
+                                    Node::new(arrow(
                                         Expr::App(
-                                            Box::new(Expr::App(
-                                                Box::new(Expr::BVar(4)),
-                                                Box::new(Expr::BVar(0)),
+                                            Node::new(Expr::App(
+                                                Node::new(Expr::BVar(4)),
+                                                Node::new(Expr::BVar(0)),
                                             )),
-                                            Box::new(Expr::BVar(1)),
+                                            Node::new(Expr::BVar(1)),
                                         ),
-                                        Expr::App(Box::new(Expr::BVar(3)), Box::new(Expr::BVar(0))),
+                                        Expr::App(
+                                            Node::new(Expr::BVar(3)),
+                                            Node::new(Expr::BVar(0)),
+                                        ),
                                     )),
                                 ),
-                                Expr::App(Box::new(Expr::BVar(3)), Box::new(Expr::BVar(1))),
+                                Expr::App(Node::new(Expr::BVar(3)), Node::new(Expr::BVar(1))),
                             )),
                         ),
                         Expr::Pi(
                             BinderInfo::Default,
                             Name::str("a"),
-                            Box::new(Expr::BVar(4)),
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                                        Box::new(Expr::App(
-                                            Box::new(Expr::BVar(3)),
-                                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(4)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                                        Node::new(Expr::App(
+                                            Node::new(Expr::BVar(3)),
+                                            Node::new(Expr::BVar(0)),
                                         )),
                                     )),
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::App(
-                                            Box::new(Expr::App(
-                                                Box::new(Expr::Const(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::App(
+                                            Node::new(Expr::App(
+                                                Node::new(Expr::Const(
                                                     Name::str("WellFounded.fix"),
                                                     vec![],
                                                 )),
-                                                Box::new(Expr::BVar(2)),
+                                                Node::new(Expr::BVar(2)),
                                             )),
-                                            Box::new(Expr::BVar(1)),
+                                            Node::new(Expr::BVar(1)),
                                         )),
-                                        Box::new(Expr::BVar(0)),
+                                        Node::new(Expr::BVar(0)),
                                     )),
                                 )),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::BVar(1)),
-                                        Box::new(Expr::BVar(0)),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::BVar(1)),
+                                        Node::new(Expr::BVar(0)),
                                     )),
-                                    Box::new(Expr::Lam(
+                                    Node::new(Expr::Lam(
                                         BinderInfo::Default,
                                         Name::str("y"),
-                                        Box::new(Expr::BVar(5)),
-                                        Box::new(Expr::Lam(
+                                        Node::new(Expr::BVar(5)),
+                                        Node::new(Expr::Lam(
                                             BinderInfo::Default,
                                             Name::str("hy"),
-                                            Box::new(Expr::App(
-                                                Box::new(Expr::App(
-                                                    Box::new(Expr::BVar(6)),
-                                                    Box::new(Expr::BVar(1)),
+                                            Node::new(Expr::App(
+                                                Node::new(Expr::App(
+                                                    Node::new(Expr::BVar(6)),
+                                                    Node::new(Expr::BVar(1)),
                                                 )),
-                                                Box::new(Expr::BVar(2)),
+                                                Node::new(Expr::BVar(2)),
                                             )),
-                                            Box::new(Expr::App(
-                                                Box::new(Expr::App(
-                                                    Box::new(Expr::App(
-                                                        Box::new(Expr::Const(
+                                            Node::new(Expr::App(
+                                                Node::new(Expr::App(
+                                                    Node::new(Expr::App(
+                                                        Node::new(Expr::Const(
                                                             Name::str("WellFounded.fix"),
                                                             vec![],
                                                         )),
-                                                        Box::new(Expr::BVar(4)),
+                                                        Node::new(Expr::BVar(4)),
                                                     )),
-                                                    Box::new(Expr::BVar(3)),
+                                                    Node::new(Expr::BVar(3)),
                                                 )),
-                                                Box::new(Expr::BVar(1)),
+                                                Node::new(Expr::BVar(1)),
                                             )),
                                         )),
                                     )),
@@ -1002,39 +1009,42 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
     let measure_lt_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("alpha"),
-        Box::new(sort_u()),
-        Box::new(Expr::Pi(
+        Node::new(sort_u()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("f"),
-            Box::new(arrow(Expr::BVar(0), nat_const())),
-            Box::new(Expr::Pi(
+            Node::new(arrow(Expr::BVar(0), nat_const())),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("y"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(arrow(
+                    Node::new(Expr::BVar(2)),
+                    Node::new(arrow(
                         Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Nat.lt"), vec![])),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::BVar(2)),
-                                    Box::new(Expr::BVar(1)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Nat.lt"), vec![])),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::BVar(2)),
+                                    Node::new(Expr::BVar(1)),
                                 )),
                             )),
-                            Box::new(Expr::App(Box::new(Expr::BVar(2)), Box::new(Expr::BVar(0)))),
+                            Node::new(Expr::App(
+                                Node::new(Expr::BVar(2)),
+                                Node::new(Expr::BVar(0)),
+                            )),
                         ),
                         Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Measure"), vec![])),
-                                    Box::new(Expr::BVar(3)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Measure"), vec![])),
+                                    Node::new(Expr::BVar(3)),
                                 )),
-                                Box::new(Expr::BVar(2)),
+                                Node::new(Expr::BVar(2)),
                             )),
-                            Box::new(Expr::BVar(1)),
+                            Node::new(Expr::BVar(1)),
                         ),
                     )),
                 )),
@@ -1051,13 +1061,13 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
     let nat_lt_wf_aux_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(nat_const()),
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat.lt"), vec![])),
+        Node::new(nat_const()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat.lt"), vec![])),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         )),
     );
     env.add(Declaration::Theorem {
@@ -1070,19 +1080,19 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
     let sizeof_nat_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(nat_const()),
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("sizeOf"), vec![])),
-                        Box::new(nat_const()),
+        Node::new(nat_const()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("sizeOf"), vec![])),
+                        Node::new(nat_const()),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         )),
     );
     env.add(Declaration::Theorem {
@@ -1095,56 +1105,56 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
     let sizeof_prod_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("alpha"),
-        Box::new(sort_u()),
-        Box::new(Expr::Pi(
+        Node::new(sort_u()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("beta"),
-            Box::new(sort_v()),
-            Box::new(Expr::Pi(
+            Node::new(sort_v()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                                Box::new(nat_const()),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                                Node::new(nat_const()),
                             )),
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("sizeOf"), vec![])),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Prod.mk"), vec![])),
-                                        Box::new(Expr::BVar(1)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("sizeOf"), vec![])),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Prod.mk"), vec![])),
+                                        Node::new(Expr::BVar(1)),
                                     )),
-                                    Box::new(Expr::BVar(0)),
+                                    Node::new(Expr::BVar(0)),
                                 )),
                             )),
                         )),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                                        Box::new(Expr::App(
-                                            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                                            Box::new(Expr::Const(Name::str("Nat.zero"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                                        Node::new(Expr::App(
+                                            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                                            Node::new(Expr::Const(Name::str("Nat.zero"), vec![])),
                                         )),
                                     )),
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("sizeOf"), vec![])),
-                                        Box::new(Expr::BVar(1)),
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("sizeOf"), vec![])),
+                                        Node::new(Expr::BVar(1)),
                                     )),
                                 )),
                             )),
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("sizeOf"), vec![])),
-                                Box::new(Expr::BVar(0)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("sizeOf"), vec![])),
+                                Node::new(Expr::BVar(0)),
                             )),
                         )),
                     )),
@@ -1174,16 +1184,16 @@ pub fn add_prereqs_if_missing(env: &mut Environment) -> Result<(), String> {
         let eq_ty = Expr::Pi(
             BinderInfo::Implicit,
             Name::str("a"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("y"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(prop()),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(prop()),
                 )),
             )),
         );

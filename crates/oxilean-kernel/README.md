@@ -12,7 +12,7 @@ The kernel is the core responsible for type checking in the Calculus of Inductiv
 - **Zero external dependencies** -- only `std` is used
 - **No `unsafe` code** -- enforced by `#![forbid(unsafe_code)]`
 - **115,444 SLOC** -- comprehensive implementation (904 source files)
-- **3,444 tests passing** -- comprehensive coverage
+- **3,492 tests passing** -- comprehensive coverage
 - **WASM-compatible** -- no system calls
 
 ## Module Overview
@@ -84,12 +84,17 @@ The core expression type -- all terms in the type theory:
 | `FVar(FVarId)` | Free variable (unique ID) | `x`, `alpha` |
 | `Sort(Level)` | Universe sort | `Prop`, `Type u` |
 | `Const(Name, Vec<Level>)` | Named constant | `Nat.add.{u}` |
-| `App(Box<Expr>, Box<Expr>)` | Application | `f a` |
-| `Lam(BinderInfo, Name, Box<Expr>, Box<Expr>)` | Lambda | `fun (x : T), body` |
-| `Pi(BinderInfo, Name, Box<Expr>, Box<Expr>)` | Pi / forall | `Pi (x : T), body` |
-| `Let(Name, Box<Expr>, Box<Expr>, Box<Expr>)` | Let binding | `let x : T := v in body` |
+| `App(Node, Node)` | Application | `f a` |
+| `Lam(BinderInfo, Name, Node, Node)` | Lambda | `fun (x : T), body` |
+| `Pi(BinderInfo, Name, Node, Node)` | Pi / forall | `Pi (x : T), body` |
+| `Let(Name, Node, Node, Node)` | Let binding | `let x : T := v in body` |
 | `Lit(Literal)` | Literal | `42`, `"hello"` |
-| `Proj(Name, u32, Box<Expr>)` | Projection | `s.1` |
+| `Proj(Name, u32, Node)` | Projection | `s.1` |
+
+Child edges are `Node` — a transparent wrapper over `Rc<Expr>` that caches each
+subterm's `looseBVarRange` and rebuild-cost for structural sharing (wave5), so
+`clone` is an O(1) refcount bump and a substitution can skip an untouched
+subtree in O(1). `Node` `Deref`s to `Expr`, so pattern matching is unchanged.
 
 ## Usage
 

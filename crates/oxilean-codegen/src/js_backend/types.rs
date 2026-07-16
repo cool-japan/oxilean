@@ -931,6 +931,7 @@ impl JsBackend {
     pub fn compile_lit(&self, lit: &LcnfLit) -> JsExpr {
         match lit {
             LcnfLit::Nat(n) => JsExpr::Lit(JsLit::BigInt(*n as i64)),
+            LcnfLit::Int(i) => JsExpr::Lit(JsLit::BigInt(*i)),
             LcnfLit::Str(s) => JsExpr::Lit(JsLit::Str(s.clone())),
         }
     }

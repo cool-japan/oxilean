@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::functions::*;
@@ -1770,16 +1771,16 @@ mod tests {
             ty: Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("_"),
-                Box::new(type0()),
-                Box::new(Expr::Pi(
+                Node::new(type0()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(0)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(0)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(1)),
-                        Box::new(prop()),
+                        Node::new(Expr::BVar(1)),
+                        Node::new(prop()),
                     )),
                 )),
             ),

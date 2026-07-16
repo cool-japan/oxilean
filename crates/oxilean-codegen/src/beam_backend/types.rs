@@ -1159,6 +1159,7 @@ impl BeamBackend {
     pub fn emit_literal(&self, lit: &LcnfLit) -> BeamExpr {
         match lit {
             LcnfLit::Nat(n) => BeamExpr::LitInt(*n as i64),
+            LcnfLit::Int(i) => BeamExpr::LitInt(*i),
             LcnfLit::Str(s) => BeamExpr::LitString(s.clone()),
         }
     }

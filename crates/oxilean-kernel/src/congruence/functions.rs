@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Name};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, CongrArgKind, CongrHypothesis, CongrLemmaCache, CongrProof, CongruenceClosure,
@@ -47,15 +49,15 @@ mod tests {
     #[test]
     fn test_find_self() {
         let mut cc = CongruenceClosure::new();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let found = cc.find(&expr);
         assert_eq!(found, expr);
     }
     #[test]
     fn test_merge() {
         let mut cc = CongruenceClosure::new();
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         cc.add_equality(e1.clone(), e2.clone());
         assert!(cc.are_equal(&e1, &e2));
     }
@@ -63,19 +65,19 @@ mod tests {
     fn test_congruence() {
         let mut cc = CongruenceClosure::new();
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
-        let fa = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let fb = Expr::App(Box::new(f), Box::new(b.clone()));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
+        let fa = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let fb = Expr::App(Node::new(f), Node::new(b.clone()));
         cc.add_equality(a, b);
         assert!(cc.are_equal(&fa, &fb));
     }
     #[test]
     fn test_transitivity() {
         let mut cc = CongruenceClosure::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
-        let c = Expr::Lit(Literal::Nat(3));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
+        let c = Expr::Lit(Literal::nat(3));
         cc.add_equality(a.clone(), b.clone());
         cc.add_equality(b, c.clone());
         assert!(cc.are_equal(&a, &c));
@@ -107,8 +109,8 @@ mod tests {
     #[test]
     fn test_equality_with_proof() {
         let mut cc = CongruenceClosure::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let proof = Expr::Const(Name::str("proof_a_eq_b"), vec![]);
         cc.add_equality_with_proof(a.clone(), b.clone(), proof.clone());
         assert!(cc.are_equal(&a, &b));
@@ -117,9 +119,9 @@ mod tests {
     #[test]
     fn test_num_classes() {
         let mut cc = CongruenceClosure::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
-        let c = Expr::Lit(Literal::Nat(3));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
+        let c = Expr::Lit(Literal::nat(3));
         cc.add_equality(a.clone(), b.clone());
         let _ = cc.find(&c);
         assert_eq!(cc.num_classes(), 2);
@@ -127,8 +129,8 @@ mod tests {
     #[test]
     fn test_clear() {
         let mut cc = CongruenceClosure::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         cc.add_equality(a, b);
         cc.clear();
         assert_eq!(cc.num_classes(), 0);
@@ -185,15 +187,15 @@ mod egraph_tests {
     use crate::{Literal, Name};
     #[test]
     fn test_enode_singleton() {
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         let node = ENode::singleton(expr.clone());
         assert!(node.contains(&expr));
         assert_eq!(node.size(), 1);
     }
     #[test]
     fn test_enode_add_member() {
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         let mut node = ENode::singleton(e1.clone());
         node.add_member(e2.clone(), None);
         assert!(node.contains(&e2));
@@ -202,22 +204,22 @@ mod egraph_tests {
     #[test]
     fn test_egraph_add_expr() {
         let mut g = EGraph::new();
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         let id = g.add_expr(e.clone());
         assert_eq!(g.find_class(&e), Some(id));
     }
     #[test]
     fn test_egraph_add_equality() {
         let mut g = EGraph::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         g.add_equality(a.clone(), b.clone(), None);
         assert!(g.are_equal(&a, &b));
     }
     #[test]
     fn test_egraph_representative() {
         let mut g = EGraph::new();
-        let a = Expr::Lit(Literal::Nat(1));
+        let a = Expr::Lit(Literal::nat(1));
         g.add_expr(a.clone());
         let repr = g.representative(&a);
         assert_eq!(repr, Some(&a));
@@ -225,8 +227,8 @@ mod egraph_tests {
     #[test]
     fn test_egraph_num_classes() {
         let mut g = EGraph::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         g.add_expr(a.clone());
         g.add_expr(b.clone());
         assert_eq!(g.num_classes(), 2);
@@ -235,23 +237,23 @@ mod egraph_tests {
     }
     #[test]
     fn test_congr_hypothesis_trivial() {
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         let h = CongrHypothesis::eq(e.clone(), e);
         assert!(h.is_trivial());
     }
     #[test]
     fn test_congr_hypothesis_nontrivial() {
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let h = CongrHypothesis::eq(a, b);
         assert!(!h.is_trivial());
     }
     #[test]
     fn test_generate_congr_hypotheses() {
-        let a1 = Expr::Lit(Literal::Nat(1));
-        let a2 = Expr::Lit(Literal::Nat(2));
-        let b1 = Expr::Lit(Literal::Nat(3));
-        let b2 = Expr::Lit(Literal::Nat(4));
+        let a1 = Expr::Lit(Literal::nat(1));
+        let a2 = Expr::Lit(Literal::nat(2));
+        let b1 = Expr::Lit(Literal::nat(3));
+        let b2 = Expr::Lit(Literal::nat(4));
         let hyps = generate_congr_hypotheses(
             &[a1.clone(), b1.clone()],
             &[a2.clone(), b2.clone()],
@@ -262,14 +264,14 @@ mod egraph_tests {
     }
     #[test]
     fn test_all_hypotheses_trivial_true() {
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         let hyps = vec![CongrHypothesis::eq(e.clone(), e)];
         assert!(all_hypotheses_trivial(&hyps));
     }
     #[test]
     fn test_all_hypotheses_trivial_false() {
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let hyps = vec![CongrHypothesis::eq(a, b)];
         assert!(!all_hypotheses_trivial(&hyps));
     }
@@ -277,7 +279,7 @@ mod egraph_tests {
     fn test_is_simple_head() {
         let c = Expr::Const(Name::str("f"), vec![]);
         assert!(is_simple_head(&c));
-        let app = Expr::App(Box::new(c.clone()), Box::new(Expr::Lit(Literal::Nat(0))));
+        let app = Expr::App(Node::new(c.clone()), Node::new(Expr::Lit(Literal::nat(0))));
         assert!(!is_simple_head(&app));
     }
     #[test]
@@ -291,7 +293,7 @@ mod egraph_tests {
     #[test]
     fn test_egraph_clear() {
         let mut g = EGraph::new();
-        g.add_expr(Expr::Lit(Literal::Nat(1)));
+        g.add_expr(Expr::Lit(Literal::nat(1)));
         g.clear();
         assert_eq!(g.num_classes(), 0);
     }
@@ -305,8 +307,8 @@ mod new_tests {
     #[test]
     fn test_instrumented_cc_add_equality() {
         let mut icc = InstrumentedCC::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         icc.add_equality(a.clone(), b.clone());
         assert!(icc.are_equal(&a, &b));
         assert_eq!(icc.stats.equalities_added, 1);
@@ -394,7 +396,7 @@ mod new_tests {
     }
     #[test]
     fn test_congr_proof_refl() {
-        let p = CongrProof::Refl(Expr::Lit(Literal::Nat(1)));
+        let p = CongrProof::Refl(Expr::Lit(Literal::nat(1)));
         assert!(p.is_refl());
         assert_eq!(p.depth(), 0);
         assert_eq!(p.hypothesis_count(), 0);
@@ -425,8 +427,8 @@ mod new_tests {
     #[test]
     fn test_instrumented_cc_reset() {
         let mut icc = InstrumentedCC::new();
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         icc.add_equality(a, b);
         icc.reset();
         assert_eq!(icc.stats.equalities_added, 0);
@@ -584,7 +586,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

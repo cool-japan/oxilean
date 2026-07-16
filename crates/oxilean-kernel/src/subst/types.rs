@@ -3,8 +3,10 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use crate::Node;
 use crate::{Expr, FVarId};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// A pair of `StatSummary` values tracking before/after a transformation.
 #[allow(dead_code)]
@@ -111,7 +113,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -121,7 +123,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -135,7 +137,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;
@@ -1091,29 +1093,30 @@ impl Substitution {
                     expr.clone()
                 }
             }
-            Expr::App(f, a) => {
-                Expr::App(Box::new(self.apply_inner(f)), Box::new(self.apply_inner(a)))
-            }
+            Expr::App(f, a) => Expr::App(
+                Node::new(self.apply_inner(f)),
+                Node::new(self.apply_inner(a)),
+            ),
             Expr::Lam(bi, name, ty, body) => Expr::Lam(
                 *bi,
                 name.clone(),
-                Box::new(self.apply_inner(ty)),
-                Box::new(self.apply_inner(body)),
+                Node::new(self.apply_inner(ty)),
+                Node::new(self.apply_inner(body)),
             ),
             Expr::Pi(bi, name, ty, body) => Expr::Pi(
                 *bi,
                 name.clone(),
-                Box::new(self.apply_inner(ty)),
-                Box::new(self.apply_inner(body)),
+                Node::new(self.apply_inner(ty)),
+                Node::new(self.apply_inner(body)),
             ),
             Expr::Let(name, ty, val, body) => Expr::Let(
                 name.clone(),
-                Box::new(self.apply_inner(ty)),
-                Box::new(self.apply_inner(val)),
-                Box::new(self.apply_inner(body)),
+                Node::new(self.apply_inner(ty)),
+                Node::new(self.apply_inner(val)),
+                Node::new(self.apply_inner(body)),
             ),
             Expr::Proj(name, idx, inner) => {
-                Expr::Proj(name.clone(), *idx, Box::new(self.apply_inner(inner)))
+                Expr::Proj(name.clone(), *idx, Node::new(self.apply_inner(inner)))
             }
             _ => expr.clone(),
         }
@@ -1153,7 +1156,7 @@ impl Substitution {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -1161,7 +1164,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }

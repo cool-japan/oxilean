@@ -448,6 +448,7 @@ impl CtfeInterpreter {
     pub fn eval_lit(&self, lit: &LcnfLit) -> CtfeValue {
         match lit {
             LcnfLit::Nat(n) => CtfeValue::Int(*n as i64),
+            LcnfLit::Int(i) => CtfeValue::Int(*i),
             LcnfLit::Str(s) => CtfeValue::String(s.clone()),
         }
     }

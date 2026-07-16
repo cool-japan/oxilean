@@ -13,6 +13,7 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 
 /// Maximum number of arguments per constructor for injection.
@@ -52,7 +53,7 @@ pub(super) fn parse_eq_expr(expr: &Expr) -> Option<(Expr, Expr, Expr)> {
             if let Expr::App(eq_const, ty) = f2.as_ref() {
                 if let Expr::Const(name, _) = &**eq_const {
                     if name.to_string().contains("Eq") || name.to_string().contains("eq") {
-                        return Some((*ty.clone(), *lhs.clone(), *rhs.clone()));
+                        return Some(((**ty).clone(), (**lhs).clone(), (**rhs).clone()));
                     }
                 }
             }
@@ -65,8 +66,8 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
     let mut args = Vec::new();
     let mut head = expr.clone();
     while let Expr::App(f, a) = head {
-        args.push(*a);
-        head = *f;
+        args.push((*a).clone());
+        head = (*f).clone();
     }
     args.reverse();
     (head, args)
@@ -75,7 +76,7 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
 pub(super) fn mk_app(head: Expr, args: Vec<Expr>) -> Expr {
     let mut result = head;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg));
+        result = Expr::App(Node::new(result), Node::new(arg));
     }
     result
 }
@@ -159,7 +160,7 @@ pub(super) fn build_injection_motive(
         let lhs = lhs_args.get(i).cloned().unwrap_or(Expr::BVar(0));
         let rhs = rhs_args.get(i).cloned().unwrap_or(Expr::BVar(0));
         let eq_ty = build_eq_expr(&Expr::Sort(Level::Zero), &lhs, &rhs);
-        body = Expr::Lam(BinderInfo::Default, name, Box::new(eq_ty), Box::new(body));
+        body = Expr::Lam(BinderInfo::Default, name, Node::new(eq_ty), Node::new(body));
     }
     body
 }
@@ -394,7 +395,10 @@ mod tests {
         Expr::Const(Name::str(name), vec![])
     }
     fn mk_app2(f: Expr, a: Expr, b: Expr) -> Expr {
-        Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b))
+        Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        )
     }
     fn mk_eq_expr(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
         let eq_const = Expr::Const(Name::str("Eq"), vec![Level::Zero]);

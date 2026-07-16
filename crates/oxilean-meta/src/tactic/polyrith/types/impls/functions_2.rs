@@ -211,29 +211,6 @@ impl PolyrithTactic {
             .sum();
         lhs_const == rhs_const
     }
-    /// Convenient string-based interface: parse simple integer constants and
-    /// try to prove `goal` as a linear combination of `hyps`.
-    ///
-    /// Each string should be a decimal integer (representing a constant polynomial).
-    /// Returns `true` if the tactic succeeds.
-    pub fn run_with_strings(&self, hyps: &[&str], goal: &str) -> bool {
-        let mut tac = PolyrithTactic::new();
-        let parsed_hyps: Vec<Polynomial> = hyps
-            .iter()
-            .map(|s| {
-                let c: i64 = s.trim().parse().unwrap_or(0);
-                let mut p = Polynomial::new();
-                p.add_term(Monomial::new(c));
-                p
-            })
-            .collect();
-        let goal_val: i64 = goal.trim().parse().unwrap_or(0);
-        let mut goal_poly = Polynomial::new();
-        goal_poly.add_term(Monomial::new(goal_val));
-        tac.set_hypotheses(parsed_hyps);
-        tac.set_goal(goal_poly);
-        tac.run().is_some()
-    }
 }
 #[allow(dead_code)]
 impl TacticPolyrithConfigValue {

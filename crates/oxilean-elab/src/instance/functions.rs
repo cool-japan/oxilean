@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn test_find_instance_none() {
         let mut resolver = InstanceResolver::new();
-        let ty = Expr::Lit(Literal::Nat(42));
+        let ty = Expr::Lit(Literal::nat(42));
         let found = resolver.find_instance(&Name::str("Unknown"), &ty);
         assert!(found.is_none());
     }

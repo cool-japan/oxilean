@@ -8,8 +8,10 @@
 //! so callers cannot accidentally conflate "a key for lookup" with "a live
 //! expression value".
 
+use crate::Node;
 use crate::{BinderInfo, Expr, FVarId, Level, Literal, Name};
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 /// Structural key derived from the content of one `Expr` node.
 ///
@@ -86,22 +88,27 @@ impl ExprKey {
 
     /// Key for `Expr::App(f, a)`.
     pub fn app(f: Expr, a: Expr) -> Self {
-        Self::new(Expr::App(Box::new(f), Box::new(a)))
+        Self::new(Expr::App(Node::new(f), Node::new(a)))
     }
 
     /// Key for `Expr::Lam(bi, name, dom, body)`.
     pub fn lam(bi: BinderInfo, name: Name, dom: Expr, body: Expr) -> Self {
-        Self::new(Expr::Lam(bi, name, Box::new(dom), Box::new(body)))
+        Self::new(Expr::Lam(bi, name, Node::new(dom), Node::new(body)))
     }
 
     /// Key for `Expr::Pi(bi, name, dom, cod)`.
     pub fn pi(bi: BinderInfo, name: Name, dom: Expr, cod: Expr) -> Self {
-        Self::new(Expr::Pi(bi, name, Box::new(dom), Box::new(cod)))
+        Self::new(Expr::Pi(bi, name, Node::new(dom), Node::new(cod)))
     }
 
     /// Key for `Expr::Let(name, ty, val, body)`.
     pub fn let_(name: Name, ty: Expr, val: Expr, body: Expr) -> Self {
-        Self::new(Expr::Let(name, Box::new(ty), Box::new(val), Box::new(body)))
+        Self::new(Expr::Let(
+            name,
+            Node::new(ty),
+            Node::new(val),
+            Node::new(body),
+        ))
     }
 
     /// Key for `Expr::Lit(lit)`.
@@ -111,7 +118,7 @@ impl ExprKey {
 
     /// Key for `Expr::Proj(name, idx, struct_expr)`.
     pub fn proj(name: Name, idx: u32, struct_expr: Expr) -> Self {
-        Self::new(Expr::Proj(name, idx, Box::new(struct_expr)))
+        Self::new(Expr::Proj(name, idx, Node::new(struct_expr)))
     }
 }
 
@@ -225,8 +232,8 @@ mod tests {
 
     #[test]
     fn test_expr_key_lit_nat_equals() {
-        let k1 = ExprKey::lit(Literal::Nat(42));
-        let k2 = ExprKey::lit(Literal::Nat(42));
+        let k1 = ExprKey::lit(Literal::nat(42));
+        let k2 = ExprKey::lit(Literal::nat(42));
         assert_eq!(k1, k2);
     }
 

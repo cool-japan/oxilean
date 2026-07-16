@@ -1491,6 +1491,7 @@ impl RubyBackend {
     pub(super) fn compile_lit(&self, lit: &LcnfLit) -> RubyExpr {
         match lit {
             LcnfLit::Nat(n) => RubyExpr::Lit(RubyLit::Int(*n as i64)),
+            LcnfLit::Int(i) => RubyExpr::Lit(RubyLit::Int(*i)),
             LcnfLit::Str(s) => RubyExpr::Lit(RubyLit::Str(s.clone())),
         }
     }

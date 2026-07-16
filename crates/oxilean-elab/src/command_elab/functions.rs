@@ -2,7 +2,8 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
-use oxilean_kernel::{BinderInfo, Expr, Level, Name};
+use oxilean_kernel::Node;
+use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
 use std::collections::{HashMap, HashSet};
 
 use super::types::{
@@ -154,8 +155,8 @@ pub fn abstract_section_vars(expr: &Expr, section_vars: &[(Name, Expr, BinderInf
         result = Expr::Pi(
             *binder_info,
             name.clone(),
-            Box::new(ty.clone()),
-            Box::new(result),
+            Node::new(ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -167,8 +168,8 @@ pub fn abstract_section_vars_lam(expr: &Expr, section_vars: &[(Name, Expr, Binde
         result = Expr::Lam(
             *binder_info,
             name.clone(),
-            Box::new(ty.clone()),
-            Box::new(result),
+            Node::new(ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -334,7 +335,7 @@ fn pretty_expr(expr: &Expr) -> String {
     match expr {
         Expr::Sort(Level::Zero) => "Prop".to_string(),
         Expr::Sort(_) => "Type".to_string(),
-        Expr::Lit(oxilean_kernel::Literal::Nat(n)) => format!("{}", n),
+        Expr::Lit(Literal::Nat(n)) => format!("{}", n),
         Expr::Lit(oxilean_kernel::Literal::Str(s)) => format!("\"{}\"", s),
         Expr::Const(name, _) => name.to_string(),
         Expr::BVar(i) => format!("#{}", i),
@@ -376,7 +377,7 @@ fn describe_type(expr: &Expr) -> String {
     match expr {
         Expr::Sort(Level::Zero) => "Prop".to_string(),
         Expr::Sort(_) => "Type".to_string(),
-        Expr::Lit(oxilean_kernel::Literal::Nat(_)) => "Nat".to_string(),
+        Expr::Lit(Literal::Nat(_)) => "Nat".to_string(),
         Expr::Lit(oxilean_kernel::Literal::Str(_)) => "String".to_string(),
         Expr::Lam(_, _, param_ty, _) => format!("{} -> _", pretty_expr(param_ty)),
         Expr::Pi(_, _, domain, codomain) => {
@@ -416,7 +417,7 @@ pub fn elaborate_eval_cmd(
 /// `pretty_expr` for complex expressions.
 fn evaluate_simple(expr: &Expr) -> String {
     match expr {
-        Expr::Lit(oxilean_kernel::Literal::Nat(n)) => format!("{}", n),
+        Expr::Lit(Literal::Nat(n)) => format!("{}", n),
         Expr::Lit(oxilean_kernel::Literal::Str(s)) => format!("\"{}\"", s),
         Expr::Const(name, _) => name.to_string(),
         Expr::App(f, a) => {
@@ -898,7 +899,7 @@ mod tests {
     #[test]
     fn test_check_cmd_nat() {
         let state = CommandState::new();
-        let result = elaborate_check_cmd(&Expr::Lit(oxilean_kernel::Literal::Nat(42)), &state);
+        let result = elaborate_check_cmd(&Expr::Lit(oxilean_kernel::Literal::nat(42)), &state);
         assert!(result.is_ok());
         assert!(!result
             .expect("test operation should succeed")
@@ -914,7 +915,7 @@ mod tests {
     #[test]
     fn test_eval_cmd_nat() {
         let state = CommandState::new();
-        let result = elaborate_eval_cmd(&Expr::Lit(oxilean_kernel::Literal::Nat(42)), &state);
+        let result = elaborate_eval_cmd(&Expr::Lit(oxilean_kernel::Literal::nat(42)), &state);
         assert!(result.is_ok());
         let r = result.expect("test operation should succeed");
         assert!(r.messages[0].contains("42"));
@@ -937,7 +938,7 @@ mod tests {
             Name::str("foo"),
             DeclInfo {
                 ty: nat_ty(),
-                val: Some(Expr::Lit(oxilean_kernel::Literal::Nat(42))),
+                val: Some(Expr::Lit(oxilean_kernel::Literal::nat(42))),
                 namespace: vec![],
                 is_theorem: false,
                 univ_params: vec![],
@@ -1122,7 +1123,7 @@ mod tests {
         assert_eq!(describe_type(&prop_ty()), "Prop");
         assert_eq!(describe_type(&type_ty()), "Type");
         assert_eq!(
-            describe_type(&Expr::Lit(oxilean_kernel::Literal::Nat(42))),
+            describe_type(&Expr::Lit(oxilean_kernel::Literal::nat(42))),
             "Nat"
         );
         assert_eq!(
@@ -1134,8 +1135,8 @@ mod tests {
     fn test_collect_fvars() {
         let mut fvars = HashSet::new();
         let expr = Expr::App(
-            Box::new(Expr::FVar(oxilean_kernel::FVarId::new(1))),
-            Box::new(Expr::FVar(oxilean_kernel::FVarId::new(2))),
+            Node::new(Expr::FVar(oxilean_kernel::FVarId::new(1))),
+            Node::new(Expr::FVar(oxilean_kernel::FVarId::new(2))),
         );
         collect_fvars(&expr, &mut fvars);
         assert!(fvars.contains(&1));
@@ -1147,8 +1148,8 @@ mod tests {
         let expr = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::FVar(oxilean_kernel::FVarId::new(10))),
-            Box::new(Expr::FVar(oxilean_kernel::FVarId::new(20))),
+            Node::new(Expr::FVar(oxilean_kernel::FVarId::new(10))),
+            Node::new(Expr::FVar(oxilean_kernel::FVarId::new(20))),
         );
         collect_fvars(&expr, &mut fvars);
         assert!(fvars.contains(&10));
@@ -1173,7 +1174,7 @@ mod tests {
     #[test]
     fn test_evaluate_simple_nat() {
         assert_eq!(
-            evaluate_simple(&Expr::Lit(oxilean_kernel::Literal::Nat(7))),
+            evaluate_simple(&Expr::Lit(oxilean_kernel::Literal::nat(7))),
             "7"
         );
     }

@@ -72,6 +72,9 @@ pub mod field_simp;
 pub mod group;
 pub mod slim_check;
 
+// --- Proof certificates ---
+pub mod certificate;
+
 // --- Extracted submodules (splitrs) ---
 pub mod functions;
 pub mod functions_2;
@@ -95,6 +98,7 @@ pub use omega::{
     OmegaStep,
 };
 pub use simp::discharge::DischargeStrategy;
+pub use simp::main::functions::tac_simp;
 pub use simp::types::{default_simp_lemmas, SimpConfig, SimpLemma, SimpResult, SimpTheorems};
 
 // --- Re-exports: Batch 4.5 ---
@@ -140,12 +144,12 @@ pub use bvdecide::{
 
 // --- Re-exports: Batch 4.10 ---
 pub use grind::{
-    check_nat_le_by_transitivity, extract_nat_constraints, grind_check_eq, grind_eq, grind_on_goal,
-    grind_with_la, grind_with_stats, tac_grind, tac_grind_aggressive, tac_grind_with_config,
-    try_parse_nat_constraint, CaseSplitter, CongruenceClosure, EClass, EClassId, EMatchCompiler,
-    ENode, ENodeId, EPattern, EPatternNode, EqualityStep, GrindConfig, GrindProof, GrindResult,
-    GrindState, GrindStats, MergeReason, NatConstraint, NatRelKind, ProofStep, SignatureTable,
-    Substitution, TermIndex, UnionFind,
+    cc_build_proof, check_nat_le_by_transitivity, extract_nat_constraints, grind_check_eq,
+    grind_eq, grind_on_goal, grind_with_la, grind_with_stats, tac_cc, tac_grind,
+    tac_grind_aggressive, tac_grind_with_config, try_parse_nat_constraint, CaseSplitter,
+    CongruenceClosure, EClass, EClassId, EMatchCompiler, ENode, ENodeId, EPattern, EPatternNode,
+    EqualityStep, GrindConfig, GrindProof, GrindResult, GrindState, GrindStats, MergeReason,
+    NatConstraint, NatRelKind, ProofStep, SignatureTable, Substitution, TermIndex, UnionFind,
 };
 
 // --- Re-exports: Phase 12 ---
@@ -202,6 +206,9 @@ pub use slim_check::{
     tac_slim_check_with_config, try_find_counterexample, Counterexample, ForallVar,
     SlimCheckConfig, SlimCheckOutcome, SlimCheckResult,
 };
+
+// --- Re-exports: certificates ---
+pub use certificate::{PolyrithCert, PolyrithCertEntry, ProofCertificate};
 
 // --- Re-exports: extracted submodules ---
 pub use functions::{

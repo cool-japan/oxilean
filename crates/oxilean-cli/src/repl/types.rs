@@ -6,6 +6,7 @@ use super::functions::*;
 use oxilean_elab::ElabContext;
 use oxilean_kernel::{print_expr, Declaration, Environment, Name, Reducer};
 use oxilean_parse::{Lexer, Parser};
+use oxilean_std::{register_cc_helper, register_omega_helper, register_polyrith_helper};
 use std::collections::{HashMap, VecDeque};
 use std::env;
 use std::fmt::Write as FmtWrite;
@@ -63,8 +64,19 @@ pub struct ReplState {
 impl ReplState {
     /// Create a new session state.
     pub fn new() -> Self {
+        let mut initial_env = Environment::new();
+        // Register omega helper lemmas so nlinarith Farkas proof reconstruction
+        // produces real kernel-verified proof terms in the REPL session.
+        let _ = register_omega_helper(&mut initial_env);
+        // Register cc and polyrith helpers so their proofs also kernel-verify.
+        if let Err(e) = register_cc_helper(&mut initial_env) {
+            eprintln!("Warning: failed to register cc_helper: {e}");
+        }
+        if let Err(e) = register_polyrith_helper(&mut initial_env) {
+            eprintln!("Warning: failed to register polyrith_helper: {e}");
+        }
         Self {
-            env: Environment::new(),
+            env: initial_env,
             mode: ReplMode::Normal,
             options: ReplOptions::default(),
             undo_stack: Vec::new(),
@@ -95,7 +107,16 @@ impl ReplState {
     }
     /// Reset the entire session state.
     pub fn reset_state(&mut self) {
-        self.env = Environment::new();
+        let mut fresh_env = Environment::new();
+        let _ = register_omega_helper(&mut fresh_env);
+        // Register cc and polyrith helpers so their proofs also kernel-verify.
+        if let Err(e) = register_cc_helper(&mut fresh_env) {
+            eprintln!("Warning: failed to register cc_helper: {e}");
+        }
+        if let Err(e) = register_polyrith_helper(&mut fresh_env) {
+            eprintln!("Warning: failed to register polyrith_helper: {e}");
+        }
+        self.env = fresh_env;
         self.mode = ReplMode::Normal;
         self.undo_stack.clear();
         self.loaded_files.clear();

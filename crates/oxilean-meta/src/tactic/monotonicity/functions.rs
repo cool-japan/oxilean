@@ -10,6 +10,7 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 use std::collections::{HashMap, HashSet};
 
@@ -104,8 +105,8 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
     let mut args = Vec::new();
     let mut head = expr.clone();
     while let Expr::App(f, a) = head {
-        args.push(*a);
-        head = *f;
+        args.push((*a).clone());
+        head = (*f).clone();
     }
     args.reverse();
     (head, args)
@@ -114,7 +115,7 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
 pub(super) fn mk_app(head: Expr, args: Vec<Expr>) -> Expr {
     let mut result = head;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg));
+        result = Expr::App(Node::new(result), Node::new(arg));
     }
     result
 }
@@ -177,8 +178,8 @@ pub(super) fn build_relation_expr(relation: &MonoRelation, lhs: &Expr, rhs: &Exp
     let rel_name = relation.lean_name();
     let rel_const = Expr::Const(rel_name, vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(rel_const), Box::new(lhs.clone()))),
-        Box::new(rhs.clone()),
+        Node::new(Expr::App(Node::new(rel_const), Node::new(lhs.clone()))),
+        Node::new(rhs.clone()),
     )
 }
 /// Shallow syntactic equality check.
@@ -495,14 +496,14 @@ pub(super) fn build_mono_proof(
 ) -> Expr {
     let mut term = rule.proof.clone();
     for arg in lhs_args.iter().take(rule.num_implicit_args) {
-        term = Expr::App(Box::new(term), Box::new(arg.clone()));
+        term = Expr::App(Node::new(term), Node::new(arg.clone()));
     }
     for sub_goal in sub_goals {
         let sub_proof = ctx
             .get_mvar_assignment(sub_goal.mvar_id)
             .cloned()
             .unwrap_or_else(|| Expr::Const(Name::str("sorry"), vec![]));
-        term = Expr::App(Box::new(term), Box::new(sub_proof));
+        term = Expr::App(Node::new(term), Node::new(sub_proof));
     }
     term
 }
@@ -564,7 +565,10 @@ mod tests {
         Expr::Const(Name::str(name), vec![])
     }
     fn mk_app2(f: Expr, a: Expr, b: Expr) -> Expr {
-        Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b))
+        Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        )
     }
     #[test]
     fn test_mono_relation_display() {
@@ -858,7 +862,7 @@ mod tests {
     fn test_decompose_relation_non_relation() {
         let f = mk_const("not_a_relation_xyz");
         let a = mk_const("a");
-        let result = decompose_relation(&Expr::App(Box::new(f), Box::new(a)));
+        let result = decompose_relation(&Expr::App(Node::new(f), Node::new(a)));
         assert!(result.is_none());
     }
     #[test]
@@ -1000,8 +1004,8 @@ mod tests {
     fn test_exprs_equal_app() {
         let f = mk_const("f");
         let a = mk_const("a");
-        let e1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let e2 = Expr::App(Box::new(f), Box::new(a));
+        let e1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let e2 = Expr::App(Node::new(f), Node::new(a));
         assert!(exprs_equal(&e1, &e2));
     }
     #[test]
@@ -1087,11 +1091,11 @@ mod tests {
         let b = mk_const("b");
         let c = mk_const("c");
         let expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-                Box::new(b.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+                Node::new(b.clone()),
             )),
-            Box::new(c.clone()),
+            Node::new(c.clone()),
         );
         let (head, args) = collect_app_args(&expr);
         assert!(exprs_equal(&head, &f));
@@ -1106,7 +1110,7 @@ mod tests {
     fn test_get_head_const_app() {
         let f = mk_const("f");
         let a = mk_const("a");
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(get_head_const(&app), Some(Name::str("f")));
     }
     #[test]
@@ -1254,8 +1258,8 @@ mod tests {
         let f = mk_const("f");
         let a = mk_const("a");
         let b = mk_const("b");
-        let e1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let e2 = Expr::App(Box::new(f), Box::new(b));
+        let e1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let e2 = Expr::App(Node::new(f), Node::new(b));
         assert!(structurally_compatible(&e1, &e2));
     }
     #[test]
@@ -1263,8 +1267,8 @@ mod tests {
         let f = mk_const("f");
         let g = mk_const("g");
         let a = mk_const("a");
-        let e1 = Expr::App(Box::new(f), Box::new(a.clone()));
-        let e2 = Expr::App(Box::new(g), Box::new(a));
+        let e1 = Expr::App(Node::new(f), Node::new(a.clone()));
+        let e2 = Expr::App(Node::new(g), Node::new(a));
         assert!(!structurally_compatible(&e1, &e2));
     }
     #[test]
@@ -1272,7 +1276,7 @@ mod tests {
         let f = mk_const("f");
         let a = mk_const("a");
         let b = mk_const("b");
-        let e1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
+        let e1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
         let e2 = mk_app2(f, a, b);
         assert!(!structurally_compatible(&e1, &e2));
     }

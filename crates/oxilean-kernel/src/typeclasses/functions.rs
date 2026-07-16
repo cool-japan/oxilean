@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Name};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::types::{
     ClassEdge, ConfigNode, DecisionNode, Either2, FlatSubstitution, FocusStack, Instance,
@@ -80,12 +82,12 @@ pub fn register_add(registry: &mut TypeClassRegistry) {
     let add_ty = Expr::Pi(
         crate::BinderInfo::Default,
         Name::str("a"),
-        Box::new(Expr::BVar(0)),
-        Box::new(Expr::Pi(
+        Node::new(Expr::BVar(0)),
+        Node::new(Expr::Pi(
             crate::BinderInfo::Default,
             Name::str("b"),
-            Box::new(Expr::BVar(1)),
-            Box::new(Expr::BVar(2)),
+            Node::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(2)),
         )),
     );
     cls.add_method(Method::new(Name::str("add"), add_ty, 0));
@@ -100,12 +102,12 @@ pub fn register_mul(registry: &mut TypeClassRegistry) {
     let mul_ty = Expr::Pi(
         crate::BinderInfo::Default,
         Name::str("a"),
-        Box::new(Expr::BVar(0)),
-        Box::new(Expr::Pi(
+        Node::new(Expr::BVar(0)),
+        Node::new(Expr::Pi(
             crate::BinderInfo::Default,
             Name::str("b"),
-            Box::new(Expr::BVar(1)),
-            Box::new(Expr::BVar(2)),
+            Node::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(2)),
         )),
     );
     cls.add_method(Method::new(Name::str("mul"), mul_ty, 0));
@@ -347,7 +349,7 @@ mod tests {
     fn test_class_name_of_constraint() {
         let c = mk_const("Add");
         assert_eq!(class_name_of_constraint(&c), Some(Name::str("Add")));
-        let app = Expr::App(Box::new(mk_const("Add")), Box::new(mk_const("Nat")));
+        let app = Expr::App(Node::new(mk_const("Add")), Node::new(mk_const("Nat")));
         assert_eq!(class_name_of_constraint(&app), Some(Name::str("Add")));
         assert_eq!(class_name_of_constraint(&Expr::BVar(0)), None);
     }
@@ -823,7 +825,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

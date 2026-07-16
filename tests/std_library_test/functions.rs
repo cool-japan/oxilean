@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     env::{Declaration, Environment},
     expr::{BinderInfo, Expr},
@@ -32,7 +33,7 @@ fn cst(name: &str) -> Expr {
 }
 /// Apply a function to one argument.
 fn app1(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Apply a function to two arguments.
 fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -44,12 +45,12 @@ fn app3(f: Expr, a: Expr, b: Expr, c: Expr) -> Expr {
 }
 /// Build a Pi type (dependent function type).
 fn pi(info: BinderInfo, name: &str, domain: Expr, body: Expr) -> Expr {
-    Expr::Pi(info, Name::str(name), Box::new(domain), Box::new(body))
+    Expr::Pi(info, Name::str(name), Node::new(domain), Node::new(body))
 }
 /// Build a Lambda term (function abstraction).
 #[allow(unused)]
 fn lambda(info: BinderInfo, name: &str, ty: Expr, body: Expr) -> Expr {
-    Expr::Lam(info, Name::str(name), Box::new(ty), Box::new(body))
+    Expr::Lam(info, Name::str(name), Node::new(ty), Node::new(body))
 }
 /// Get the Nat type.
 fn nat_ty() -> Expr {

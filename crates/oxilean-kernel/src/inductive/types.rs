@@ -420,21 +420,23 @@ impl InductiveEnv {
         self.recursors.get(name)
     }
     /// Register an InductiveType into an Environment via ConstantInfo.
+    ///
+    /// This is the *checked* path: the declaration goes through
+    /// [`crate::inductive::derive::add_inductive_family`], which typechecks
+    /// the type and constructor telescopes, enforces the universe rule and
+    /// WHNF-hardened strict positivity, and derives the recursor itself.
     #[allow(clippy::result_large_err)]
     pub fn register_in_env(
         &mut self,
         ind: &InductiveType,
         env: &mut crate::Environment,
     ) -> Result<(), KernelError> {
-        let (ind_ci, ctor_cis, rec_ci) = ind.to_constant_infos();
-        env.add_constant(ind_ci)
-            .map_err(|e| KernelError::Other(e.to_string()))?;
-        for ctor_ci in ctor_cis {
-            env.add_constant(ctor_ci)
-                .map_err(|e| KernelError::Other(e.to_string()))?;
-        }
-        env.add_constant(rec_ci)
-            .map_err(|e| KernelError::Other(e.to_string()))?;
+        crate::inductive::derive::add_inductive_family(
+            env,
+            ind.univ_params.clone(),
+            ind.num_params,
+            vec![ind.to_spec()],
+        )?;
         self.add(ind.clone())?;
         Ok(())
     }
@@ -665,370 +667,55 @@ impl InductiveType {
             _ => false,
         }
     }
+    /// Convert this legacy declaration into an [`InductiveSpec`] for the
+    /// kernel derivation machinery in [`crate::inductive::derive`].
+    pub(crate) fn to_spec(&self) -> crate::inductive::derive::InductiveSpec {
+        crate::inductive::derive::InductiveSpec {
+            name: self.name.clone(),
+            ty: self.ty.clone(),
+            ctors: self
+                .intro_rules
+                .iter()
+                .map(|r| (r.name.clone(), r.ty.clone()))
+                .collect(),
+            rec_name: Some(self.recursor.clone()),
+        }
+    }
     /// Generate ConstantInfo declarations for this inductive type.
     ///
-    /// Returns: (InductiveVal, `Vec<ConstructorVal>`, RecursorVal)
-    pub fn to_constant_infos(&self) -> (ConstantInfo, Vec<ConstantInfo>, ConstantInfo) {
-        let ind_val = self.make_inductive_val();
-        let ctor_vals: Vec<ConstantInfo> = self.make_constructor_vals();
-        let rec_val = self.make_recursor_val();
-        (ind_val, ctor_vals, rec_val)
-    }
-    fn make_inductive_val(&self) -> ConstantInfo {
-        ConstantInfo::Inductive(InductiveVal {
-            common: ConstantVal {
-                name: self.name.clone(),
-                level_params: self.univ_params.clone(),
-                ty: self.ty.clone(),
-            },
-            num_params: self.num_params,
-            num_indices: self.num_indices,
-            all: vec![self.name.clone()],
-            ctors: self.intro_rules.iter().map(|r| r.name.clone()).collect(),
-            num_nested: 0,
-            is_rec: self.is_recursive(),
-            is_unsafe: false,
-            is_reflexive: false,
-            is_prop: self.is_prop,
-        })
-    }
-    fn make_constructor_vals(&self) -> Vec<ConstantInfo> {
-        self.intro_rules
-            .iter()
-            .enumerate()
-            .map(|(i, rule)| {
-                let num_fields = count_pi_args(&rule.ty).saturating_sub(self.num_params);
-                ConstantInfo::Constructor(ConstructorVal {
-                    common: ConstantVal {
-                        name: rule.name.clone(),
-                        level_params: self.univ_params.clone(),
-                        ty: rule.ty.clone(),
-                    },
-                    induct: self.name.clone(),
-                    cidx: i as u32,
-                    num_params: self.num_params,
-                    num_fields,
-                    is_unsafe: false,
-                })
-            })
-            .collect()
-    }
-    fn make_recursor_val(&self) -> ConstantInfo {
-        let num_minors = self.intro_rules.len() as u32;
-        let rules: Vec<RecursorRule> = self
-            .intro_rules
-            .iter()
-            .enumerate()
-            .map(|(cidx, rule)| {
-                let nfields = count_pi_args(&rule.ty).saturating_sub(self.num_params);
-                let rhs = self.build_recursor_rhs(rule, cidx as u32, nfields, num_minors);
-                RecursorRule {
-                    ctor: rule.name.clone(),
-                    nfields,
-                    rhs,
-                }
-            })
-            .collect();
-        let k = self.is_prop && self.intro_rules.len() <= 1;
-        let mut rec_level_params = self.univ_params.clone();
-        if !self.is_prop {
-            rec_level_params.insert(0, Name::str("u_1"));
-        }
-        let rec_ty = self.build_recursor_type(&rec_level_params);
-        ConstantInfo::Recursor(RecursorVal {
-            common: ConstantVal {
-                name: self.recursor.clone(),
-                level_params: rec_level_params,
-                ty: rec_ty,
-            },
-            all: vec![self.name.clone()],
-            num_params: self.num_params,
-            num_indices: self.num_indices,
-            num_motives: 1,
-            num_minors,
-            rules,
-            k,
-            is_unsafe: false,
-        })
-    }
-    /// Collect the field types (domains) for a constructor, skipping num_params params.
-    /// Returns a Vec<(field_domain_Expr, is_recursive)>.
-    fn collect_field_info(&self, rule: &IntroRule) -> Vec<(Expr, bool)> {
-        let mut current = &rule.ty;
-        for _ in 0..self.num_params {
-            match current {
-                Expr::Pi(_, _, _, body) => current = body,
-                _ => return vec![],
-            }
-        }
-        let mut fields = Vec::new();
-        while let Expr::Pi(_, _, dom, body) = current {
-            let is_rec = self.head_is_inductive(dom);
-            fields.push((dom.as_ref().clone(), is_rec));
-            current = body;
-        }
-        fields
-    }
-    /// Check if the head of an expression is the inductive type constant.
-    fn head_is_inductive(&self, expr: &Expr) -> bool {
-        match expr {
-            Expr::Const(n, _) => n == &self.name,
-            Expr::App(f, _) => self.head_is_inductive(f),
-            _ => false,
-        }
-    }
-    /// Build the recursor type Pi-expression.
+    /// Returns: (InductiveVal, `Vec<ConstructorVal>`, RecursorVal).
     ///
-    /// The recursor type has the form:
-    ///   forall params... motive minor_0... minor_{m-1} indices... (major : T p i), motive i major
-    fn build_recursor_type(&self, rec_level_params: &[Name]) -> Expr {
-        use crate::BinderInfo;
-        let np = self.num_params as usize;
-        let ni = self.num_indices as usize;
-        let nminors = self.intro_rules.len();
-        let (all_binders, _result_sort) = peel_pi_binders(&self.ty);
-        let motive_sort = if self.is_prop {
-            Level::zero()
-        } else if let Some(name) = rec_level_params.first() {
-            Level::Param(name.clone())
-        } else {
-            Level::zero()
-        };
-        let ind_applied_major = {
-            let mut e: Expr = Expr::Const(self.name.clone(), vec![]);
-            for k in 0..np {
-                let bvar = Expr::BVar((ni + nminors + 1 + np - k) as u32);
-                e = Expr::App(Box::new(e), Box::new(bvar));
-            }
-            for k in 0..ni {
-                let bvar = Expr::BVar((ni - k) as u32);
-                e = Expr::App(Box::new(e), Box::new(bvar));
-            }
-            e
-        };
-        let conclusion = {
-            let mut e: Expr = Expr::BVar((1 + ni + nminors) as u32);
-            for k in 0..ni {
-                let bvar = Expr::BVar((ni - k) as u32);
-                e = Expr::App(Box::new(e), Box::new(bvar));
-            }
-            e = Expr::App(Box::new(e), Box::new(Expr::BVar(0)));
-            e
-        };
-        let mut result = Expr::Pi(
-            BinderInfo::Default,
-            Name::str("t"),
-            Box::new(ind_applied_major),
-            Box::new(conclusion),
-        );
-        for k in (0..ni).rev() {
-            let idx_ty = if np + k < all_binders.len() {
-                lift_expr_bvars(&all_binders[np + k], (1 + nminors) as u32)
-            } else {
-                Expr::Sort(Level::zero())
-            };
-            result = Expr::Pi(
-                BinderInfo::Default,
-                Name::str("i"),
-                Box::new(idx_ty),
-                Box::new(result),
-            );
-        }
-        for cidx in (0..nminors).rev() {
-            let minor_ty = self.build_minor_type(cidx, nminors, np, ni, &all_binders);
-            result = Expr::Pi(
-                BinderInfo::Default,
-                Name::str("minor"),
-                Box::new(minor_ty),
-                Box::new(result),
-            );
-        }
-        let motive_ty = self.build_motive_type(np, ni, &all_binders, motive_sort);
-        result = Expr::Pi(
-            BinderInfo::Default,
-            Name::str("motive"),
-            Box::new(motive_ty),
-            Box::new(result),
-        );
-        for k in (0..np).rev() {
-            let param_ty = if k < all_binders.len() {
-                all_binders[k].clone()
-            } else {
-                Expr::Sort(Level::succ(Level::zero()))
-            };
-            result = Expr::Pi(
-                BinderInfo::Default,
-                Name::str("param"),
-                Box::new(param_ty),
-                Box::new(result),
-            );
-        }
-        result
-    }
-    /// Build the motive type at depth np (inside np param binders):
-    ///   forall (i_0 : I_0)...(i_{ni-1} : I_{ni-1}), T p i -> Sort v
-    fn build_motive_type(
+    /// The recursor is derived by the kernel derivation machinery
+    /// ([`crate::inductive::derive`]) following Lean 4's `inductive.cpp`:
+    /// minor premises carry induction hypotheses, the elimination universe
+    /// and K flag are computed from the declared type (the caller-supplied
+    /// `is_prop` flag is ignored), and rule right-hand sides are closed
+    /// lambdas over `params ++ motives ++ minors ++ fields`.
+    ///
+    /// This environment-free path performs *no* positivity or universe
+    /// checking; use [`crate::inductive::derive::add_inductive_family`] for
+    /// the checked path.
+    #[allow(clippy::result_large_err)]
+    pub fn to_constant_infos(
         &self,
-        np: usize,
-        ni: usize,
-        all_binders: &[Expr],
-        motive_sort: Level,
-    ) -> Expr {
-        use crate::BinderInfo;
-        let ind_applied = {
-            let mut e: Expr = Expr::Const(self.name.clone(), vec![]);
-            for k in 0..np {
-                let bvar = Expr::BVar((np + ni - 1 - k) as u32);
-                e = Expr::App(Box::new(e), Box::new(bvar));
-            }
-            for k in 0..ni {
-                let bvar = Expr::BVar((ni - 1 - k) as u32);
-                e = Expr::App(Box::new(e), Box::new(bvar));
-            }
-            e
-        };
-        let inner = Expr::Pi(
-            BinderInfo::Default,
-            Name::str("x"),
-            Box::new(ind_applied),
-            Box::new(Expr::Sort(motive_sort)),
-        );
-        let mut result = inner;
-        for k in (0..ni).rev() {
-            let idx_ty = if np + k < all_binders.len() {
-                all_binders[np + k].clone()
-            } else {
-                Expr::Sort(Level::zero())
-            };
-            result = Expr::Pi(
-                BinderInfo::Default,
-                Name::str("i"),
-                Box::new(idx_ty),
-                Box::new(result),
-            );
-        }
-        result
-    }
-    /// Build the minor premise type for constructor at `cidx`.
-    ///
-    /// The minor type for constructor `cidx` (with `nf` fields) is built in the context:
-    ///   np param binders + 1 motive binder + cidx outer minor binders (already wrapped)
-    ///
-    /// The resulting type is a Pi chain over the field types ending with:
-    ///   motive [return_indices] (ctor p_0 ... p_{np-1} y_0 ... y_{nf-1})
-    ///
-    /// At the body (depth = nf inside the field Pi chain):
-    ///   y_j     = BVar(nf - 1 - j)        for j = 0..nf-1
-    ///   motive  = BVar(nf + cidx)
-    ///   p_k     = BVar(nf + cidx + np - k) for k = 0..np-1
-    fn build_minor_type(
-        &self,
-        cidx: usize,
-        _nminors: usize,
-        np: usize,
-        ni: usize,
-        _all_binders: &[Expr],
-    ) -> Expr {
-        use crate::BinderInfo;
-        let rule = &self.intro_rules[cidx];
-        let field_info = self.collect_field_info(rule);
-        let nf = field_info.len();
-        let return_indices: Vec<Expr> = if ni > 0 {
-            let mut cod: &Expr = &rule.ty;
-            for _ in 0..(np + nf) {
-                match cod {
-                    Expr::Pi(_, _, _, body) => cod = body,
-                    _ => break,
-                }
-            }
-            let mut args: Vec<Expr> = Vec::new();
-            let mut cur = cod;
-            while let Expr::App(f, a) = cur {
-                args.push(a.as_ref().clone());
-                cur = f;
-            }
-            args.reverse();
-            let start = args.len().saturating_sub(ni);
-            args[start..]
-                .iter()
-                .map(|e| lift_expr_bvars(e, (1 + cidx) as u32))
-                .collect()
-        } else {
-            vec![]
-        };
-        let mut ctor_app: Expr = Expr::Const(rule.name.clone(), vec![]);
-        for k in 0..np {
-            let bvar = Expr::BVar((nf + cidx + np - k) as u32);
-            ctor_app = Expr::App(Box::new(ctor_app), Box::new(bvar));
-        }
-        for j in 0..nf {
-            let bvar = Expr::BVar((nf - 1 - j) as u32);
-            ctor_app = Expr::App(Box::new(ctor_app), Box::new(bvar));
-        }
-        let mut conclusion: Expr = Expr::BVar((nf + cidx) as u32);
-        for idx in &return_indices {
-            conclusion = Expr::App(Box::new(conclusion), Box::new(idx.clone()));
-        }
-        conclusion = Expr::App(Box::new(conclusion), Box::new(ctor_app));
-        let mut result = conclusion;
-        for j in (0..nf).rev() {
-            let (field_ty, _is_rec) = &field_info[j];
-            let adjusted = lift_expr_bvars(field_ty, (1 + cidx) as u32);
-            result = Expr::Pi(
-                BinderInfo::Default,
-                Name::str("y"),
-                Box::new(adjusted),
-                Box::new(result),
-            );
-        }
-        result
-    }
-    /// Build the recursor rule RHS for a constructor.
-    ///
-    /// The `instantiate_recursor_rhs` function builds a substitution array:
-    ///   subst = [p_0, ..., p_{np-1}, motive, minor_0, ..., minor_{nm-1}, f_0, ..., f_{nf-1}]
-    ///   len = np + 1 + nm + nf
-    ///
-    /// `instantiate_rev` maps BVar(i) -> subst[len - 1 - i]:
-    ///   f_j     -> BVar(nf - 1 - j)         (j = 0..nf-1)
-    ///   minor_k -> BVar(nf + nm - 1 - k)    (k = 0..nm-1)
-    ///   motive  -> BVar(nf + nm)
-    ///   p_j     -> BVar(nf + nm + 1 + np - 1 - j) = BVar(nf + nm + np - j)
-    ///
-    /// The RHS is: minor_cidx f_0 [IH_0] f_1 [IH_1] ... f_{nf-1} [IH_{nf-1}]
-    /// where IH_j = rec_name p_0...p_{np-1} motive minor_0...minor_{nm-1} f_j
-    fn build_recursor_rhs(&self, rule: &IntroRule, cidx: u32, nfields: u32, nminors: u32) -> Expr {
-        let np = self.num_params;
-        let nf = nfields;
-        let nm = nminors;
-        let field_info = self.collect_field_info(rule);
-        let mut result = Expr::BVar(nf + nm - 1 - cidx);
-        for (j, (_field_ty, is_rec)) in field_info.iter().enumerate() {
-            let j = j as u32;
-            let field_bvar = Expr::BVar(nf - 1 - j);
-            result = Expr::App(Box::new(result), Box::new(field_bvar.clone()));
-            if *is_rec {
-                let ih = self.build_ih(field_bvar, np, nm, nf);
-                result = Expr::App(Box::new(result), Box::new(ih));
-            }
-        }
-        result
-    }
-    /// Build the inductive hypothesis for a recursive field:
-    ///   IH = rec_name p_0...p_{np-1} motive minor_0...minor_{nm-1} field_expr
-    fn build_ih(&self, field_expr: Expr, np: u32, nm: u32, nf: u32) -> Expr {
-        let mut ih = Expr::Const(self.recursor.clone(), vec![]);
-        for j in 0..np {
-            let bvar = Expr::BVar(nf + nm + np - j);
-            ih = Expr::App(Box::new(ih), Box::new(bvar));
-        }
-        ih = Expr::App(Box::new(ih), Box::new(Expr::BVar(nf + nm)));
-        for k in 0..nm {
-            let bvar = Expr::BVar(nf + nm - 1 - k);
-            ih = Expr::App(Box::new(ih), Box::new(bvar));
-        }
-        ih = Expr::App(Box::new(ih), Box::new(field_expr));
-        ih
+    ) -> Result<(ConstantInfo, Vec<ConstantInfo>, ConstantInfo), KernelError> {
+        let fam = crate::inductive::derive::derive_family_unchecked(
+            &self.univ_params,
+            self.num_params,
+            &[self.to_spec()],
+        )?;
+        let crate::inductive::derive::DerivedFamily {
+            mut inductives,
+            constructors,
+            mut recursors,
+        } = fam;
+        let ind = inductives.pop().ok_or_else(|| {
+            KernelError::Other("derivation produced no inductive declaration".to_string())
+        })?;
+        let rec = recursors.pop().ok_or_else(|| {
+            KernelError::Other("derivation produced no recursor declaration".to_string())
+        })?;
+        Ok((ind, constructors, rec))
     }
 }
 /// Summary information about an inductive type (for display/LSP use).

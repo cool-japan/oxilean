@@ -3,7 +3,9 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::reduce::ReducibilityHint;
+use crate::Node;
 use crate::{Expr, Level, Name};
+use std::rc::Rc;
 
 use super::types::{
     AnnotationTable, AxiomVal, BeforeAfter, BiMap, ConstantInfo, ConstantKind, ConstantVal,
@@ -40,17 +42,17 @@ fn instantiate_level_params_core(expr: &Expr, param_names: &[Name], levels: &[Le
         Expr::App(f, a) => {
             let f_new = instantiate_level_params_core(f, param_names, levels);
             let a_new = instantiate_level_params_core(a, param_names, levels);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = instantiate_level_params_core(ty, param_names, levels);
             let body_new = instantiate_level_params_core(body, param_names, levels);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = instantiate_level_params_core(ty, param_names, levels);
             let body_new = instantiate_level_params_core(body, param_names, levels);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = instantiate_level_params_core(ty, param_names, levels);
@@ -58,14 +60,14 @@ fn instantiate_level_params_core(expr: &Expr, param_names: &[Name], levels: &[Le
             let body_new = instantiate_level_params_core(body, param_names, levels);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = instantiate_level_params_core(e, param_names, levels);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
         Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => expr.clone(),
     }
@@ -125,8 +127,8 @@ mod tests {
             value: Expr::Lam(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
             ),
             hints: ReducibilityHint::Abbrev,
             safety: DefinitionSafety::Safe,

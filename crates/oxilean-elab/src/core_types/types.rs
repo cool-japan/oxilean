@@ -10,6 +10,7 @@ pub use crate::tactic::{
     TacticError, TacticRegistry, TacticResult, TacticState,
 };
 pub use crate::typeclass::{Instance, Method, TypeClass, TypeClassRegistry};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Literal, Name};
 
 use super::functions::ElabPass;
@@ -670,8 +671,8 @@ impl CoercionExt {
     pub fn apply(&self, expr: oxilean_kernel::Expr) -> oxilean_kernel::Expr {
         use oxilean_kernel::Expr;
         Expr::App(
-            Box::new(Expr::Const(self.coercion_fn.clone(), vec![])),
-            Box::new(expr),
+            Node::new(Expr::Const(self.coercion_fn.clone(), vec![])),
+            Node::new(expr),
         )
     }
 }

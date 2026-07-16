@@ -372,7 +372,7 @@ mod tests {
         MetaPattern::Wildcard
     }
     fn dummy_rhs(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     #[test]
     fn test_build_simple_match() {
@@ -1199,7 +1199,7 @@ mod dectree_extended_tests {
         MetaPattern::Wildcard
     }
     fn dummy_rhs(n: u64) -> oxilean_kernel::Expr {
-        oxilean_kernel::Expr::Lit(Literal::Nat(n))
+        oxilean_kernel::Expr::Lit(Literal::nat(n))
     }
     fn mk_arm(pats: Vec<MetaPattern>) -> MetaMatchArm {
         MetaMatchArm {
@@ -1396,7 +1396,7 @@ mod dectree_extended_tests {
             },
             MetaMatchArm {
                 patterns: vec![mk_wild()],
-                guard: Some(oxilean_kernel::Expr::Lit(Literal::Nat(1))),
+                guard: Some(oxilean_kernel::Expr::Lit(Literal::nat(1))),
                 rhs: dummy_rhs(1),
             },
         ];
@@ -1408,7 +1408,7 @@ mod dectree_extended_tests {
     fn test_has_guarded_arms() {
         let arms = vec![MetaMatchArm {
             patterns: vec![mk_wild()],
-            guard: Some(oxilean_kernel::Expr::Lit(Literal::Nat(1))),
+            guard: Some(oxilean_kernel::Expr::Lit(Literal::nat(1))),
             rhs: dummy_rhs(0),
         }];
         assert!(has_guarded_arms(&arms));

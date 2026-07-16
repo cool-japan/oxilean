@@ -22,7 +22,7 @@ mod tests {
         assert!(Pattern::Wild.is_irrefutable());
         assert!(Pattern::Var(Name::str("x")).is_irrefutable());
         assert!(!Pattern::Ctor(Name::str("Some"), vec![]).is_irrefutable());
-        assert!(!Pattern::Lit(Literal::Nat(42)).is_irrefutable());
+        assert!(!Pattern::Lit(Literal::nat(42)).is_irrefutable());
     }
     #[test]
     fn test_pattern_bound_vars() {
@@ -109,7 +109,7 @@ pub fn check_exhaustiveness(patterns: &[Pattern], ty: &Name) -> ExhaustivenessRe
                 matches!(
                     p, Pattern::Ctor(n, _) if { let s = n.to_string(); s ==
                     "Nat.zero" || s == "zero" }
-                ) || matches!(p, Pattern::Lit(oxilean_kernel::Literal::Nat(0)))
+                ) || matches!(p, Pattern::Lit(oxilean_kernel::Literal::Nat(n)) if n.is_zero())
             });
             let has_succ = patterns.iter().any(|p| {
                 matches!(
@@ -318,7 +318,7 @@ mod extended_equation_tests {
     fn test_pattern_depth_zero() {
         assert_eq!(Pattern::Wild.depth(), 0);
         assert_eq!(Pattern::Var(Name::str("x")).depth(), 0);
-        assert_eq!(Pattern::Lit(Literal::Nat(42)).depth(), 0);
+        assert_eq!(Pattern::Lit(Literal::nat(42)).depth(), 0);
     }
     #[test]
     fn test_pattern_depth_ctor() {
@@ -862,7 +862,7 @@ mod equation_extended_tests {
     fn test_pattern_annotation() {
         let ann = annotate_pattern(&Pattern::Wild);
         assert!(ann.is_irrefutable());
-        let ann2 = annotate_pattern(&Pattern::Lit(oxilean_kernel::Literal::Nat(0)));
+        let ann2 = annotate_pattern(&Pattern::Lit(oxilean_kernel::Literal::nat(0)));
         assert_eq!(ann2.kind, PatternAnnotationKind::Refutable);
     }
     #[test]
@@ -941,15 +941,15 @@ mod matrix_tests {
     fn test_overlap_checker_subsumes() {
         assert!(OverlapChecker::subsumes(
             &Pattern::Wild,
-            &Pattern::Lit(oxilean_kernel::Literal::Nat(0))
+            &Pattern::Lit(oxilean_kernel::Literal::nat(0))
         ));
         assert!(!OverlapChecker::subsumes(
-            &Pattern::Lit(oxilean_kernel::Literal::Nat(0)),
+            &Pattern::Lit(oxilean_kernel::Literal::nat(0)),
             &Pattern::Wild
         ));
         assert!(OverlapChecker::subsumes(
-            &Pattern::Lit(oxilean_kernel::Literal::Nat(5)),
-            &Pattern::Lit(oxilean_kernel::Literal::Nat(5))
+            &Pattern::Lit(oxilean_kernel::Literal::nat(5)),
+            &Pattern::Lit(oxilean_kernel::Literal::nat(5))
         ));
     }
     #[test]
@@ -970,8 +970,8 @@ mod matrix_tests {
     fn test_normalizer_desugar_or() {
         let eq = Equation {
             patterns: vec![Pattern::Or(
-                Box::new(Pattern::Lit(oxilean_kernel::Literal::Nat(0))),
-                Box::new(Pattern::Lit(oxilean_kernel::Literal::Nat(1))),
+                Box::new(Pattern::Lit(oxilean_kernel::Literal::nat(0))),
+                Box::new(Pattern::Lit(oxilean_kernel::Literal::nat(1))),
             )],
             guard: None,
             rhs: Expr::Sort(oxilean_kernel::Level::zero()),

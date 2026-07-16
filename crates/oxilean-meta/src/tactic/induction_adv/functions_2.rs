@@ -4,6 +4,7 @@
 
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -25,8 +26,8 @@ mod tests {
     }
     fn mk_list_expr() -> Expr {
         Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![Level::zero()])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![Level::zero()])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         )
     }
     fn mk_bool_expr() -> Expr {
@@ -264,8 +265,8 @@ mod tests {
     #[test]
     fn test_decompose_app_applied() {
         let list_nat = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![Level::zero()])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![Level::zero()])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let (head, args) = decompose_app(&list_nat);
         assert_eq!(head, Some(Name::str("List")));
@@ -285,8 +286,8 @@ mod tests {
     #[test]
     fn test_expr_mentions_name() {
         let f_x = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("x"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("x"), vec![])),
         );
         assert!(expr_mentions_name(&f_x, &Name::str("x")));
         assert!(expr_mentions_name(&f_x, &Name::str("f")));
@@ -296,13 +297,13 @@ mod tests {
     fn test_abstract_expr_in_type() {
         let x = Expr::Const(Name::str("x"), vec![]);
         let f_x = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(x.clone()),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(x.clone()),
         );
         let result = abstract_expr_in_type(&f_x, &x);
         let expected = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(result, expected);
     }
@@ -311,12 +312,12 @@ mod tests {
         let ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("a_0"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Pi(
                 oxilean_kernel::BinderInfo::Default,
                 Name::str("ih"),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::Sort(Level::zero())),
             )),
         );
         let names = vec![(0, Name::str("n")), (1, Name::str("ih_n"))];
@@ -378,12 +379,12 @@ mod tests {
         let ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty.clone()),
+            Node::new(Expr::Pi(
                 oxilean_kernel::BinderInfo::Default,
                 Name::str("m"),
-                Box::new(nat_ty.clone()),
-                Box::new(nat_ty),
+                Node::new(nat_ty.clone()),
+                Node::new(nat_ty),
             )),
         );
         assert_eq!(count_inductive_occurrences_in_pi(&ty, &nat), 2);
@@ -405,8 +406,8 @@ mod tests {
             (
                 Name::str("h"),
                 Expr::App(
-                    Box::new(Expr::Const(Name::str("P"), vec![])),
-                    Box::new(Expr::Const(Name::str("x"), vec![])),
+                    Node::new(Expr::Const(Name::str("P"), vec![])),
+                    Node::new(Expr::Const(Name::str("x"), vec![])),
                 ),
             ),
         ];

@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::HashMap;
 
@@ -137,24 +138,24 @@ impl UnificationState {
     fn decompose(&mut self, lhs: &Expr, rhs: &Expr) -> Result<(), UnifyError> {
         match (lhs, rhs) {
             (Expr::App(f1, a1), Expr::App(f2, a2)) => {
-                self.add_eq(*f1.clone(), *f2.clone());
-                self.add_eq(*a1.clone(), *a2.clone());
+                self.add_eq((**f1).clone(), (**f2).clone());
+                self.add_eq((**a1).clone(), (**a2).clone());
                 Ok(())
             }
             (Expr::Lam(_, _, ty1, b1), Expr::Lam(_, _, ty2, b2)) => {
-                self.add_eq(*ty1.clone(), *ty2.clone());
-                self.add_eq(*b1.clone(), *b2.clone());
+                self.add_eq((**ty1).clone(), (**ty2).clone());
+                self.add_eq((**b1).clone(), (**b2).clone());
                 Ok(())
             }
             (Expr::Pi(_, _, ty1, b1), Expr::Pi(_, _, ty2, b2)) => {
-                self.add_eq(*ty1.clone(), *ty2.clone());
-                self.add_eq(*b1.clone(), *b2.clone());
+                self.add_eq((**ty1).clone(), (**ty2).clone());
+                self.add_eq((**b1).clone(), (**b2).clone());
                 Ok(())
             }
             (Expr::Let(_, ty1, v1, b1), Expr::Let(_, ty2, v2, b2)) => {
-                self.add_eq(*ty1.clone(), *ty2.clone());
-                self.add_eq(*v1.clone(), *v2.clone());
-                self.add_eq(*b1.clone(), *b2.clone());
+                self.add_eq((**ty1).clone(), (**ty2).clone());
+                self.add_eq((**v1).clone(), (**v2).clone());
+                self.add_eq((**b1).clone(), (**b2).clone());
                 Ok(())
             }
             (Expr::Sort(l1), Expr::Sort(l2)) => {
@@ -630,29 +631,29 @@ impl Substitution {
             }
             Expr::FVar(_) | Expr::Sort(_) | Expr::Lit(_) | Expr::Const(..) => expr.clone(),
             Expr::App(f, a) => Expr::App(
-                Box::new(self.apply_recursive(f)),
-                Box::new(self.apply_recursive(a)),
+                Node::new(self.apply_recursive(f)),
+                Node::new(self.apply_recursive(a)),
             ),
             Expr::Lam(bi, n, ty, body) => Expr::Lam(
                 *bi,
                 n.clone(),
-                Box::new(self.apply_recursive(ty)),
-                Box::new(self.apply_recursive(body)),
+                Node::new(self.apply_recursive(ty)),
+                Node::new(self.apply_recursive(body)),
             ),
             Expr::Pi(bi, n, ty, body) => Expr::Pi(
                 *bi,
                 n.clone(),
-                Box::new(self.apply_recursive(ty)),
-                Box::new(self.apply_recursive(body)),
+                Node::new(self.apply_recursive(ty)),
+                Node::new(self.apply_recursive(body)),
             ),
             Expr::Let(n, ty, val, body) => Expr::Let(
                 n.clone(),
-                Box::new(self.apply_recursive(ty)),
-                Box::new(self.apply_recursive(val)),
-                Box::new(self.apply_recursive(body)),
+                Node::new(self.apply_recursive(ty)),
+                Node::new(self.apply_recursive(val)),
+                Node::new(self.apply_recursive(body)),
             ),
             Expr::Proj(n, i, inner) => {
-                Expr::Proj(n.clone(), *i, Box::new(self.apply_recursive(inner)))
+                Expr::Proj(n.clone(), *i, Node::new(self.apply_recursive(inner)))
             }
         }
     }

@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::functions::*;
@@ -26,8 +27,8 @@ mod lazy_extended_tests {
             let ty = Expr::Pi(
                 BinderInfo::Default,
                 Name::str("α"),
-                Box::new(type1.clone()),
-                Box::new(type2.clone()),
+                Node::new(type1.clone()),
+                Node::new(type2.clone()),
             );
             env.add(Declaration::Axiom {
                 name: Name::str(*nm),
@@ -42,12 +43,12 @@ mod lazy_extended_tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("α"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("β"),
-                    Box::new(type1.clone()),
-                    Box::new(type2.clone()),
+                    Node::new(type1.clone()),
+                    Node::new(type2.clone()),
                 )),
             ),
         })
@@ -57,12 +58,12 @@ mod lazy_extended_tests {
             let ty = Expr::Pi(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(type1.clone()),
-                    Box::new(type2.clone()),
+                    Node::new(type1.clone()),
+                    Node::new(type2.clone()),
                 )),
             );
             env.add(Declaration::Axiom {

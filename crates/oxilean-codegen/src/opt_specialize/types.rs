@@ -516,6 +516,7 @@ impl SpecializationPass {
                 LcnfArg::Lit(LcnfLit::Str(s)) => SpecConstArg::Str(s.clone()),
                 LcnfArg::Var(v) => match local_consts.get(v) {
                     Some(LcnfLit::Nat(n)) => SpecConstArg::Nat(*n),
+                    Some(LcnfLit::Int(_)) => SpecConstArg::Unknown,
                     Some(LcnfLit::Str(s)) => SpecConstArg::Str(s.clone()),
                     None => SpecConstArg::Unknown,
                 },

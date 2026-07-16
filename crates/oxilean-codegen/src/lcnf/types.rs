@@ -164,6 +164,8 @@ pub enum LcnfType {
     Object,
     /// Natural number type.
     Nat,
+    /// Signed integer type.
+    Int,
     /// String type.
     LcnfString,
     /// Unit type (erased value placeholder).
@@ -486,6 +488,8 @@ pub struct CostModel {
 pub enum LcnfLit {
     /// Natural number literal.
     Nat(u64),
+    /// Signed integer literal.
+    Int(i64),
     /// String literal.
     Str(String),
 }

@@ -328,6 +328,7 @@ impl KotlinBackend {
     pub(super) fn compile_lit(&self, lit: &LcnfLit) -> KotlinExpr {
         match lit {
             LcnfLit::Nat(n) => KotlinExpr::Lit(KotlinLit::Long(*n as i64)),
+            LcnfLit::Int(i) => KotlinExpr::Lit(KotlinLit::Long(*i)),
             LcnfLit::Str(s) => KotlinExpr::Lit(KotlinLit::Str(s.clone())),
         }
     }

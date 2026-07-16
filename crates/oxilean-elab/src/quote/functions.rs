@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
 
 use super::types::{
@@ -36,8 +37,8 @@ pub fn unquote(expr: &Expr) -> Result<Expr, String> {
 pub fn quote_expr(expr: &Expr) -> Expr {
     match expr {
         Expr::Sort(l) => mk_app2(mk_const("Expr.mkSort"), reflect_level_q(l)),
-        Expr::BVar(i) => mk_app2(mk_const("Expr.mkBVar"), Expr::Lit(Literal::Nat(*i as u64))),
-        Expr::FVar(id) => mk_app2(mk_const("Expr.mkFVar"), Expr::Lit(Literal::Nat(id.0))),
+        Expr::BVar(i) => mk_app2(mk_const("Expr.mkBVar"), Expr::Lit(Literal::nat(*i as u64))),
+        Expr::FVar(id) => mk_app2(mk_const("Expr.mkFVar"), Expr::Lit(Literal::nat(id.0))),
         Expr::Const(name, levels) => {
             let name_arg = reflect_name_q(name);
             let levels_arg = reflect_level_q_list_q(levels);
@@ -75,7 +76,7 @@ pub fn quote_expr(expr: &Expr) -> Expr {
         }
         Expr::Proj(struct_name, idx, inner) => {
             let sn_arg = reflect_name_q(struct_name);
-            let idx_arg = Expr::Lit(Literal::Nat(*idx as u64));
+            let idx_arg = Expr::Lit(Literal::nat(*idx as u64));
             let inner_arg = quote_expr(inner);
             mk_app4(mk_const("Expr.mkProj"), sn_arg, idx_arg, inner_arg)
         }
@@ -102,7 +103,9 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
             "Expr.mkBVar" => {
                 if args.len() == 1 {
                     if let Expr::Lit(Literal::Nat(i)) = args[0] {
-                        Ok(Expr::BVar(*i as u32))
+                        i.to_u32()
+                            .map(Expr::BVar)
+                            .ok_or_else(|| "Expr.mkBVar: index too large for u32".to_string())
                     } else {
                         Err("Expr.mkBVar: expected Nat literal".to_string())
                     }
@@ -113,7 +116,9 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
             "Expr.mkFVar" => {
                 if args.len() == 1 {
                     if let Expr::Lit(Literal::Nat(id)) = args[0] {
-                        Ok(Expr::FVar(oxilean_kernel::FVarId(*id)))
+                        id.to_u64()
+                            .map(|v| Expr::FVar(oxilean_kernel::FVarId(v)))
+                            .ok_or_else(|| "Expr.mkFVar: id too large for u64".to_string())
                     } else {
                         Err("Expr.mkFVar: expected Nat literal".to_string())
                     }
@@ -134,7 +139,7 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
                 if args.len() == 2 {
                     let f = unquote_expr(args[0])?;
                     let a = unquote_expr(args[1])?;
-                    Ok(Expr::App(Box::new(f), Box::new(a)))
+                    Ok(Expr::App(Node::new(f), Node::new(a)))
                 } else {
                     Err(format!("Expr.mkApp: expected 2 args, got {}", args.len()))
                 }
@@ -145,7 +150,7 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
                     let name = unquote_name_q(args[1])?;
                     let ty = unquote_expr(args[2])?;
                     let body = unquote_expr(args[3])?;
-                    Ok(Expr::Lam(bi, name, Box::new(ty), Box::new(body)))
+                    Ok(Expr::Lam(bi, name, Node::new(ty), Node::new(body)))
                 } else {
                     Err(format!("Expr.mkLam: expected 4 args, got {}", args.len()))
                 }
@@ -156,7 +161,7 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
                     let name = unquote_name_q(args[1])?;
                     let ty = unquote_expr(args[2])?;
                     let body = unquote_expr(args[3])?;
-                    Ok(Expr::Pi(bi, name, Box::new(ty), Box::new(body)))
+                    Ok(Expr::Pi(bi, name, Node::new(ty), Node::new(body)))
                 } else {
                     Err(format!("Expr.mkPi: expected 4 args, got {}", args.len()))
                 }
@@ -167,7 +172,12 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
                     let ty = unquote_expr(args[1])?;
                     let val = unquote_expr(args[2])?;
                     let body = unquote_expr(args[3])?;
-                    Ok(Expr::Let(name, Box::new(ty), Box::new(val), Box::new(body)))
+                    Ok(Expr::Let(
+                        name,
+                        Node::new(ty),
+                        Node::new(val),
+                        Node::new(body),
+                    ))
                 } else {
                     Err(format!("Expr.mkLet: expected 4 args, got {}", args.len()))
                 }
@@ -184,12 +194,13 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
                 if args.len() == 3 {
                     let struct_name = unquote_name_q(args[0])?;
                     let idx = if let Expr::Lit(Literal::Nat(i)) = args[1] {
-                        *i as u32
+                        i.to_u32()
+                            .ok_or_else(|| "Expr.mkProj: index too large for u32".to_string())?
                     } else {
                         return Err("Expr.mkProj: expected Nat index".to_string());
                     };
                     let inner = unquote_expr(args[2])?;
-                    Ok(Expr::Proj(struct_name, idx, Box::new(inner)))
+                    Ok(Expr::Proj(struct_name, idx, Node::new(inner)))
                 } else {
                     Err(format!("Expr.mkProj: expected 3 args, got {}", args.len()))
                 }
@@ -201,7 +212,7 @@ pub fn unquote_expr(expr: &Expr) -> Result<Expr, String> {
 }
 /// Build `App(f, a)`.
 fn mk_app2(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Build `App(App(f, a), b)`.
 fn mk_app3(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -347,7 +358,10 @@ fn unquote_binder_info_q(expr: &Expr) -> Result<BinderInfo, String> {
 /// Reflect a `Literal` as an expression.
 fn reflect_literal_q(lit: &Literal) -> Expr {
     match lit {
-        Literal::Nat(n) => mk_app2(mk_const("Literal.natVal"), Expr::Lit(Literal::Nat(*n))),
+        Literal::Nat(n) => mk_app2(
+            mk_const("Literal.natVal"),
+            Expr::Lit(Literal::Nat(n.clone())),
+        ),
         Literal::Str(s) => mk_app2(
             mk_const("Literal.strVal"),
             Expr::Lit(Literal::Str(s.clone())),
@@ -361,7 +375,7 @@ fn unquote_literal_q(expr: &Expr) -> Result<Literal, String> {
         Expr::Const(name, _) => match name.to_string().as_str() {
             "Literal.natVal" if args.len() == 1 => {
                 if let Expr::Lit(Literal::Nat(n)) = args[0] {
-                    Ok(Literal::Nat(*n))
+                    Ok(Literal::Nat(n.clone()))
                 } else {
                     Err("Literal.natVal: expected Nat literal".to_string())
                 }
@@ -401,7 +415,7 @@ fn quasi_quote_inner(expr: &Expr, ctx: &mut QuoteContext) -> Result<Expr, String
                     } else if ctx.is_strict() {
                         return Err(format!("unbound splice: {:?}", splice_name));
                     } else {
-                        return Ok(*arg.clone());
+                        return Ok((**arg).clone());
                     }
                 }
             }
@@ -422,26 +436,26 @@ pub fn splice_expr(expr: &Expr, splices: &[(Name, Expr)]) -> Expr {
             expr.clone()
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(splice_expr(f, splices)),
-            Box::new(splice_expr(a, splices)),
+            Node::new(splice_expr(f, splices)),
+            Node::new(splice_expr(a, splices)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(splice_expr(ty, splices)),
-            Box::new(splice_expr(body, splices)),
+            Node::new(splice_expr(ty, splices)),
+            Node::new(splice_expr(body, splices)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(splice_expr(ty, splices)),
-            Box::new(splice_expr(body, splices)),
+            Node::new(splice_expr(ty, splices)),
+            Node::new(splice_expr(body, splices)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(splice_expr(ty, splices)),
-            Box::new(splice_expr(val, splices)),
-            Box::new(splice_expr(body, splices)),
+            Node::new(splice_expr(ty, splices)),
+            Node::new(splice_expr(val, splices)),
+            Node::new(splice_expr(body, splices)),
         ),
         _ => expr.clone(),
     }
@@ -497,7 +511,7 @@ pub fn reflect_name(name: &Name) -> Expr {
 }
 /// Reflect a natural number literal as an expression.
 pub fn reflect_nat(n: u64) -> Expr {
-    Expr::Lit(Literal::Nat(n))
+    Expr::Lit(Literal::nat(n))
 }
 /// Reflect a bool as a constant `Bool.true` or `Bool.false`.
 pub fn reflect_bool(b: bool) -> Expr {
@@ -551,7 +565,7 @@ mod tests {
     }
     #[test]
     fn test_quote() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let quoted = quote(&expr);
         assert!(matches!(quoted, Expr::App(_, _)));
         let back = unquote(&quoted).expect("test operation should succeed");
@@ -559,7 +573,7 @@ mod tests {
     }
     #[test]
     fn test_unquote() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let unquoted = unquote(&expr).expect("test operation should succeed");
         assert_eq!(unquoted, expr);
     }
@@ -589,14 +603,14 @@ mod tests {
     fn test_quote_expr_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::BVar(0);
-        let e = Expr::App(Box::new(f), Box::new(a));
+        let e = Expr::App(Node::new(f), Node::new(a));
         let q = quote_expr(&e);
         let back = unquote_expr(&q).expect("test operation should succeed");
         assert_eq!(back, e);
     }
     #[test]
     fn test_quote_expr_lit_nat() {
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         let q = quote_expr(&e);
         let back = unquote_expr(&q).expect("test operation should succeed");
         assert_eq!(back, e);
@@ -613,8 +627,8 @@ mod tests {
         let e = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         let q = quote_expr(&e);
         let back = unquote_expr(&q).expect("test operation should succeed");
@@ -625,8 +639,8 @@ mod tests {
         let e = Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(Expr::BVar(0)),
         );
         let q = quote_expr(&e);
         let back = unquote_expr(&q).expect("test operation should succeed");
@@ -636,9 +650,9 @@ mod tests {
     fn test_quote_expr_let() {
         let e = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
+            Node::new(Expr::BVar(0)),
         );
         let q = quote_expr(&e);
         let back = unquote_expr(&q).expect("test operation should succeed");
@@ -649,7 +663,7 @@ mod tests {
         let e = Expr::Proj(
             Name::str("Prod"),
             1,
-            Box::new(Expr::Const(Name::str("p"), vec![])),
+            Node::new(Expr::Const(Name::str("p"), vec![])),
         );
         let q = quote_expr(&e);
         let back = unquote_expr(&q).expect("test operation should succeed");
@@ -690,7 +704,7 @@ mod tests {
     #[test]
     fn test_add_splice() {
         let mut ctx = QuoteContext::new();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         ctx.add_splice(Name::str("x"), expr.clone());
         assert_eq!(ctx.splices().len(), 1);
         assert_eq!(ctx.splices()[0].0, Name::str("x"));
@@ -698,7 +712,7 @@ mod tests {
     #[test]
     fn test_clear_splices() {
         let mut ctx = QuoteContext::new();
-        ctx.add_splice(Name::str("x"), Expr::Lit(Literal::Nat(42)));
+        ctx.add_splice(Name::str("x"), Expr::Lit(Literal::nat(42)));
         ctx.clear_splices();
         assert_eq!(ctx.splices().len(), 0);
     }
@@ -719,7 +733,7 @@ mod tests {
     #[test]
     fn test_take_splice() {
         let mut ctx = QuoteContext::new();
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         ctx.add_splice(Name::str("a"), e.clone());
         let taken = ctx.take_splice(&Name::str("a"));
         assert_eq!(taken, Some(e));
@@ -744,14 +758,14 @@ mod tests {
         let splices = vec![(Name::str("A"), nat_ty())];
         let a = Expr::Const(Name::str("A"), vec![]);
         let b = Expr::Const(Name::str("B"), vec![]);
-        let app = Expr::App(Box::new(a), Box::new(b.clone()));
+        let app = Expr::App(Node::new(a), Node::new(b.clone()));
         let result = splice_expr(&app, &splices);
         assert!(matches!(result, Expr::App(f, _) if * f == nat_ty()));
     }
     #[test]
     fn test_expr_builder_nat_lit() {
         let e = ExprBuilder::nat_lit(42).build();
-        assert_eq!(e, Expr::Lit(Literal::Nat(42)));
+        assert_eq!(e, Expr::Lit(Literal::nat(42)));
     }
     #[test]
     fn test_expr_builder_cnst() {
@@ -840,7 +854,7 @@ mod tests {
     #[test]
     fn test_reflect_nat() {
         let n = reflect_nat(99);
-        assert_eq!(n, Expr::Lit(Literal::Nat(99)));
+        assert_eq!(n, Expr::Lit(Literal::nat(99)));
         assert!(is_literal(&n));
     }
     #[test]
@@ -880,28 +894,30 @@ pub fn deep_splice(expr: &Expr, splices: &[(Name, Expr)]) -> Expr {
     }
     match expr {
         Expr::App(f, a) => Expr::App(
-            Box::new(deep_splice(f, splices)),
-            Box::new(deep_splice(a, splices)),
+            Node::new(deep_splice(f, splices)),
+            Node::new(deep_splice(a, splices)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(deep_splice(ty, splices)),
-            Box::new(deep_splice(body, splices)),
+            Node::new(deep_splice(ty, splices)),
+            Node::new(deep_splice(body, splices)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(deep_splice(ty, splices)),
-            Box::new(deep_splice(body, splices)),
+            Node::new(deep_splice(ty, splices)),
+            Node::new(deep_splice(body, splices)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(deep_splice(ty, splices)),
-            Box::new(deep_splice(val, splices)),
-            Box::new(deep_splice(body, splices)),
+            Node::new(deep_splice(ty, splices)),
+            Node::new(deep_splice(val, splices)),
+            Node::new(deep_splice(body, splices)),
         ),
-        Expr::Proj(n, i, inner) => Expr::Proj(n.clone(), *i, Box::new(deep_splice(inner, splices))),
+        Expr::Proj(n, i, inner) => {
+            Expr::Proj(n.clone(), *i, Node::new(deep_splice(inner, splices)))
+        }
         _ => expr.clone(),
     }
 }
@@ -982,7 +998,7 @@ mod tests_extra {
     fn test_free_vars_in_app() {
         let id1 = FVarId(1);
         let id2 = FVarId(2);
-        let expr = Expr::App(Box::new(Expr::FVar(id1)), Box::new(Expr::FVar(id2)));
+        let expr = Expr::App(Node::new(Expr::FVar(id1)), Node::new(Expr::FVar(id2)));
         let mut fvars = free_vars(&expr);
         fvars.sort_by_key(|v| v.0);
         assert_eq!(fvars, vec![id1, id2]);
@@ -990,7 +1006,7 @@ mod tests_extra {
     #[test]
     fn test_free_vars_no_duplicates() {
         let id = FVarId(5);
-        let expr = Expr::App(Box::new(Expr::FVar(id)), Box::new(Expr::FVar(id)));
+        let expr = Expr::App(Node::new(Expr::FVar(id)), Node::new(Expr::FVar(id)));
         let fvars = free_vars(&expr);
         assert_eq!(fvars.len(), 1);
     }
@@ -1059,7 +1075,7 @@ pub fn app_spine_len(expr: &Expr) -> usize {
 /// Fold a head expression and argument list into a left-associated application.
 pub fn fold_app(head: Expr, args: Vec<Expr>) -> Expr {
     args.into_iter()
-        .fold(head, |acc, arg| Expr::App(Box::new(acc), Box::new(arg)))
+        .fold(head, |acc, arg| Expr::App(Node::new(acc), Node::new(arg)))
 }
 #[cfg(test)]
 mod quote_extra_tests {
@@ -1102,8 +1118,8 @@ mod quote_extra_tests {
             Box::new(QuotedPattern::Any),
         );
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert!(p.matches(&e));
     }
@@ -1127,8 +1143,8 @@ mod quote_extra_tests {
         let a = Expr::BVar(0);
         let b = Expr::BVar(1);
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = split_app(&app);
         assert!(matches!(head, Expr::Const(n, _) if * n == Name::str("f")));
@@ -1141,7 +1157,10 @@ mod quote_extra_tests {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a1 = Expr::BVar(0);
         let a2 = Expr::BVar(1);
-        let e = Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a1))), Box::new(a2));
+        let e = Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a1))),
+            Node::new(a2),
+        );
         assert_eq!(app_spine_len(&e), 2);
     }
     #[test]
@@ -1201,17 +1220,17 @@ pub fn quote_beta_reduce(expr: &Expr) -> Expr {
             if let Expr::Lam(_bi, _n, _ty, body) = &f_red {
                 qsbv(body, 0, &a_red)
             } else {
-                Expr::App(Box::new(f_red), Box::new(a_red))
+                Expr::App(Node::new(f_red), Node::new(a_red))
             }
         }
         Expr::Lam(bi, n, ty, body) => {
             let body2 = quote_beta_reduce(body);
-            Expr::Lam(*bi, n.clone(), ty.clone(), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), ty.clone(), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = quote_beta_reduce(ty);
             let body2 = quote_beta_reduce(body);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         other => other.clone(),
     }
@@ -1229,18 +1248,18 @@ fn qsbv(expr: &Expr, depth: u32, replacement: &Expr) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(qsbv(f, depth, replacement)),
-            Box::new(qsbv(a, depth, replacement)),
+            Node::new(qsbv(f, depth, replacement)),
+            Node::new(qsbv(a, depth, replacement)),
         ),
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = qsbv(ty, depth, replacement);
             let body2 = qsbv(body, depth + 1, replacement);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = qsbv(ty, depth, replacement);
             let body2 = qsbv(body, depth + 1, replacement);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         other => other.clone(),
     }
@@ -1249,7 +1268,7 @@ fn qsbv(expr: &Expr, depth: u32, replacement: &Expr) -> Expr {
 #[allow(dead_code)]
 pub fn quote_app_chain(f: Expr, args: impl IntoIterator<Item = Expr>) -> Expr {
     args.into_iter()
-        .fold(f, |acc, a| Expr::App(Box::new(acc), Box::new(a)))
+        .fold(f, |acc, a| Expr::App(Node::new(acc), Node::new(a)))
 }
 /// Check whether two expressions are alpha-equivalent under quotation.
 #[allow(dead_code)]
@@ -1409,10 +1428,10 @@ mod quote_ext_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_ty()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat_ty()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(lam), Box::new(nat_ty()));
+        let app = Expr::App(Node::new(lam), Node::new(nat_ty()));
         let reduced = quote_beta_reduce(&app);
         assert_eq!(reduced, nat_ty());
     }
@@ -1431,7 +1450,7 @@ mod quote_ext_tests {
     }
     #[test]
     fn test_quote_free_bvars() {
-        let e = Expr::App(Box::new(Expr::BVar(2)), Box::new(Expr::BVar(0)));
+        let e = Expr::App(Node::new(Expr::BVar(2)), Node::new(Expr::BVar(0)));
         let free = quote_free_bvars(&e, 0);
         assert!(free.contains(&0));
         assert!(free.contains(&2));
@@ -1442,8 +1461,8 @@ mod quote_ext_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_ty()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat_ty()),
+            Node::new(Expr::BVar(0)),
         );
         let free = quote_free_bvars(&lam, 0);
         assert!(free.is_empty());
@@ -1557,7 +1576,7 @@ mod quote_util_tests {
     }
     #[test]
     fn test_expr_contains_bvar_app() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(2)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(2)));
         assert!(expr_contains_bvar(&e, 0, 0));
         assert!(expr_contains_bvar(&e, 2, 0));
         assert!(!expr_contains_bvar(&e, 1, 0));

@@ -577,10 +577,7 @@ impl TokenPattern {
             TokenPattern::Sequence(pats) => {
                 let mut consumed = 0;
                 for pat in pats {
-                    match pat.try_match(&tokens[consumed..]) {
-                        Some(n) => consumed += n,
-                        None => return None,
-                    }
+                    consumed += pat.try_match(&tokens[consumed..])?;
                 }
                 Some(consumed)
             }

@@ -9,6 +9,7 @@ use super::types::{
 use crate::basic::{MVarId, MetaContext, MetaState, MetavarKind};
 use crate::def_eq::MetaDefEq;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 /// Run `solve_by_elim` with default configuration and no extra lemmas.
@@ -419,7 +420,7 @@ pub(super) fn count_mvars_impl(expr: &Expr, ctx: &MetaContext, count: &mut usize
 pub(super) fn mk_app_chain(head: Expr, args: &[Expr]) -> Expr {
     let mut result = head;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg.clone()));
+        result = Expr::App(Node::new(result), Node::new(arg.clone()));
     }
     result
 }
@@ -429,8 +430,8 @@ pub(super) fn mk_lambda(name: Name, ty: Expr, body: Expr) -> Expr {
     Expr::Lam(
         oxilean_kernel::BinderInfo::Default,
         name,
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Build a pi type `(x : ty) -> body`.
@@ -439,8 +440,8 @@ pub(super) fn mk_pi(name: Name, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         name,
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Build `@False.elim target proof_of_false`.
@@ -448,8 +449,8 @@ pub(super) fn mk_pi(name: Name, ty: Expr, body: Expr) -> Expr {
 pub(super) fn mk_false_elim(target: Expr, proof_of_false: Expr) -> Expr {
     let false_elim = Expr::Const(Name::str("False.elim"), vec![Level::zero()]);
     Expr::App(
-        Box::new(Expr::App(Box::new(false_elim), Box::new(target))),
-        Box::new(proof_of_false),
+        Node::new(Expr::App(Node::new(false_elim), Node::new(target))),
+        Node::new(proof_of_false),
     )
 }
 /// Build `@Eq.refl ty val` proof.
@@ -457,8 +458,8 @@ pub(super) fn mk_false_elim(target: Expr, proof_of_false: Expr) -> Expr {
 pub(super) fn mk_eq_refl(ty: Expr, val: Expr) -> Expr {
     let refl = Expr::Const(Name::str("Eq.refl"), vec![Level::zero()]);
     Expr::App(
-        Box::new(Expr::App(Box::new(refl), Box::new(ty))),
-        Box::new(val),
+        Node::new(Expr::App(Node::new(refl), Node::new(ty))),
+        Node::new(val),
     )
 }
 /// Build `@True.intro`.
@@ -470,26 +471,26 @@ pub(super) fn mk_true_intro() -> Expr {
 #[allow(dead_code)]
 pub(super) fn mk_and_intro(left_ty: Expr, right_ty: Expr, left: Expr, right: Expr) -> Expr {
     let and_intro = Expr::Const(Name::str("And.intro"), vec![]);
-    let e1 = Expr::App(Box::new(and_intro), Box::new(left_ty));
-    let e2 = Expr::App(Box::new(e1), Box::new(right_ty));
-    let e3 = Expr::App(Box::new(e2), Box::new(left));
-    Expr::App(Box::new(e3), Box::new(right))
+    let e1 = Expr::App(Node::new(and_intro), Node::new(left_ty));
+    let e2 = Expr::App(Node::new(e1), Node::new(right_ty));
+    let e3 = Expr::App(Node::new(e2), Node::new(left));
+    Expr::App(Node::new(e3), Node::new(right))
 }
 /// Build `@Or.inl ty_left ty_right proof`.
 #[allow(dead_code)]
 pub(super) fn mk_or_inl(ty_left: Expr, ty_right: Expr, proof: Expr) -> Expr {
     let or_inl = Expr::Const(Name::str("Or.inl"), vec![]);
-    let e1 = Expr::App(Box::new(or_inl), Box::new(ty_left));
-    let e2 = Expr::App(Box::new(e1), Box::new(ty_right));
-    Expr::App(Box::new(e2), Box::new(proof))
+    let e1 = Expr::App(Node::new(or_inl), Node::new(ty_left));
+    let e2 = Expr::App(Node::new(e1), Node::new(ty_right));
+    Expr::App(Node::new(e2), Node::new(proof))
 }
 /// Build `@Or.inr ty_left ty_right proof`.
 #[allow(dead_code)]
 pub(super) fn mk_or_inr(ty_left: Expr, ty_right: Expr, proof: Expr) -> Expr {
     let or_inr = Expr::Const(Name::str("Or.inr"), vec![]);
-    let e1 = Expr::App(Box::new(or_inr), Box::new(ty_left));
-    let e2 = Expr::App(Box::new(e1), Box::new(ty_right));
-    Expr::App(Box::new(e2), Box::new(proof))
+    let e1 = Expr::App(Node::new(or_inr), Node::new(ty_left));
+    let e2 = Expr::App(Node::new(e1), Node::new(ty_right));
+    Expr::App(Node::new(e2), Node::new(proof))
 }
 /// Check if an expression is of the form `@Eq α a b`.
 #[allow(dead_code)]
@@ -609,26 +610,26 @@ mod tests {
     fn mk_eq(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
         let eq = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(eq), Box::new(ty))),
-                Box::new(lhs),
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(eq), Node::new(ty))),
+                Node::new(lhs),
             )),
-            Box::new(rhs),
+            Node::new(rhs),
         )
     }
     fn mk_pi_simple(name: &str, domain: Expr, codomain: Expr) -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(domain),
-            Box::new(codomain),
+            Node::new(domain),
+            Node::new(codomain),
         )
     }
     fn mk_const(name: &str) -> Expr {
         Expr::Const(Name::str(name), vec![])
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     #[test]
     fn test_default_config() {
@@ -937,8 +938,8 @@ mod tests {
         let outer = Expr::Pi(
             BinderInfo::Implicit,
             Name::str("x"),
-            Box::new(mk_nat()),
-            Box::new(inner),
+            Node::new(mk_nat()),
+            Node::new(inner),
         );
         assert_eq!(count_implicit_args(&outer), 1);
     }

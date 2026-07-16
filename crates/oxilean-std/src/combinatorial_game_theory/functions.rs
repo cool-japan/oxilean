@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Declaration, Environment, Expr, Name};
 
 use super::types::{
@@ -12,7 +13,7 @@ use super::types::{
 };
 
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn cst(s: &str) -> Expr {
     Expr::Const(Name::str(s), vec![])
@@ -30,8 +31,8 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// `Game : Type` — combinatorial game with Left and Right move sets.

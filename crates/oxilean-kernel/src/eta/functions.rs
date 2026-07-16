@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{BinderInfo, Expr, Name};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, EtaChecker, EtaJob, EtaJobQueue, EtaLog, EtaNormInfo, EtaNormalCache, EtaOpCounter,
@@ -16,8 +18,8 @@ pub fn eta_expand(expr: &Expr, arg_name: Name, arg_ty: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         arg_name,
-        Box::new(arg_ty),
-        Box::new(Expr::App(Box::new(expr.clone()), Box::new(Expr::BVar(0)))),
+        Node::new(arg_ty),
+        Node::new(Expr::App(Node::new(expr.clone()), Node::new(Expr::BVar(0)))),
     )
 }
 /// Perform eta expansion with an implicit binder.
@@ -25,8 +27,8 @@ pub fn eta_expand_implicit(expr: &Expr, arg_name: Name, arg_ty: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Implicit,
         arg_name,
-        Box::new(arg_ty),
-        Box::new(Expr::App(Box::new(expr.clone()), Box::new(Expr::BVar(0)))),
+        Node::new(arg_ty),
+        Node::new(Expr::App(Node::new(expr.clone()), Node::new(Expr::BVar(0)))),
     )
 }
 /// Check whether an expression can be eta-expanded (not already a lambda).
@@ -55,26 +57,26 @@ pub fn eta_contract_full(expr: &Expr) -> Expr {
     }
     match expr {
         Expr::App(func, arg) => Expr::App(
-            Box::new(eta_contract_full(func)),
-            Box::new(eta_contract_full(arg)),
+            Node::new(eta_contract_full(func)),
+            Node::new(eta_contract_full(arg)),
         ),
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(eta_contract_full(ty)),
-            Box::new(eta_contract_full(body)),
+            Node::new(eta_contract_full(ty)),
+            Node::new(eta_contract_full(body)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(eta_contract_full(ty)),
-            Box::new(eta_contract_full(body)),
+            Node::new(eta_contract_full(ty)),
+            Node::new(eta_contract_full(body)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(eta_contract_full(ty)),
-            Box::new(eta_contract_full(val)),
-            Box::new(eta_contract_full(body)),
+            Node::new(eta_contract_full(ty)),
+            Node::new(eta_contract_full(val)),
+            Node::new(eta_contract_full(body)),
         ),
         _ => expr.clone(),
     }
@@ -93,24 +95,24 @@ pub fn eta_normalize(expr: &Expr) -> Expr {
 }
 fn eta_normalize_inner(expr: &Expr) -> Expr {
     match expr {
-        Expr::App(f, a) => Expr::App(Box::new(eta_normalize(f)), Box::new(eta_normalize(a))),
+        Expr::App(f, a) => Expr::App(Node::new(eta_normalize(f)), Node::new(eta_normalize(a))),
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(eta_normalize(ty)),
-            Box::new(eta_normalize(body)),
+            Node::new(eta_normalize(ty)),
+            Node::new(eta_normalize(body)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(eta_normalize(ty)),
-            Box::new(eta_normalize(body)),
+            Node::new(eta_normalize(ty)),
+            Node::new(eta_normalize(body)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(eta_normalize(ty)),
-            Box::new(eta_normalize(val)),
-            Box::new(eta_normalize(body)),
+            Node::new(eta_normalize(ty)),
+            Node::new(eta_normalize(val)),
+            Node::new(eta_normalize(body)),
         ),
         _ => expr.clone(),
     }
@@ -160,26 +162,26 @@ fn shift_helper(expr: &Expr, amount: u32, cutoff: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_helper(f, amount, cutoff)),
-            Box::new(shift_helper(a, amount, cutoff)),
+            Node::new(shift_helper(f, amount, cutoff)),
+            Node::new(shift_helper(a, amount, cutoff)),
         ),
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(shift_helper(ty, amount, cutoff)),
-            Box::new(shift_helper(body, amount, cutoff + 1)),
+            Node::new(shift_helper(ty, amount, cutoff)),
+            Node::new(shift_helper(body, amount, cutoff + 1)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(shift_helper(ty, amount, cutoff)),
-            Box::new(shift_helper(body, amount, cutoff + 1)),
+            Node::new(shift_helper(ty, amount, cutoff)),
+            Node::new(shift_helper(body, amount, cutoff + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(shift_helper(ty, amount, cutoff)),
-            Box::new(shift_helper(val, amount, cutoff)),
-            Box::new(shift_helper(body, amount, cutoff + 1)),
+            Node::new(shift_helper(ty, amount, cutoff)),
+            Node::new(shift_helper(val, amount, cutoff)),
+            Node::new(shift_helper(body, amount, cutoff + 1)),
         ),
         _ => expr.clone(),
     }
@@ -194,26 +196,26 @@ fn shift_up_helper(expr: &Expr, amount: u32, cutoff: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_up_helper(f, amount, cutoff)),
-            Box::new(shift_up_helper(a, amount, cutoff)),
+            Node::new(shift_up_helper(f, amount, cutoff)),
+            Node::new(shift_up_helper(a, amount, cutoff)),
         ),
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(shift_up_helper(ty, amount, cutoff)),
-            Box::new(shift_up_helper(body, amount, cutoff + 1)),
+            Node::new(shift_up_helper(ty, amount, cutoff)),
+            Node::new(shift_up_helper(body, amount, cutoff + 1)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(shift_up_helper(ty, amount, cutoff)),
-            Box::new(shift_up_helper(body, amount, cutoff + 1)),
+            Node::new(shift_up_helper(ty, amount, cutoff)),
+            Node::new(shift_up_helper(body, amount, cutoff + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(shift_up_helper(ty, amount, cutoff)),
-            Box::new(shift_up_helper(val, amount, cutoff)),
-            Box::new(shift_up_helper(body, amount, cutoff + 1)),
+            Node::new(shift_up_helper(ty, amount, cutoff)),
+            Node::new(shift_up_helper(val, amount, cutoff)),
+            Node::new(shift_up_helper(body, amount, cutoff + 1)),
         ),
         _ => expr.clone(),
     }
@@ -223,10 +225,10 @@ pub fn eta_expand_pi(expr: &Expr, binder_info: BinderInfo, arg_name: Name, arg_t
     Expr::Lam(
         binder_info,
         arg_name,
-        Box::new(arg_ty),
-        Box::new(Expr::App(
-            Box::new(shift_up(expr, 1)),
-            Box::new(Expr::BVar(0)),
+        Node::new(arg_ty),
+        Node::new(Expr::App(
+            Node::new(shift_up(expr, 1)),
+            Node::new(Expr::BVar(0)),
         )),
     )
 }
@@ -252,7 +254,7 @@ pub fn peel_lambdas(expr: &Expr) -> (Vec<(BinderInfo, Name, Expr)>, &Expr) {
     let mut binders = Vec::new();
     let mut current = expr;
     while let Expr::Lam(info, name, ty, body) = current {
-        binders.push((*info, name.clone(), *ty.clone()));
+        binders.push((*info, name.clone(), (**ty).clone()));
         current = body;
     }
     (binders, current)
@@ -270,26 +272,26 @@ pub fn subst_bvar(expr: &Expr, depth: u32, replacement: &Expr) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_bvar(f, depth, replacement)),
-            Box::new(subst_bvar(a, depth, replacement)),
+            Node::new(subst_bvar(f, depth, replacement)),
+            Node::new(subst_bvar(a, depth, replacement)),
         ),
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(subst_bvar(ty, depth, replacement)),
-            Box::new(subst_bvar(body, depth + 1, replacement)),
+            Node::new(subst_bvar(ty, depth, replacement)),
+            Node::new(subst_bvar(body, depth + 1, replacement)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(subst_bvar(ty, depth, replacement)),
-            Box::new(subst_bvar(body, depth + 1, replacement)),
+            Node::new(subst_bvar(ty, depth, replacement)),
+            Node::new(subst_bvar(body, depth + 1, replacement)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(subst_bvar(ty, depth, replacement)),
-            Box::new(subst_bvar(val, depth, replacement)),
-            Box::new(subst_bvar(body, depth + 1, replacement)),
+            Node::new(subst_bvar(ty, depth, replacement)),
+            Node::new(subst_bvar(val, depth, replacement)),
+            Node::new(subst_bvar(body, depth + 1, replacement)),
         ),
         _ => expr.clone(),
     }
@@ -334,12 +336,12 @@ mod tests {
         Expr::Lam(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         )
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     #[test]
     fn test_eta_expand() {
@@ -347,7 +349,7 @@ mod tests {
         let expanded = eta_expand(&f, Name::str("x"), sort());
         if let Expr::Lam(_, name, _, body) = expanded {
             assert_eq!(name, Name::str("x"));
-            if let Expr::App(fn_expr, arg_expr) = *body {
+            if let Expr::App(fn_expr, arg_expr) = (*body).clone() {
                 assert_eq!(*fn_expr, f);
                 assert_eq!(*arg_expr, Expr::BVar(0));
             } else {
@@ -485,19 +487,19 @@ pub fn eta_expand_to(expr: &Expr, n: usize) -> Expr {
 /// Apply a sequence of arguments to a head expression.
 pub fn mk_app_spine(head: &Expr, args: &[Expr]) -> Expr {
     args.iter().fold(head.clone(), |acc, arg| {
-        Expr::App(Box::new(acc), Box::new(arg.clone()))
+        Expr::App(Node::new(acc), Node::new(arg.clone()))
     })
 }
 /// Rebuild a lambda from peeled binders and a body.
 pub fn rebuild_lam(binders: &[(BinderInfo, Name, Expr)], body: Expr) -> Expr {
     binders.iter().rev().fold(body, |acc, (info, name, ty)| {
-        Expr::Lam(*info, name.clone(), Box::new(ty.clone()), Box::new(acc))
+        Expr::Lam(*info, name.clone(), Node::new(ty.clone()), Node::new(acc))
     })
 }
 /// Rebuild a Pi from peeled binders and a body.
 pub fn rebuild_pi(binders: &[(BinderInfo, Name, Expr)], body: Expr) -> Expr {
     binders.iter().rev().fold(body, |acc, (info, name, ty)| {
-        Expr::Pi(*info, name.clone(), Box::new(ty.clone()), Box::new(acc))
+        Expr::Pi(*info, name.clone(), Node::new(ty.clone()), Node::new(acc))
     })
 }
 /// Collect the Pi binders of a type, returning (binders, return_type).
@@ -505,7 +507,7 @@ pub fn peel_pis(expr: &Expr) -> (Vec<(BinderInfo, Name, Expr)>, &Expr) {
     let mut binders = Vec::new();
     let mut current = expr;
     while let Expr::Pi(info, name, ty, body) = current {
-        binders.push((*info, name.clone(), *ty.clone()));
+        binders.push((*info, name.clone(), (**ty).clone()));
         current = body;
     }
     (binders, current)
@@ -549,10 +551,10 @@ pub fn lam_to_pi(expr: &Expr) -> Expr {
         Expr::Lam(info, name, ty, body) => Expr::Pi(
             *info,
             name.clone(),
-            Box::new(lam_to_pi(ty)),
-            Box::new(lam_to_pi(body)),
+            Node::new(lam_to_pi(ty)),
+            Node::new(lam_to_pi(body)),
         ),
-        Expr::App(f, a) => Expr::App(Box::new(lam_to_pi(f)), Box::new(lam_to_pi(a))),
+        Expr::App(f, a) => Expr::App(Node::new(lam_to_pi(f)), Node::new(lam_to_pi(a))),
         _ => expr.clone(),
     }
 }
@@ -572,20 +574,20 @@ pub fn beta_reduce_full(expr: &Expr) -> Expr {
             let a2 = beta_reduce_full(a);
             match beta_reduce_one(&f2, &a2) {
                 Some(reduced) => beta_reduce_full(&reduced),
-                None => Expr::App(Box::new(f2), Box::new(a2)),
+                None => Expr::App(Node::new(f2), Node::new(a2)),
             }
         }
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(beta_reduce_full(ty)),
-            Box::new(beta_reduce_full(body)),
+            Node::new(beta_reduce_full(ty)),
+            Node::new(beta_reduce_full(body)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(beta_reduce_full(ty)),
-            Box::new(beta_reduce_full(body)),
+            Node::new(beta_reduce_full(ty)),
+            Node::new(beta_reduce_full(body)),
         ),
         Expr::Let(_n, _ty, val, body) => {
             let val2 = beta_reduce_full(val);
@@ -623,19 +625,19 @@ mod eta_extended_tests {
         Expr::Lam(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         )
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     fn mk_pi(name: &str, ty: Expr, body: Expr) -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         )
     }
     #[test]
@@ -736,26 +738,26 @@ mod eta_extended_tests {
 pub fn rewrite_with_rules(expr: &Expr, rules: &[RewriteRule]) -> Expr {
     let inner = match expr {
         Expr::App(f, a) => Expr::App(
-            Box::new(rewrite_with_rules(f, rules)),
-            Box::new(rewrite_with_rules(a, rules)),
+            Node::new(rewrite_with_rules(f, rules)),
+            Node::new(rewrite_with_rules(a, rules)),
         ),
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(rewrite_with_rules(ty, rules)),
-            Box::new(rewrite_with_rules(body, rules)),
+            Node::new(rewrite_with_rules(ty, rules)),
+            Node::new(rewrite_with_rules(body, rules)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(rewrite_with_rules(ty, rules)),
-            Box::new(rewrite_with_rules(body, rules)),
+            Node::new(rewrite_with_rules(ty, rules)),
+            Node::new(rewrite_with_rules(body, rules)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(rewrite_with_rules(ty, rules)),
-            Box::new(rewrite_with_rules(val, rules)),
-            Box::new(rewrite_with_rules(body, rules)),
+            Node::new(rewrite_with_rules(ty, rules)),
+            Node::new(rewrite_with_rules(val, rules)),
+            Node::new(rewrite_with_rules(body, rules)),
         ),
         _ => expr.clone(),
     };
@@ -811,15 +813,15 @@ pub fn wrap_in_lambdas(expr: &Expr, n: usize) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             Name::str(format!("_w{}", i)),
-            Box::new(Expr::Sort(crate::Level::zero())),
-            Box::new(shift_up(&acc, 1)),
+            Node::new(Expr::Sort(crate::Level::zero())),
+            Node::new(shift_up(&acc, 1)),
         )
     })
 }
 /// Apply `n` BVar arguments to an expression: `expr BVar(0) BVar(1) ... BVar(n-1)`.
 pub fn apply_bvars(expr: &Expr, n: u32) -> Expr {
     (0..n).fold(expr.clone(), |acc, i| {
-        Expr::App(Box::new(acc), Box::new(Expr::BVar(i)))
+        Expr::App(Node::new(acc), Node::new(Expr::BVar(i)))
     })
 }
 /// Reduce `let x := v in body` to `body[x := v]`.
@@ -838,18 +840,18 @@ pub fn reduce_lets(expr: &Expr) -> Expr {
             let body2 = reduce_lets(body);
             reduce_lets(&subst_bvar(&body2, 0, &val2))
         }
-        Expr::App(f, a) => Expr::App(Box::new(reduce_lets(f)), Box::new(reduce_lets(a))),
+        Expr::App(f, a) => Expr::App(Node::new(reduce_lets(f)), Node::new(reduce_lets(a))),
         Expr::Lam(i, n, ty, body) => Expr::Lam(
             *i,
             n.clone(),
-            Box::new(reduce_lets(ty)),
-            Box::new(reduce_lets(body)),
+            Node::new(reduce_lets(ty)),
+            Node::new(reduce_lets(body)),
         ),
         Expr::Pi(i, n, ty, body) => Expr::Pi(
             *i,
             n.clone(),
-            Box::new(reduce_lets(ty)),
-            Box::new(reduce_lets(body)),
+            Node::new(reduce_lets(ty)),
+            Node::new(reduce_lets(body)),
         ),
         _ => expr.clone(),
     }
@@ -868,12 +870,12 @@ mod eta_further_tests {
         Expr::Lam(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         )
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     #[test]
     fn test_is_beta_redex() {
@@ -919,9 +921,9 @@ mod eta_further_tests {
         let val = mk_const("v");
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(sort()),
-            Box::new(val.clone()),
-            Box::new(body),
+            Node::new(sort()),
+            Node::new(val.clone()),
+            Node::new(body),
         );
         assert_eq!(reduce_let(&let_expr), Some(val));
     }
@@ -1032,14 +1034,14 @@ mod extra_eta_tests {
         Expr::Const(Name::str(s), vec![])
     }
     fn mk_app_e(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     fn mk_lam_e(body: Expr) -> Expr {
         Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_sort_expr()),
-            Box::new(body),
+            Node::new(mk_sort_expr()),
+            Node::new(body),
         )
     }
     #[test]

@@ -897,6 +897,7 @@ impl Parser {
             TokenKind::LParen => self.parse_paren_or_tuple(),
             TokenKind::LBracket => self.parse_list_literal(),
             TokenKind::LAngle => self.parse_anonymous_ctor(),
+            TokenKind::By => self.parse_by_tactic(),
             _ => Err(ParseError::unexpected(
                 vec!["expression".to_string()],
                 self.current().kind.clone(),

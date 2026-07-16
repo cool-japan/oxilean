@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::functions::*;
@@ -14,16 +15,16 @@ pub fn axiom_hypothetical_syllogism_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("r"),
-                Box::new(prop()),
-                Box::new(prp_ext_arrow(
+                Node::new(prop()),
+                Node::new(prp_ext_arrow(
                     prp_ext_arrow(Expr::BVar(2), Expr::BVar(1)),
                     prp_ext_arrow(
                         prp_ext_arrow(Expr::BVar(1), Expr::BVar(0)),
@@ -53,40 +54,40 @@ pub fn axiom_resolution_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("r"),
-                Box::new(prop()),
-                Box::new(prp_ext_arrow(
+                Node::new(prop()),
+                Node::new(prp_ext_arrow(
                     Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Or"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Or"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     ),
                     prp_ext_arrow(
                         Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Not"), vec![])),
-                                    Box::new(Expr::BVar(2)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Not"), vec![])),
+                                    Node::new(Expr::BVar(2)),
                                 )),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         ),
                         Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                                Box::new(Expr::BVar(1)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         ),
                     ),
                 )),

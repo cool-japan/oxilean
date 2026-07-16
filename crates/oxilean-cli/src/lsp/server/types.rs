@@ -3,11 +3,13 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use crate::lsp::analysis::{analyze_document_and_cache, analyze_document_incremental};
 use crate::lsp::{
     analyze_document, format_json_value, parse_json_value, Diagnostic, Document, InitializeResult,
     JsonRpcError, JsonRpcMessage, JsonValue, Location, LspConfig, LspServer, Position,
     PublishDiagnosticsParams, Range, ServerCapabilities, SymbolInformation, SymbolKind,
 };
+use oxilean_parse::incremental::TextChange;
 use oxilean_parse::{Lexer, TokenKind};
 use std::process;
 use std::sync::mpsc;
@@ -268,6 +270,10 @@ impl<'a> RequestDispatcher<'a> {
                 let result = self.handle_semantic_tokens_full(&params);
                 respond(id, result)
             }
+            "textDocument/semanticTokens/range" => {
+                let result = self.handle_semantic_tokens_range(&params);
+                respond(id, result)
+            }
             "textDocument/inlayHint" => {
                 let result = self.handle_inlay_hints(&params);
                 respond(id, result)
@@ -326,10 +332,7 @@ impl<'a> RequestDispatcher<'a> {
                 }
             }
         }
-        let mut capabilities = ServerCapabilities::oxilean_defaults();
-        if self.session.client_capabilities.semantic_tokens {
-            capabilities.text_document_sync = 2;
-        }
+        let capabilities = ServerCapabilities::oxilean_defaults();
         let result = InitializeResult {
             capabilities,
             server_name: "oxilean-lsp".to_string(),
@@ -396,25 +399,86 @@ impl<'a> RequestDispatcher<'a> {
         }
     }
     /// Apply an incremental text change to a document.
+    ///
+    /// Converts LSP Range (UTF-16 code units, 0-indexed) to byte offsets, then
+    /// splices the new text into the document content. Handles out-of-range
+    /// positions gracefully without panicking.
+    ///
+    /// After updating the content string, this function computes a char-index
+    /// [`TextChange`] from the pre-edit content and triggers an incremental
+    /// re-lex via [`analyze_document_incremental`], updating `doc.cached_tokens`.
+    /// This avoids a full O(n) tokenize of the entire document on every keystroke.
     fn apply_incremental_change(&mut self, uri: &str, range: &Range, new_text: &str) {
-        if let Some(doc) = self.session.server.document_store.get_document(uri) {
-            let start_offset = doc.position_to_offset(&range.start).unwrap_or(0);
-            let end_offset = doc
+        // --- Step 1: compute new content + char-index TextChange ---------------
+        // We need the old content to compute char offsets *before* applying the
+        // edit, so clone it here.
+        let (new_content, text_change, new_version) = {
+            let doc = match self.session.server.document_store.get_document(uri) {
+                Some(d) => d,
+                None => return,
+            };
+            let old_content = doc.content.as_str();
+            let content_len = old_content.len();
+
+            // Byte offsets (for splicing the UTF-8 string)
+            let start_byte = doc
+                .position_to_offset(&range.start)
+                .unwrap_or(0)
+                .min(content_len);
+            let end_byte = doc
                 .position_to_offset(&range.end)
-                .unwrap_or(doc.content.len());
-            let mut new_content = String::with_capacity(
-                doc.content.len() - (end_offset - start_offset) + new_text.len(),
-            );
-            new_content.push_str(&doc.content[..start_offset]);
-            new_content.push_str(new_text);
-            new_content.push_str(&doc.content[end_offset..]);
-            let new_version = doc.version + 1;
-            self.session
-                .server
-                .document_store
-                .update_document(uri, new_version, new_content);
-            self.session.server.cache.invalidate(uri);
+                .unwrap_or(content_len)
+                .min(content_len)
+                .max(start_byte);
+
+            // Char-index offsets (for the incremental re-lex)
+            // Convert byte offset to number of Unicode scalar values that precede it.
+            let start_char = old_content[..start_byte].chars().count();
+            let end_char = old_content[..end_byte].chars().count();
+
+            // Build the new content string
+            let delete_len = end_byte - start_byte;
+            let mut nc =
+                String::with_capacity(content_len.saturating_sub(delete_len) + new_text.len());
+            nc.push_str(&old_content[..start_byte]);
+            nc.push_str(new_text);
+            nc.push_str(&old_content[end_byte..]);
+
+            let tc = TextChange::new(start_char, end_char, new_text);
+            let nv = doc.version + 1;
+            (nc, tc, nv)
+        };
+
+        // --- Step 2: write the new content into the document store -------------
+        // `update_document` clears `cached_tokens`, so we must save/restore them
+        // (or perform the incremental re-lex before updating).  We use a two-step
+        // approach: take the old cached tokens, update the document (content +
+        // line_offsets), then re-attach the tokens and run the incremental re-lex.
+        let old_cached_tokens = self
+            .session
+            .server
+            .document_store
+            .get_document(uri)
+            .map(|d| d.cached_tokens.clone())
+            .unwrap_or_default();
+
+        self.session
+            .server
+            .document_store
+            .update_document(uri, new_version, new_content);
+
+        // Restore the old tokens so analyze_document_incremental has a baseline.
+        if let Some(doc) = self.session.server.document_store.get_document_mut(uri) {
+            doc.cached_tokens = old_cached_tokens;
         }
+
+        // --- Step 3: incremental re-lex ----------------------------------------
+        if let Some(doc) = self.session.server.document_store.get_document_mut(uri) {
+            let env = &self.session.server.env;
+            let _ = analyze_document_incremental(doc, &text_change, env);
+        }
+
+        self.session.server.cache.invalidate(uri);
     }
     /// Handle textDocument/didClose.
     fn handle_did_close(&mut self, params: &JsonValue) {
@@ -530,6 +594,37 @@ impl<'a> RequestDispatcher<'a> {
                 return JsonValue::Object(vec![(
                     "data".to_string(),
                     JsonValue::Array(data.iter().map(|n| JsonValue::Number(*n as f64)).collect()),
+                )]);
+            }
+        }
+        JsonValue::Object(vec![("data".to_string(), JsonValue::Array(Vec::new()))])
+    }
+    /// Handle semantic tokens range request.
+    ///
+    /// Computes full semantic tokens for the document, then filters to those
+    /// within the requested range, re-encoding in delta format.
+    fn handle_semantic_tokens_range(&self, params: &JsonValue) -> JsonValue {
+        let uri = params
+            .get("textDocument")
+            .and_then(|td| td.get("uri"))
+            .and_then(|v| v.as_str());
+        let range = params.get("range").and_then(|r| Range::from_json(r).ok());
+        if let (Some(uri), Some(range)) = (uri, range) {
+            if let Some(doc) = self.session.server.document_store.get_document(uri) {
+                let full_data =
+                    compute_semantic_tokens_data(&doc.content, &self.session.server.env);
+                let ranged_data =
+                    crate::lsp::semantic_tokens::functions::filter_semantic_tokens_range(
+                        &full_data, &range,
+                    );
+                return JsonValue::Object(vec![(
+                    "data".to_string(),
+                    JsonValue::Array(
+                        ranged_data
+                            .iter()
+                            .map(|n| JsonValue::Number(*n as f64))
+                            .collect(),
+                    ),
                 )]);
             }
         }

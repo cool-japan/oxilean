@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, FVarId, Level, Literal, Name};
 
 use super::types::{
@@ -15,7 +16,7 @@ use super::types::{
 ///
 /// Returns `(Expr::Lit(Literal::Nat(n)), Nat_type)`.
 pub fn elab_nat_lit(n: u64) -> ElabResult {
-    let expr = Expr::Lit(Literal::Nat(n));
+    let expr = Expr::Lit(Literal::nat(n));
     let ty = Expr::Const(Name::str("Nat"), vec![]);
     ElabResult::new(expr, ty)
 }
@@ -34,7 +35,7 @@ pub fn elab_bool_lit(b: bool) -> ElabResult {
 }
 /// Elaborate a character literal.
 pub fn elab_char_lit(c: char) -> ElabResult {
-    let expr = Expr::Lit(Literal::Nat(c as u64));
+    let expr = Expr::Lit(Literal::nat(c as u64));
     let ty = Expr::Const(Name::str("Char"), vec![]);
     ElabResult::new(expr, ty)
 }
@@ -110,17 +111,17 @@ pub fn mk_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Build a dependent Pi type `(x : A) → B`.
 pub fn mk_pi(binder: Name, info: BinderInfo, dom: Expr, cod: Expr) -> Expr {
-    Expr::Pi(info, binder, Box::new(dom), Box::new(cod))
+    Expr::Pi(info, binder, Node::new(dom), Node::new(cod))
 }
 /// Build a lambda `fun (x : A) => body`.
 pub fn mk_lam(binder: Name, info: BinderInfo, ty: Expr, body: Expr) -> Expr {
-    Expr::Lam(info, binder, Box::new(ty), Box::new(body))
+    Expr::Lam(info, binder, Node::new(ty), Node::new(body))
 }
 /// Build a telescope of Pi types from a list of `(name, binder_info, domain)` triples.
 ///
@@ -139,7 +140,7 @@ pub fn mk_lam_telescope(binders: &[(Name, BinderInfo, Expr)], body: Expr) -> Exp
 /// Apply `f` to a list of arguments left-associatively.
 pub fn mk_app(f: Expr, args: Vec<Expr>) -> Expr {
     args.into_iter()
-        .fold(f, |acc, arg| Expr::App(Box::new(acc), Box::new(arg)))
+        .fold(f, |acc, arg| Expr::App(Node::new(acc), Node::new(arg)))
 }
 /// Build `Const(name) applied to args`.
 pub fn mk_const_app(name: Name, levels: Vec<Level>, args: Vec<Expr>) -> Expr {
@@ -148,8 +149,8 @@ pub fn mk_const_app(name: Name, levels: Vec<Level>, args: Vec<Expr>) -> Expr {
 }
 /// Build a two-argument application `f a b`.
 pub fn mk_app2(f: Expr, a: Expr, b: Expr) -> Expr {
-    let fa = Expr::App(Box::new(f), Box::new(a));
-    Expr::App(Box::new(fa), Box::new(b))
+    let fa = Expr::App(Node::new(f), Node::new(a));
+    Expr::App(Node::new(fa), Node::new(b))
 }
 /// Build `And A B` (propositional conjunction).
 pub fn mk_and(a: Expr, b: Expr) -> Expr {
@@ -188,7 +189,7 @@ pub fn collect_implicit_args(ty: &Expr) -> Vec<ImplicitArg> {
     loop {
         match cur {
             Expr::Pi(bi, n, dom, cod) if *bi != BinderInfo::Default => {
-                args.push(ImplicitArg::new(n.clone(), *dom.clone(), *bi));
+                args.push(ImplicitArg::new(n.clone(), (**dom).clone(), *bi));
                 cur = cod;
             }
             _ => break,
@@ -388,7 +389,7 @@ mod tests {
     #[test]
     fn test_elab_nat_lit() {
         let r = elab_nat_lit(42);
-        assert!(matches!(r.expr, Expr::Lit(Literal::Nat(42))));
+        assert!(matches!(r.expr, Expr::Lit(Literal::Nat(ref n)) if *n == 42u64));
         assert!(matches!(& r.ty, Expr::Const(n, _) if n.last_str() == Some("Nat")));
     }
     #[test]
@@ -478,7 +479,7 @@ mod tests {
     fn test_collect_fvars() {
         let a = Expr::FVar(FVarId(1));
         let b = Expr::FVar(FVarId(2));
-        let app = Expr::App(Box::new(a), Box::new(b));
+        let app = Expr::App(Node::new(a), Node::new(b));
         let fvars = collect_fvars(&app);
         assert_eq!(fvars, vec![1, 2]);
     }
@@ -491,7 +492,7 @@ mod tests {
     fn test_expr_depth_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(expr_depth(&app), 1);
     }
     #[test]
@@ -546,7 +547,7 @@ mod tests {
     fn test_head_const_name() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         let n = head_const_name(&app).expect("test operation should succeed");
         assert_eq!(n.last_str(), Some("f"));
     }
@@ -576,14 +577,14 @@ mod tests {
     fn test_coercion_insert_numeric() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
         let int = Expr::Const(Name::str("Int"), vec![]);
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         let ci = CoercionInsert::new(expr, nat, int, CoercionKind::NatToInt);
         assert!(ci.is_numeric());
     }
     #[test]
     fn test_elab_result_into_pair() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let lit = Expr::Lit(Literal::Nat(0));
+        let lit = Expr::Lit(Literal::nat(0));
         let r = ElabResult::new(lit, nat);
         let (e, t) = r.into_pair();
         assert!(matches!(e, Expr::Lit(_)));
@@ -688,7 +689,7 @@ mod tests {
     #[test]
     fn test_mk_eq() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let z = Expr::Lit(Literal::Nat(0));
+        let z = Expr::Lit(Literal::nat(0));
         let eq = mk_eq(nat, z.clone(), z);
         assert!(head_is_const(&eq));
         assert_eq!(
@@ -701,7 +702,7 @@ mod tests {
     #[test]
     fn test_elab_char_lit() {
         let r = elab_char_lit('A');
-        assert!(matches!(r.expr, Expr::Lit(Literal::Nat(65))));
+        assert!(matches!(r.expr, Expr::Lit(Literal::Nat(ref n)) if *n == 65u64));
         assert!(matches!(& r.ty, Expr::Const(n, _) if n.last_str() == Some("Char")));
     }
     #[test]

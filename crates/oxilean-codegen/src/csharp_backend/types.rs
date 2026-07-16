@@ -1198,6 +1198,7 @@ impl CSharpBackend {
     pub(super) fn compile_lit(&self, lit: &LcnfLit) -> CSharpExpr {
         match lit {
             LcnfLit::Nat(n) => CSharpExpr::Lit(CSharpLit::Long(*n as i64)),
+            LcnfLit::Int(i) => CSharpExpr::Lit(CSharpLit::Long(*i)),
             LcnfLit::Str(s) => CSharpExpr::Lit(CSharpLit::Str(s.clone())),
         }
     }

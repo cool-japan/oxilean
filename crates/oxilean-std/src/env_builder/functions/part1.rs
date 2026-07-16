@@ -1,11 +1,12 @@
 //! Environment builder functions
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name, ReducibilityHint};
 
 use super::super::types::EnvBuilder;
 
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Build an n-ary application from a function and argument list.
 pub fn app_n(f: Expr, args: Vec<Expr>) -> Expr {
@@ -44,8 +45,8 @@ pub fn pi(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 /// Build a named non-dependent pi-type `(name : dom) → cod`.
@@ -53,8 +54,8 @@ pub fn pi_named(name: &str, dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 /// Build an implicit pi `{name : dom} → cod`.
@@ -62,8 +63,8 @@ pub fn pi_implicit(name: &str, dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 /// Build an instance-implicit pi `[name : dom] → cod`.
@@ -71,8 +72,8 @@ pub fn pi_inst(name: &str, dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::InstImplicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 /// Build a `Lam` expression with an anonymous binder and `Prop` domain.
@@ -80,8 +81,8 @@ pub fn lam(body: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(prop()),
-        Box::new(body),
+        Node::new(prop()),
+        Node::new(body),
     )
 }
 /// Build a named lambda `fun (name : ty) => body`.
@@ -89,8 +90,8 @@ pub fn lam_named(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Build an n-ary arrow type `t1 → t2 → … → ret`.
@@ -944,8 +945,8 @@ pub fn lam_ext(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 /// Build `Sort(Level::Param("u"))` — a polymorphic sort.

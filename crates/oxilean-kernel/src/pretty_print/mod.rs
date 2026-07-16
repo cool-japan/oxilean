@@ -20,7 +20,7 @@
 //! use oxilean_kernel::pretty_print::{PrettyPrinter, pp_expr, pp_type};
 //! use oxilean_kernel::{Expr, Literal};
 //!
-//! let e = Expr::Lit(Literal::Nat(42));
+//! let e = Expr::Lit(Literal::nat(42));
 //! assert_eq!(pp_expr(&e), "42");
 //! assert_eq!(pp_type(&e), "42");
 //! assert_eq!(PrettyPrinter::new().pp_expr(&e), "42");

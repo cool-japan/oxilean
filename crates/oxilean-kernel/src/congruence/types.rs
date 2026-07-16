@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Name};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use super::functions::{mk_congr_theorem, TermIdx};
 
@@ -540,7 +542,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -550,7 +552,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -564,7 +566,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;
@@ -751,7 +753,7 @@ impl StatSummary {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -759,7 +761,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }
@@ -1145,8 +1147,8 @@ impl CongruenceClosure {
                     let ra1 = self.find(a1);
                     let ra2 = self.find(a2);
                     if rf1 == rf2 && ra1 == ra2 {
-                        let app1 = Expr::App(Box::new(f1.clone()), Box::new(a1.clone()));
-                        let app2 = Expr::App(Box::new(f2.clone()), Box::new(a2.clone()));
+                        let app1 = Expr::App(Node::new(f1.clone()), Node::new(a1.clone()));
+                        let app2 = Expr::App(Node::new(f2.clone()), Node::new(a2.clone()));
                         if self.find(&app1) != self.find(&app2) {
                             self.pending.push((app1, app2));
                         }

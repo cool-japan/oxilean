@@ -14,6 +14,7 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 /// `constructor` — apply the first applicable constructor.
@@ -97,8 +98,8 @@ pub fn tac_existsi(
     let (proof_id, proof_expr) = ctx.mk_fresh_expr_mvar(sort_ty, MetavarKind::Natural);
     let ctor = Expr::Const(Name::str("Sigma.mk"), vec![Level::zero(), Level::zero()]);
     let proof = Expr::App(
-        Box::new(Expr::App(Box::new(ctor), Box::new(witness))),
-        Box::new(proof_expr),
+        Node::new(Expr::App(Node::new(ctor), Node::new(witness))),
+        Node::new(proof_expr),
     );
     ctx.assign_mvar(goal, proof);
     state.replace_goal(vec![proof_id]);
@@ -149,7 +150,7 @@ pub(super) fn apply_constructor(
     for _ in 0..num_fields {
         let (field_id, field_expr) = ctx.mk_fresh_expr_mvar(sort_ty.clone(), MetavarKind::Natural);
         subgoals.push(field_id);
-        app = Expr::App(Box::new(app), Box::new(field_expr));
+        app = Expr::App(Node::new(app), Node::new(field_expr));
     }
     ctx.assign_mvar(goal, app);
     state.replace_goal(subgoals.clone());
@@ -179,11 +180,11 @@ mod tests {
         let p = Expr::Const(Name::str("P"), vec![]);
         let q = Expr::Const(Name::str("Q"), vec![]);
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(p),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(p),
             )),
-            Box::new(q),
+            Node::new(q),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -197,11 +198,11 @@ mod tests {
         let p = Expr::Const(Name::str("P"), vec![]);
         let q = Expr::Const(Name::str("Q"), vec![]);
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(p),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(p),
             )),
-            Box::new(q),
+            Node::new(q),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -215,11 +216,11 @@ mod tests {
         let p = Expr::Const(Name::str("P"), vec![]);
         let q = Expr::Const(Name::str("Q"), vec![]);
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(p),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(p),
             )),
-            Box::new(q),
+            Node::new(q),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -240,8 +241,8 @@ mod tests {
     fn test_existsi() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("Exists"), vec![])),
-            Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::Const(Name::str("Exists"), vec![])),
+            Node::new(Expr::Const(Name::str("P"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -264,7 +265,7 @@ mod tests {
     #[test]
     fn test_get_head_const() {
         let a = Expr::Const(Name::str("And"), vec![]);
-        let pa = Expr::App(Box::new(a), Box::new(Expr::Const(Name::str("P"), vec![])));
+        let pa = Expr::App(Node::new(a), Node::new(Expr::Const(Name::str("P"), vec![])));
         assert_eq!(get_head_const(&pa), Some(Name::str("And")));
         let bvar = Expr::BVar(0);
         assert_eq!(get_head_const(&bvar), None);
@@ -429,11 +430,11 @@ mod extended_tests {
     fn test_tac_nth_constructor_first() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Q"), vec![])),
+            Node::new(Expr::Const(Name::str("Q"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -445,11 +446,11 @@ mod extended_tests {
     fn test_tac_split_and() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Q"), vec![])),
+            Node::new(Expr::Const(Name::str("Q"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -485,11 +486,11 @@ mod extended_tests {
     fn test_goal_is_structure_and() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Q"), vec![])),
+            Node::new(Expr::Const(Name::str("Q"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let state = TacticState::single(mvar_id);
@@ -499,11 +500,11 @@ mod extended_tests {
     fn test_tac_refine_ctor() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Q"), vec![])),
+            Node::new(Expr::Const(Name::str("Q"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -573,11 +574,11 @@ mod builtin_tests {
     fn test_any_goal_is_structure_true() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Q"), vec![])),
+            Node::new(Expr::Const(Name::str("Q"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let state = TacticState::single(mvar_id);
@@ -587,11 +588,11 @@ mod builtin_tests {
     fn test_any_goal_is_structure_false() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Q"), vec![])),
+            Node::new(Expr::Const(Name::str("Q"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let state = TacticState::single(mvar_id);
@@ -623,8 +624,8 @@ mod builtin_tests {
     fn test_tac_use_exists() {
         let mut ctx = mk_ctx();
         let goal_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("Exists"), vec![])),
-            Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::Const(Name::str("Exists"), vec![])),
+            Node::new(Expr::Const(Name::str("P"), vec![])),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);

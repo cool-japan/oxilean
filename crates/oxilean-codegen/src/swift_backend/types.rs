@@ -1171,6 +1171,7 @@ impl SwiftBackend {
     pub fn compile_lit(&self, lit: &LcnfLit) -> SwiftExpr {
         match lit {
             LcnfLit::Nat(n) => SwiftExpr::SwiftLitExpr(SwiftLit::Int(*n as i64)),
+            LcnfLit::Int(i) => SwiftExpr::SwiftLitExpr(SwiftLit::Int(*i)),
             LcnfLit::Str(s) => SwiftExpr::SwiftLitExpr(SwiftLit::Str(s.clone())),
         }
     }
@@ -1339,9 +1340,11 @@ impl SwiftBackend {
     /// Map an LCNF type to the closest Swift type.
     pub fn compile_lcnf_type(&self, ty: &LcnfType) -> SwiftType {
         match ty {
-            LcnfType::Nat | LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => {
-                SwiftType::SwiftNamed("OxValue".to_string())
-            }
+            LcnfType::Nat
+            | LcnfType::Int
+            | LcnfType::Unit
+            | LcnfType::Erased
+            | LcnfType::Irrelevant => SwiftType::SwiftNamed("OxValue".to_string()),
             LcnfType::LcnfString => SwiftType::SwiftNamed("OxValue".to_string()),
             LcnfType::Object => SwiftType::SwiftNamed("OxValue".to_string()),
             LcnfType::Var(_) => SwiftType::SwiftNamed("OxValue".to_string()),

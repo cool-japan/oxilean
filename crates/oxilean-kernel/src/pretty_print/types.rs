@@ -189,7 +189,7 @@ impl Prec {
 /// use oxilean_kernel::{Expr, Level, Literal};
 ///
 /// let pp = PrettyPrinter::new();
-/// let nat_expr = Expr::Lit(Literal::Nat(42));
+/// let nat_expr = Expr::Lit(Literal::nat(42));
 /// assert_eq!(pp.pp_expr(&nat_expr), "42");
 /// ```
 pub struct PrettyPrinter {

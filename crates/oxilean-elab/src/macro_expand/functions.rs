@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Literal, Name};
 use std::collections::HashMap;
 
@@ -91,7 +92,7 @@ pub fn substitute_template_impl(
         MacroTemplate::App(f, a) => {
             let f_expr = substitute_template_impl(f, bindings)?;
             let a_expr = substitute_template_impl(a, bindings)?;
-            Ok(Expr::App(Box::new(f_expr), Box::new(a_expr)))
+            Ok(Expr::App(Node::new(f_expr), Node::new(a_expr)))
         }
         MacroTemplate::Seq(parts) => {
             if parts.is_empty() {
@@ -102,7 +103,7 @@ pub fn substitute_template_impl(
             let mut result = substitute_template_impl(&parts[0], bindings)?;
             for part in &parts[1..] {
                 let arg = substitute_template_impl(part, bindings)?;
-                result = Expr::App(Box::new(result), Box::new(arg));
+                result = Expr::App(Node::new(result), Node::new(arg));
             }
             Ok(result)
         }
@@ -122,23 +123,23 @@ pub fn substitute_name_in_expr(expr: &Expr, name: &Name, replacement: &Expr) -> 
         Expr::App(f, a) => {
             let f2 = substitute_name_in_expr(f, name, replacement);
             let a2 = substitute_name_in_expr(a, name, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = substitute_name_in_expr(ty, name, replacement);
             let body2 = substitute_name_in_expr(body, name, replacement);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = substitute_name_in_expr(ty, name, replacement);
             let body2 = substitute_name_in_expr(body, name, replacement);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = substitute_name_in_expr(ty, name, replacement);
             let val2 = substitute_name_in_expr(val, name, replacement);
             let body2 = substitute_name_in_expr(body, name, replacement);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         _ => expr.clone(),
     }
@@ -167,41 +168,41 @@ pub fn quote_expr(expr: &Expr) -> Expr {
         Expr::Const(name, _) => {
             let name_lit = Expr::Lit(Literal::Str(name.to_string()));
             Expr::App(
-                Box::new(Expr::Const(Name::str("Expr.const"), vec![])),
-                Box::new(name_lit),
+                Node::new(Expr::Const(Name::str("Expr.const"), vec![])),
+                Node::new(name_lit),
             )
         }
         Expr::App(f, a) => {
             let qf = quote_expr(f);
             let qa = quote_expr(a);
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Expr.app"), vec![])),
-                    Box::new(qf),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Expr.app"), vec![])),
+                    Node::new(qf),
                 )),
-                Box::new(qa),
+                Node::new(qa),
             )
         }
         Expr::Lit(lit) => Expr::App(
-            Box::new(Expr::Const(Name::str("Expr.lit"), vec![])),
-            Box::new(Expr::Lit(lit.clone())),
+            Node::new(Expr::Const(Name::str("Expr.lit"), vec![])),
+            Node::new(Expr::Lit(lit.clone())),
         ),
         Expr::BVar(n) => Expr::App(
-            Box::new(Expr::Const(Name::str("Expr.bvar"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(*n as u64))),
+            Node::new(Expr::Const(Name::str("Expr.bvar"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(*n as u64))),
         ),
         Expr::FVar(fid) => Expr::App(
-            Box::new(Expr::Const(Name::str("Expr.fvar"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(fid.0))),
+            Node::new(Expr::Const(Name::str("Expr.fvar"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(fid.0))),
         ),
         Expr::Sort(level) => {
             let level_repr = match level {
-                Level::Zero => Expr::Lit(Literal::Nat(0)),
+                Level::Zero => Expr::Lit(Literal::nat(0)),
                 _ => Expr::Lit(Literal::Str(format!("{}", level))),
             };
             Expr::App(
-                Box::new(Expr::Const(Name::str("Expr.sort"), vec![])),
-                Box::new(level_repr),
+                Node::new(Expr::Const(Name::str("Expr.sort"), vec![])),
+                Node::new(level_repr),
             )
         }
         Expr::Lam(_, name, ty, body) => {
@@ -209,14 +210,14 @@ pub fn quote_expr(expr: &Expr) -> Expr {
             let qty = quote_expr(ty);
             let qbody = quote_expr(body);
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Expr.lam"), vec![])),
-                        Box::new(qname),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Expr.lam"), vec![])),
+                        Node::new(qname),
                     )),
-                    Box::new(qty),
+                    Node::new(qty),
                 )),
-                Box::new(qbody),
+                Node::new(qbody),
             )
         }
         Expr::Pi(_, name, ty, body) => {
@@ -224,14 +225,14 @@ pub fn quote_expr(expr: &Expr) -> Expr {
             let qty = quote_expr(ty);
             let qbody = quote_expr(body);
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Expr.pi"), vec![])),
-                        Box::new(qname),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Expr.pi"), vec![])),
+                        Node::new(qname),
                     )),
-                    Box::new(qty),
+                    Node::new(qty),
                 )),
-                Box::new(qbody),
+                Node::new(qbody),
             )
         }
         Expr::Let(name, ty, val, body) => {
@@ -240,32 +241,32 @@ pub fn quote_expr(expr: &Expr) -> Expr {
             let qval = quote_expr(val);
             let qbody = quote_expr(body);
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Expr.letE"), vec![])),
-                            Box::new(qname),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Expr.letE"), vec![])),
+                            Node::new(qname),
                         )),
-                        Box::new(qty),
+                        Node::new(qty),
                     )),
-                    Box::new(qval),
+                    Node::new(qval),
                 )),
-                Box::new(qbody),
+                Node::new(qbody),
             )
         }
         Expr::Proj(name, idx, e) => {
             let qname = Expr::Lit(Literal::Str(name.to_string()));
-            let qidx = Expr::Lit(Literal::Nat(*idx as u64));
+            let qidx = Expr::Lit(Literal::nat(*idx as u64));
             let qe = quote_expr(e);
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Expr.proj"), vec![])),
-                        Box::new(qname),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Expr.proj"), vec![])),
+                        Node::new(qname),
                     )),
-                    Box::new(qidx),
+                    Node::new(qidx),
                 )),
-                Box::new(qe),
+                Node::new(qe),
             )
         }
     }
@@ -297,7 +298,13 @@ pub fn unquote_expr(quoted: &Expr) -> Result<Expr, MacroError> {
             }
             Expr::Const(n, _) if n == &Name::str("Expr.bvar") => {
                 if let Expr::Lit(Literal::Nat(idx)) = arg.as_ref() {
-                    Ok(Expr::BVar(*idx as u32))
+                    if let Some(v) = idx.to_u32() {
+                        Ok(Expr::BVar(v))
+                    } else {
+                        Err(MacroError::ExpansionError(
+                            "Expr.bvar index too large for u32".to_string(),
+                        ))
+                    }
                 } else {
                     Err(MacroError::ExpansionError(
                         "Invalid Expr.bvar argument".to_string(),
@@ -309,7 +316,7 @@ pub fn unquote_expr(quoted: &Expr) -> Result<Expr, MacroError> {
                     if n == &Name::str("Expr.app") {
                         let f = unquote_expr(inner_arg)?;
                         let a = unquote_expr(arg)?;
-                        return Ok(Expr::App(Box::new(f), Box::new(a)));
+                        return Ok(Expr::App(Node::new(f), Node::new(a)));
                     }
                 }
                 Err(MacroError::ExpansionError(
@@ -344,14 +351,14 @@ mod tests {
     #[test]
     fn test_register_macro() {
         let mut expander = MacroExpander::new();
-        let macro_def = MacroDef::simple(Name::str("test"), vec![], Expr::Lit(Literal::Nat(42)));
+        let macro_def = MacroDef::simple(Name::str("test"), vec![], Expr::Lit(Literal::nat(42)));
         expander.register(macro_def);
         assert!(expander.is_macro(&Name::str("test")));
     }
     #[test]
     fn test_expand_no_macro() {
         let expander = MacroExpander::new();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let expanded = expander.expand(&expr);
         assert!(expanded.is_ok());
         assert_eq!(expanded.expect("macro expansion should succeed"), expr);
@@ -359,7 +366,7 @@ mod tests {
     #[test]
     fn test_expand_simple() {
         let mut expander = MacroExpander::new();
-        let template = Expr::Lit(Literal::Nat(42));
+        let template = Expr::Lit(Literal::nat(42));
         let macro_def = MacroDef {
             name: Name::str("answer"),
             params: vec![],
@@ -394,11 +401,11 @@ mod tests {
     fn test_match_var_pattern() {
         let expander = MacroExpander::new();
         let pattern = MacroPattern::Var(Name::str("x"));
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let bindings = expander.match_pattern(&pattern, &expr);
         assert!(bindings.is_some());
         let b = bindings.expect("test operation should succeed");
-        assert_eq!(b.get(&Name::str("x")), Some(&Expr::Lit(Literal::Nat(42))));
+        assert_eq!(b.get(&Name::str("x")), Some(&Expr::Lit(Literal::nat(42))));
     }
     #[test]
     fn test_match_exact_pattern() {
@@ -417,13 +424,13 @@ mod tests {
             Box::new(MacroPattern::Var(Name::str("arg"))),
         );
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(10))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(10))),
         );
         let bindings = expander.match_pattern(&pattern, &expr);
         assert!(bindings.is_some());
         let b = bindings.expect("test operation should succeed");
-        assert_eq!(b.get(&Name::str("arg")), Some(&Expr::Lit(Literal::Nat(10))));
+        assert_eq!(b.get(&Name::str("arg")), Some(&Expr::Lit(Literal::nat(10))));
     }
     #[test]
     fn test_match_lit_pattern() {
@@ -442,26 +449,26 @@ mod tests {
             Box::new(MacroPattern::Var(Name::str("x"))),
         );
         let same = Expr::App(
-            Box::new(Expr::Lit(Literal::Nat(1))),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::Lit(Literal::nat(1))),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         assert!(expander.match_pattern(&pattern, &same).is_some());
         let diff = Expr::App(
-            Box::new(Expr::Lit(Literal::Nat(1))),
-            Box::new(Expr::Lit(Literal::Nat(2))),
+            Node::new(Expr::Lit(Literal::nat(1))),
+            Node::new(Expr::Lit(Literal::nat(2))),
         );
         assert!(expander.match_pattern(&pattern, &diff).is_none());
     }
     #[test]
     fn test_substitute_expr_template() {
         let expander = MacroExpander::new();
-        let template = MacroTemplate::Expr(Expr::Lit(Literal::Nat(99)));
+        let template = MacroTemplate::Expr(Expr::Lit(Literal::nat(99)));
         let bindings = HashMap::new();
         let result = expander.substitute_template(&template, &bindings);
         assert!(result.is_ok());
         assert_eq!(
             result.expect("test operation should succeed"),
-            Expr::Lit(Literal::Nat(99))
+            Expr::Lit(Literal::nat(99))
         );
     }
     #[test]
@@ -469,12 +476,12 @@ mod tests {
         let expander = MacroExpander::new();
         let template = MacroTemplate::Var(Name::str("x"));
         let mut bindings = HashMap::new();
-        bindings.insert(Name::str("x"), Expr::Lit(Literal::Nat(7)));
+        bindings.insert(Name::str("x"), Expr::Lit(Literal::nat(7)));
         let result = expander.substitute_template(&template, &bindings);
         assert!(result.is_ok());
         assert_eq!(
             result.expect("test operation should succeed"),
-            Expr::Lit(Literal::Nat(7))
+            Expr::Lit(Literal::nat(7))
         );
     }
     #[test]
@@ -493,7 +500,7 @@ mod tests {
             Box::new(MacroTemplate::Var(Name::str("x"))),
         );
         let mut bindings = HashMap::new();
-        bindings.insert(Name::str("x"), Expr::Lit(Literal::Nat(5)));
+        bindings.insert(Name::str("x"), Expr::Lit(Literal::nat(5)));
         let result = expander.substitute_template(&template, &bindings);
         assert!(result.is_ok());
         let expanded = result.expect("macro expansion should succeed");
@@ -517,8 +524,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         let result = expander.apply_hygiene(&lam, 1);
         match &result {
@@ -537,11 +544,11 @@ mod tests {
             Expr::Const(Name::str("x"), vec![]),
         );
         expander.register(macro_def);
-        let result = expander.expand_with_args(&Name::str("id"), &[Expr::Lit(Literal::Nat(42))]);
+        let result = expander.expand_with_args(&Name::str("id"), &[Expr::Lit(Literal::nat(42))]);
         assert!(result.is_ok());
         assert_eq!(
             result.expect("test operation should succeed"),
-            Expr::Lit(Literal::Nat(42))
+            Expr::Lit(Literal::nat(42))
         );
     }
     #[test]
@@ -554,8 +561,8 @@ mod tests {
     fn test_is_terminal_no_macros() {
         let expander = MacroExpander::new();
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         assert!(expander.is_terminal(&expr));
     }
@@ -565,7 +572,7 @@ mod tests {
         expander.register(MacroDef::simple(
             Name::str("m"),
             vec![],
-            Expr::Lit(Literal::Nat(0)),
+            Expr::Lit(Literal::nat(0)),
         ));
         let expr = Expr::Const(Name::str("m"), vec![]);
         assert!(!expander.is_terminal(&expr));
@@ -581,7 +588,7 @@ mod tests {
         expander.register(MacroDef::simple(
             Name::str("step2"),
             vec![],
-            Expr::Lit(Literal::Nat(42)),
+            Expr::Lit(Literal::nat(42)),
         ));
         let expr = Expr::Const(Name::str("step1"), vec![]);
         let trace = expander.trace_expansion(&expr);
@@ -599,14 +606,14 @@ mod tests {
         expander.register(MacroDef::simple(
             Name::str("b"),
             vec![],
-            Expr::Lit(Literal::Nat(99)),
+            Expr::Lit(Literal::nat(99)),
         ));
         let expr = Expr::Const(Name::str("a"), vec![]);
         let result = expander.expand_fully(&expr);
         assert!(result.is_ok());
         assert_eq!(
             result.expect("test operation should succeed"),
-            Expr::Lit(Literal::Nat(99))
+            Expr::Lit(Literal::nat(99))
         );
     }
     #[test]
@@ -624,13 +631,13 @@ mod tests {
     }
     #[test]
     fn test_quote_lit() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let quoted = quote_expr(&expr);
         match &quoted {
             Expr::App(f, a) => {
                 assert!(matches!(f.as_ref(), Expr::Const(n, _) if n == &
                     Name::str("Expr.lit")));
-                assert_eq!(*a.as_ref(), Expr::Lit(Literal::Nat(42)));
+                assert_eq!(*a.as_ref(), Expr::Lit(Literal::nat(42)));
             }
             _ => panic!("Expected App"),
         }
@@ -638,8 +645,8 @@ mod tests {
     #[test]
     fn test_unquote_const() {
         let quoted = Expr::App(
-            Box::new(Expr::Const(Name::str("Expr.const"), vec![])),
-            Box::new(Expr::Lit(Literal::Str("Foo".to_string()))),
+            Node::new(Expr::Const(Name::str("Expr.const"), vec![])),
+            Node::new(Expr::Lit(Literal::Str("Foo".to_string()))),
         );
         let result = unquote_expr(&quoted);
         assert!(result.is_ok());
@@ -651,14 +658,14 @@ mod tests {
     #[test]
     fn test_unquote_lit() {
         let quoted = Expr::App(
-            Box::new(Expr::Const(Name::str("Expr.lit"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(7))),
+            Node::new(Expr::Const(Name::str("Expr.lit"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(7))),
         );
         let result = unquote_expr(&quoted);
         assert!(result.is_ok());
         assert_eq!(
             result.expect("test operation should succeed"),
-            Expr::Lit(Literal::Nat(7))
+            Expr::Lit(Literal::nat(7))
         );
     }
     #[test]
@@ -673,7 +680,7 @@ mod tests {
         let mut expander = MacroExpander::new();
         let rule = MacroRule {
             pattern: MacroPattern::Exact(Name::str("myMacro")),
-            template: MacroTemplate::Expr(Expr::Lit(Literal::Nat(100))),
+            template: MacroTemplate::Expr(Expr::Lit(Literal::nat(100))),
         };
         let macro_def =
             MacroDef::with_rules(Name::str("myMacro"), MacroKind::TermMacro, vec![rule]);
@@ -683,7 +690,7 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(
             result.expect("test operation should succeed"),
-            Expr::Lit(Literal::Nat(100))
+            Expr::Lit(Literal::nat(100))
         );
     }
     #[test]
@@ -706,18 +713,18 @@ mod tests {
         expander.register(MacroDef::simple(
             Name::str("m"),
             vec![],
-            Expr::Lit(Literal::Nat(1)),
+            Expr::Lit(Literal::nat(1)),
         ));
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("m"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("m"), vec![])),
         );
         let result = expander
             .expand(&expr)
             .expect("macro expansion should succeed");
         match &result {
             Expr::App(_, a) => {
-                assert_eq!(*a.as_ref(), Expr::Lit(Literal::Nat(1)));
+                assert_eq!(*a.as_ref(), Expr::Lit(Literal::nat(1)));
             }
             _ => panic!("Expected App"),
         }
@@ -727,7 +734,7 @@ mod tests {
         let expander = MacroExpander::new();
         let template = MacroTemplate::Quote(Box::new(MacroTemplate::Var(Name::str("x"))));
         let mut bindings = HashMap::new();
-        bindings.insert(Name::str("x"), Expr::Lit(Literal::Nat(5)));
+        bindings.insert(Name::str("x"), Expr::Lit(Literal::nat(5)));
         let result = expander.substitute_template(&template, &bindings);
         assert!(result.is_ok());
         let quoted = result.expect("test operation should succeed");
@@ -735,7 +742,7 @@ mod tests {
             Expr::App(f, a) => {
                 assert!(matches!(f.as_ref(), Expr::Const(n, _) if n == &
                     Name::str("Expr.lit")));
-                assert_eq!(*a.as_ref(), Expr::Lit(Literal::Nat(5)));
+                assert_eq!(*a.as_ref(), Expr::Lit(Literal::nat(5)));
             }
             _ => panic!("Expected quoted literal"),
         }

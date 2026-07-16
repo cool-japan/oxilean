@@ -10,6 +10,7 @@ pub mod completiongenerator_type;
 pub mod dynamiccompletionregistry_traits;
 pub mod filesystemcompletionprovider_traits;
 pub mod functions;
+pub mod projectsymbolprovider_traits;
 pub mod richcompletiongenerator_flag_to_bash_word_group;
 pub mod richcompletiongenerator_generate_group;
 pub mod richcompletiongenerator_generate_zsh_group;
@@ -28,6 +29,9 @@ pub use completiongenerator_type::*;
 pub use dynamiccompletionregistry_traits::*;
 pub use filesystemcompletionprovider_traits::*;
 pub use functions::*;
+pub use projectsymbolprovider_traits::{
+    extract_decl_names_from_source, project_symbol_candidates, ProjectSymbolRegistration,
+};
 pub use richcompletiongenerator_flag_to_bash_word_group::*;
 pub use richcompletiongenerator_generate_group::*;
 pub use richcompletiongenerator_generate_zsh_group::*;

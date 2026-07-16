@@ -4,7 +4,9 @@
 
 use crate::expr_util::has_any_fvar;
 use crate::subst::instantiate;
+use crate::Node;
 use crate::{Expr, FVarId, Name};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, LabelSet, MinHeap,
@@ -48,17 +50,17 @@ fn abstract_fvars_at(expr: &Expr, fvars: &[FVarId], offset: u32) -> Expr {
         Expr::App(f, a) => {
             let f_new = abstract_fvars_at(f, fvars, offset);
             let a_new = abstract_fvars_at(a, fvars, offset);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = abstract_fvars_at(ty, fvars, offset);
             let body_new = abstract_fvars_at(body, fvars, offset + 1);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = abstract_fvars_at(ty, fvars, offset);
             let body_new = abstract_fvars_at(body, fvars, offset + 1);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = abstract_fvars_at(ty, fvars, offset);
@@ -66,14 +68,14 @@ fn abstract_fvars_at(expr: &Expr, fvars: &[FVarId], offset: u32) -> Expr {
             let body_new = abstract_fvars_at(body, fvars, offset + 1);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = abstract_fvars_at(e, fvars, offset);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
     }
 }
@@ -110,7 +112,7 @@ pub fn apply_beta(mut expr: Expr, args: &[Expr]) -> Expr {
                 expr = instantiate(&body, arg);
             }
             _ => {
-                expr = Expr::App(Box::new(expr), Box::new(arg.clone()));
+                expr = Expr::App(Node::new(expr), Node::new(arg.clone()));
             }
         }
     }
@@ -128,8 +130,8 @@ pub fn mk_lambda(fvars: &[(FVarId, Name, Expr)], body: &Expr) -> Expr {
         result = Expr::Lam(
             crate::BinderInfo::Default,
             name.clone(),
-            Box::new(ty_abs),
-            Box::new(result),
+            Node::new(ty_abs),
+            Node::new(result),
         );
     }
     result
@@ -146,8 +148,8 @@ pub fn mk_forall(fvars: &[(FVarId, Name, Expr)], body: &Expr) -> Expr {
         result = Expr::Pi(
             crate::BinderInfo::Default,
             name.clone(),
-            Box::new(ty_abs),
-            Box::new(result),
+            Node::new(ty_abs),
+            Node::new(result),
         );
     }
     result
@@ -169,25 +171,25 @@ mod tests {
         let y = FVarId(2);
         let z = FVarId(3);
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("f"), vec![])),
-                    Box::new(Expr::FVar(x)),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("f"), vec![])),
+                    Node::new(Expr::FVar(x)),
                 )),
-                Box::new(Expr::FVar(y)),
+                Node::new(Expr::FVar(y)),
             )),
-            Box::new(Expr::FVar(z)),
+            Node::new(Expr::FVar(z)),
         );
         let result = abstract_fvars(&e, &[x, y, z]);
         let expected = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("f"), vec![])),
-                    Box::new(Expr::BVar(2)),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("f"), vec![])),
+                    Node::new(Expr::BVar(2)),
                 )),
-                Box::new(Expr::BVar(1)),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(result, expected);
     }
@@ -197,10 +199,10 @@ mod tests {
         let e = Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(Expr::FVar(x)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(Expr::FVar(x)),
             )),
         );
         let result = abstract_fvars(&e, &[x]);
@@ -225,19 +227,19 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         let a = Expr::FVar(FVarId(99));
-        let app = Expr::App(Box::new(lam), Box::new(a.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(a.clone()));
         let result = cheap_beta_reduce(&app);
         assert_eq!(result, a);
     }
     #[test]
     fn test_cheap_beta_reduce_non_redex() {
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         let result = cheap_beta_reduce(&app);
         assert_eq!(result, app);
@@ -247,14 +249,14 @@ mod tests {
         let inner = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(1)),
         );
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(inner),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(inner),
         );
         let a = Expr::FVar(FVarId(1));
         let b = Expr::FVar(FVarId(2));
@@ -265,7 +267,7 @@ mod tests {
     fn test_abstract_roundtrip() {
         let x = FVarId(1);
         let y = FVarId(2);
-        let e = Expr::App(Box::new(Expr::FVar(x)), Box::new(Expr::FVar(y)));
+        let e = Expr::App(Node::new(Expr::FVar(x)), Node::new(Expr::FVar(y)));
         let abstracted = abstract_fvars(&e, &[x, y]);
         let back =
             crate::instantiate::instantiate_rev(&abstracted, &[Expr::FVar(x), Expr::FVar(y)]);
@@ -277,9 +279,9 @@ pub fn let_abstract(expr: &Expr, fvar: FVarId, ty: &Expr, val: &Expr) -> Expr {
     let body = abstract_fvars(expr, &[fvar]);
     Expr::Let(
         Name::str("_let"),
-        Box::new(ty.clone()),
-        Box::new(val.clone()),
-        Box::new(body),
+        Node::new(ty.clone()),
+        Node::new(val.clone()),
+        Node::new(body),
     )
 }
 /// Count how many times a free variable appears in an expression.
@@ -350,8 +352,8 @@ pub fn subst_fvar(expr: &Expr, fvar: FVarId, replacement: &Expr) -> Expr {
         }
         Expr::BVar(_) | Expr::Sort(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_fvar(f, fvar, replacement)),
-            Box::new(subst_fvar(a, fvar, replacement)),
+            Node::new(subst_fvar(f, fvar, replacement)),
+            Node::new(subst_fvar(a, fvar, replacement)),
         ),
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = subst_fvar(ty, fvar, replacement);
@@ -359,8 +361,8 @@ pub fn subst_fvar(expr: &Expr, fvar: FVarId, replacement: &Expr) -> Expr {
             Expr::Lam(
                 *bi,
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(subst_fvar(body, fvar, &shifted)),
+                Node::new(ty_new),
+                Node::new(subst_fvar(body, fvar, &shifted)),
             )
         }
         Expr::Pi(bi, name, ty, body) => {
@@ -369,8 +371,8 @@ pub fn subst_fvar(expr: &Expr, fvar: FVarId, replacement: &Expr) -> Expr {
             Expr::Pi(
                 *bi,
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(subst_fvar(body, fvar, &shifted)),
+                Node::new(ty_new),
+                Node::new(subst_fvar(body, fvar, &shifted)),
             )
         }
         Expr::Let(name, ty, val, body) => {
@@ -379,15 +381,15 @@ pub fn subst_fvar(expr: &Expr, fvar: FVarId, replacement: &Expr) -> Expr {
             let shifted = shift_bvars(replacement, 1, 0);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(subst_fvar(body, fvar, &shifted)),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(subst_fvar(body, fvar, &shifted)),
             )
         }
         Expr::Proj(name, idx, e) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(subst_fvar(e, fvar, replacement)),
+            Node::new(subst_fvar(e, fvar, replacement)),
         ),
     }
 }
@@ -403,30 +405,32 @@ pub fn shift_bvars(expr: &Expr, amount: u32, cutoff: u32) -> Expr {
         }
         Expr::FVar(_) | Expr::Sort(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_bvars(f, amount, cutoff)),
-            Box::new(shift_bvars(a, amount, cutoff)),
+            Node::new(shift_bvars(f, amount, cutoff)),
+            Node::new(shift_bvars(a, amount, cutoff)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, amount, cutoff)),
-            Box::new(shift_bvars(body, amount, cutoff + 1)),
+            Node::new(shift_bvars(ty, amount, cutoff)),
+            Node::new(shift_bvars(body, amount, cutoff + 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, amount, cutoff)),
-            Box::new(shift_bvars(body, amount, cutoff + 1)),
+            Node::new(shift_bvars(ty, amount, cutoff)),
+            Node::new(shift_bvars(body, amount, cutoff + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(shift_bvars(ty, amount, cutoff)),
-            Box::new(shift_bvars(val, amount, cutoff)),
-            Box::new(shift_bvars(body, amount, cutoff + 1)),
+            Node::new(shift_bvars(ty, amount, cutoff)),
+            Node::new(shift_bvars(val, amount, cutoff)),
+            Node::new(shift_bvars(body, amount, cutoff + 1)),
         ),
-        Expr::Proj(name, idx, e) => {
-            Expr::Proj(name.clone(), *idx, Box::new(shift_bvars(e, amount, cutoff)))
-        }
+        Expr::Proj(name, idx, e) => Expr::Proj(
+            name.clone(),
+            *idx,
+            Node::new(shift_bvars(e, amount, cutoff)),
+        ),
     }
 }
 /// Split a pi type: extract the domain and codomain.
@@ -449,7 +453,7 @@ pub fn split_lam(expr: &Expr) -> Option<(&Expr, &Expr)> {
 pub fn mk_app(f: Expr, args: &[Expr]) -> Expr {
     let mut result = f;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg.clone()));
+        result = Expr::App(Node::new(result), Node::new(arg.clone()));
     }
     result
 }
@@ -500,7 +504,7 @@ mod extended_tests {
     #[test]
     fn test_count_fvar_occurrences_multiple() {
         let fv = FVarId(5);
-        let e = Expr::App(Box::new(Expr::FVar(fv)), Box::new(Expr::FVar(fv)));
+        let e = Expr::App(Node::new(Expr::FVar(fv)), Node::new(Expr::FVar(fv)));
         assert_eq!(count_fvar_occurrences(&e, fv), 2);
     }
     #[test]
@@ -511,7 +515,7 @@ mod extended_tests {
     fn test_collect_fvars_multi() {
         let x = FVarId(1);
         let y = FVarId(2);
-        let e = Expr::App(Box::new(Expr::FVar(x)), Box::new(Expr::FVar(y)));
+        let e = Expr::App(Node::new(Expr::FVar(x)), Node::new(Expr::FVar(y)));
         let fvars = collect_fvars(&e);
         assert!(fvars.contains(&x) && fvars.contains(&y));
     }
@@ -545,8 +549,8 @@ mod extended_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty.clone()),
-            Box::new(body.clone()),
+            Node::new(ty.clone()),
+            Node::new(body.clone()),
         );
         let (d, c) = split_pi(&pi).expect("value should be present");
         assert_eq!(d, &ty);
@@ -558,7 +562,10 @@ mod extended_tests {
         let a = Expr::BVar(0);
         let b = Expr::BVar(1);
         let result = mk_app(f.clone(), &[a.clone(), b.clone()]);
-        let expected = Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b));
+        let expected = Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        );
         assert_eq!(result, expected);
     }
     #[test]
@@ -567,8 +574,8 @@ mod extended_tests {
         let a = Expr::BVar(0);
         let b = Expr::BVar(1);
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = collect_app(&app);
         assert_eq!(head, &f);
@@ -580,14 +587,14 @@ mod extended_tests {
         let pi1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(base.clone()),
-            Box::new(base.clone()),
+            Node::new(base.clone()),
+            Node::new(base.clone()),
         );
         let pi2 = Expr::Pi(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(base.clone()),
-            Box::new(pi1),
+            Node::new(base.clone()),
+            Node::new(pi1),
         );
         assert_eq!(pi_arity(&pi2), 2);
     }
@@ -595,7 +602,7 @@ mod extended_tests {
     fn test_let_abstract() {
         let x = FVarId(10);
         let ty = Expr::Const(Name::str("Nat"), vec![]);
-        let val = Expr::Lit(crate::Literal::Nat(42));
+        let val = Expr::Lit(crate::Literal::nat(42));
         let result = let_abstract(&Expr::FVar(x), x, &ty, &val);
         assert!(matches!(result, Expr::Let(_, _, _, _)));
     }
@@ -669,9 +676,9 @@ pub fn let_abstract_many(expr: &Expr, bindings: &[(FVarId, Name, Expr, Expr)]) -
     for (_, name, ty, val) in bindings.iter().rev() {
         result = Expr::Let(
             name.clone(),
-            Box::new(ty.clone()),
-            Box::new(val.clone()),
-            Box::new(result),
+            Node::new(ty.clone()),
+            Node::new(val.clone()),
+            Node::new(result),
         );
     }
     result
@@ -709,8 +716,8 @@ mod topo_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(base.clone()),
-            Box::new(base.clone()),
+            Node::new(base.clone()),
+            Node::new(base.clone()),
         );
         assert_eq!(lam_arity(&lam), 1);
         assert_eq!(lam_arity(&base), 0);
@@ -722,8 +729,8 @@ mod topo_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty.clone()),
-            Box::new(body.clone()),
+            Node::new(ty.clone()),
+            Node::new(body.clone()),
         );
         let (d, b) = split_lam(&lam).expect("value should be present");
         assert_eq!(d, &ty);
@@ -809,7 +816,7 @@ mod ground_tests {
     use crate::Literal;
     #[test]
     fn test_is_ground_lit() {
-        assert!(is_ground(&Expr::Lit(Literal::Nat(42))));
+        assert!(is_ground(&Expr::Lit(Literal::nat(42))));
     }
     #[test]
     fn test_is_ground_bvar() {
@@ -821,7 +828,7 @@ mod ground_tests {
     }
     #[test]
     fn test_max_bvar_none() {
-        assert_eq!(max_bvar(&Expr::Lit(Literal::Nat(0))), None);
+        assert_eq!(max_bvar(&Expr::Lit(Literal::nat(0))), None);
     }
     #[test]
     fn test_max_bvar_some() {
@@ -829,7 +836,7 @@ mod ground_tests {
     }
     #[test]
     fn test_max_bvar_app() {
-        let e = Expr::App(Box::new(Expr::BVar(2)), Box::new(Expr::BVar(5)));
+        let e = Expr::App(Node::new(Expr::BVar(2)), Node::new(Expr::BVar(5)));
         assert_eq!(max_bvar(&e), Some(5));
     }
 }
@@ -897,30 +904,32 @@ pub fn rename_const(expr: &Expr, old_name: &Name, new_name: &Name) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(rename_const(f, old_name, new_name)),
-            Box::new(rename_const(a, old_name, new_name)),
+            Node::new(rename_const(f, old_name, new_name)),
+            Node::new(rename_const(a, old_name, new_name)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(rename_const(ty, old_name, new_name)),
-            Box::new(rename_const(body, old_name, new_name)),
+            Node::new(rename_const(ty, old_name, new_name)),
+            Node::new(rename_const(body, old_name, new_name)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(rename_const(ty, old_name, new_name)),
-            Box::new(rename_const(body, old_name, new_name)),
+            Node::new(rename_const(ty, old_name, new_name)),
+            Node::new(rename_const(body, old_name, new_name)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(rename_const(ty, old_name, new_name)),
-            Box::new(rename_const(val, old_name, new_name)),
-            Box::new(rename_const(body, old_name, new_name)),
+            Node::new(rename_const(ty, old_name, new_name)),
+            Node::new(rename_const(val, old_name, new_name)),
+            Node::new(rename_const(body, old_name, new_name)),
         ),
-        Expr::Proj(n, i, e) => {
-            Expr::Proj(n.clone(), *i, Box::new(rename_const(e, old_name, new_name)))
-        }
+        Expr::Proj(n, i, e) => Expr::Proj(
+            n.clone(),
+            *i,
+            Node::new(rename_const(e, old_name, new_name)),
+        ),
         _ => expr.clone(),
     }
 }
@@ -930,34 +939,34 @@ pub fn replace_nat_lit(expr: &Expr, old: u64, new: u64) -> Expr {
     match expr {
         Expr::Lit(crate::Literal::Nat(n)) => {
             if *n == old {
-                Expr::Lit(crate::Literal::Nat(new))
+                Expr::Lit(crate::Literal::nat(new))
             } else {
                 expr.clone()
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(replace_nat_lit(f, old, new)),
-            Box::new(replace_nat_lit(a, old, new)),
+            Node::new(replace_nat_lit(f, old, new)),
+            Node::new(replace_nat_lit(a, old, new)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(replace_nat_lit(ty, old, new)),
-            Box::new(replace_nat_lit(body, old, new)),
+            Node::new(replace_nat_lit(ty, old, new)),
+            Node::new(replace_nat_lit(body, old, new)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(replace_nat_lit(ty, old, new)),
-            Box::new(replace_nat_lit(body, old, new)),
+            Node::new(replace_nat_lit(ty, old, new)),
+            Node::new(replace_nat_lit(body, old, new)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(replace_nat_lit(ty, old, new)),
-            Box::new(replace_nat_lit(val, old, new)),
-            Box::new(replace_nat_lit(body, old, new)),
+            Node::new(replace_nat_lit(ty, old, new)),
+            Node::new(replace_nat_lit(val, old, new)),
+            Node::new(replace_nat_lit(body, old, new)),
         ),
-        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Box::new(replace_nat_lit(e, old, new))),
+        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Node::new(replace_nat_lit(e, old, new))),
         _ => expr.clone(),
     }
 }
@@ -977,12 +986,12 @@ mod extra_abstract_tests {
     #[test]
     fn test_distinct_const_count_dedup() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let e = Expr::App(Box::new(nat.clone()), Box::new(nat));
+        let e = Expr::App(Node::new(nat.clone()), Node::new(nat));
         assert_eq!(distinct_const_count(&e), 1);
     }
     #[test]
     fn test_bvars_in_range_closed() {
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(bvars_in_range(&e, 0));
     }
     #[test]
@@ -990,8 +999,8 @@ mod extra_abstract_tests {
         let e = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert!(bvars_in_range(&e, 0));
     }
@@ -1013,13 +1022,13 @@ mod extra_abstract_tests {
     }
     #[test]
     fn test_replace_nat_lit() {
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         let replaced = replace_nat_lit(&e, 42, 0);
-        assert_eq!(replaced, Expr::Lit(Literal::Nat(0)));
+        assert_eq!(replaced, Expr::Lit(Literal::nat(0)));
     }
     #[test]
     fn test_replace_nat_lit_no_match() {
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         let replaced = replace_nat_lit(&e, 42, 0);
         assert_eq!(replaced, e);
     }
@@ -1033,7 +1042,7 @@ mod extra_abstract_tests {
     }
     #[test]
     fn test_max_bvar_app() {
-        let e = Expr::App(Box::new(Expr::BVar(5)), Box::new(Expr::BVar(3)));
+        let e = Expr::App(Node::new(Expr::BVar(5)), Node::new(Expr::BVar(3)));
         assert_eq!(max_bvar(&e), Some(5));
     }
 }
@@ -1188,7 +1197,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

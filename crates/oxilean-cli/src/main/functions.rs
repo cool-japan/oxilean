@@ -34,6 +34,14 @@ pub fn cli_main() {
                     process::exit(1);
                 }
             }
+            "playground" => {
+                let rest: Vec<String> = args[2..].to_vec();
+                let config = crate::commands::playground::PlaygroundConfig::from_args(&rest);
+                if let Err(e) = crate::commands::playground::run_playground(&config) {
+                    eprintln!("Error: {}", e);
+                    process::exit(1);
+                }
+            }
             "version" => print_version(),
             "help" => print_help(),
             _ => {
@@ -81,6 +89,9 @@ fn print_help() {
     println!("  oxilean repl            Start REPL");
     println!("  oxilean lsp             Start LSP server (stdio transport)");
     println!("  oxilean serve           Start LSP server (alias for lsp)");
+    println!(
+        "  oxilean playground      Serve WASM playground locally [--port N] [--dir D] [--no-open]"
+    );
     println!("  oxilean version         Show version");
     println!("  oxilean help            Show this help");
     println!();

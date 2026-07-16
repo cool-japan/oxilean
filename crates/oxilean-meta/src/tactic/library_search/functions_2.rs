@@ -4,6 +4,7 @@
 
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 use super::types::{
@@ -39,22 +40,22 @@ mod tests {
     }
     fn mk_eq(alpha: Expr, lhs: Expr, rhs: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
-                    Box::new(alpha),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
+                    Node::new(alpha),
                 )),
-                Box::new(lhs),
+                Node::new(lhs),
             )),
-            Box::new(rhs),
+            Node::new(rhs),
         )
     }
     fn mk_arrow(domain: Expr, codomain: Expr) -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::Anonymous,
-            Box::new(domain),
-            Box::new(codomain),
+            Node::new(domain),
+            Node::new(codomain),
         )
     }
     #[test]
@@ -262,8 +263,8 @@ mod tests {
     }
     #[test]
     fn test_edit_distance_app() {
-        let e1 = Expr::App(Box::new(mk_nat()), Box::new(mk_bool()));
-        let e2 = Expr::App(Box::new(mk_nat()), Box::new(mk_nat()));
+        let e1 = Expr::App(Node::new(mk_nat()), Node::new(mk_bool()));
+        let e2 = Expr::App(Node::new(mk_nat()), Node::new(mk_nat()));
         let d = compute_edit_distance(&e1, &e2);
         assert!(d > 0);
     }
@@ -281,12 +282,12 @@ mod tests {
     }
     #[test]
     fn test_substitute_bvar0_in_app() {
-        let body = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let body = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let repl = mk_nat();
         let result = substitute_bvar0(&body, &repl);
         assert_eq!(
             result,
-            Expr::App(Box::new(mk_nat()), Box::new(Expr::BVar(0)))
+            Expr::App(Node::new(mk_nat()), Node::new(Expr::BVar(0)))
         );
     }
     #[test]
@@ -294,8 +295,8 @@ mod tests {
         let body = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(1)),
         );
         let repl = mk_nat();
         let result = substitute_bvar0(&body, &repl);
@@ -386,13 +387,13 @@ mod tests {
     #[test]
     fn test_format_lit() {
         assert_eq!(
-            format_expr_short(&Expr::Lit(oxilean_kernel::Literal::Nat(42))),
+            format_expr_short(&Expr::Lit(oxilean_kernel::Literal::nat(42))),
             "42"
         );
     }
     #[test]
     fn test_format_app() {
-        let e = Expr::App(Box::new(mk_nat()), Box::new(mk_bool()));
+        let e = Expr::App(Node::new(mk_nat()), Node::new(mk_bool()));
         assert_eq!(format_expr_short(&e), "(Nat Bool)");
     }
     #[test]
@@ -400,8 +401,8 @@ mod tests {
         let e = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(mk_nat()),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(format_expr_short(&e), "(fun x => ...)");
     }
@@ -473,7 +474,7 @@ mod tests {
     }
     #[test]
     fn test_expr_size_app() {
-        let e = Expr::App(Box::new(mk_nat()), Box::new(mk_bool()));
+        let e = Expr::App(Node::new(mk_nat()), Node::new(mk_bool()));
         assert_eq!(expr_size(&e), 3);
     }
     #[test]
@@ -487,7 +488,7 @@ mod tests {
     }
     #[test]
     fn test_expr_depth_app() {
-        let e = Expr::App(Box::new(mk_nat()), Box::new(mk_bool()));
+        let e = Expr::App(Node::new(mk_nat()), Node::new(mk_bool()));
         assert_eq!(expr_depth(&e), 1);
     }
     #[test]
@@ -572,14 +573,14 @@ mod tests {
     }
     #[test]
     fn test_collect_constants_app() {
-        let e = Expr::App(Box::new(mk_nat()), Box::new(mk_bool()));
+        let e = Expr::App(Node::new(mk_nat()), Node::new(mk_bool()));
         let cs = collect_constants(&e);
         assert!(cs.contains(&Name::str("Nat")));
         assert!(cs.contains(&Name::str("Bool")));
     }
     #[test]
     fn test_collect_constants_no_dup() {
-        let e = Expr::App(Box::new(mk_nat()), Box::new(mk_nat()));
+        let e = Expr::App(Node::new(mk_nat()), Node::new(mk_nat()));
         let cs = collect_constants(&e);
         assert_eq!(cs.len(), 1);
     }
@@ -592,8 +593,8 @@ mod tests {
     fn test_collect_fvar_ids_some() {
         use oxilean_kernel::FVarId;
         let e = Expr::App(
-            Box::new(Expr::FVar(FVarId::new(10))),
-            Box::new(Expr::FVar(FVarId::new(20))),
+            Node::new(Expr::FVar(FVarId::new(10))),
+            Node::new(Expr::FVar(FVarId::new(20))),
         );
         let ids = collect_fvar_ids(&e);
         assert_eq!(ids.len(), 2);
@@ -609,7 +610,7 @@ mod tests {
     }
     #[test]
     fn test_decompose_goal_app() {
-        let e = Expr::App(Box::new(mk_nat()), Box::new(mk_bool()));
+        let e = Expr::App(Node::new(mk_nat()), Node::new(mk_bool()));
         let (head, args) = decompose_goal(&e);
         assert_eq!(head, Some(Name::str("Nat")));
         assert_eq!(args.len(), 1);
@@ -802,8 +803,8 @@ mod tests {
             val: Expr::Lam(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(mk_nat()),
-                Box::new(Expr::Const(Name::str("Bool.true"), vec![])),
+                Node::new(mk_nat()),
+                Node::new(Expr::Const(Name::str("Bool.true"), vec![])),
             ),
             hint: ReducibilityHint::Regular(100),
         });
@@ -823,11 +824,11 @@ mod tests {
     #[test]
     fn test_edit_distance_deep() {
         let deep = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(mk_nat()), Box::new(mk_nat()))),
-                Box::new(mk_nat()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(mk_nat()), Node::new(mk_nat()))),
+                Node::new(mk_nat()),
             )),
-            Box::new(mk_nat()),
+            Node::new(mk_nat()),
         );
         let d = compute_edit_distance(&deep, &mk_nat());
         assert!(d > 0);
@@ -835,15 +836,15 @@ mod tests {
     #[test]
     fn test_specificity_app() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let spec = compute_specificity(&e);
         assert!(spec > 0.5);
     }
     #[test]
     fn test_format_proj() {
-        let e = Expr::Proj(Name::str("Prod"), 0, Box::new(mk_nat()));
+        let e = Expr::Proj(Name::str("Prod"), 0, Node::new(mk_nat()));
         let s = format_expr_short(&e);
         assert_eq!(s, "Prod.0");
     }
@@ -851,9 +852,9 @@ mod tests {
     fn test_format_let() {
         let e = Expr::Let(
             Name::str("x"),
-            Box::new(mk_nat()),
-            Box::new(mk_nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(mk_nat()),
+            Node::new(mk_nat()),
+            Node::new(Expr::BVar(0)),
         );
         let s = format_expr_short(&e);
         assert_eq!(s, "(let x := ...)");

@@ -703,13 +703,15 @@ pub struct ServerCapabilities {
     pub signature_help_provider: bool,
     /// Whether the server supports code actions.
     pub code_action_provider: bool,
+    /// Whether the server supports semantic tokens (full + range).
+    pub semantic_tokens_provider: bool,
 }
 
 impl ServerCapabilities {
     /// Create default OxiLean server capabilities.
     pub fn oxilean_defaults() -> Self {
         Self {
-            text_document_sync: 1, // Full sync
+            text_document_sync: 2, // Incremental sync (fully implemented)
             completion_provider: true,
             hover_provider: true,
             definition_provider: true,
@@ -718,6 +720,7 @@ impl ServerCapabilities {
             document_formatting_provider: true,
             signature_help_provider: true,
             code_action_provider: true,
+            semantic_tokens_provider: true,
         }
     }
 
@@ -771,6 +774,17 @@ impl ServerCapabilities {
         }
         if self.code_action_provider {
             entries.push(("codeActionProvider".to_string(), JsonValue::Bool(true)));
+        }
+        if self.semantic_tokens_provider {
+            let legend = crate::lsp::semantic_tokens::functions::build_semantic_tokens_legend();
+            entries.push((
+                "semanticTokensProvider".to_string(),
+                JsonValue::Object(vec![
+                    ("legend".to_string(), legend),
+                    ("full".to_string(), JsonValue::Bool(true)),
+                    ("range".to_string(), JsonValue::Bool(true)),
+                ]),
+            ));
         }
         JsonValue::Object(entries)
     }

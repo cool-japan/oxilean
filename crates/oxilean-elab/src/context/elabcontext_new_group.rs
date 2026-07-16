@@ -4,6 +4,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Environment, Expr, FVarId, Name};
 use std::collections::HashMap;
 
@@ -61,27 +62,27 @@ impl<'env> ElabContext<'env> {
                     expr.clone()
                 }
             }
-            Expr::App(f, a) => Expr::App(Box::new(self.zonk(f)), Box::new(self.zonk(a))),
+            Expr::App(f, a) => Expr::App(Node::new(self.zonk(f)), Node::new(self.zonk(a))),
             Expr::Lam(info, name, ty, body) => Expr::Lam(
                 *info,
                 name.clone(),
-                Box::new(self.zonk(ty)),
-                Box::new(self.zonk(body)),
+                Node::new(self.zonk(ty)),
+                Node::new(self.zonk(body)),
             ),
             Expr::Pi(info, name, ty, body) => Expr::Pi(
                 *info,
                 name.clone(),
-                Box::new(self.zonk(ty)),
-                Box::new(self.zonk(body)),
+                Node::new(self.zonk(ty)),
+                Node::new(self.zonk(body)),
             ),
             Expr::Let(name, ty, val, body) => Expr::Let(
                 name.clone(),
-                Box::new(self.zonk(ty)),
-                Box::new(self.zonk(val)),
-                Box::new(self.zonk(body)),
+                Node::new(self.zonk(ty)),
+                Node::new(self.zonk(val)),
+                Node::new(self.zonk(body)),
             ),
             Expr::Proj(name, idx, inner) => {
-                Expr::Proj(name.clone(), *idx, Box::new(self.zonk(inner)))
+                Expr::Proj(name.clone(), *idx, Node::new(self.zonk(inner)))
             }
             _ => expr.clone(),
         }

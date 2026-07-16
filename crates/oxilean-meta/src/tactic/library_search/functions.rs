@@ -11,13 +11,14 @@ use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::def_eq::{MetaDefEq, UnificationResult};
 use crate::discr_tree::DiscrTree;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 pub(super) fn strip_leading_pis_local(ty: &Expr) -> Expr {
     let mut current = ty.clone();
     while let Expr::Pi(_, _, _, body) = &current {
-        current = *body.clone();
+        current = (**body).clone();
     }
     current
 }
@@ -312,7 +313,7 @@ pub(super) fn open_pis_as_mvars(
     }
     let mut applied = Expr::Const(name.clone(), vec![]);
     for me in &mvar_exprs {
-        applied = Expr::App(Box::new(applied), Box::new(me.clone()));
+        applied = Expr::App(Node::new(applied), Node::new(me.clone()));
     }
     let conclusion = current_ty;
     (applied, mvar_ids, conclusion)
@@ -336,27 +337,32 @@ pub(super) fn substitute_bvar_inner(expr: &Expr, target_idx: u32, replacement: &
         Expr::App(f, a) => {
             let f2 = substitute_bvar_inner(f, target_idx, replacement);
             let a2 = substitute_bvar_inner(a, target_idx, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, nm, ty, body) => {
             let ty2 = substitute_bvar_inner(ty, target_idx, replacement);
             let body2 = substitute_bvar_inner(body, target_idx + 1, replacement);
-            Expr::Lam(*bi, nm.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, nm.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, nm, ty, body) => {
             let ty2 = substitute_bvar_inner(ty, target_idx, replacement);
             let body2 = substitute_bvar_inner(body, target_idx + 1, replacement);
-            Expr::Pi(*bi, nm.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, nm.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(nm, ty, val, body) => {
             let ty2 = substitute_bvar_inner(ty, target_idx, replacement);
             let val2 = substitute_bvar_inner(val, target_idx, replacement);
             let body2 = substitute_bvar_inner(body, target_idx + 1, replacement);
-            Expr::Let(nm.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                nm.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(nm, idx, e) => {
             let e2 = substitute_bvar_inner(e, target_idx, replacement);
-            Expr::Proj(nm.clone(), *idx, Box::new(e2))
+            Expr::Proj(nm.clone(), *idx, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -449,27 +455,32 @@ pub(super) fn freshen_levels_in_expr(expr: &Expr, levels: &[Level], _depth: u32)
         Expr::App(f, a) => {
             let f2 = freshen_levels_in_expr(f, levels, _depth);
             let a2 = freshen_levels_in_expr(a, levels, _depth);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, nm, ty, body) => {
             let ty2 = freshen_levels_in_expr(ty, levels, _depth);
             let body2 = freshen_levels_in_expr(body, levels, _depth);
-            Expr::Lam(*bi, nm.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, nm.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, nm, ty, body) => {
             let ty2 = freshen_levels_in_expr(ty, levels, _depth);
             let body2 = freshen_levels_in_expr(body, levels, _depth);
-            Expr::Pi(*bi, nm.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, nm.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(nm, ty, val, body) => {
             let ty2 = freshen_levels_in_expr(ty, levels, _depth);
             let val2 = freshen_levels_in_expr(val, levels, _depth);
             let body2 = freshen_levels_in_expr(body, levels, _depth);
-            Expr::Let(nm.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                nm.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(nm, idx, e) => {
             let e2 = freshen_levels_in_expr(e, levels, _depth);
-            Expr::Proj(nm.clone(), *idx, Box::new(e2))
+            Expr::Proj(nm.clone(), *idx, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -519,7 +530,7 @@ pub(super) fn compute_specificity(expr: &Expr) -> f64 {
 pub(super) fn strip_leading_pis(ty: &Expr) -> Expr {
     let mut current = ty.clone();
     while let Expr::Pi(_, _, _, body) = &current {
-        current = *body.clone();
+        current = (**body).clone();
     }
     current
 }

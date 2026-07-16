@@ -12,6 +12,7 @@
 
 use crate::{BinderInfo, Expr, Level, Literal, Name};
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 use super::functions::{hash_binder_info, hash_level, hash_literal, hash_name, hash_tag};
 use super::types::ExprKey;
@@ -40,29 +41,29 @@ impl Hash for ExprKey {
             }
             Expr::App(f, a) => {
                 hash_tag(state, 4);
-                ExprKey(*f.clone()).hash(state);
-                ExprKey(*a.clone()).hash(state);
+                ExprKey((**f).clone()).hash(state);
+                ExprKey((**a).clone()).hash(state);
             }
             Expr::Lam(bi, name, ty, body) => {
                 hash_tag(state, 5);
                 hash_binder_info(bi, state);
                 hash_name(name, state);
-                ExprKey(*ty.clone()).hash(state);
-                ExprKey(*body.clone()).hash(state);
+                ExprKey((**ty).clone()).hash(state);
+                ExprKey((**body).clone()).hash(state);
             }
             Expr::Pi(bi, name, ty, body) => {
                 hash_tag(state, 6);
                 hash_binder_info(bi, state);
                 hash_name(name, state);
-                ExprKey(*ty.clone()).hash(state);
-                ExprKey(*body.clone()).hash(state);
+                ExprKey((**ty).clone()).hash(state);
+                ExprKey((**body).clone()).hash(state);
             }
             Expr::Let(name, ty, val, body) => {
                 hash_tag(state, 7);
                 hash_name(name, state);
-                ExprKey(*ty.clone()).hash(state);
-                ExprKey(*val.clone()).hash(state);
-                ExprKey(*body.clone()).hash(state);
+                ExprKey((**ty).clone()).hash(state);
+                ExprKey((**val).clone()).hash(state);
+                ExprKey((**body).clone()).hash(state);
             }
             Expr::Lit(lit) => {
                 hash_tag(state, 8);
@@ -72,7 +73,7 @@ impl Hash for ExprKey {
                 hash_tag(state, 9);
                 hash_name(name, state);
                 idx.hash(state);
-                ExprKey(*expr.clone()).hash(state);
+                ExprKey((**expr).clone()).hash(state);
             }
         }
     }

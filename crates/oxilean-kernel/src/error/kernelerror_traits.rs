@@ -40,6 +40,9 @@ impl fmt::Display for KernelError {
             KernelError::NotASort(expr) => write!(f, "not a sort: {}", expr),
             KernelError::NotAFunction(expr) => write!(f, "not a function type: {}", expr),
             KernelError::InductiveError(msg) => write!(f, "inductive error: {}", msg),
+            KernelError::UnsupportedNestedInductive(name) => {
+                write!(f, "unsupported: nested inductive type '{}'", name)
+            }
             KernelError::Other(msg) => write!(f, "{}", msg),
         }
     }

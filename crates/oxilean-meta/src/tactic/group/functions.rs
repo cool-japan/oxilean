@@ -9,6 +9,7 @@
 use super::types::{GroupConfig, GroupLetter, GroupWord};
 use crate::basic::MetaContext;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 
 // ---------------------------------------------------------------------------
@@ -35,11 +36,11 @@ fn extract_eq_sides(expr: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(func2, lhs) = func.as_ref() {
             if let Expr::App(eq_expr, _ty) = func2.as_ref() {
                 if is_eq_const(eq_expr) {
-                    return Some((*lhs.clone(), *rhs.clone()));
+                    return Some(((**lhs).clone(), (**rhs).clone()));
                 }
             }
             if is_eq_const(func2) {
-                return Some((*lhs.clone(), *rhs.clone()));
+                return Some(((**lhs).clone(), (**rhs).clone()));
             }
         }
     }
@@ -266,12 +267,15 @@ mod tests {
 
     fn mul_expr(a: Expr, b: Expr) -> Expr {
         let mul = Expr::Const(Name::str("HMul.hMul"), vec![]);
-        Expr::App(Box::new(Expr::App(Box::new(mul), Box::new(a))), Box::new(b))
+        Expr::App(
+            Node::new(Expr::App(Node::new(mul), Node::new(a))),
+            Node::new(b),
+        )
     }
 
     fn inv_expr(a: Expr) -> Expr {
         let inv = Expr::Const(Name::str("Inv.inv"), vec![]);
-        Expr::App(Box::new(inv), Box::new(a))
+        Expr::App(Node::new(inv), Node::new(a))
     }
 
     #[test]

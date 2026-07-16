@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 use std::collections::{HashSet, VecDeque};
 
@@ -12,7 +13,7 @@ use super::types::{
 
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -32,7 +33,7 @@ pub fn type0() -> Expr {
     Expr::Sort(Level::succ(Level::zero()))
 }
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     pi(BinderInfo::Default, "_", a, b)
@@ -189,7 +190,7 @@ pub fn four_color_theorem_ty() -> Expr {
                 app2(
                     cst("Nat.le"),
                     app(cst("chromatic_number"), bvar(1)),
-                    Expr::Lit(oxilean_kernel::Literal::Nat(4)),
+                    Expr::Lit(oxilean_kernel::Literal::nat(4)),
                 ),
             ),
         ),
@@ -218,7 +219,7 @@ pub fn euler_formula_ty() -> Expr {
                             app2(cst("Nat.sub"), bvar(2), bvar(1)),
                             bvar(0),
                         ),
-                        Expr::Lit(oxilean_kernel::Literal::Nat(2)),
+                        Expr::Lit(oxilean_kernel::Literal::nat(2)),
                     ),
                 ),
             ),

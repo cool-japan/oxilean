@@ -3,15 +3,16 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 
 fn dcs_ext_finset_membership(
     add: &mut impl FnMut(&str, oxilean_kernel::Expr) -> Result<(), String>,
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -19,12 +20,12 @@ fn dcs_ext_finset_membership(
     let finset_mem_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableEq"), Expr::BVar(0))),
-            Box::new(arr(
+            Node::new(app(cst("DecidableEq"), Expr::BVar(0))),
+            Node::new(arr(
                 Expr::BVar(1),
                 arr(app(cst("Finset"), Expr::BVar(2)), cst("Prop")),
             )),
@@ -34,12 +35,12 @@ fn dcs_ext_finset_membership(
     let finset_dec_mem_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableEq"), Expr::BVar(0))),
-            Box::new(arr(
+            Node::new(app(cst("DecidableEq"), Expr::BVar(0))),
+            Node::new(arr(
                 Expr::BVar(1),
                 arr(
                     app(cst("Finset"), Expr::BVar(2)),
@@ -52,16 +53,16 @@ fn dcs_ext_finset_membership(
     let finset_dec_fa_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), cst("Prop")),
             arr(
                 app(cst("Finset"), Expr::BVar(1)),
                 dec_of(Expr::Pi(
                     Bi::Default,
                     Name::str("x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(arr(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(arr(
                         app(app(cst("Finset.mem"), Expr::BVar(0)), Expr::BVar(2)),
                         app(Expr::BVar(2), Expr::BVar(0)),
                     )),
@@ -73,8 +74,8 @@ fn dcs_ext_finset_membership(
     let finset_dec_ex_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), cst("Prop")),
             arr(
                 app(cst("Finset"), Expr::BVar(1)),
@@ -92,26 +93,26 @@ fn dcs_ext_finset_membership(
     let finset_card_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(app(cst("Finset"), Expr::BVar(0)), cst("Nat"))),
+        Node::new(type1()),
+        Node::new(arr(app(cst("Finset"), Expr::BVar(0)), cst("Nat"))),
     );
     add("Finset.card", finset_card_ty)?;
     let finset_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(app(cst("Finset"), Expr::BVar(0))),
+        Node::new(type1()),
+        Node::new(app(cst("Finset"), Expr::BVar(0))),
     );
     add("Finset.empty", finset_empty_ty)?;
     let finset_insert_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableEq"), Expr::BVar(0))),
-            Box::new(arr(
+            Node::new(app(cst("DecidableEq"), Expr::BVar(0))),
+            Node::new(arr(
                 Expr::BVar(1),
                 arr(
                     app(cst("Finset"), Expr::BVar(2)),
@@ -128,9 +129,9 @@ fn dcs_ext_witness_extraction(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -138,12 +139,12 @@ fn dcs_ext_witness_extraction(
     let extract_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("p"),
-            Box::new(arr(Expr::BVar(0), prop())),
-            Box::new(arr(
+            Node::new(arr(Expr::BVar(0), prop())),
+            Node::new(arr(
                 app(
                     app(cst("Exists"), Expr::BVar(1)),
                     app(Expr::BVar(0), Expr::BVar(0)),
@@ -159,8 +160,8 @@ fn dcs_ext_witness_extraction(
     let search_ty = Expr::Pi(
         Bi::Default,
         Name::str("p"),
-        Box::new(arr(cst("Nat"), prop())),
-        Box::new(arr(
+        Node::new(arr(cst("Nat"), prop())),
+        Node::new(arr(
             app(
                 app(cst("Exists"), cst("Nat")),
                 app(Expr::BVar(1), Expr::BVar(0)),
@@ -175,8 +176,8 @@ fn dcs_ext_witness_extraction(
     let min_witness_ty = Expr::Pi(
         Bi::Default,
         Name::str("p"),
-        Box::new(arr(cst("Nat"), prop())),
-        Box::new(arr(
+        Node::new(arr(cst("Nat"), prop())),
+        Node::new(arr(
             app(
                 app(cst("Exists"), cst("Nat")),
                 app(Expr::BVar(1), Expr::BVar(0)),
@@ -188,8 +189,8 @@ fn dcs_ext_witness_extraction(
                     Expr::Pi(
                         Bi::Default,
                         Name::str("m"),
-                        Box::new(cst("Nat")),
-                        Box::new(arr(
+                        Node::new(cst("Nat")),
+                        Node::new(arr(
                             app(app(cst("Nat.lt"), Expr::BVar(0)), Expr::BVar(2)),
                             arr(app(Expr::BVar(3), Expr::BVar(0)), cst("False")),
                         )),
@@ -202,8 +203,8 @@ fn dcs_ext_witness_extraction(
     let exists_find_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), prop()),
             arr(
                 app(cst("Finset"), Expr::BVar(1)),
@@ -238,9 +239,9 @@ fn dcs_ext_predicates_membership(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -248,12 +249,12 @@ fn dcs_ext_predicates_membership(
     let dec_mem_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableEq"), Expr::BVar(0))),
-            Box::new(arr(
+            Node::new(app(cst("DecidableEq"), Expr::BVar(0))),
+            Node::new(arr(
                 Expr::BVar(1),
                 arr(
                     app(cst("List"), Expr::BVar(2)),
@@ -266,8 +267,8 @@ fn dcs_ext_predicates_membership(
     let beq_iff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 Expr::BVar(1),
@@ -291,19 +292,19 @@ fn dcs_ext_predicates_membership(
     let decide_pred_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), prop()),
             arr(
                 arr(Expr::BVar(1), cst("Bool")),
                 Expr::Pi(
                     Bi::Default,
                     Name::str("h"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         Bi::Default,
                         Name::str("x"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(app(
+                        Node::new(Expr::BVar(2)),
+                        Node::new(app(
                             app(
                                 cst("Iff"),
                                 app(
@@ -314,11 +315,11 @@ fn dcs_ext_predicates_membership(
                             app(Expr::BVar(3), Expr::BVar(0)),
                         )),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         Bi::Default,
                         Name::str("x"),
-                        Box::new(Expr::BVar(3)),
-                        Box::new(dec_of(app(Expr::BVar(4), Expr::BVar(0)))),
+                        Node::new(Expr::BVar(3)),
+                        Node::new(dec_of(app(Expr::BVar(4), Expr::BVar(0)))),
                     )),
                 ),
             ),
@@ -338,9 +339,9 @@ pub fn register_decidable_extended_axioms(env: &mut oxilean_kernel::Environment)
         });
     };
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let _app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let _app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -359,8 +360,8 @@ pub fn register_decidable_extended_axioms(env: &mut oxilean_kernel::Environment)
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(arr(Expr::BVar(0), prop()), type1())),
+            Node::new(type1()),
+            Node::new(arr(arr(Expr::BVar(0), prop()), type1())),
         ),
     );
     add(
@@ -368,8 +369,8 @@ pub fn register_decidable_extended_axioms(env: &mut oxilean_kernel::Environment)
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(Expr::BVar(0), arr(Expr::BVar(1), cst("Bool")))),
+            Node::new(type1()),
+            Node::new(arr(Expr::BVar(0), arr(Expr::BVar(1), cst("Bool")))),
         ),
     );
     let _ = dcs_ext_decidable_typeclass(&mut |n, t| {

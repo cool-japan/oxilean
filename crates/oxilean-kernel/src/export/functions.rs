@@ -3,10 +3,12 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::reduce::ReducibilityHint;
+use crate::Node;
 use crate::{
     BinderInfo, Declaration, Environment, Expr, FVarId, Level, LevelMVarId, Literal, Name,
 };
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, ExportedModule, FocusStack, IntegrityCheckResult, LabelSet, ModuleCache,
@@ -124,10 +126,22 @@ fn write_binder_info(buf: &mut Vec<u8>, bi: BinderInfo) {
 }
 fn write_literal(buf: &mut Vec<u8>, lit: &Literal) {
     match lit {
-        Literal::Nat(n) => {
-            write_u8(buf, 0);
-            write_u64(buf, *n);
-        }
+        Literal::Nat(n) => match n.to_u64() {
+            // Tag 0: small Nat, single u64 payload (backwards compatible).
+            Some(small) => {
+                write_u8(buf, 0);
+                write_u64(buf, small);
+            }
+            // Tag 3: big Nat, limb-count-prefixed little-endian u64 limbs.
+            None => {
+                write_u8(buf, 3);
+                let limbs = n.as_limbs();
+                write_u64(buf, limbs.len() as u64);
+                for limb in limbs {
+                    write_u64(buf, *limb);
+                }
+            }
+        },
         Literal::Str(s) => {
             write_u8(buf, 1);
             write_str(buf, s);
@@ -371,8 +385,22 @@ fn read_binder_info(bytes: &[u8], pos: &mut usize) -> ReadResult<BinderInfo> {
 fn read_literal(bytes: &[u8], pos: &mut usize) -> ReadResult<Literal> {
     let tag = read_u8(bytes, pos)?;
     match tag {
-        0 => Ok(Literal::Nat(read_u64(bytes, pos)?)),
+        0 => Ok(Literal::nat(read_u64(bytes, pos)?)),
         1 => Ok(Literal::Str(read_str(bytes, pos)?)),
+        // Tag 2 was the removed (non-Lean) Int literal.
+        2 => Err("Int literals are no longer supported by the kernel".to_string()),
+        3 => {
+            let count = read_u64(bytes, pos)? as usize;
+            // Guard against corrupt counts: each limb costs 8 bytes.
+            if count > bytes.len().saturating_sub(*pos) / 8 {
+                return Err("BigNat limb count exceeds remaining input".to_string());
+            }
+            let mut limbs = Vec::with_capacity(count);
+            for _ in 0..count {
+                limbs.push(read_u64(bytes, pos)?);
+            }
+            Ok(Literal::Nat(crate::bignat::BigNat::from_limbs(limbs)))
+        }
         other => Err(format!("unknown Literal tag: {}", other)),
     }
 }
@@ -394,35 +422,40 @@ fn read_expr(bytes: &[u8], pos: &mut usize) -> ReadResult<Expr> {
         4 => {
             let f = read_expr(bytes, pos)?;
             let a = read_expr(bytes, pos)?;
-            Ok(Expr::App(Box::new(f), Box::new(a)))
+            Ok(Expr::App(Node::new(f), Node::new(a)))
         }
         5 => {
             let bi = read_binder_info(bytes, pos)?;
             let name = read_name(bytes, pos)?;
             let ty = read_expr(bytes, pos)?;
             let body = read_expr(bytes, pos)?;
-            Ok(Expr::Lam(bi, name, Box::new(ty), Box::new(body)))
+            Ok(Expr::Lam(bi, name, Node::new(ty), Node::new(body)))
         }
         6 => {
             let bi = read_binder_info(bytes, pos)?;
             let name = read_name(bytes, pos)?;
             let ty = read_expr(bytes, pos)?;
             let body = read_expr(bytes, pos)?;
-            Ok(Expr::Pi(bi, name, Box::new(ty), Box::new(body)))
+            Ok(Expr::Pi(bi, name, Node::new(ty), Node::new(body)))
         }
         7 => {
             let name = read_name(bytes, pos)?;
             let ty = read_expr(bytes, pos)?;
             let val = read_expr(bytes, pos)?;
             let body = read_expr(bytes, pos)?;
-            Ok(Expr::Let(name, Box::new(ty), Box::new(val), Box::new(body)))
+            Ok(Expr::Let(
+                name,
+                Node::new(ty),
+                Node::new(val),
+                Node::new(body),
+            ))
         }
         8 => Ok(Expr::Lit(read_literal(bytes, pos)?)),
         9 => {
             let name = read_name(bytes, pos)?;
             let idx = read_u32(bytes, pos)?;
             let inner = read_expr(bytes, pos)?;
-            Ok(Expr::Proj(name, idx, Box::new(inner)))
+            Ok(Expr::Proj(name, idx, Node::new(inner)))
         }
         other => Err(format!("unknown Expr tag: {}", other)),
     }
@@ -708,7 +741,7 @@ mod tests {
             name: Name::str("myDef"),
             univ_params: vec![],
             ty: Expr::Sort(Level::zero()),
-            val: Expr::Lit(Literal::Nat(42)),
+            val: Expr::Lit(Literal::nat(42)),
             hint: ReducibilityHint::Regular(1),
         };
         module.add_declaration(Name::str("myDef"), def);
@@ -718,14 +751,14 @@ mod tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::BVar(0)),
             ),
             val: Expr::Lam(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::BVar(0)),
             ),
         };
         module.add_declaration(Name::str("myThm"), thm);
@@ -748,13 +781,13 @@ mod tests {
     #[test]
     fn test_serialize_complex_expr() {
         let expr = Expr::App(
-            Box::new(Expr::Lam(
+            Node::new(Expr::Lam(
                 BinderInfo::Implicit,
                 Name::str("x"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Lit(Literal::Nat(7))),
+            Node::new(Expr::Lit(Literal::nat(7))),
         );
         let mut buf = Vec::new();
         write_expr(&mut buf, &expr);
@@ -1228,7 +1261,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

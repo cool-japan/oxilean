@@ -2,7 +2,8 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
-use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
+use oxilean_kernel::Node;
+use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Literal, Name};
 
 use super::types::{
     ErrorAccumulator, ResultAxiomRegistry, ResultEitherBridge, ResultRegistry, ValidationCollector,
@@ -15,12 +16,12 @@ pub fn build_result_env(env: &mut Environment) -> Result<(), String> {
     let result_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(type2),
+            Node::new(type1.clone()),
+            Node::new(type2),
         )),
     );
     env.add(Declaration::Axiom {
@@ -32,21 +33,21 @@ pub fn build_result_env(env: &mut Environment) -> Result<(), String> {
     let ok_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("val"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Result"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Result"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -60,21 +61,21 @@ pub fn build_result_env(env: &mut Environment) -> Result<(), String> {
     let err_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("err"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Result"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Result"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -88,22 +89,22 @@ pub fn build_result_env(env: &mut Environment) -> Result<(), String> {
     let is_ok_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("r"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Result"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Result"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                Node::new(Expr::Const(Name::str("Bool"), vec![])),
             )),
         )),
     );
@@ -116,22 +117,22 @@ pub fn build_result_env(env: &mut Environment) -> Result<(), String> {
     let is_err_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("r"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Result"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Result"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                Node::new(Expr::Const(Name::str("Bool"), vec![])),
             )),
         )),
     );
@@ -144,40 +145,40 @@ pub fn build_result_env(env: &mut Environment) -> Result<(), String> {
     let map_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("U"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("r"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Result"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Result"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Result"), vec![])),
-                                Box::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Result"), vec![])),
+                                Node::new(Expr::BVar(2)),
                             )),
-                            Box::new(Expr::BVar(3)),
+                            Node::new(Expr::BVar(3)),
                         )),
                     )),
                 )),
@@ -250,46 +251,46 @@ pub fn build_result_combinators(env: &mut Environment) -> Result<(), String> {
     let and_then_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("U"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("r"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Result"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Result"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("f"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_"),
-                            Box::new(Expr::BVar(3)),
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Result"), vec![])),
-                                    Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(3)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Result"), vec![])),
+                                    Node::new(Expr::BVar(2)),
                                 )),
-                                Box::new(Expr::BVar(3)),
+                                Node::new(Expr::BVar(3)),
                             )),
                         )),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Result"), vec![])),
-                                Box::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Result"), vec![])),
+                                Node::new(Expr::BVar(2)),
                             )),
-                            Box::new(Expr::BVar(3)),
+                            Node::new(Expr::BVar(3)),
                         )),
                     )),
                 )),
@@ -305,40 +306,40 @@ pub fn build_result_combinators(env: &mut Environment) -> Result<(), String> {
     let map_err_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("F"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(1)),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("r"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Result"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Result"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Result"), vec![])),
-                                Box::new(Expr::BVar(4)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Result"), vec![])),
+                                Node::new(Expr::BVar(4)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
                 )),
@@ -354,26 +355,26 @@ pub fn build_result_combinators(env: &mut Environment) -> Result<(), String> {
     let get_or_else_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("default"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("r"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Result"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Result"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(3)),
+                    Node::new(Expr::BVar(3)),
                 )),
             )),
         )),
@@ -393,16 +394,16 @@ pub fn build_result_theorems(env: &mut Environment) -> Result<(), String> {
     let ok_is_ok_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("v"),
-                Box::new(Expr::BVar(1)),
-                Box::new(prop.clone()),
+                Node::new(Expr::BVar(1)),
+                Node::new(prop.clone()),
             )),
         )),
     );
@@ -415,16 +416,16 @@ pub fn build_result_theorems(env: &mut Environment) -> Result<(), String> {
     let err_is_err_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("e"),
-                Box::new(Expr::BVar(0)),
-                Box::new(prop.clone()),
+                Node::new(Expr::BVar(0)),
+                Node::new(prop.clone()),
             )),
         )),
     );
@@ -632,25 +633,25 @@ mod error_monad_tests {
 /// Build the expression `Result T E` as an `Expr`.
 pub fn mk_result_ty(t: Expr, e: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Result"), vec![])),
-            Box::new(t),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Result"), vec![])),
+            Node::new(t),
         )),
-        Box::new(e),
+        Node::new(e),
     )
 }
 /// Build the expression `Result.ok v` as an `Expr`.
 pub fn mk_result_ok(v: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Result.ok"), vec![])),
-        Box::new(v),
+        Node::new(Expr::Const(Name::str("Result.ok"), vec![])),
+        Node::new(v),
     )
 }
 /// Build the expression `Result.err e` as an `Expr`.
 pub fn mk_result_err(e: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Result.err"), vec![])),
-        Box::new(e),
+        Node::new(Expr::Const(Name::str("Result.err"), vec![])),
+        Node::new(e),
     )
 }
 #[cfg(test)]
@@ -665,7 +666,7 @@ mod expr_builder_tests {
     }
     #[test]
     fn test_mk_result_ok() {
-        let v = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let v = Expr::Lit(Literal::nat(42));
         let ok_expr = mk_result_ok(v);
         assert!(matches!(ok_expr, Expr::App(_, _)));
     }
@@ -680,33 +681,33 @@ mod expr_builder_tests {
 #[allow(dead_code)]
 pub fn mk_result_and_then(r: Expr, f: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Result.andThen"), vec![])),
-            Box::new(r),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Result.andThen"), vec![])),
+            Node::new(r),
         )),
-        Box::new(f),
+        Node::new(f),
     )
 }
 /// Build the expression `Result.map f r` as an `Expr`.
 #[allow(dead_code)]
 pub fn mk_result_map(f: Expr, r: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Result.map"), vec![])),
-            Box::new(f),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Result.map"), vec![])),
+            Node::new(f),
         )),
-        Box::new(r),
+        Node::new(r),
     )
 }
 /// Build the expression `Result.getOrElse default r` as an `Expr`.
 #[allow(dead_code)]
 pub fn mk_result_get_or_else(default: Expr, r: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Result.getOrElse"), vec![])),
-            Box::new(default),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Result.getOrElse"), vec![])),
+            Node::new(default),
         )),
-        Box::new(r),
+        Node::new(r),
     )
 }
 /// Validate that all required Result definitions are present in an environment.
@@ -790,7 +791,7 @@ mod result_registry_tests {
     }
     #[test]
     fn test_mk_result_get_or_else() {
-        let default = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+        let default = Expr::Lit(Literal::nat(0));
         let r = mk_result_err(Expr::Const(Name::str("err"), vec![]));
         let e = mk_result_get_or_else(default, r);
         assert!(matches!(e, Expr::App(_, _)));
@@ -841,8 +842,8 @@ pub(super) fn res_ext_forall_type_axiom(
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1),
-        Box::new(prop),
+        Node::new(type1),
+        Node::new(prop),
     );
     env.add(Declaration::Axiom {
         name: Name::str(name),
@@ -861,12 +862,12 @@ pub(super) fn res_ext_forall2_axiom(
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1),
-            Box::new(prop),
+            Node::new(type1),
+            Node::new(prop),
         )),
     );
     env.add(Declaration::Axiom {
@@ -886,16 +887,16 @@ pub(super) fn res_ext_forall3_axiom(
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("T"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("E"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("U"),
-                Box::new(type1),
-                Box::new(prop),
+                Node::new(type1),
+                Node::new(prop),
             )),
         )),
     );

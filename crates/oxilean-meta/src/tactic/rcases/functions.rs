@@ -8,6 +8,7 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::{HashSet, VecDeque};
 
@@ -568,13 +569,13 @@ pub fn tac_obtain(
         _ => Name::str("this"),
     };
     let proof = Expr::App(
-        Box::new(Expr::Lam(
+        Node::new(Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             obtain_name,
-            Box::new(ty.clone()),
-            Box::new(body_expr.clone()),
+            Node::new(ty.clone()),
+            Node::new(body_expr.clone()),
         )),
-        Box::new(proof_expr),
+        Node::new(proof_expr),
     );
     ctx.assign_mvar(goal_id, proof);
     state.replace_goal(vec![body_goal]);
@@ -636,7 +637,7 @@ pub fn tac_rintro(
                     };
                     let fvar_id = ctx.mk_local_decl(
                         intro_name.clone(),
-                        *domain.clone(),
+                        (**domain).clone(),
                         oxilean_kernel::BinderInfo::Default,
                     );
                     let new_target = substitute_bvar(body, 0, &Expr::FVar(fvar_id));
@@ -646,14 +647,14 @@ pub fn tac_rintro(
                         *bi,
                         intro_name.clone(),
                         domain.clone(),
-                        Box::new(new_goal_expr),
+                        Node::new(new_goal_expr),
                     );
                     ctx.assign_mvar(goal, proof);
                     state.replace_goal(vec![new_goal_id]);
                     if let RcasesPattern::One(name) = pattern {
                         combined
                             .bindings
-                            .push((Name::str(name.clone()), *domain.clone()));
+                            .push((Name::str(name.clone()), (**domain).clone()));
                     }
                     combined.goals.push(new_goal_id);
                     combined.patterns_used.push(pattern.clone());
@@ -661,16 +662,16 @@ pub fn tac_rintro(
                     let temp_name = Name::str("_rintro_tmp");
                     let fvar_id = ctx.mk_local_decl(
                         temp_name.clone(),
-                        *domain.clone(),
+                        (**domain).clone(),
                         oxilean_kernel::BinderInfo::Default,
                     );
                     let new_target = substitute_bvar(body, 0, &Expr::FVar(fvar_id));
                     let (new_goal_id, new_goal_expr) =
                         ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
-                    let proof = Expr::Lam(*bi, temp_name, domain.clone(), Box::new(new_goal_expr));
+                    let proof = Expr::Lam(*bi, temp_name, domain.clone(), Node::new(new_goal_expr));
                     ctx.assign_mvar(goal, proof);
                     state.replace_goal(vec![new_goal_id]);
-                    let target_expr = *domain.clone();
+                    let target_expr = (*domain).clone().clone();
                     let rcases_result = tac_rcases(pattern, &target_expr, state, ctx)?;
                     combined.merge(rcases_result);
                 }
@@ -705,7 +706,7 @@ pub(super) fn get_app_args(expr: &Expr) -> Vec<Expr> {
 pub(super) fn collect_app_args(expr: &Expr, args: &mut Vec<Expr>) {
     if let Expr::App(f, a) = expr {
         collect_app_args(f, args);
-        args.push(*a.clone());
+        args.push((**a).clone());
     }
 }
 /// Substitute BVar(idx) with a replacement expression.
@@ -723,27 +724,32 @@ pub(super) fn substitute_bvar(expr: &Expr, idx: u32, replacement: &Expr) -> Expr
         Expr::App(f, a) => {
             let f2 = substitute_bvar(f, idx, replacement);
             let a2 = substitute_bvar(a, idx, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Lam(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Pi(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(name, ty, val, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let val2 = substitute_bvar(val, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                name.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(name, i, e) => {
             let e2 = substitute_bvar(e, idx, replacement);
-            Expr::Proj(name.clone(), *i, Box::new(e2))
+            Expr::Proj(name.clone(), *i, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -752,15 +758,15 @@ pub(super) fn substitute_bvar(expr: &Expr, idx: u32, replacement: &Expr) -> Expr
 ///
 /// For a structure `S`, `S.field` becomes `Expr::Proj("S", field_idx, e)`.
 pub(super) fn mk_projection(struct_name: &Name, field_idx: u32, expr: Expr) -> Expr {
-    Expr::Proj(struct_name.clone(), field_idx, Box::new(expr))
+    Expr::Proj(struct_name.clone(), field_idx, Node::new(expr))
 }
 /// Build a `casesOn` application for an inductive type.
 pub(super) fn mk_cases_on(inductive_name: &Name, major: Expr, branches: Vec<Expr>) -> Expr {
     let cases_name = Name::str(format!("{}.casesOn", inductive_name));
     let mut result = Expr::Const(cases_name, vec![Level::zero()]);
-    result = Expr::App(Box::new(result), Box::new(major));
+    result = Expr::App(Node::new(result), Node::new(major));
     for branch in branches {
-        result = Expr::App(Box::new(result), Box::new(branch));
+        result = Expr::App(Node::new(result), Node::new(branch));
     }
     result
 }
@@ -856,8 +862,8 @@ pub(super) fn mk_field_lambda(field_names: &[Name], field_types: &[Expr], body: 
         result = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             name.clone(),
-            Box::new(ty.clone()),
-            Box::new(result),
+            Node::new(ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -887,7 +893,7 @@ pub(super) fn decompose_app_impl(expr: &Expr, args: &mut Vec<Expr>) -> Expr {
     match expr {
         Expr::App(f, a) => {
             let head = decompose_app_impl(f, args);
-            args.push(*a.clone());
+            args.push((**a).clone());
             head
         }
         _ => expr.clone(),
@@ -897,7 +903,7 @@ pub(super) fn decompose_app_impl(expr: &Expr, args: &mut Vec<Expr>) -> Expr {
 pub(super) fn mk_app(head: Expr, args: &[Expr]) -> Expr {
     let mut result = head;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg.clone()));
+        result = Expr::App(Node::new(result), Node::new(arg.clone()));
     }
     result
 }
@@ -962,8 +968,8 @@ pub(super) fn mk_branch(
         result = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             name,
-            Box::new(ty),
-            Box::new(result),
+            Node::new(ty),
+            Node::new(result),
         );
     }
     result
@@ -1425,8 +1431,8 @@ mod tests {
         let goal_ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(nat_ty),
+            Node::new(nat_ty.clone()),
+            Node::new(nat_ty),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -1538,11 +1544,11 @@ mod tests {
     #[test]
     fn test_decompose_app() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(Expr::Const(Name::str("a"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("b"), vec![])),
+            Node::new(Expr::Const(Name::str("b"), vec![])),
         );
         let (head, args) = decompose_app(&e);
         assert_eq!(head, Expr::Const(Name::str("f"), vec![]));

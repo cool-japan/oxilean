@@ -37,7 +37,7 @@
 //!
 //! // Register: add 0 ?n ≡ ?n
 //! let add = Expr::Const(Name::str("add"), vec![]);
-//! let zero = Expr::Lit(Literal::Nat(0));
+//! let zero = Expr::Lit(Literal::nat(0));
 //! let n_pat = Expr::Const(Name::str("?n"), vec![]);
 //! let lhs = Expr::App(
 //!     Box::new(Expr::App(Box::new(add), Box::new(zero))),

@@ -59,7 +59,7 @@ mod tests {
     fn test_definition_with_value() {
         let mut env = Environment::new();
         let nat_ty = Expr::Sort(Level::zero());
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         let decl = Declaration::Definition {
             name: Name::str("answer"),
             univ_params: vec![],
@@ -312,7 +312,7 @@ mod extended_env_tests {
     #[test]
     fn test_definition_value_retrieval() {
         let mut env = Environment::new();
-        let val = Expr::Lit(Literal::Nat(99));
+        let val = Expr::Lit(Literal::nat(99));
         env.add(Declaration::Definition {
             name: Name::str("myval"),
             univ_params: vec![],
@@ -643,7 +643,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

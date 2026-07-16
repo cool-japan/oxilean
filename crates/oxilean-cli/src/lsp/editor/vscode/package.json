@@ -1,0 +1,61 @@
+{
+  "name": "oxilean",
+  "displayName": "OxiLean",
+  "description": "OxiLean proof assistant for VS Code — Lean4-like type-checked proofs",
+  "version": "0.1.3",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Linters", "Formatters"],
+  "activationEvents": ["onLanguage:oxilean", "workspaceContains:**/*.oxilean"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "oxilean",
+        "aliases": ["OxiLean", "oxilean"],
+        "extensions": [".oxilean", ".lean"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "OxiLean",
+      "properties": {
+        "oxilean.serverPath": {
+          "type": "string",
+          "default": "oxilean",
+          "description": "Path to the oxilean binary (must support --lsp flag)"
+        },
+        "oxilean.serverArgs": {
+          "type": "array",
+          "default": ["--lsp"],
+          "description": "Arguments passed to the oxilean binary"
+        },
+        "oxilean.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "LSP message tracing level"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "oxilean.restartServer",
+        "title": "OxiLean: Restart Language Server"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

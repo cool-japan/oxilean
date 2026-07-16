@@ -13,6 +13,8 @@ use super::types::{
 use oxilean_kernel::{Expr, Literal, Name};
 
 #[cfg(test)]
+use oxilean_kernel::Node;
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::match_basic::*;
@@ -56,7 +58,7 @@ mod tests {
     }
     #[test]
     fn test_literal_pattern() {
-        let p = MetaPattern::Literal(Literal::Nat(42));
+        let p = MetaPattern::Literal(Literal::nat(42));
         assert!(p.is_literal());
         assert!(!p.is_irrefutable());
         assert_eq!(p.num_bindings(), 0);
@@ -78,8 +80,8 @@ mod tests {
     #[test]
     fn test_or_pattern() {
         let p = MetaPattern::Or(
-            Box::new(MetaPattern::Literal(Literal::Nat(0))),
-            Box::new(MetaPattern::Literal(Literal::Nat(1))),
+            Box::new(MetaPattern::Literal(Literal::nat(0))),
+            Box::new(MetaPattern::Literal(Literal::nat(1))),
         );
         assert_eq!(p.num_bindings(), 0);
     }
@@ -93,7 +95,7 @@ mod tests {
         match_expr.add_arm(MetaMatchArm {
             patterns: vec![MetaPattern::Wildcard],
             guard: None,
-            rhs: Expr::Lit(Literal::Nat(0)),
+            rhs: Expr::Lit(Literal::nat(0)),
         });
         assert_eq!(match_expr.num_arms(), 1);
     }
@@ -105,13 +107,13 @@ mod tests {
         match_expr.add_arm(MetaMatchArm {
             patterns: vec![MetaPattern::Wildcard],
             guard: None,
-            rhs: Expr::Lit(Literal::Nat(0)),
+            rhs: Expr::Lit(Literal::nat(0)),
         });
         assert!(match_expr.validate_patterns().is_ok());
         match_expr.add_arm(MetaMatchArm {
             patterns: vec![MetaPattern::Wildcard, MetaPattern::Wildcard],
             guard: None,
-            rhs: Expr::Lit(Literal::Nat(1)),
+            rhs: Expr::Lit(Literal::nat(1)),
         });
         assert!(match_expr.validate_patterns().is_err());
     }
@@ -264,7 +266,7 @@ mod tests_extra {
     #[test]
     fn test_try_match_wildcard() {
         let p = MetaPattern::Wildcard;
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         let r = try_match(&p, &e);
         assert!(r.is_success());
         assert_eq!(r.bindings().len(), 0);
@@ -272,7 +274,7 @@ mod tests_extra {
     #[test]
     fn test_try_match_var() {
         let p = MetaPattern::Var(Name::str("x"));
-        let e = Expr::Lit(Literal::Nat(5));
+        let e = Expr::Lit(Literal::nat(5));
         let r = try_match(&p, &e);
         assert!(r.is_success());
         assert_eq!(r.bindings().len(), 1);
@@ -280,14 +282,14 @@ mod tests_extra {
     }
     #[test]
     fn test_try_match_literal_ok() {
-        let p = MetaPattern::Literal(Literal::Nat(42));
-        let e = Expr::Lit(Literal::Nat(42));
+        let p = MetaPattern::Literal(Literal::nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(try_match(&p, &e).is_success());
     }
     #[test]
     fn test_try_match_literal_fail() {
-        let p = MetaPattern::Literal(Literal::Nat(0));
-        let e = Expr::Lit(Literal::Nat(1));
+        let p = MetaPattern::Literal(Literal::nat(0));
+        let e = Expr::Lit(Literal::nat(1));
         assert!(try_match(&p, &e).is_failure());
     }
     #[test]
@@ -297,8 +299,8 @@ mod tests_extra {
             vec![MetaPattern::Var(Name::str("n"))],
         );
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
         );
         let r = try_match(&p, &e);
         assert!(r.is_success());
@@ -308,15 +310,15 @@ mod tests_extra {
     fn test_try_match_constructor_wrong_name() {
         let p = MetaPattern::Constructor(Name::str("Nat.succ"), vec![MetaPattern::Wildcard]);
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.zero"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("Nat.zero"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
         );
         assert!(try_match(&p, &e).is_failure());
     }
     #[test]
     fn test_try_match_as_pattern() {
         let p = MetaPattern::As(Box::new(MetaPattern::Wildcard), Name::str("x"));
-        let e = Expr::Lit(Literal::Nat(7));
+        let e = Expr::Lit(Literal::nat(7));
         let r = try_match(&p, &e);
         assert!(r.is_success());
         assert_eq!(r.bindings().len(), 1);
@@ -324,19 +326,19 @@ mod tests_extra {
     #[test]
     fn test_try_match_or_first_succeeds() {
         let p = MetaPattern::Or(
-            Box::new(MetaPattern::Literal(Literal::Nat(0))),
-            Box::new(MetaPattern::Literal(Literal::Nat(1))),
+            Box::new(MetaPattern::Literal(Literal::nat(0))),
+            Box::new(MetaPattern::Literal(Literal::nat(1))),
         );
-        let e = Expr::Lit(Literal::Nat(0));
+        let e = Expr::Lit(Literal::nat(0));
         assert!(try_match(&p, &e).is_success());
     }
     #[test]
     fn test_try_match_or_second_succeeds() {
         let p = MetaPattern::Or(
-            Box::new(MetaPattern::Literal(Literal::Nat(0))),
-            Box::new(MetaPattern::Literal(Literal::Nat(1))),
+            Box::new(MetaPattern::Literal(Literal::nat(0))),
+            Box::new(MetaPattern::Literal(Literal::nat(1))),
         );
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         assert!(try_match(&p, &e).is_success());
     }
     #[test]
@@ -364,19 +366,19 @@ mod tests_extra {
     }
     #[test]
     fn test_is_exhaustive() {
-        let pats = vec![MetaPattern::Literal(Literal::Nat(0)), MetaPattern::Wildcard];
+        let pats = vec![MetaPattern::Literal(Literal::nat(0)), MetaPattern::Wildcard];
         assert!(is_exhaustive(&pats));
     }
     #[test]
     fn test_is_exhaustive_false() {
-        let pats = vec![MetaPattern::Literal(Literal::Nat(0))];
+        let pats = vec![MetaPattern::Literal(Literal::nat(0))];
         assert!(!is_exhaustive(&pats));
     }
     #[test]
     fn test_find_redundant_arms() {
         let pats = vec![
             MetaPattern::Wildcard,
-            MetaPattern::Literal(Literal::Nat(0)),
+            MetaPattern::Literal(Literal::nat(0)),
             MetaPattern::Var(Name::str("x")),
         ];
         let redundant = find_redundant_arms(&pats);
@@ -528,7 +530,7 @@ mod match_basic_new_tests {
     }
     #[test]
     fn test_simplify_pattern_no_change() {
-        let p = MetaPattern::Literal(Literal::Nat(42));
+        let p = MetaPattern::Literal(Literal::nat(42));
         let simplified = simplify_pattern(p.clone());
         assert_eq!(simplified, p);
     }
@@ -543,7 +545,7 @@ mod match_basic_new_tests {
     #[test]
     fn test_pattern_row_not_all_irrefutable() {
         let row = PatternRow::new(
-            vec![MetaPattern::Wildcard, MetaPattern::Literal(Literal::Nat(0))],
+            vec![MetaPattern::Wildcard, MetaPattern::Literal(Literal::nat(0))],
             0,
         );
         assert!(!row.is_all_irrefutable());
@@ -551,7 +553,7 @@ mod match_basic_new_tests {
     #[test]
     fn test_pattern_row_first_refutable() {
         let row = PatternRow::new(
-            vec![MetaPattern::Wildcard, MetaPattern::Literal(Literal::Nat(0))],
+            vec![MetaPattern::Wildcard, MetaPattern::Literal(Literal::nat(0))],
             0,
         );
         let refutable = row.first_refutable();
@@ -584,7 +586,7 @@ mod match_basic_new_tests {
             0,
         ));
         matrix.add_row(PatternRow::new(
-            vec![MetaPattern::Literal(Literal::Nat(0)), MetaPattern::Wildcard],
+            vec![MetaPattern::Literal(Literal::nat(0)), MetaPattern::Wildcard],
             1,
         ));
         let def = matrix.default_matrix(0);

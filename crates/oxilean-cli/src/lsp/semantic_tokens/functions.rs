@@ -14,15 +14,92 @@ use super::types::{
     TokenClassifier, TokenColorizer, TokenHighlightKind, TokenHighlightRange, TokenizeResult,
 };
 
+// ── Canonical semantic token legend ─────────────────────────────────────────
+//
+// This is the **stable, documented** mapping between legend index and the
+// semantic meaning advertised to LSP clients.  Never reorder these without a
+// major version bump — clients cache the indices from the initialize response.
+//
+// Index → token-type name:
+//   0  namespace     — a namespace/module identifier (`namespace Foo`)
+//   1  type          — a type (inductive, structure, `Type`, `Prop`)
+//   2  class         — a type-class identifier
+//   3  enumMember    — a constructor of an inductive type
+//   4  typeParameter — a universe polymorphism or type-variable binder
+//   5  function      — a definition / constant (`def`, `noncomputable def`)
+//   6  method        — a theorem or lemma (`theorem`, `lemma`)
+//   7  property      — a structure field or instance
+//   8  variable      — a local variable or binder
+//   9  parameter     — an explicit function parameter
+//  10  string        — a string literal
+//  11  number        — a numeric literal (Nat, Int, Float)
+//  12  keyword       — a reserved word (`def`, `theorem`, `by`, …)
+//  13  comment       — a doc-comment (`/-! … -/`, `-- …`)
+//  14  operator      — an operator or punctuation (`+`, `→`, `:=`, …)
+//  15  macro         — a macro invocation (`#check`, `#eval`, …)
+//  16  decorator     — an attribute (`@[simp]`, `@[ext]`, …)
+
+/// The canonical OxiLean semantic token type names in legend order (index 0…16).
+///
+/// Clients receive this array during the `initialize` response and use the
+/// indices for all subsequent `textDocument/semanticTokens/full` responses.
+/// The order is **stable** — never insert, remove, or reorder entries.
+pub const SEMANTIC_TOKEN_LEGEND: &[&str] = &[
+    "namespace",     // 0
+    "type",          // 1
+    "class",         // 2
+    "enumMember",    // 3
+    "typeParameter", // 4
+    "function",      // 5
+    "method",        // 6
+    "property",      // 7
+    "variable",      // 8
+    "parameter",     // 9
+    "string",        // 10
+    "number",        // 11
+    "keyword",       // 12
+    "comment",       // 13
+    "operator",      // 14
+    "macro",         // 15
+    "decorator",     // 16
+];
+
+/// The canonical OxiLean semantic token modifier names in legend order.
+///
+/// Index → modifier name:
+///   0  declaration   — the token is the declaration site of a name
+///   1  definition    — the token is the definition (body) of a name
+///   2  readonly      — the name is immutable / cannot be reassigned
+///   3  deprecated    — the name has been marked deprecated
+///   4  documentation — the token appears inside a doc-comment
+///   5  defaultLibrary — the name is defined in the standard library
+pub const SEMANTIC_TOKEN_MODIFIER_LEGEND: &[&str] = &[
+    "declaration",    // 0  (bit 0)
+    "definition",     // 1  (bit 1)
+    "readonly",       // 2  (bit 2)
+    "deprecated",     // 3  (bit 3)
+    "documentation",  // 4  (bit 4)
+    "defaultLibrary", // 5  (bit 5)
+];
+
 /// Build the semantic tokens legend JSON.
+///
+/// The returned object is suitable for embedding in the `semanticTokensProvider`
+/// capability during the initialize response.  Both `tokenTypes` and
+/// `tokenModifiers` are derived from [`SEMANTIC_TOKEN_LEGEND`] and
+/// [`SEMANTIC_TOKEN_MODIFIER_LEGEND`] respectively, ensuring that the JSON
+/// legend and the Rust constants are always in sync.
 pub fn build_semantic_tokens_legend() -> JsonValue {
-    let token_types: Vec<JsonValue> = OxiTokenType::all()
+    // Use SEMANTIC_TOKEN_LEGEND as the authoritative source so that the
+    // advertised legend is always consistent with OxiTokenType::lsp_name()
+    // (which independently maps to the same names).
+    let token_types: Vec<JsonValue> = SEMANTIC_TOKEN_LEGEND
         .iter()
-        .map(|t| JsonValue::String(t.lsp_name().to_string()))
+        .map(|name| JsonValue::String((*name).to_string()))
         .collect();
-    let token_modifiers: Vec<JsonValue> = OxiTokenModifier::all()
+    let token_modifiers: Vec<JsonValue> = SEMANTIC_TOKEN_MODIFIER_LEGEND
         .iter()
-        .map(|m| JsonValue::String(m.lsp_name().to_string()))
+        .map(|name| JsonValue::String((*name).to_string()))
         .collect();
     JsonValue::Object(vec![
         ("tokenTypes".to_string(), JsonValue::Array(token_types)),
@@ -828,3 +905,276 @@ pub fn semantic_tokens_noop() {}
 /// Another no-op placeholder.
 #[allow(dead_code)]
 pub fn semantic_tokens_noop2() {}
+
+// ── Legend stability tests ──────────────────────────────────────────────────
+
+#[cfg(test)]
+mod legend_tests {
+    use super::*;
+
+    /// Verify that [`SEMANTIC_TOKEN_LEGEND`] has the expected entries at
+    /// exactly the documented indices.  This test is the canonical guard
+    /// against accidental reordering.
+    #[test]
+    fn test_semantic_token_legend_stable() {
+        // Spot-check all 17 entries by index.
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[0], "namespace");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[1], "type");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[2], "class");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[3], "enumMember");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[4], "typeParameter");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[5], "function");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[6], "method");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[7], "property");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[8], "variable");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[9], "parameter");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[10], "string");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[11], "number");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[12], "keyword");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[13], "comment");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[14], "operator");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[15], "macro");
+        assert_eq!(SEMANTIC_TOKEN_LEGEND[16], "decorator");
+
+        // The legend must contain exactly 17 entries (no hidden extras).
+        assert_eq!(SEMANTIC_TOKEN_LEGEND.len(), 17);
+    }
+
+    /// Verify that the modifier legend entries are stable at their documented
+    /// bit positions (index == bit index).
+    #[test]
+    fn test_semantic_token_modifier_legend_stable() {
+        assert_eq!(SEMANTIC_TOKEN_MODIFIER_LEGEND[0], "declaration");
+        assert_eq!(SEMANTIC_TOKEN_MODIFIER_LEGEND[1], "definition");
+        assert_eq!(SEMANTIC_TOKEN_MODIFIER_LEGEND[2], "readonly");
+        assert_eq!(SEMANTIC_TOKEN_MODIFIER_LEGEND[3], "deprecated");
+        assert_eq!(SEMANTIC_TOKEN_MODIFIER_LEGEND[4], "documentation");
+        assert_eq!(SEMANTIC_TOKEN_MODIFIER_LEGEND[5], "defaultLibrary");
+
+        assert_eq!(SEMANTIC_TOKEN_MODIFIER_LEGEND.len(), 6);
+    }
+
+    /// Verify that the JSON legend built from the constants contains exactly
+    /// the same entries in exactly the same order.
+    #[test]
+    fn test_build_semantic_tokens_legend_matches_constants() {
+        let legend = build_semantic_tokens_legend();
+        let types = legend
+            .get("tokenTypes")
+            .expect("tokenTypes must exist")
+            .as_array()
+            .expect("tokenTypes must be an array");
+
+        assert_eq!(types.len(), SEMANTIC_TOKEN_LEGEND.len());
+        for (i, expected) in SEMANTIC_TOKEN_LEGEND.iter().enumerate() {
+            let got = types[i].as_str().expect("each entry must be a string");
+            assert_eq!(got, *expected, "tokenTypes[{i}] mismatch");
+        }
+
+        let mods = legend
+            .get("tokenModifiers")
+            .expect("tokenModifiers must exist")
+            .as_array()
+            .expect("tokenModifiers must be an array");
+
+        assert_eq!(mods.len(), SEMANTIC_TOKEN_MODIFIER_LEGEND.len());
+        for (i, expected) in SEMANTIC_TOKEN_MODIFIER_LEGEND.iter().enumerate() {
+            let got = mods[i].as_str().expect("each entry must be a string");
+            assert_eq!(got, *expected, "tokenModifiers[{i}] mismatch");
+        }
+    }
+
+    /// Verify that `OxiTokenType::index()` and `OxiTokenType::lsp_name()`
+    /// are consistent with the SEMANTIC_TOKEN_LEGEND array.
+    #[test]
+    fn test_oxi_token_type_index_matches_legend() {
+        for t in OxiTokenType::all() {
+            let idx = t.index() as usize;
+            assert!(
+                idx < SEMANTIC_TOKEN_LEGEND.len(),
+                "OxiTokenType::{:?} index {} out of legend bounds",
+                t,
+                idx
+            );
+            assert_eq!(
+                SEMANTIC_TOKEN_LEGEND[idx],
+                t.lsp_name(),
+                "OxiTokenType::{:?} lsp_name mismatch at index {}",
+                t,
+                idx
+            );
+        }
+    }
+}
+
+/// Filter delta-encoded semantic token data to only include tokens within a range.
+///
+/// The input `data` is a flat array of 5-integer-tuples in LSP delta-encoded format.
+/// This function decodes the tokens to absolute positions, filters those within the
+/// given range, and re-encodes the filtered subset in delta-encoded format.
+///
+/// The range uses LSP 0-indexed line/character (UTF-16 code units) as stored in
+/// `RawSemanticToken.line` and `start_char`.
+pub fn filter_semantic_tokens_range(data: &[u32], range: &Range) -> Vec<u32> {
+    let all_tokens = decode_semantic_tokens(data);
+    let start_line = range.start.line;
+    let end_line = range.end.line;
+    let start_char = range.start.character;
+    let end_char = range.end.character;
+
+    let filtered: Vec<RawSemanticToken> = all_tokens
+        .into_iter()
+        .filter(|t| {
+            if t.line < start_line || t.line > end_line {
+                return false;
+            }
+            if t.line == start_line && t.start_char < start_char {
+                return false;
+            }
+            if t.line == end_line && t.start_char >= end_char {
+                return false;
+            }
+            true
+        })
+        .collect();
+
+    encode_semantic_tokens(&filtered)
+}
+
+#[cfg(test)]
+mod range_filter_tests {
+    use super::*;
+    use crate::lsp::{Position, Range};
+
+    fn make_range(sl: u32, sc: u32, el: u32, ec: u32) -> Range {
+        Range::new(Position::new(sl, sc), Position::new(el, ec))
+    }
+
+    #[test]
+    fn test_range_filter_empty_data() {
+        let range = make_range(0, 0, 5, 100);
+        let result = filter_semantic_tokens_range(&[], &range);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_range_filter_all_within() {
+        let tokens = vec![
+            RawSemanticToken {
+                line: 1,
+                start_char: 0,
+                length: 3,
+                token_type: 10,
+                token_modifiers: 0,
+            },
+            RawSemanticToken {
+                line: 2,
+                start_char: 4,
+                length: 5,
+                token_type: 1,
+                token_modifiers: 0,
+            },
+        ];
+        let data = encode_semantic_tokens(&tokens);
+        let range = make_range(0, 0, 5, 100);
+        let result = filter_semantic_tokens_range(&data, &range);
+        let decoded = decode_semantic_tokens(&result);
+        assert_eq!(decoded.len(), 2);
+    }
+
+    #[test]
+    fn test_range_filter_none_within() {
+        let tokens = vec![RawSemanticToken {
+            line: 10,
+            start_char: 0,
+            length: 3,
+            token_type: 10,
+            token_modifiers: 0,
+        }];
+        let data = encode_semantic_tokens(&tokens);
+        let range = make_range(0, 0, 5, 100);
+        let result = filter_semantic_tokens_range(&data, &range);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_range_filter_partial() {
+        // Tokens at lines 0, 1, 2, 3; request range = lines 1..=2
+        let tokens = vec![
+            RawSemanticToken {
+                line: 0,
+                start_char: 0,
+                length: 3,
+                token_type: 10,
+                token_modifiers: 0,
+            },
+            RawSemanticToken {
+                line: 1,
+                start_char: 2,
+                length: 5,
+                token_type: 1,
+                token_modifiers: 0,
+            },
+            RawSemanticToken {
+                line: 2,
+                start_char: 0,
+                length: 4,
+                token_type: 5,
+                token_modifiers: 0,
+            },
+            RawSemanticToken {
+                line: 3,
+                start_char: 0,
+                length: 3,
+                token_type: 10,
+                token_modifiers: 0,
+            },
+        ];
+        let data = encode_semantic_tokens(&tokens);
+        let range = make_range(1, 0, 3, 0);
+        let result = filter_semantic_tokens_range(&data, &range);
+        let decoded = decode_semantic_tokens(&result);
+        assert_eq!(decoded.len(), 2);
+        assert_eq!(decoded[0].line, 1);
+        assert_eq!(decoded[1].line, 2);
+    }
+
+    #[test]
+    fn test_range_filter_subset_of_full() {
+        let tokens = vec![
+            RawSemanticToken {
+                line: 0,
+                start_char: 0,
+                length: 3,
+                token_type: 10,
+                token_modifiers: 0,
+            },
+            RawSemanticToken {
+                line: 0,
+                start_char: 4,
+                length: 4,
+                token_type: 1,
+                token_modifiers: 0,
+            },
+            RawSemanticToken {
+                line: 1,
+                start_char: 0,
+                length: 6,
+                token_type: 5,
+                token_modifiers: 0,
+            },
+        ];
+        let full_data = encode_semantic_tokens(&tokens);
+        let range = make_range(0, 0, 1, 0);
+        let range_data = filter_semantic_tokens_range(&full_data, &range);
+        let full_decoded = decode_semantic_tokens(&full_data);
+        let range_decoded = decode_semantic_tokens(&range_data);
+        // Range-filtered tokens must be a subset (in order) of full tokens
+        for t in &range_decoded {
+            assert!(full_decoded.iter().any(|ft| {
+                ft.line == t.line && ft.start_char == t.start_char && ft.token_type == t.token_type
+            }));
+        }
+        assert!(range_decoded.len() <= full_decoded.len());
+    }
+}

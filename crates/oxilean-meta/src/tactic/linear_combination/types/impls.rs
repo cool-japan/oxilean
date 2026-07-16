@@ -1228,19 +1228,64 @@ impl RatMatrix {
     }
 }
 
-#[allow(dead_code)]
 impl FarkasCert {
-    pub fn new(multipliers: Vec<Rat>, combined_rhs: Rat) -> Self {
+    /// Construct a Farkas certificate from raw data.
+    ///
+    /// The `sources` field defaults to empty; use [`FarkasCert::with_sources`] to
+    /// attach provenance information after construction.
+    pub fn new(entries: Vec<FarkasCertEntry>, combined_rhs: Rat) -> Self {
         FarkasCert {
-            multipliers,
+            entries,
             combined_rhs,
+            sources: vec![],
         }
     }
-    pub fn is_valid_refutation(&self) -> bool {
-        self.multipliers.iter().all(|m| m.is_pos() || m.is_zero()) && self.combined_rhs.is_neg()
+
+    /// Construct from a slice of `(constraint_index, multiplier, orient)` triples.
+    ///
+    /// The `sources` field defaults to empty; use [`FarkasCert::with_sources`] to
+    /// attach provenance information after construction.
+    pub fn from_search(pairs: &[(usize, Rat, ConOrient)]) -> Self {
+        let entries = pairs
+            .iter()
+            .map(|(idx, mult, orient)| FarkasCertEntry {
+                constraint_index: *idx,
+                multiplier: mult.clone(),
+                orient: orient.clone(),
+            })
+            .collect();
+        // combined_rhs will be filled in by the caller; provide a sentinel zero here.
+        FarkasCert {
+            entries,
+            combined_rhs: Rat::zero(),
+            sources: vec![],
+        }
     }
-    pub fn num_multipliers(&self) -> usize {
-        self.multipliers.len()
+
+    /// Attach per-entry source provenance to this certificate, returning `self`.
+    ///
+    /// The caller should supply one `ConSource` per `FarkasCertEntry`, keyed by
+    /// the entry's `constraint_index`.  If the sources cannot be computed (e.g.,
+    /// the original constraint list is unavailable), leave `sources` empty and
+    /// proof reconstruction will fall back to a `sorry` placeholder.
+    pub fn with_sources(mut self, sources: Vec<ConSource>) -> Self {
+        self.sources = sources;
+        self
+    }
+
+    /// Validate that this is a legitimate certificate:
+    /// - All multipliers are nonneg.
+    /// - The combined_rhs is strictly negative (contradiction).
+    pub fn is_valid_refutation(&self) -> bool {
+        self.entries
+            .iter()
+            .all(|e| e.multiplier.is_pos() || e.multiplier.is_zero())
+            && self.combined_rhs.is_neg()
+    }
+
+    /// Number of participating constraint entries.
+    pub fn num_entries(&self) -> usize {
+        self.entries.len()
     }
 }
 
@@ -1907,4 +1952,9 @@ impl TacticLinearCombinationConfigValue {
             TacticLinearCombinationConfigValue::List(_) => "list",
         }
     }
+}
+
+#[cfg(test)]
+mod con_source_tests {
+    include!("con_source_tests.rs");
 }

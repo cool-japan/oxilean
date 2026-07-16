@@ -3,6 +3,7 @@
 pub mod flatsubstitution_traits;
 pub mod focusstack_traits;
 pub mod functions;
+pub(crate) mod iota;
 pub mod labelset_traits;
 pub mod pathbuf_traits;
 pub mod reducer_traits;

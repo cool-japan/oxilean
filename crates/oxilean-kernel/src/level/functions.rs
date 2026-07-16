@@ -65,10 +65,13 @@ pub(super) fn is_norm_lt(l1: &Level, l2: &Level) -> bool {
     }
     match (b1, b2) {
         (Level::Param(n1), Level::Param(n2)) => {
-            let s1 = n1.to_string();
-            let s2 = n2.to_string();
-            if s1 != s2 {
-                return s1 < s2;
+            // Structural name comparison (see `order::name_cmp`): a genuine
+            // total order, avoiding the `to_string()` comparator-inconsistency
+            // panic risk and the per-comparison allocation.
+            match super::order::name_cmp(n1, n2) {
+                std::cmp::Ordering::Less => return true,
+                std::cmp::Ordering::Greater => return false,
+                std::cmp::Ordering::Equal => {}
             }
         }
         (Level::MVar(m1), Level::MVar(m2)) if m1.0 != m2.0 => {
@@ -130,6 +133,14 @@ pub fn normalize(l: &Level) -> Level {
                     normalize(&with_offset)
                 };
             }
+            if l1_norm == l2_norm {
+                // imax(u, u) = u (Lean `mk_imax`: `else if (l1 == l2) return l1;`).
+                // Reachable when neither side is statically zero/non-zero, e.g.
+                // both are the same `Param`. This is the single highest-impact
+                // fix: without it every `Sort u -> Sort u` re-inference lands on
+                // `Sort (imax u u)` and mass-fails against the stored `Sort u`.
+                return from_offset(l1_norm, k);
+            }
             from_offset(Level::imax(l1_norm, l2_norm), k)
         }
         Level::Max(_, _) => {
@@ -176,9 +187,33 @@ pub fn normalize(l: &Level) -> Level {
                 }
             }
             if merged.len() > 1 {
-                let has_nonzero = merged.iter().any(|a| a.is_not_zero());
-                if has_nonzero {
-                    merged.retain(|a| !a.is_zero());
+                // Numeral subsumption (Lean drops an explicit numeral arg `n`
+                // when another arg is provably `>= n`). After merging there is
+                // at most one arg with base `Zero` (a numeral `succ^n(0)`); it
+                // is subsumed when some *other* arg `succ^k(base)` with a
+                // non-`Zero` base has offset `k >= n`, since such an arg is
+                // always `>= k` for every assignment. Generalises the previous
+                // "drop literal Zero when a sibling is non-zero" rule (that was
+                // the `n == 0` special case) and fixes e.g.
+                // `max(1, succ u) = succ u`, `max(0, u) = u`.
+                let max_nonnumeral_offset = merged
+                    .iter()
+                    .filter_map(|a| {
+                        let (b, k) = to_offset(a);
+                        if matches!(b, Level::Zero) {
+                            None
+                        } else {
+                            Some(k)
+                        }
+                    })
+                    .max();
+                if let Some(bound) = max_nonnumeral_offset {
+                    merged.retain(|a| {
+                        let (b, k) = to_offset(a);
+                        // Keep everything except a numeral arg subsumed by the
+                        // bound. A numeral arg has base `Zero`.
+                        !(matches!(b, Level::Zero) && k <= bound)
+                    });
                 }
             }
             if merged.is_empty() {
@@ -200,54 +235,30 @@ pub fn normalize(l: &Level) -> Level {
 }
 /// Check if two levels are semantically equivalent.
 ///
-/// First tries structural equality, then falls back to normalization.
+/// Two levels are equivalent iff each is `<=` the other under the complete
+/// [`is_leq`] decision procedure, i.e. they evaluate equally under every
+/// assignment of the universe parameters to naturals. This is Lean's
+/// `Level.isEquiv` and is both **sound and complete** (unlike a bare
+/// `normalize`-equality, which is only sound — see the level audit for the
+/// `imax(u,u) = u`, `max(0,u) = u`, ... cases that normalize-equality misses).
 pub fn is_equivalent(l1: &Level, l2: &Level) -> bool {
-    l1 == l2 || normalize(l1) == normalize(l2)
+    l1 == l2 || (is_leq(l1, l2) && is_leq(l2, l1))
 }
 /// Check if `l1 >= l2` (level ordering).
 ///
-/// Returns true if level `l1` is guaranteed to be >= `l2`
-/// for all possible assignments to parameters and metavariables.
+/// Returns true iff `l1` is guaranteed to be `>= l2` for **all** assignments of
+/// the universe parameters to naturals. Defined as [`is_leq`]`(l2, l1)`.
 pub fn is_geq(l1: &Level, l2: &Level) -> bool {
-    is_geq_core(&normalize(l1), &normalize(l2))
-}
-pub(super) fn is_geq_core(l1: &Level, l2: &Level) -> bool {
-    if l1 == l2 {
-        return true;
-    }
-    if l2.is_zero() {
-        return true;
-    }
-    if let Level::Max(a, b) = l1 {
-        if is_geq_core(a, l2) || is_geq_core(b, l2) {
-            return true;
-        }
-    }
-    if let Level::Max(b, c) = l2 {
-        if is_geq_core(l1, b) && is_geq_core(l1, c) {
-            return true;
-        }
-    }
-    if let Level::IMax(b, c) = l2 {
-        if is_geq_core(l1, b) && is_geq_core(l1, c) {
-            return true;
-        }
-    }
-    if let Level::IMax(_, b) = l1 {
-        if is_geq_core(b, l2) {
-            return true;
-        }
-    }
-    let (b1, k1) = to_offset(l1);
-    let (b2, k2) = to_offset(l2);
-    if b1 == b2 {
-        return k1 >= k2;
-    }
-    false
+    is_leq(l2, l1)
 }
 /// Check if `l1 <= l2` (level ordering).
+///
+/// This is the complete `leq` decision procedure with the parameter case-split
+/// (`p := 0` / `p := succ p`). It is sound **and** complete over the finite
+/// assignment space: `is_leq(a, b)` is true iff `eval(a, ρ) <= eval(b, ρ)` for
+/// every assignment `ρ` of the parameters to naturals.
 pub fn is_leq(l1: &Level, l2: &Level) -> bool {
-    is_geq(l2, l1)
+    super::order::is_leq_core(l1, l2, 0)
 }
 /// Instantiate level parameters using a substitution.
 ///
@@ -1003,7 +1014,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -18,8 +19,8 @@ pub fn type2() -> Expr {
 }
 pub fn thunk_of(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Thunk"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("Thunk"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn unit_ty() -> Expr {
@@ -33,22 +34,22 @@ pub fn nat_ty() -> Expr {
 }
 pub fn list_of(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("List"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn unit_to(ret_ty: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(unit_ty()),
-        Box::new(ret_ty),
+        Node::new(unit_ty()),
+        Node::new(ret_ty),
     )
 }
 pub fn option_of(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Option"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("Option"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn axiom(env: &mut Environment, name: &str, ty: Expr) -> Result<(), String> {
@@ -63,20 +64,20 @@ pub fn alpha_implicit(inner: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(inner),
+        Node::new(type1()),
+        Node::new(inner),
     )
 }
 pub fn ab_implicit(inner: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(inner),
+            Node::new(type1()),
+            Node::new(inner),
         )),
     )
 }
@@ -85,8 +86,8 @@ pub fn build_thunk_env(env: &mut Environment) -> Result<(), String> {
     let thunk_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(type2()),
+        Node::new(type1()),
+        Node::new(type2()),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Thunk"),
@@ -115,8 +116,8 @@ pub fn add_mk(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(unit_to(Expr::BVar(1))),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(unit_to(Expr::BVar(1))),
+        Node::new(thunk_of(Expr::BVar(1))),
     ));
     axiom(env, "Thunk.mk", ty)
 }
@@ -124,8 +125,8 @@ pub fn add_get(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(Expr::BVar(1)),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(Expr::BVar(1)),
     ));
     axiom(env, "Thunk.get", ty)
 }
@@ -133,8 +134,8 @@ pub fn add_pure(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::BVar(0)),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(0)),
+        Node::new(thunk_of(Expr::BVar(1))),
     ));
     axiom(env, "Thunk.pure", ty)
 }
@@ -142,18 +143,18 @@ pub fn add_map(env: &mut Environment) -> Result<(), String> {
     let fn_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(1)),
-        Box::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(1)),
     );
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(fn_ty),
-        Box::new(Expr::Pi(
+        Node::new(fn_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
-            Box::new(thunk_of(Expr::BVar(2))),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ));
     axiom(env, "Thunk.map", ty)
@@ -162,18 +163,18 @@ pub fn add_bind(env: &mut Environment) -> Result<(), String> {
     let fn_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(1)),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(1)),
+        Node::new(thunk_of(Expr::BVar(1))),
     );
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(1))),
-        Box::new(Expr::Pi(
+        Node::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("f"),
-            Box::new(fn_ty),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(fn_ty),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ));
     axiom(env, "Thunk.bind", ty)
@@ -182,28 +183,28 @@ pub fn add_join(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(thunk_of(Expr::BVar(0)))),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(thunk_of(thunk_of(Expr::BVar(0)))),
+        Node::new(thunk_of(Expr::BVar(1))),
     ));
     axiom(env, "Thunk.join", ty)
 }
 pub fn add_zip(env: &mut Environment) -> Result<(), String> {
     let prod_ty = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Prod"), vec![])),
-            Box::new(Expr::BVar(1)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Prod"), vec![])),
+            Node::new(Expr::BVar(1)),
         )),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(0)),
     );
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("ta"),
-        Box::new(thunk_of(Expr::BVar(1))),
-        Box::new(Expr::Pi(
+        Node::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("tb"),
-            Box::new(thunk_of(Expr::BVar(1))),
-            Box::new(thunk_of(prod_ty)),
+            Node::new(thunk_of(Expr::BVar(1))),
+            Node::new(thunk_of(prod_ty)),
         )),
     ));
     axiom(env, "Thunk.zip", ty)
@@ -212,12 +213,12 @@ pub fn add_bool_op(env: &mut Environment, name: &str) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(thunk_of(bool_ty())),
-        Box::new(Expr::Pi(
+        Node::new(thunk_of(bool_ty())),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(thunk_of(bool_ty())),
-            Box::new(thunk_of(bool_ty())),
+            Node::new(thunk_of(bool_ty())),
+            Node::new(thunk_of(bool_ty())),
         )),
     );
     axiom(env, name, ty)
@@ -232,8 +233,8 @@ pub fn add_is_forced(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(bool_ty()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(bool_ty()),
     ));
     axiom(env, "Thunk.isForced", ty)
 }
@@ -241,18 +242,18 @@ pub fn add_ap(env: &mut Environment) -> Result<(), String> {
     let fn_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(1)),
-        Box::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(1)),
     );
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("tf"),
-        Box::new(thunk_of(fn_ty)),
-        Box::new(Expr::Pi(
+        Node::new(thunk_of(fn_ty)),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("ta"),
-            Box::new(thunk_of(Expr::BVar(2))),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ));
     axiom(env, "Thunk.ap", ty)
@@ -261,8 +262,8 @@ pub fn add_sequence(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("ts"),
-        Box::new(list_of(thunk_of(Expr::BVar(0)))),
-        Box::new(thunk_of(list_of(Expr::BVar(1)))),
+        Node::new(list_of(thunk_of(Expr::BVar(0)))),
+        Node::new(thunk_of(list_of(Expr::BVar(1)))),
     ));
     axiom(env, "Thunk.sequence", ty)
 }
@@ -270,8 +271,8 @@ pub fn add_delay(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::BVar(0)),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(0)),
+        Node::new(thunk_of(Expr::BVar(1))),
     ));
     axiom(env, "Thunk.delay", ty)
 }
@@ -279,8 +280,8 @@ pub fn add_count(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("ts"),
-        Box::new(list_of(thunk_of(Expr::BVar(0)))),
-        Box::new(nat_ty()),
+        Node::new(list_of(thunk_of(Expr::BVar(0)))),
+        Node::new(nat_ty()),
     ));
     axiom(env, "Thunk.count", ty)
 }
@@ -288,12 +289,12 @@ pub fn add_get_or(env: &mut Environment) -> Result<(), String> {
     let ty = alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("opt"),
-        Box::new(option_of(thunk_of(Expr::BVar(0)))),
-        Box::new(Expr::Pi(
+        Node::new(option_of(thunk_of(Expr::BVar(0)))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("def"),
-            Box::new(Expr::BVar(1)),
-            Box::new(Expr::BVar(2)),
+            Node::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(2)),
         )),
     ));
     axiom(env, "Thunk.getOr", ty)
@@ -583,12 +584,12 @@ pub fn build_thunk_theorems(env: &mut Environment) -> Result<(), String> {
     let get_pure_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::BVar(0)),
-            Box::new(prop.clone()),
+            Node::new(Expr::BVar(0)),
+            Node::new(prop.clone()),
         )),
     );
     env.add(Declaration::Axiom {
@@ -600,15 +601,15 @@ pub fn build_thunk_theorems(env: &mut Environment) -> Result<(), String> {
     let map_id_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Thunk"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Thunk"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(prop.clone()),
+            Node::new(prop.clone()),
         )),
     );
     env.add(Declaration::Axiom {
@@ -620,12 +621,12 @@ pub fn build_thunk_theorems(env: &mut Environment) -> Result<(), String> {
     let bind_pure_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::BVar(0)),
-            Box::new(prop.clone()),
+            Node::new(Expr::BVar(0)),
+            Node::new(prop.clone()),
         )),
     );
     env.add(Declaration::Axiom {
@@ -737,12 +738,12 @@ pub fn thk_ext_ab_prop(body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(body),
+            Node::new(type1()),
+            Node::new(body),
         )),
     )
 }
@@ -750,16 +751,16 @@ pub fn thk_ext_abc_implicit(body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1()),
-                Box::new(body),
+                Node::new(type1()),
+                Node::new(body),
             )),
         )),
     )
@@ -771,8 +772,8 @@ pub fn axiom_comonad_extract_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(Expr::BVar(1)),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(Expr::BVar(1)),
     ))
 }
 /// `Thunk.duplicate : {α : Type} → Thunk α → Thunk (Thunk α)`
@@ -782,8 +783,8 @@ pub fn axiom_comonad_duplicate_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thunk_of(thunk_of(Expr::BVar(1)))),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thunk_of(thunk_of(Expr::BVar(1)))),
     ))
 }
 /// `Thunk.extend : {α β : Type} → (Thunk α → β) → Thunk α → Thunk β`
@@ -793,18 +794,18 @@ pub fn axiom_comonad_extend_ty() -> Expr {
     let coalg = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(thunk_of(Expr::BVar(1))),
-        Box::new(Expr::BVar(1)),
+        Node::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(1)),
     );
     ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(coalg),
-        Box::new(Expr::Pi(
+        Node::new(coalg),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
-            Box::new(thunk_of(Expr::BVar(2))),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -815,8 +816,8 @@ pub fn axiom_comonad_extract_duplicate_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thk_ext_prop()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thk_ext_prop()),
     ))
 }
 /// `Thunk.duplicate_extract : {α : Type} → ∀ t, map extract (duplicate t) = t`
@@ -826,8 +827,8 @@ pub fn axiom_comonad_duplicate_extract_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thk_ext_prop()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thk_ext_prop()),
     ))
 }
 /// `Thunk.duplicate_duplicate : {α : Type} → ∀ t, duplicate (duplicate t) = map duplicate (duplicate t)`
@@ -837,8 +838,8 @@ pub fn axiom_comonad_duplicate_duplicate_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thk_ext_prop()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thk_ext_prop()),
     ))
 }
 /// `Thunk.cokleisli_compose : {α β γ : Type} → (Thunk α → β) → (Thunk β → γ) → Thunk α → γ`
@@ -848,28 +849,28 @@ pub fn axiom_cokleisli_compose_ty() -> Expr {
     let f_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(thunk_of(Expr::BVar(2))),
-        Box::new(Expr::BVar(2)),
+        Node::new(thunk_of(Expr::BVar(2))),
+        Node::new(Expr::BVar(2)),
     );
     let g_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(thunk_of(Expr::BVar(2))),
-        Box::new(Expr::BVar(2)),
+        Node::new(thunk_of(Expr::BVar(2))),
+        Node::new(Expr::BVar(2)),
     );
     thk_ext_abc_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(f_ty),
-        Box::new(Expr::Pi(
+        Node::new(f_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("g"),
-            Box::new(g_ty),
-            Box::new(Expr::Pi(
+            Node::new(g_ty),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("t"),
-                Box::new(thunk_of(Expr::BVar(4))),
-                Box::new(Expr::BVar(4)),
+                Node::new(thunk_of(Expr::BVar(4))),
+                Node::new(Expr::BVar(4)),
             )),
         )),
     ))
@@ -881,28 +882,28 @@ pub fn axiom_functor_map_comp_ty() -> Expr {
     let f_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
     );
     let g_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
     );
     thk_ext_abc_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("g"),
-        Box::new(g_ty),
-        Box::new(Expr::Pi(
+        Node::new(g_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("f"),
-            Box::new(f_ty),
-            Box::new(Expr::Pi(
+            Node::new(f_ty),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("t"),
-                Box::new(thunk_of(Expr::BVar(4))),
-                Box::new(thunk_of(Expr::BVar(4))),
+                Node::new(thunk_of(Expr::BVar(4))),
+                Node::new(thunk_of(Expr::BVar(4))),
             )),
         )),
     ))
@@ -914,8 +915,8 @@ pub fn axiom_get_mk_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(unit_to(Expr::BVar(1))),
-        Box::new(thk_ext_prop()),
+        Node::new(unit_to(Expr::BVar(1))),
+        Node::new(thk_ext_prop()),
     ))
 }
 /// `Thunk.mk_get : {α : Type} → ∀ t : Thunk α, mk (fun _ => get t) = t`
@@ -925,8 +926,8 @@ pub fn axiom_mk_get_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thk_ext_prop()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thk_ext_prop()),
     ))
 }
 /// `Thunk.sharing : {α : Type} → ∀ t : Thunk α, get t = get t`
@@ -936,8 +937,8 @@ pub fn axiom_sharing_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thk_ext_prop()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thk_ext_prop()),
     ))
 }
 /// `Thunk.force_once : {α : Type} → ∀ t : Thunk α, ∀ _ : Bool, isForced t = true → get t = get t`
@@ -947,12 +948,12 @@ pub fn axiom_force_once_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(Expr::Pi(
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_h"),
-            Box::new(bool_ty()),
-            Box::new(thk_ext_prop()),
+            Node::new(bool_ty()),
+            Node::new(thk_ext_prop()),
         )),
     ))
 }
@@ -963,8 +964,8 @@ pub fn axiom_cbn_beta_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(unit_to(Expr::BVar(1))),
-        Box::new(thk_ext_prop()),
+        Node::new(unit_to(Expr::BVar(1))),
+        Node::new(thk_ext_prop()),
     ))
 }
 /// `Thunk.presheaf_restriction : {α β : Type} → (β → α) → Thunk α → Thunk β`
@@ -974,18 +975,18 @@ pub fn axiom_presheaf_restriction_ty() -> Expr {
     let f_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(0)),
-        Box::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(1)),
     );
     ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("r"),
-        Box::new(f_ty),
-        Box::new(Expr::Pi(
+        Node::new(f_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
-            Box::new(thunk_of(Expr::BVar(2))),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -996,18 +997,18 @@ pub fn axiom_productive_step_ty() -> Expr {
     let step_fn = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(nat_ty()),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(nat_ty()),
+        Node::new(thunk_of(Expr::BVar(1))),
     );
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("gen"),
-        Box::new(step_fn),
-        Box::new(Expr::Pi(
+        Node::new(step_fn),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty()),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(nat_ty()),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -1018,8 +1019,8 @@ pub fn axiom_guarded_next_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thunk_of(Expr::BVar(1))),
     ))
 }
 /// `Thunk.game_question : {α : Type} → Thunk α → Nat`
@@ -1029,8 +1030,8 @@ pub fn axiom_game_question_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(nat_ty()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(nat_ty()),
     ))
 }
 /// `Thunk.game_answer : {α : Type} → Thunk α → α`
@@ -1040,8 +1041,8 @@ pub fn axiom_game_answer_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(Expr::BVar(1)),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(Expr::BVar(1)),
     ))
 }
 /// `Thunk.itree_ret : {α : Type} → α → Thunk α`
@@ -1051,8 +1052,8 @@ pub fn axiom_itree_ret_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::BVar(0)),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(0)),
+        Node::new(thunk_of(Expr::BVar(1))),
     ))
 }
 /// `Thunk.itree_tau : {α : Type} → Thunk α → Thunk α`
@@ -1062,8 +1063,8 @@ pub fn axiom_itree_tau_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thunk_of(Expr::BVar(1))),
     ))
 }
 /// `Thunk.itree_vis : {α : Type} → Nat → (Nat → Thunk α) → Thunk α`
@@ -1073,18 +1074,18 @@ pub fn axiom_itree_vis_ty() -> Expr {
     let cont = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(nat_ty()),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(nat_ty()),
+        Node::new(thunk_of(Expr::BVar(1))),
     );
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("ev"),
-        Box::new(nat_ty()),
-        Box::new(Expr::Pi(
+        Node::new(nat_ty()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("k"),
-            Box::new(cont),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(cont),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -1095,8 +1096,8 @@ pub fn axiom_lazy_nat_stream_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(nat_ty()),
-        Box::new(thunk_of(nat_ty())),
+        Node::new(nat_ty()),
+        Node::new(thunk_of(nat_ty())),
     )
 }
 /// `Thunk.memoTable_lookup : {α : Type} → List (Thunk α) → Nat → Option α`
@@ -1106,12 +1107,12 @@ pub fn axiom_memo_table_lookup_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("tbl"),
-        Box::new(list_of(thunk_of(Expr::BVar(0)))),
-        Box::new(Expr::Pi(
+        Node::new(list_of(thunk_of(Expr::BVar(0)))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("idx"),
-            Box::new(nat_ty()),
-            Box::new(option_of(Expr::BVar(2))),
+            Node::new(nat_ty()),
+            Node::new(option_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -1122,16 +1123,16 @@ pub fn axiom_memo_table_insert_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("tbl"),
-        Box::new(list_of(thunk_of(Expr::BVar(0)))),
-        Box::new(Expr::Pi(
+        Node::new(list_of(thunk_of(Expr::BVar(0)))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("idx"),
-            Box::new(nat_ty()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("v"),
-                Box::new(thunk_of(Expr::BVar(2))),
-                Box::new(list_of(thunk_of(Expr::BVar(3)))),
+                Node::new(thunk_of(Expr::BVar(2))),
+                Node::new(list_of(thunk_of(Expr::BVar(3)))),
             )),
         )),
     ))
@@ -1143,12 +1144,12 @@ pub fn axiom_lazy_tree_branch_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("l"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(Expr::Pi(
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("r"),
-            Box::new(thunk_of(Expr::BVar(1))),
-            Box::new(thunk_of(Expr::BVar(2))),
+            Node::new(thunk_of(Expr::BVar(1))),
+            Node::new(thunk_of(Expr::BVar(2))),
         )),
     ))
 }
@@ -1159,8 +1160,8 @@ pub fn axiom_lazy_tree_depth_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(nat_ty()),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(nat_ty()),
     ))
 }
 /// `Thunk.cofree_out : {α : Type} → Thunk α → α`
@@ -1170,8 +1171,8 @@ pub fn axiom_cofree_out_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(Expr::BVar(1)),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(Expr::BVar(1)),
     ))
 }
 /// `Thunk.cofree_tail : {α : Type} → Thunk α → List (Thunk α)`
@@ -1181,8 +1182,8 @@ pub fn axiom_cofree_tail_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(list_of(thunk_of(Expr::BVar(1)))),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(list_of(thunk_of(Expr::BVar(1)))),
     ))
 }
 /// `Thunk.whnf_step : {α : Type} → Thunk α → Thunk α`
@@ -1192,8 +1193,8 @@ pub fn axiom_whnf_step_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(thunk_of(Expr::BVar(1))),
     ))
 }
 /// `Thunk.ap_naturality : {α β : Type} → ∀ f : α → β, ∀ t : Thunk α, ...`
@@ -1221,14 +1222,14 @@ pub fn axiom_lazy_fix_ty() -> Expr {
     let coalg = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(thunk_of(Expr::BVar(1))),
-        Box::new(Expr::BVar(1)),
+        Node::new(thunk_of(Expr::BVar(1))),
+        Node::new(Expr::BVar(1)),
     );
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(coalg),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(coalg),
+        Node::new(thunk_of(Expr::BVar(1))),
     ))
 }
 /// `Thunk.omega_limit : {α : Type} → (Nat → Thunk α) → Thunk α`
@@ -1238,14 +1239,14 @@ pub fn axiom_omega_limit_ty() -> Expr {
     let seq_fn = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(nat_ty()),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(nat_ty()),
+        Node::new(thunk_of(Expr::BVar(1))),
     );
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("chain"),
-        Box::new(seq_fn),
-        Box::new(thunk_of(Expr::BVar(1))),
+        Node::new(seq_fn),
+        Node::new(thunk_of(Expr::BVar(1))),
     ))
 }
 /// `Thunk.scott_continuity : {α : Type} → Prop`
@@ -1261,28 +1262,28 @@ pub fn axiom_kleisli_compose_ty() -> Expr {
     let f_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(thunk_of(Expr::BVar(2))),
+        Node::new(Expr::BVar(2)),
+        Node::new(thunk_of(Expr::BVar(2))),
     );
     let g_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(thunk_of(Expr::BVar(2))),
+        Node::new(Expr::BVar(2)),
+        Node::new(thunk_of(Expr::BVar(2))),
     );
     thk_ext_abc_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(f_ty),
-        Box::new(Expr::Pi(
+        Node::new(f_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("g"),
-            Box::new(g_ty),
-            Box::new(Expr::Pi(
+            Node::new(g_ty),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(4)),
-                Box::new(thunk_of(Expr::BVar(4))),
+                Node::new(Expr::BVar(4)),
+                Node::new(thunk_of(Expr::BVar(4))),
             )),
         )),
     ))
@@ -1294,12 +1295,12 @@ pub fn axiom_force_deterministic_ty() -> Expr {
     alpha_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("t"),
-        Box::new(thunk_of(Expr::BVar(0))),
-        Box::new(Expr::Pi(
+        Node::new(thunk_of(Expr::BVar(0))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty()),
-            Box::new(thk_ext_prop()),
+            Node::new(nat_ty()),
+            Node::new(thk_ext_prop()),
         )),
     ))
 }

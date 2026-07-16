@@ -11,6 +11,7 @@
 use super::types::{ConvertConfig, ConvertResult};
 use crate::basic::{MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 
 // ---------------------------------------------------------------------------
@@ -213,8 +214,8 @@ fn infer_expr_type_approx(ctx: &MetaContext, expr: &Expr) -> Expr {
 fn build_eq_expr(lhs: Expr, rhs: Expr) -> Expr {
     let eq_const = Expr::Const(Name::str("Eq"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(eq_const), Box::new(lhs))),
-        Box::new(rhs),
+        Node::new(Expr::App(Node::new(eq_const), Node::new(lhs))),
+        Node::new(rhs),
     )
 }
 
@@ -232,7 +233,7 @@ mod tests {
     }
 
     fn app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
 
     #[test]

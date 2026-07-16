@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{EitherLeftIter, EitherRightIter, LeftIter, OxiEither, RightIter, TripleSum};
@@ -14,17 +15,17 @@ pub fn type2() -> Expr {
 }
 pub fn either_of(alpha: Expr, beta: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Either"), vec![])),
-            Box::new(alpha),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Either"), vec![])),
+            Node::new(alpha),
         )),
-        Box::new(beta),
+        Node::new(beta),
     )
 }
 pub fn option_of(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Option"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("Option"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn bool_ty() -> Expr {
@@ -32,17 +33,17 @@ pub fn bool_ty() -> Expr {
 }
 pub fn list_of(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("List"), vec![])),
+        Node::new(alpha),
     )
 }
 pub fn prod_of(alpha: Expr, beta: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Prod"), vec![])),
-            Box::new(alpha),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Prod"), vec![])),
+            Node::new(alpha),
         )),
-        Box::new(beta),
+        Node::new(beta),
     )
 }
 pub fn axiom(env: &mut Environment, name: &str, ty: Expr) -> Result<(), String> {
@@ -57,12 +58,12 @@ pub fn ab_implicit(inner: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(inner),
+            Node::new(type1()),
+            Node::new(inner),
         )),
     )
 }
@@ -71,12 +72,12 @@ pub fn build_either_env(env: &mut Environment) -> Result<(), String> {
     let either_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(type2()),
+            Node::new(type1()),
+            Node::new(type2()),
         )),
     );
     env.add(Declaration::Axiom {
@@ -107,8 +108,8 @@ pub fn add_left(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(Expr::BVar(1)),
-        Box::new(either_of(Expr::BVar(2), Expr::BVar(1))),
+        Node::new(Expr::BVar(1)),
+        Node::new(either_of(Expr::BVar(2), Expr::BVar(1))),
     ));
     axiom(env, "Either.left", ty)
 }
@@ -116,8 +117,8 @@ pub fn add_right(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("b"),
-        Box::new(Expr::BVar(0)),
-        Box::new(either_of(Expr::BVar(2), Expr::BVar(1))),
+        Node::new(Expr::BVar(0)),
+        Node::new(either_of(Expr::BVar(2), Expr::BVar(1))),
     ));
     axiom(env, "Either.right", ty)
 }
@@ -125,8 +126,8 @@ pub fn add_is_left(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("e"),
-        Box::new(either_of(Expr::BVar(1), Expr::BVar(0))),
-        Box::new(bool_ty()),
+        Node::new(either_of(Expr::BVar(1), Expr::BVar(0))),
+        Node::new(bool_ty()),
     ));
     axiom(env, "Either.isLeft", ty)
 }
@@ -134,8 +135,8 @@ pub fn add_is_right(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("e"),
-        Box::new(either_of(Expr::BVar(1), Expr::BVar(0))),
-        Box::new(bool_ty()),
+        Node::new(either_of(Expr::BVar(1), Expr::BVar(0))),
+        Node::new(bool_ty()),
     ));
     axiom(env, "Either.isRight", ty)
 }
@@ -143,8 +144,8 @@ pub fn add_get_left(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("e"),
-        Box::new(either_of(Expr::BVar(1), Expr::BVar(0))),
-        Box::new(option_of(Expr::BVar(2))),
+        Node::new(either_of(Expr::BVar(1), Expr::BVar(0))),
+        Node::new(option_of(Expr::BVar(2))),
     ));
     axiom(env, "Either.getLeft", ty)
 }
@@ -152,8 +153,8 @@ pub fn add_get_right(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("e"),
-        Box::new(either_of(Expr::BVar(1), Expr::BVar(0))),
-        Box::new(option_of(Expr::BVar(1))),
+        Node::new(either_of(Expr::BVar(1), Expr::BVar(0))),
+        Node::new(option_of(Expr::BVar(1))),
     ));
     axiom(env, "Either.getRight", ty)
 }
@@ -161,40 +162,40 @@ pub fn add_cases(env: &mut Environment) -> Result<(), String> {
     let fl = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
     );
     let fr = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
     );
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1()),
-                Box::new(Expr::Pi(
+                Node::new(type1()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("e"),
-                    Box::new(either_of(Expr::BVar(2), Expr::BVar(1))),
-                    Box::new(Expr::Pi(
+                    Node::new(either_of(Expr::BVar(2), Expr::BVar(1))),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("l"),
-                        Box::new(fl),
-                        Box::new(Expr::Pi(
+                        Node::new(fl),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("r"),
-                            Box::new(fr),
-                            Box::new(Expr::BVar(3)),
+                            Node::new(fr),
+                            Node::new(Expr::BVar(3)),
                         )),
                     )),
                 )),
@@ -207,30 +208,30 @@ pub fn add_map(env: &mut Environment) -> Result<(), String> {
     let fn_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(1)),
-        Box::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(1)),
+        Node::new(Expr::BVar(1)),
     );
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1()),
-                Box::new(Expr::Pi(
+                Node::new(type1()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(fn_ty),
-                    Box::new(Expr::Pi(
+                    Node::new(fn_ty),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("e"),
-                        Box::new(either_of(Expr::BVar(3), Expr::BVar(2))),
-                        Box::new(either_of(Expr::BVar(4), Expr::BVar(2))),
+                        Node::new(either_of(Expr::BVar(3), Expr::BVar(2))),
+                        Node::new(either_of(Expr::BVar(4), Expr::BVar(2))),
                     )),
                 )),
             )),
@@ -242,30 +243,30 @@ pub fn add_map_left(env: &mut Environment) -> Result<(), String> {
     let fn_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
     );
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1()),
-                Box::new(Expr::Pi(
+                Node::new(type1()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(fn_ty),
-                    Box::new(Expr::Pi(
+                    Node::new(fn_ty),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("e"),
-                        Box::new(either_of(Expr::BVar(3), Expr::BVar(2))),
-                        Box::new(either_of(Expr::BVar(2), Expr::BVar(3))),
+                        Node::new(either_of(Expr::BVar(3), Expr::BVar(2))),
+                        Node::new(either_of(Expr::BVar(2), Expr::BVar(3))),
                     )),
                 )),
             )),
@@ -277,44 +278,44 @@ pub fn add_bimap(env: &mut Environment) -> Result<(), String> {
     let fl = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(3)),
-        Box::new(Expr::BVar(3)),
+        Node::new(Expr::BVar(3)),
+        Node::new(Expr::BVar(3)),
     );
     let fr = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(3)),
-        Box::new(Expr::BVar(3)),
+        Node::new(Expr::BVar(3)),
+        Node::new(Expr::BVar(3)),
     );
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1()),
-                Box::new(Expr::Pi(
+                Node::new(type1()),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("δ"),
-                    Box::new(type1()),
-                    Box::new(Expr::Pi(
+                    Node::new(type1()),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("fl"),
-                        Box::new(fl),
-                        Box::new(Expr::Pi(
+                        Node::new(fl),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("fr"),
-                            Box::new(fr),
-                            Box::new(Expr::Pi(
+                            Node::new(fr),
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("e"),
-                                Box::new(either_of(Expr::BVar(5), Expr::BVar(4))),
-                                Box::new(either_of(Expr::BVar(4), Expr::BVar(4))),
+                                Node::new(either_of(Expr::BVar(5), Expr::BVar(4))),
+                                Node::new(either_of(Expr::BVar(4), Expr::BVar(4))),
                             )),
                         )),
                     )),
@@ -328,8 +329,8 @@ pub fn add_swap(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("e"),
-        Box::new(either_of(Expr::BVar(1), Expr::BVar(0))),
-        Box::new(either_of(Expr::BVar(1), Expr::BVar(2))),
+        Node::new(either_of(Expr::BVar(1), Expr::BVar(0))),
+        Node::new(either_of(Expr::BVar(1), Expr::BVar(2))),
     ));
     axiom(env, "Either.swap", ty)
 }
@@ -337,40 +338,40 @@ pub fn add_fold(env: &mut Environment) -> Result<(), String> {
     let fl = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
     );
     let fr = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::BVar(2)),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
+        Node::new(Expr::BVar(2)),
     );
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1()),
-                Box::new(Expr::Pi(
+                Node::new(type1()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("fl"),
-                    Box::new(fl),
-                    Box::new(Expr::Pi(
+                    Node::new(fl),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("fr"),
-                        Box::new(fr),
-                        Box::new(Expr::Pi(
+                        Node::new(fr),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("e"),
-                            Box::new(either_of(Expr::BVar(4), Expr::BVar(3))),
-                            Box::new(Expr::BVar(3)),
+                            Node::new(either_of(Expr::BVar(4), Expr::BVar(3))),
+                            Node::new(Expr::BVar(3)),
                         )),
                     )),
                 )),
@@ -383,8 +384,8 @@ pub fn add_to_option(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("e"),
-        Box::new(either_of(Expr::BVar(1), Expr::BVar(0))),
-        Box::new(option_of(Expr::BVar(1))),
+        Node::new(either_of(Expr::BVar(1), Expr::BVar(0))),
+        Node::new(option_of(Expr::BVar(1))),
     ));
     axiom(env, "Either.toOption", ty)
 }
@@ -392,12 +393,12 @@ pub fn add_from_option(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("err"),
-        Box::new(Expr::BVar(1)),
-        Box::new(Expr::Pi(
+        Node::new(Expr::BVar(1)),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("opt"),
-            Box::new(option_of(Expr::BVar(1))),
-            Box::new(either_of(Expr::BVar(3), Expr::BVar(2))),
+            Node::new(option_of(Expr::BVar(1))),
+            Node::new(either_of(Expr::BVar(3), Expr::BVar(2))),
         )),
     ));
     axiom(env, "Either.fromOption", ty)
@@ -406,8 +407,8 @@ pub fn add_sequence(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("xs"),
-        Box::new(list_of(either_of(Expr::BVar(1), Expr::BVar(0)))),
-        Box::new(either_of(Expr::BVar(2), list_of(Expr::BVar(1)))),
+        Node::new(list_of(either_of(Expr::BVar(1), Expr::BVar(0)))),
+        Node::new(either_of(Expr::BVar(2), list_of(Expr::BVar(1)))),
     ));
     axiom(env, "Either.sequence", ty)
 }
@@ -415,8 +416,8 @@ pub fn add_partition_eithers(env: &mut Environment) -> Result<(), String> {
     let ty = ab_implicit(Expr::Pi(
         BinderInfo::Default,
         Name::str("xs"),
-        Box::new(list_of(either_of(Expr::BVar(1), Expr::BVar(0)))),
-        Box::new(prod_of(list_of(Expr::BVar(2)), list_of(Expr::BVar(1)))),
+        Node::new(list_of(either_of(Expr::BVar(1), Expr::BVar(0)))),
+        Node::new(prod_of(list_of(Expr::BVar(2)), list_of(Expr::BVar(1)))),
     ));
     axiom(env, "Either.partitionEithers", ty)
 }
@@ -1068,7 +1069,7 @@ mod extra_either_tests {
     }
 }
 pub fn ei_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn ei_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
     ei_ext_app(ei_ext_app(f, a), b)
@@ -1092,12 +1093,12 @@ pub fn ei_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 pub fn ei_ext_pi(binfo: BinderInfo, nm: &str, dom: Expr, cod: Expr) -> Expr {
-    Expr::Pi(binfo, Name::str(nm), Box::new(dom), Box::new(cod))
+    Expr::Pi(binfo, Name::str(nm), Node::new(dom), Node::new(cod))
 }
 pub fn ei_ext_ipi(nm: &str, dom: Expr, cod: Expr) -> Expr {
     ei_ext_pi(BinderInfo::Implicit, nm, dom, cod)

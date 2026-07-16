@@ -4,6 +4,7 @@
 
 use super::functions::*;
 use crate::tactic::state::{TacticError, TacticResult};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 /// A typed slot for TacticCalc configuration.
@@ -248,8 +249,8 @@ impl TypedCalcChain {
                 .unwrap_or_else(|| Name::str("trans"));
             let trans = Expr::Const(trans_name, vec![Level::zero()]);
             proof = Expr::App(
-                Box::new(Expr::App(Box::new(trans), Box::new(proof))),
-                Box::new(self.steps[i].proof.clone()),
+                Node::new(Expr::App(Node::new(trans), Node::new(proof))),
+                Node::new(self.steps[i].proof.clone()),
             );
         }
         Ok(proof)

@@ -222,6 +222,7 @@ pub(super) fn lcnf_type_to_ctype(ty: &LcnfType) -> CType {
     match ty {
         LcnfType::Erased | LcnfType::Irrelevant | LcnfType::Unit => CType::Void,
         LcnfType::Nat => CType::SizeT,
+        LcnfType::Int => CType::SizeT,
         LcnfType::LcnfString => CType::Ptr(Box::new(CType::Char)),
         LcnfType::Object => CType::LeanObject,
         LcnfType::Var(_) => CType::LeanObject,

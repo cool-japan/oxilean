@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -20,8 +21,8 @@ pub fn build_char_env(env: &mut Environment) -> Result<(), String> {
     let of_nat_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Char.ofNat"),
@@ -32,8 +33,8 @@ pub fn build_char_env(env: &mut Environment) -> Result<(), String> {
     let to_nat_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("c"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Char.toNat"),
@@ -44,8 +45,8 @@ pub fn build_char_env(env: &mut Environment) -> Result<(), String> {
     let is_alpha_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("c"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Const(Name::str("Bool"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Bool"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Char.isAlpha"),
@@ -56,8 +57,8 @@ pub fn build_char_env(env: &mut Environment) -> Result<(), String> {
     let is_digit_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("c"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Const(Name::str("Bool"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Bool"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Char.isDigit"),
@@ -75,8 +76,8 @@ pub fn build_char_predicates(env: &mut Environment) -> Result<(), String> {
     let char_to_bool = Expr::Pi(
         BinderInfo::Default,
         Name::str("c"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Const(Name::str("Bool"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Bool"), vec![])),
     );
     let predicates = [
         "Char.isUpper",
@@ -105,8 +106,8 @@ pub fn build_char_conversions(env: &mut Environment) -> Result<(), String> {
     let char_to_char = Expr::Pi(
         BinderInfo::Default,
         Name::str("c"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Char.toUpper"),
@@ -123,8 +124,8 @@ pub fn build_char_conversions(env: &mut Environment) -> Result<(), String> {
     let char_to_nat = Expr::Pi(
         BinderInfo::Default,
         Name::str("c"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Char.digitToNat"),
@@ -151,12 +152,12 @@ pub fn build_char_comparisons(env: &mut Environment) -> Result<(), String> {
     let char_char_to_bool = Expr::Pi(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(Expr::Const(Name::str("Char"), vec![])),
-            Box::new(Expr::Const(Name::str("Bool"), vec![])),
+            Node::new(Expr::Const(Name::str("Char"), vec![])),
+            Node::new(Expr::Const(Name::str("Bool"), vec![])),
         )),
     );
     env.add(Declaration::Axiom {
@@ -346,20 +347,20 @@ pub fn unescape_char(c: char) -> Option<char> {
 /// Build an `Expr` that represents `Char.ofNat n_expr` application.
 pub fn make_char_of_nat(n_expr: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Char.ofNat"), vec![])),
-        Box::new(n_expr),
+        Node::new(Expr::Const(Name::str("Char.ofNat"), vec![])),
+        Node::new(n_expr),
     )
 }
 /// Build an `Expr` that represents `Char.toNat c_expr` application.
 pub fn make_char_to_nat(c_expr: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Char.toNat"), vec![])),
-        Box::new(c_expr),
+        Node::new(Expr::Const(Name::str("Char.toNat"), vec![])),
+        Node::new(c_expr),
     )
 }
 /// Build an `Expr` for a character literal given a Unicode code point.
 pub fn make_char_literal(code_point: u32) -> Expr {
-    let nat_lit = Expr::Lit(oxilean_kernel::Literal::Nat(code_point.into()));
+    let nat_lit = Expr::Lit(oxilean_kernel::Literal::nat(code_point as u64));
     make_char_of_nat(nat_lit)
 }
 /// Decode an OxiLean character escape sequence of the form `\uXXXX`.
@@ -1120,7 +1121,7 @@ mod extra_char_tests {
     }
 }
 pub fn ch_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn ch_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
     ch_ext_app(ch_ext_app(f, a), b)
@@ -1162,24 +1163,24 @@ pub fn ch_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 pub fn ch_ext_pi(name: &str, dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 pub fn ch_ext_impl_pi(name: &str, dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 /// `Char.isValidScalar : Char -> Prop`
@@ -1380,13 +1381,13 @@ pub fn char_not_surrogate_ty() -> Expr {
                 ch_ext_cst("And"),
                 ch_ext_app2(
                     ch_ext_cst("Nat.le"),
-                    Expr::Lit(oxilean_kernel::Literal::Nat(0xD800_u32.into())),
+                    Expr::Lit(oxilean_kernel::Literal::nat(0xD800_u32 as u64)),
                     ch_ext_app(ch_ext_cst("Char.toNat"), ch_ext_bvar(0)),
                 ),
                 ch_ext_app2(
                     ch_ext_cst("Nat.le"),
                     ch_ext_app(ch_ext_cst("Char.toNat"), ch_ext_bvar(0)),
-                    Expr::Lit(oxilean_kernel::Literal::Nat(0xDFFF_u32.into())),
+                    Expr::Lit(oxilean_kernel::Literal::nat(0xDFFF_u32 as u64)),
                 ),
             ),
         ),
@@ -1463,13 +1464,13 @@ pub fn char_utf8_width_range_ty() -> Expr {
             ch_ext_cst("And"),
             ch_ext_app2(
                 ch_ext_cst("Nat.le"),
-                Expr::Lit(oxilean_kernel::Literal::Nat(1_u32.into())),
+                Expr::Lit(oxilean_kernel::Literal::nat(1_u32 as u64)),
                 ch_ext_app(ch_ext_cst("Char.utf8Width"), ch_ext_bvar(0)),
             ),
             ch_ext_app2(
                 ch_ext_cst("Nat.le"),
                 ch_ext_app(ch_ext_cst("Char.utf8Width"), ch_ext_bvar(0)),
-                Expr::Lit(oxilean_kernel::Literal::Nat(4_u32.into())),
+                Expr::Lit(oxilean_kernel::Literal::nat(4_u32 as u64)),
             ),
         ),
     )
@@ -1592,7 +1593,7 @@ pub fn char_ascii_subset_ty() -> Expr {
             ch_ext_app2(
                 ch_ext_cst("Nat.lt"),
                 ch_ext_app(ch_ext_cst("Char.toNat"), ch_ext_bvar(0)),
-                Expr::Lit(oxilean_kernel::Literal::Nat(128_u32.into())),
+                Expr::Lit(oxilean_kernel::Literal::nat(128_u32 as u64)),
             ),
         ),
     )
@@ -1610,7 +1611,7 @@ pub fn char_digit_round_trip_ty() -> Expr {
             ch_ext_app2(
                 ch_ext_cst("Nat.lt"),
                 ch_ext_bvar(0),
-                Expr::Lit(oxilean_kernel::Literal::Nat(10_u32.into())),
+                Expr::Lit(oxilean_kernel::Literal::nat(10_u32 as u64)),
             ),
             ch_ext_prop(),
         ),

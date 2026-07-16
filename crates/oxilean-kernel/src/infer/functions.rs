@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{BinderInfo, Environment, Expr, FVarId, Level, Literal, Name};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, FlatSubstitution, FocusStack, InferCache, InferStats,
@@ -48,8 +50,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty.clone()),
-            Box::new(body),
+            Node::new(ty.clone()),
+            Node::new(body),
         );
         let result = tc.infer_type(&lam).expect("result should be present");
         assert!(matches!(result, Expr::Pi(_, _, _, _)));
@@ -58,7 +60,7 @@ mod tests {
     fn test_infer_literal() {
         let env = Environment::new();
         let mut tc = TypeChecker::new(&env);
-        let nat_lit = Expr::Lit(Literal::Nat(42));
+        let nat_lit = Expr::Lit(Literal::nat(42));
         let result = tc.infer_type(&nat_lit).expect("result should be present");
         assert_eq!(result, Expr::Const(Name::str("Nat"), vec![]));
     }
@@ -73,7 +75,7 @@ mod tests {
     #[test]
     fn test_def_eq_integration() {
         let mut env = Environment::new();
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         env.add(Declaration::Definition {
             name: Name::str("answer"),
             univ_params: vec![],
@@ -89,7 +91,7 @@ mod tests {
     #[test]
     fn test_whnf_integration() {
         let mut env = Environment::new();
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         env.add(Declaration::Definition {
             name: Name::str("x"),
             univ_params: vec![],
@@ -111,8 +113,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let result = tc.infer_type(&lam);
         assert!(result.is_ok());
@@ -168,8 +170,8 @@ mod extended_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat.clone()),
-            Box::new(nat.clone()),
+            Node::new(nat.clone()),
+            Node::new(nat.clone()),
         );
         let (fvars, body) = tc.telescope_type(&pi, 1);
         assert_eq!(fvars.len(), 1);
@@ -190,12 +192,12 @@ mod extended_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(nat.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(nat.clone()),
-                Box::new(nat.clone()),
+                Node::new(nat.clone()),
+                Node::new(nat.clone()),
             )),
         );
         assert_eq!(tc.count_pi_binders(&pi), 2);
@@ -212,7 +214,7 @@ mod extended_tests {
     fn test_close_term_over_fvars_empty() {
         let env = Environment::new();
         let mut tc = TypeChecker::new(&env);
-        let term = Expr::Lit(Literal::Nat(42));
+        let term = Expr::Lit(Literal::nat(42));
         let result = tc.close_term_over_fvars(&[], term.clone());
         assert_eq!(result, term);
     }
@@ -235,7 +237,7 @@ mod extended_tests {
     fn test_normalize_literal() {
         let env = Environment::new();
         let mut tc = TypeChecker::new(&env);
-        let lit = Expr::Lit(Literal::Nat(5));
+        let lit = Expr::Lit(Literal::nat(5));
         let result = tc.normalize(&lit);
         assert_eq!(result, lit);
     }
@@ -334,7 +336,7 @@ mod extra_infer_tests {
     #[test]
     fn test_infer_cache_insert_get() {
         let mut cache = InferCache::new(10);
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let ty = Expr::Const(Name::str("Nat"), vec![]);
         cache.insert(expr.clone(), ty.clone());
         assert_eq!(cache.get(&expr), Some(&ty));
@@ -342,15 +344,15 @@ mod extra_infer_tests {
     #[test]
     fn test_infer_cache_miss() {
         let cache = InferCache::new(10);
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         assert_eq!(cache.get(&expr), None);
     }
     #[test]
     fn test_infer_cache_eviction() {
         let mut cache = InferCache::new(2);
-        let e0 = Expr::Lit(Literal::Nat(0));
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e0 = Expr::Lit(Literal::nat(0));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         let ty = Expr::Sort(Level::zero());
         cache.insert(e0.clone(), ty.clone());
         cache.insert(e1.clone(), ty.clone());
@@ -362,21 +364,21 @@ mod extra_infer_tests {
     #[test]
     fn test_infer_cache_clear() {
         let mut cache = InferCache::new(5);
-        cache.insert(Expr::Lit(Literal::Nat(1)), Expr::Sort(Level::zero()));
+        cache.insert(Expr::Lit(Literal::nat(1)), Expr::Sort(Level::zero()));
         cache.clear();
         assert!(cache.is_empty());
     }
     #[test]
     fn test_typing_judgment_ok() {
         let j = TypingJudgment::ok(
-            Expr::Lit(Literal::Nat(1)),
+            Expr::Lit(Literal::nat(1)),
             Expr::Const(Name::str("Nat"), vec![]),
         );
         assert!(j.is_ok());
     }
     #[test]
     fn test_typing_judgment_fail() {
-        let j = TypingJudgment::fail(Expr::Lit(Literal::Nat(0)));
+        let j = TypingJudgment::fail(Expr::Lit(Literal::nat(0)));
         assert!(!j.is_ok());
     }
     #[test]
@@ -394,8 +396,8 @@ mod extra_infer_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         assert_eq!(classify_expr(&pi), TypeKind::Pi);
     }
@@ -404,14 +406,14 @@ mod extra_infer_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(classify_expr(&lam), TypeKind::Lambda);
     }
     #[test]
     fn test_classify_expr_literal() {
-        let lit = Expr::Lit(Literal::Nat(5));
+        let lit = Expr::Lit(Literal::nat(5));
         assert_eq!(classify_expr(&lit), TypeKind::Literal);
     }
     #[test]
@@ -420,7 +422,7 @@ mod extra_infer_tests {
     }
     #[test]
     fn test_is_sort_false() {
-        assert!(!is_sort(&Expr::Lit(Literal::Nat(1))));
+        assert!(!is_sort(&Expr::Lit(Literal::nat(1))));
     }
     #[test]
     fn test_is_prop_true() {
@@ -435,8 +437,8 @@ mod extra_infer_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         assert!(is_pi(&pi));
     }
@@ -445,8 +447,8 @@ mod extra_infer_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
         );
         let result = pi_components(&pi);
         assert!(result.is_some());
@@ -619,7 +621,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

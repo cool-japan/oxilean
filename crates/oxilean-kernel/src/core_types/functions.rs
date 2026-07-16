@@ -10,6 +10,8 @@ use super::types::{
     ConfigNode, FocusStack, LabelSet, SimpleDag, SmallMap, StatSummary, TransformStat,
     VersionedRecord,
 };
+use crate::Node;
+use std::rc::Rc;
 /// Version string for the OxiLean kernel.
 pub const KERNEL_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Return the kernel version as a `(major, minor, patch)` tuple.
@@ -47,7 +49,7 @@ pub fn mk_sort(level: Level) -> Expr {
 /// Convenience: make a `Nat` literal expression.
 #[allow(dead_code)]
 pub fn mk_nat_lit(n: u64) -> Expr {
-    Expr::Lit(Literal::Nat(n))
+    Expr::Lit(Literal::nat(n))
 }
 /// Convenience: make a `String` literal expression.
 #[allow(dead_code)]
@@ -57,7 +59,7 @@ pub fn mk_string_lit(s: &str) -> Expr {
 /// Convenience: make `App(f, a)`.
 #[allow(dead_code)]
 pub fn mk_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Build `f a1 a2 ... an` from a head `f` and argument list.
 #[allow(dead_code)]
@@ -67,7 +69,7 @@ pub fn mk_app_spine(f: Expr, args: Vec<Expr>) -> Expr {
 /// Convenience: make a Pi-type `(x : dom) -> cod`.
 #[allow(dead_code)]
 pub fn mk_pi(name: Name, dom: Expr, cod: Expr) -> Expr {
-    Expr::Pi(BinderInfo::Default, name, Box::new(dom), Box::new(cod))
+    Expr::Pi(BinderInfo::Default, name, Node::new(dom), Node::new(cod))
 }
 /// Build a chain of Pi-types from a list of `(name, type)` binders and a result type.
 #[allow(dead_code)]
@@ -80,7 +82,7 @@ pub fn mk_pi_chain(binders: Vec<(Name, Expr)>, ret: Expr) -> Expr {
 /// Convenience: make a lambda `fun x : dom => body`.
 #[allow(dead_code)]
 pub fn mk_lam(name: Name, dom: Expr, body: Expr) -> Expr {
-    Expr::Lam(BinderInfo::Default, name, Box::new(dom), Box::new(body))
+    Expr::Lam(BinderInfo::Default, name, Node::new(dom), Node::new(body))
 }
 /// Build a chain of lambdas from a list of `(name, type)` binders and a body.
 #[allow(dead_code)]
@@ -540,14 +542,14 @@ pub fn strip_lam_binders(expr: &Expr) -> (Vec<(BinderInfo, Name, Expr)>, &Expr) 
 #[allow(dead_code)]
 pub fn build_pi_from_binders(binders: &[(BinderInfo, Name, Expr)], inner: Expr) -> Expr {
     binders.iter().rev().fold(inner, |acc, (bi, n, ty)| {
-        Expr::Pi(*bi, n.clone(), Box::new(ty.clone()), Box::new(acc))
+        Expr::Pi(*bi, n.clone(), Node::new(ty.clone()), Node::new(acc))
     })
 }
 /// Build a lambda from a list of binders and a body.
 #[allow(dead_code)]
 pub fn build_lam_from_binders(binders: &[(BinderInfo, Name, Expr)], body: Expr) -> Expr {
     binders.iter().rev().fold(body, |acc, (bi, n, ty)| {
-        Expr::Lam(*bi, n.clone(), Box::new(ty.clone()), Box::new(acc))
+        Expr::Lam(*bi, n.clone(), Node::new(ty.clone()), Node::new(acc))
     })
 }
 /// Replace all occurrences of a constant by another expression.
@@ -559,30 +561,32 @@ pub fn replace_const(expr: &Expr, name: &Name, replacement: &Expr) -> Expr {
     match expr {
         Expr::Const(n, _) if n == name => replacement.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(replace_const(f, name, replacement)),
-            Box::new(replace_const(a, name, replacement)),
+            Node::new(replace_const(f, name, replacement)),
+            Node::new(replace_const(a, name, replacement)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(replace_const(ty, name, replacement)),
-            Box::new(replace_const(body, name, replacement)),
+            Node::new(replace_const(ty, name, replacement)),
+            Node::new(replace_const(body, name, replacement)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(replace_const(ty, name, replacement)),
-            Box::new(replace_const(body, name, replacement)),
+            Node::new(replace_const(ty, name, replacement)),
+            Node::new(replace_const(body, name, replacement)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(replace_const(ty, name, replacement)),
-            Box::new(replace_const(val, name, replacement)),
-            Box::new(replace_const(body, name, replacement)),
+            Node::new(replace_const(ty, name, replacement)),
+            Node::new(replace_const(val, name, replacement)),
+            Node::new(replace_const(body, name, replacement)),
         ),
-        Expr::Proj(n, i, s) => {
-            Expr::Proj(n.clone(), *i, Box::new(replace_const(s, name, replacement)))
-        }
+        Expr::Proj(n, i, s) => Expr::Proj(
+            n.clone(),
+            *i,
+            Node::new(replace_const(s, name, replacement)),
+        ),
         e => e.clone(),
     }
 }
@@ -687,7 +691,7 @@ mod kernel_extra_tests {
     }
     #[test]
     fn test_is_literal_true() {
-        assert!(is_literal(&Expr::Lit(Literal::Nat(42))));
+        assert!(is_literal(&Expr::Lit(Literal::nat(42))));
     }
     #[test]
     fn test_is_literal_false() {
@@ -804,7 +808,7 @@ mod kernel_extra_tests {
     }
     #[test]
     fn test_collect_literals() {
-        let e = mk_app(Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2)));
+        let e = mk_app(Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2)));
         let lits = collect_literals(&e);
         assert_eq!(lits.len(), 2);
     }
@@ -823,8 +827,11 @@ mod kernel_extra_tests {
         let not_eta = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(prop()),
-            Box::new(Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(0)))),
+            Node::new(prop()),
+            Node::new(Expr::App(
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
+            )),
         );
         assert!(!is_eta_reducible(&not_eta));
     }

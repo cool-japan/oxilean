@@ -5,6 +5,7 @@
 use oxilean_elab::{elaborate_decl as elab_decl_impl, ElabContext, PendingDecl};
 use oxilean_kernel::{check_declaration, Declaration, Environment, ReducibilityHint};
 use oxilean_parse::{Lexer, Parser};
+use oxilean_std::{register_cc_helper, register_omega_helper, register_polyrith_helper};
 use std::path::{Path, PathBuf};
 
 use super::types::{
@@ -31,6 +32,16 @@ pub fn check_source(source: &str) -> CommandResult<()> {
     let tokens = lexer.tokenize();
     let mut parser = Parser::new(tokens);
     let mut env = Environment::new();
+    // Register omega helper lemmas so nlinarith Farkas proof reconstruction
+    // can produce real kernel-verified proof terms (Int.lt_irrefl', Int.lt_trans, etc.).
+    let _ = register_omega_helper(&mut env);
+    // Register cc and polyrith helpers so their proofs also kernel-verify.
+    if let Err(e) = register_cc_helper(&mut env) {
+        eprintln!("Warning: failed to register cc_helper: {e}");
+    }
+    if let Err(e) = register_polyrith_helper(&mut env) {
+        eprintln!("Warning: failed to register polyrith_helper: {e}");
+    }
     loop {
         match parser.parse_decl() {
             Ok(surface_decl) => {

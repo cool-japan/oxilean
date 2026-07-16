@@ -42,6 +42,7 @@ impl fmt::Display for LcnfType {
             }
             LcnfType::Object => write!(f, "object"),
             LcnfType::Nat => write!(f, "nat"),
+            LcnfType::Int => write!(f, "int"),
             LcnfType::LcnfString => write!(f, "string"),
             LcnfType::Unit => write!(f, "unit"),
             LcnfType::Irrelevant => write!(f, "irrelevant"),

@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     BinderInfo, Declaration, Environment, Expr, InductiveEnv, InductiveType, IntroRule, Level, Name,
 };
@@ -16,56 +17,56 @@ pub fn build_vec_env(env: &mut Environment, ind_env: &mut InductiveEnv) -> Resul
     let vec_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(type1.clone()),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(type1.clone()),
         )),
     );
     let nil_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Vec"), vec![])),
-                Box::new(Expr::BVar(0)),
+        Node::new(type1.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Vec"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Const(Name::str("Nat.zero"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat.zero"), vec![])),
         )),
     );
     let cons_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("n"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("head"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("tail"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Vec"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Vec"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Vec"), vec![])),
-                            Box::new(Expr::BVar(3)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Vec"), vec![])),
+                            Node::new(Expr::BVar(3)),
                         )),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
                 )),
@@ -136,8 +137,8 @@ mod tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             ),
         })
         .expect("operation should succeed");
@@ -902,8 +903,8 @@ pub fn vec_ext_forall1_axiom(name: &str, env: &mut Environment) -> std::result::
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(prop),
+        Node::new(type1),
+        Node::new(prop),
     );
     env.add(Declaration::Axiom {
         name: Name::str(name),
@@ -919,12 +920,12 @@ pub fn vec_ext_forall2_axiom(name: &str, env: &mut Environment) -> std::result::
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(prop),
+            Node::new(type1),
+            Node::new(prop),
         )),
     );
     env.add(Declaration::Axiom {
@@ -941,16 +942,16 @@ pub fn vec_ext_forall3_axiom(name: &str, env: &mut Environment) -> std::result::
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1),
-                Box::new(prop),
+                Node::new(type1),
+                Node::new(prop),
             )),
         )),
     );
@@ -1351,8 +1352,8 @@ mod vec_extended_axiom_tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             ),
         })
         .expect("operation should succeed");

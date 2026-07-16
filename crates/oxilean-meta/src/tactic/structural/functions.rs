@@ -13,6 +13,7 @@ use super::types::{
 };
 use crate::basic::{MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Name};
 
 /// `clear h` — remove a hypothesis from the context.
@@ -69,12 +70,12 @@ pub fn tac_revert(
     let new_target = Expr::Pi(
         BinderInfo::Default,
         hyp_name.clone(),
-        Box::new(hyp_ty),
-        Box::new(abstract_name_in_expr(&target, hyp_name)),
+        Node::new(hyp_ty),
+        Node::new(abstract_name_in_expr(&target, hyp_name)),
     );
     let (new_id, new_expr) = ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
     let hyp_expr = Expr::Const(hyp_name.clone(), vec![]);
-    let proof = Expr::App(Box::new(new_expr), Box::new(hyp_expr));
+    let proof = Expr::App(Node::new(new_expr), Node::new(hyp_expr));
     ctx.assign_mvar(goal, proof);
     ctx.clear_local(hyp_name);
     state.replace_goal(vec![new_id]);
@@ -129,8 +130,8 @@ pub(super) fn parse_equality(ty: &Expr) -> Option<EqInfo> {
                     eq_const.as_ref(), Expr::Const(name, _) if * name == Name::str("Eq")
                 ) {
                     return Some(EqInfo {
-                        lhs: *lhs.clone(),
-                        rhs: *rhs.clone(),
+                        lhs: (**lhs).clone(),
+                        rhs: (**rhs).clone(),
                     });
                 }
             }
@@ -162,27 +163,27 @@ pub(super) fn replace_name_in_expr(expr: &Expr, name: &Name, replacement: &Expr)
         Expr::App(f, a) => {
             let f2 = replace_name_in_expr(f, name, replacement);
             let a2 = replace_name_in_expr(a, name, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = replace_name_in_expr(ty, name, replacement);
             let body2 = replace_name_in_expr(body, name, replacement);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = replace_name_in_expr(ty, name, replacement);
             let body2 = replace_name_in_expr(body, name, replacement);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = replace_name_in_expr(ty, name, replacement);
             let val2 = replace_name_in_expr(val, name, replacement);
             let body2 = replace_name_in_expr(body, name, replacement);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         Expr::Proj(n, i, e) => {
             let e2 = replace_name_in_expr(e, name, replacement);
-            Expr::Proj(n.clone(), *i, Box::new(e2))
+            Expr::Proj(n.clone(), *i, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -197,27 +198,27 @@ pub(super) fn abstract_name_impl(expr: &Expr, name: &Name, depth: u32) -> Expr {
         Expr::App(f, a) => {
             let f2 = abstract_name_impl(f, name, depth);
             let a2 = abstract_name_impl(a, name, depth);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = abstract_name_impl(ty, name, depth);
             let body2 = abstract_name_impl(body, name, depth + 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = abstract_name_impl(ty, name, depth);
             let body2 = abstract_name_impl(body, name, depth + 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = abstract_name_impl(ty, name, depth);
             let val2 = abstract_name_impl(val, name, depth);
             let body2 = abstract_name_impl(body, name, depth + 1);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         Expr::Proj(n, i, e) => {
             let e2 = abstract_name_impl(e, name, depth);
-            Expr::Proj(n.clone(), *i, Box::new(e2))
+            Expr::Proj(n.clone(), *i, Node::new(e2))
         }
         Expr::BVar(idx) => {
             if *idx >= depth {
@@ -267,8 +268,8 @@ mod tests {
     #[test]
     fn test_expr_contains_name() {
         let f_a = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         assert!(expr_contains_name(&f_a, &Name::str("a")));
         assert!(expr_contains_name(&f_a, &Name::str("f")));
@@ -278,23 +279,23 @@ mod tests {
     fn test_replace_name_in_expr() {
         let b = Expr::Const(Name::str("b"), vec![]);
         let f_a = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         let result = replace_name_in_expr(&f_a, &Name::str("a"), &b);
-        let expected = Expr::App(Box::new(Expr::Const(Name::str("f"), vec![])), Box::new(b));
+        let expected = Expr::App(Node::new(Expr::Const(Name::str("f"), vec![])), Node::new(b));
         assert_eq!(result, expected);
     }
     #[test]
     fn test_abstract_name_in_expr() {
         let f_x = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("x"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("x"), vec![])),
         );
         let result = abstract_name_in_expr(&f_x, &Name::str("x"));
         let expected = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(result, expected);
     }
@@ -304,14 +305,14 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let eq_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
-                    Box::new(nat_ty),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
+                    Node::new(nat_ty),
                 )),
-                Box::new(a.clone()),
+                Node::new(a.clone()),
             )),
-            Box::new(b.clone()),
+            Node::new(b.clone()),
         );
         let info = parse_equality(&eq_ty).expect("info should be present");
         assert_eq!(info.lhs, a);
@@ -326,19 +327,19 @@ mod tests {
     fn test_abstract_nested() {
         let x = Expr::Const(Name::str("x"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("add"), vec![])),
-                Box::new(x.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("add"), vec![])),
+                Node::new(x.clone()),
             )),
-            Box::new(x),
+            Node::new(x),
         );
         let result = abstract_name_in_expr(&expr, &Name::str("x"));
         let expected = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("add"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("add"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(result, expected);
     }
@@ -384,8 +385,8 @@ pub fn tac_intro_all(state: &mut TacticState, ctx: &mut MetaContext) -> TacticRe
         match &target {
             Expr::Pi(_, binder_name, binder_ty, body) => {
                 let name = binder_name.clone();
-                let ty = *binder_ty.clone();
-                let new_target = *body.clone();
+                let ty = (**binder_ty).clone();
+                let new_target = (**body).clone();
                 ctx.mk_local_decl(name.clone(), ty, BinderInfo::Default);
                 let (new_id, new_expr) = ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
                 ctx.assign_mvar(goal, new_expr);
@@ -407,27 +408,27 @@ pub(super) fn substitute_bvar(expr: &Expr, depth: u32, replacement: &Expr) -> Ex
         Expr::App(f, a) => {
             let f2 = substitute_bvar(f, depth, replacement);
             let a2 = substitute_bvar(a, depth, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = substitute_bvar(ty, depth, replacement);
             let body2 = substitute_bvar(body, depth + 1, replacement);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = substitute_bvar(ty, depth, replacement);
             let body2 = substitute_bvar(body, depth + 1, replacement);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = substitute_bvar(ty, depth, replacement);
             let val2 = substitute_bvar(val, depth, replacement);
             let body2 = substitute_bvar(body, depth + 1, replacement);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         Expr::Proj(n, i, e) => {
             let e2 = substitute_bvar(e, depth, replacement);
-            Expr::Proj(n.clone(), *i, Box::new(e2))
+            Expr::Proj(n.clone(), *i, Node::new(e2))
         }
     }
 }
@@ -479,8 +480,8 @@ pub fn tac_generalize(
     let new_target = Expr::Pi(
         BinderInfo::Default,
         var_name.clone(),
-        Box::new(var_ty),
-        Box::new(generalized),
+        Node::new(var_ty),
+        Node::new(generalized),
     );
     let (new_id, new_expr) = ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
     ctx.assign_mvar(goal, new_expr);
@@ -495,17 +496,17 @@ pub(super) fn generalize_expr(expr: &Expr, target_expr: &Expr) -> Expr {
         Expr::App(f, a) => {
             let f2 = generalize_expr(f, target_expr);
             let a2 = generalize_expr(a, target_expr);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = generalize_expr(ty, target_expr);
             let body2 = generalize_expr(body, target_expr);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = generalize_expr(ty, target_expr);
             let body2 = generalize_expr(body, target_expr);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         _ => expr.clone(),
     }
@@ -566,8 +567,8 @@ mod extended_structural_tests {
         let goal_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_ty),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat_ty),
+            Node::new(Expr::BVar(0)),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -579,8 +580,8 @@ mod extended_structural_tests {
         let mut ctx = mk_ctx();
         let n = Expr::Const(Name::str("n"), vec![]);
         let goal_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("P"), vec![])),
-            Box::new(n.clone()),
+            Node::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(n.clone()),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -590,24 +591,24 @@ mod extended_structural_tests {
     fn test_generalize_expr() {
         let n = Expr::Const(Name::str("n"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("P"), vec![])),
-            Box::new(n.clone()),
+            Node::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(n.clone()),
         );
         let result = generalize_expr(&expr, &n);
         assert_eq!(
             result,
             Expr::App(
-                Box::new(Expr::Const(Name::str("P"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
+                Node::new(Expr::BVar(0)),
             )
         );
     }
     #[test]
     fn test_substitute_bvar() {
         let arg = Expr::Const(Name::str("a"), vec![]);
-        let body = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let body = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let result = substitute_bvar(&body, 0, &arg);
-        assert_eq!(result, Expr::App(Box::new(arg), Box::new(Expr::BVar(1))));
+        assert_eq!(result, Expr::App(Node::new(arg), Node::new(Expr::BVar(1))));
     }
     #[test]
     fn test_names_eq() {
@@ -638,13 +639,13 @@ mod extended_structural_tests {
     #[test]
     fn test_abstract_name_in_expr() {
         let f_x = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("x"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("x"), vec![])),
         );
         let result = abstract_name_in_expr(&f_x, &Name::str("x"));
         let expected = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(result, expected);
     }
@@ -652,19 +653,19 @@ mod extended_structural_tests {
     fn test_abstract_nested() {
         let x = Expr::Const(Name::str("x"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("add"), vec![])),
-                Box::new(x.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("add"), vec![])),
+                Node::new(x.clone()),
             )),
-            Box::new(x),
+            Node::new(x),
         );
         let result = abstract_name_in_expr(&expr, &Name::str("x"));
         let expected = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("add"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("add"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(result, expected);
     }
@@ -681,14 +682,14 @@ mod extended_structural_tests {
         let mut ctx = mk_ctx();
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
         let p_x = Expr::App(
-            Box::new(Expr::Const(Name::str("P"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         let hyp_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_ty),
-            Box::new(p_x),
+            Node::new(nat_ty),
+            Node::new(p_x),
         );
         ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
         let (mvar_id, _) =
@@ -877,8 +878,8 @@ mod structural_extra_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat.clone()),
-            Box::new(nat),
+            Node::new(nat.clone()),
+            Node::new(nat),
         );
         let (mv, _) = ctx.mk_fresh_expr_mvar(pi, MetavarKind::Natural);
         let state = TacticState::single(mv);
@@ -902,7 +903,7 @@ mod structural_extra_tests {
     fn test_expr_contains_subexpr() {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let e = Expr::App(Box::new(a.clone()), Box::new(b));
+        let e = Expr::App(Node::new(a.clone()), Node::new(b));
         assert!(expr_contains(&e, &a));
     }
     #[test]
@@ -910,7 +911,7 @@ mod structural_extra_tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let c = Expr::Const(Name::str("c"), vec![]);
-        let e = Expr::App(Box::new(a), Box::new(b));
+        let e = Expr::App(Node::new(a), Node::new(b));
         assert!(!expr_contains(&e, &c));
     }
     #[test]
@@ -962,8 +963,8 @@ pub fn build_pi_chain(n: usize, ty: Expr, body: Expr) -> Expr {
         result = Expr::Pi(
             BinderInfo::Default,
             nm,
-            Box::new(ty.clone()),
-            Box::new(result),
+            Node::new(ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -976,8 +977,8 @@ pub fn build_lam_chain(n: usize, ty: Expr, body: Expr) -> Expr {
         result = Expr::Lam(
             BinderInfo::Default,
             nm,
-            Box::new(ty.clone()),
-            Box::new(result),
+            Node::new(ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -1147,7 +1148,7 @@ mod structural_new_tests {
     fn test_collect_consts_from_expr() {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let e = Expr::App(Box::new(a), Box::new(b));
+        let e = Expr::App(Node::new(a), Node::new(b));
         let cs = collect_consts_from_expr(&e);
         assert_eq!(cs.len(), 2);
     }

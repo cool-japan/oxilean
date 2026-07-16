@@ -11,6 +11,7 @@ use super::types::{
     SimpEngineStateMachine, SimpEngineWindow, SimpEngineWorkQueue, SimpLemmaDb, SimpLemmaEntry,
     SimpResult, SimpStats,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 
 /// Collect an application chain into (head, args).
@@ -29,13 +30,13 @@ mod tests {
     use super::*;
     use crate::simp_engine::*;
     fn create_nat(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn create_const(name: &str) -> Expr {
         Expr::Const(Name::str(name), vec![])
     }
     fn create_app(f: Expr, arg: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(arg))
+        Expr::App(Node::new(f), Node::new(arg))
     }
     #[test]
     fn test_simp_engine_creation() {
@@ -369,14 +370,14 @@ mod tests {
         let engine = SimpEngine::new();
         let ctx = SimpContext::new(create_nat(0));
         let eq = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(create_const("Nat")),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(create_const("Nat")),
                 )),
-                Box::new(create_nat(42)),
+                Node::new(create_nat(42)),
             )),
-            Box::new(create_nat(42)),
+            Node::new(create_nat(42)),
         );
         assert!(engine.discharge_side_condition(&ctx, &eq));
     }
@@ -385,14 +386,14 @@ mod tests {
         let engine = SimpEngine::new();
         let ctx = SimpContext::new(create_nat(0));
         let eq = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(create_const("Nat")),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(create_const("Nat")),
                 )),
-                Box::new(create_nat(1)),
+                Node::new(create_nat(1)),
             )),
-            Box::new(create_nat(2)),
+            Node::new(create_nat(2)),
         );
         assert!(!engine.discharge_side_condition(&ctx, &eq));
     }
@@ -401,11 +402,11 @@ mod tests {
         let engine = SimpEngine::new();
         let ctx = SimpContext::new(create_nat(0));
         let lt = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("LT.lt"), vec![])),
-                Box::new(create_nat(3)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("LT.lt"), vec![])),
+                Node::new(create_nat(3)),
             )),
-            Box::new(create_nat(5)),
+            Node::new(create_nat(5)),
         );
         assert!(engine.discharge_side_condition(&ctx, &lt));
     }
@@ -414,11 +415,11 @@ mod tests {
         let engine = SimpEngine::new();
         let ctx = SimpContext::new(create_nat(0));
         let lt = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("LT.lt"), vec![])),
-                Box::new(create_nat(5)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("LT.lt"), vec![])),
+                Node::new(create_nat(5)),
             )),
-            Box::new(create_nat(3)),
+            Node::new(create_nat(3)),
         );
         assert!(!engine.discharge_side_condition(&ctx, &lt));
     }
@@ -427,11 +428,11 @@ mod tests {
         let engine = SimpEngine::new();
         let ctx = SimpContext::new(create_nat(0));
         let le = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("LE.le"), vec![])),
-                Box::new(create_nat(4)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("LE.le"), vec![])),
+                Node::new(create_nat(4)),
             )),
-            Box::new(create_nat(4)),
+            Node::new(create_nat(4)),
         );
         assert!(engine.discharge_side_condition(&ctx, &le));
     }
@@ -447,8 +448,8 @@ mod tests {
         let engine = SimpEngine::new();
         let ctx = SimpContext::new(create_nat(0));
         let not_false = Expr::App(
-            Box::new(create_const("Not")),
-            Box::new(create_const("False")),
+            Node::new(create_const("Not")),
+            Node::new(create_const("False")),
         );
         assert!(engine.discharge_side_condition(&ctx, &not_false));
     }
@@ -466,8 +467,8 @@ mod tests {
         let ex_falso = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("h"),
-            Box::new(create_const("False")),
-            Box::new(create_const("P")),
+            Node::new(create_const("False")),
+            Node::new(create_const("P")),
         );
         assert!(engine.discharge_side_condition(&ctx, &ex_falso));
     }

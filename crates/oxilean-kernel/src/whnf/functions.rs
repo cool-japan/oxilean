@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{BinderInfo, Environment, Expr, FVarId, Level, Literal, Name, Reducer};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, LabelSet, MinHeap,
@@ -71,8 +73,8 @@ pub fn spine_of(expr: &Expr) -> (WhnfHead, Vec<Expr>) {
     loop {
         match current {
             Expr::App(f, a) => {
-                args.push(*a);
-                current = *f;
+                args.push((*a).clone());
+                current = (*f).clone();
             }
             other => {
                 args.reverse();
@@ -125,14 +127,14 @@ pub fn app_arity(expr: &Expr) -> usize {
 /// Destructure a Pi type after WHNF reduction.
 pub fn whnf_as_pi(expr: &Expr) -> Option<(BinderInfo, Name, Expr, Expr)> {
     match whnf(expr) {
-        Expr::Pi(bi, name, dom, cod) => Some((bi, name, *dom, *cod)),
+        Expr::Pi(bi, name, dom, cod) => Some((bi, name, (*dom).clone(), (*cod).clone())),
         _ => None,
     }
 }
 /// Destructure a Pi type after WHNF reduction with environment.
 pub fn whnf_as_pi_env(expr: &Expr, env: &Environment) -> Option<(BinderInfo, Name, Expr, Expr)> {
     match whnf_env(expr, env) {
-        Expr::Pi(bi, name, dom, cod) => Some((bi, name, *dom, *cod)),
+        Expr::Pi(bi, name, dom, cod) => Some((bi, name, (*dom).clone(), (*cod).clone())),
         _ => None,
     }
 }
@@ -150,8 +152,8 @@ pub fn collect_pi_telescope(ty: &Expr) -> (Vec<(BinderInfo, Name, Expr)>, Expr) 
     loop {
         match whnf(&current) {
             Expr::Pi(bi, name, dom, body) => {
-                binders.push((bi, name, *dom));
-                current = *body;
+                binders.push((bi, name, (*dom).clone()));
+                current = (*body).clone();
             }
             other => return (binders, other),
         }
@@ -167,8 +169,8 @@ pub fn collect_pi_telescope_env(
     loop {
         match whnf_env(&current, env) {
             Expr::Pi(bi, name, dom, body) => {
-                binders.push((bi, name, *dom));
-                current = *body;
+                binders.push((bi, name, (*dom).clone()));
+                current = (*body).clone();
             }
             other => return (binders, other),
         }
@@ -196,8 +198,8 @@ mod tests {
         Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(Expr::BVar(0)),
+            Node::new(sort0()),
+            Node::new(Expr::BVar(0)),
         )
     }
     #[test]
@@ -212,7 +214,7 @@ mod tests {
     }
     #[test]
     fn test_is_whnf_lit() {
-        assert!(is_whnf(&Expr::Lit(Literal::Nat(42))));
+        assert!(is_whnf(&Expr::Lit(Literal::nat(42))));
         assert!(is_whnf(&Expr::Lit(Literal::Str("hello".into()))));
     }
     #[test]
@@ -223,24 +225,24 @@ mod tests {
     fn test_is_whnf_let_false() {
         let e = Expr::Let(
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(Expr::Lit(Literal::Nat(1))),
-            Box::new(Expr::BVar(0)),
+            Node::new(sort0()),
+            Node::new(Expr::Lit(Literal::nat(1))),
+            Node::new(Expr::BVar(0)),
         );
         assert!(!is_whnf(&e));
     }
     #[test]
     fn test_is_whnf_app_lambda_false() {
         let app = Expr::App(
-            Box::new(identity_lam()),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(identity_lam()),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         assert!(!is_whnf(&app));
     }
     #[test]
     fn test_whnf_beta_reduce() {
-        let arg = Expr::Lit(Literal::Nat(99));
-        let app = Expr::App(Box::new(identity_lam()), Box::new(arg.clone()));
+        let arg = Expr::Lit(Literal::nat(99));
+        let app = Expr::App(Node::new(identity_lam()), Node::new(arg.clone()));
         let result = whnf(&app);
         assert_eq!(result, arg);
     }
@@ -257,8 +259,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(sort0()),
+            Node::new(sort0()),
+            Node::new(sort0()),
         );
         assert!(whnf_is_pi(&pi));
     }
@@ -273,8 +275,8 @@ mod tests {
     }
     #[test]
     fn test_whnf_is_lit() {
-        let l = Expr::Lit(Literal::Nat(7));
-        assert_eq!(whnf_is_lit(&l), Some(Literal::Nat(7)));
+        let l = Expr::Lit(Literal::nat(7));
+        assert_eq!(whnf_is_lit(&l), Some(Literal::nat(7)));
     }
     #[test]
     fn test_spine_of_no_args() {
@@ -286,11 +288,11 @@ mod tests {
     #[test]
     fn test_spine_of_two_args() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (_, args) = spine_of(&app);
         assert_eq!(args.len(), 2);
@@ -308,8 +310,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(sort1()),
+            Node::new(sort0()),
+            Node::new(sort1()),
         );
         let (binders, body) = collect_pi_telescope(&pi);
         assert_eq!(binders.len(), 1);
@@ -321,14 +323,14 @@ mod tests {
         let pi_inner = Expr::Pi(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(sort0()),
-            Box::new(sort1()),
+            Node::new(sort0()),
+            Node::new(sort1()),
         );
         let pi_outer = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(pi_inner),
+            Node::new(sort0()),
+            Node::new(pi_inner),
         );
         let (binders, _body) = collect_pi_telescope(&pi_outer);
         assert_eq!(binders.len(), 2);
@@ -391,9 +393,12 @@ mod tests {
     #[test]
     fn test_app_arity() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
-        let app = Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
+        let app = Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        );
         assert_eq!(app_arity(&app), 2);
     }
     #[test]
@@ -401,8 +406,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(sort1()),
+            Node::new(sort0()),
+            Node::new(sort1()),
         );
         let result = whnf_as_pi(&pi);
         assert!(result.is_some());
@@ -460,23 +465,23 @@ pub fn normalize_full(expr: &Expr) -> Expr {
         Expr::App(f, a) => {
             let nf = normalize_full(&f);
             let na = normalize_full(&a);
-            Expr::App(Box::new(nf), Box::new(na))
+            Expr::App(Node::new(nf), Node::new(na))
         }
         Expr::Lam(bi, name, ty, body) => {
             let nty = normalize_full(&ty);
             let nbody = normalize_full(&body);
-            Expr::Lam(bi, name, Box::new(nty), Box::new(nbody))
+            Expr::Lam(bi, name, Node::new(nty), Node::new(nbody))
         }
         Expr::Pi(bi, name, ty, body) => {
             let nty = normalize_full(&ty);
             let nbody = normalize_full(&body);
-            Expr::Pi(bi, name, Box::new(nty), Box::new(nbody))
+            Expr::Pi(bi, name, Node::new(nty), Node::new(nbody))
         }
         Expr::Let(name, ty, val, body) => {
             let nty = normalize_full(&ty);
             let nval = normalize_full(&val);
             let nbody = normalize_full(&body);
-            Expr::Let(name, Box::new(nty), Box::new(nval), Box::new(nbody))
+            Expr::Let(name, Node::new(nty), Node::new(nval), Node::new(nbody))
         }
         other => other,
     }
@@ -521,11 +526,11 @@ mod extra_whnf_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let arg = Expr::Lit(Literal::Nat(7));
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let arg = Expr::Lit(Literal::nat(7));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let result = normalize_full(&app);
         assert_eq!(result, arg);
     }
@@ -534,8 +539,8 @@ mod extra_whnf_tests {
         let e = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         let result = normalize_full(&e);
         assert!(matches!(result, Expr::Lam(_, _, _, _)));
@@ -721,8 +726,8 @@ mod whnf_cache_tests {
     #[test]
     fn test_count_nodes_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(count_nodes(&app), 3);
     }
     #[test]
@@ -736,8 +741,8 @@ mod whnf_cache_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(inner.clone()),
-            Box::new(inner),
+            Node::new(inner.clone()),
+            Node::new(inner),
         );
         assert!(expr_depth(&lam) >= 2);
     }
@@ -898,7 +903,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

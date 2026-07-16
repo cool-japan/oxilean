@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Declaration, Environment, Expr, Level, Name};
 
 use super::types::{BytePos, LineCol, Span, StringBuilder, SubstringFinder2};
@@ -559,9 +560,9 @@ pub fn build_string_env(env: &mut oxilean_kernel::Environment) -> Result<(), Str
         }
     };
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let nat_ty = || -> Expr { cst("Nat") };
@@ -1133,10 +1134,10 @@ pub fn str_ext2_as_list_char_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Char"), vec![])),
         )),
     )
 }
@@ -1147,8 +1148,8 @@ pub fn str_ext2_concat_assoc_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), arr(s(), s())))
@@ -1159,8 +1160,8 @@ pub fn str_ext2_concat_left_id_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s.clone()),
-        Box::new(s),
+        Node::new(s.clone()),
+        Node::new(s),
     )
 }
 pub fn str_ext2_concat_right_id_ty() -> Expr {
@@ -1169,8 +1170,8 @@ pub fn str_ext2_concat_right_id_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s.clone()),
-        Box::new(s),
+        Node::new(s.clone()),
+        Node::new(s),
     )
 }
 pub fn str_ext2_length_append_ty() -> Expr {
@@ -1181,8 +1182,8 @@ pub fn str_ext2_length_append_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), n()))
@@ -1197,12 +1198,12 @@ pub fn str_ext2_dec_eq_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(s()),
-        Box::new(Expr::Pi(
+        Node::new(s()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(s()),
-            Box::new(b),
+            Node::new(s()),
+            Node::new(b),
         )),
     )
 }
@@ -1213,8 +1214,8 @@ pub fn str_ext2_lex_lt_irrefl_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(b),
+        Node::new(s),
+        Node::new(b),
     )
 }
 pub fn str_ext2_lex_lt_trans_ty() -> Expr {
@@ -1225,8 +1226,8 @@ pub fn str_ext2_lex_lt_trans_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), arr(s(), b)))
@@ -1239,8 +1240,8 @@ pub fn str_ext2_lex_total_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), b))
@@ -1253,8 +1254,8 @@ pub fn str_ext2_substring_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s.clone(), arr(n(), arr(n(), s)))
@@ -1267,8 +1268,8 @@ pub fn str_ext2_slice_len_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s, arr(n(), arr(n(), n())))
@@ -1280,8 +1281,8 @@ pub fn str_ext2_prefix_refl_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(b),
+        Node::new(s),
+        Node::new(b),
     )
 }
 pub fn str_ext2_prefix_trans_ty() -> Expr {
@@ -1292,8 +1293,8 @@ pub fn str_ext2_prefix_trans_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), arr(s(), b)))
@@ -1305,8 +1306,8 @@ pub fn str_ext2_suffix_refl_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(b),
+        Node::new(s),
+        Node::new(b),
     )
 }
 pub fn str_ext2_split_join_ty() -> Expr {
@@ -1316,8 +1317,8 @@ pub fn str_ext2_split_join_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), s()))
@@ -1327,16 +1328,16 @@ pub fn str_ext2_join_split_ty() -> Expr {
     let s = || Expr::Const(Name::str("String"), vec![]);
     let lst = || {
         Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(s()),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(s()),
         )
     };
     let arr = |a: Expr, b: Expr| {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(lst(), lst()))
@@ -1347,8 +1348,8 @@ pub fn str_ext2_trim_idempotent_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s.clone()),
-        Box::new(s),
+        Node::new(s.clone()),
+        Node::new(s),
     )
 }
 pub fn str_ext2_to_upper_idempotent_ty() -> Expr {
@@ -1357,8 +1358,8 @@ pub fn str_ext2_to_upper_idempotent_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s.clone()),
-        Box::new(s),
+        Node::new(s.clone()),
+        Node::new(s),
     )
 }
 pub fn str_ext2_to_lower_idempotent_ty() -> Expr {
@@ -1367,8 +1368,8 @@ pub fn str_ext2_to_lower_idempotent_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s.clone()),
-        Box::new(s),
+        Node::new(s.clone()),
+        Node::new(s),
     )
 }
 pub fn str_ext2_contains_refl_ty() -> Expr {
@@ -1378,8 +1379,8 @@ pub fn str_ext2_contains_refl_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(b),
+        Node::new(s),
+        Node::new(b),
     )
 }
 pub fn str_ext2_starts_with_refl_ty() -> Expr {
@@ -1389,8 +1390,8 @@ pub fn str_ext2_starts_with_refl_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(b),
+        Node::new(s),
+        Node::new(b),
     )
 }
 pub fn str_ext2_ends_with_refl_ty() -> Expr {
@@ -1400,8 +1401,8 @@ pub fn str_ext2_ends_with_refl_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(b),
+        Node::new(s),
+        Node::new(b),
     )
 }
 pub fn str_ext2_find_replace_ty() -> Expr {
@@ -1411,8 +1412,8 @@ pub fn str_ext2_find_replace_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), arr(s(), s())))
@@ -1424,8 +1425,8 @@ pub fn str_ext2_replace_id_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), s()))
@@ -1437,8 +1438,8 @@ pub fn str_ext2_unicode_valid_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(b),
+        Node::new(s),
+        Node::new(b),
     )
 }
 pub fn str_ext2_utf8_roundtrip_ty() -> Expr {
@@ -1447,8 +1448,8 @@ pub fn str_ext2_utf8_roundtrip_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s.clone()),
-        Box::new(s),
+        Node::new(s.clone()),
+        Node::new(s),
     )
 }
 pub fn str_ext2_utf16_len_ty() -> Expr {
@@ -1458,8 +1459,8 @@ pub fn str_ext2_utf16_len_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(n),
+        Node::new(s),
+        Node::new(n),
     )
 }
 pub fn str_ext2_char_to_string_ty() -> Expr {
@@ -1469,36 +1470,36 @@ pub fn str_ext2_char_to_string_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("c"),
-        Box::new(c),
-        Box::new(s),
+        Node::new(c),
+        Node::new(s),
     )
 }
 pub fn str_ext2_string_to_nat_ty() -> Expr {
     use oxilean_kernel::BinderInfo;
     let s = Expr::Const(Name::str("String"), vec![]);
     let opt_n = Expr::App(
-        Box::new(Expr::Const(Name::str("Option"), vec![])),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("Option"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
     );
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(opt_n),
+        Node::new(s),
+        Node::new(opt_n),
     )
 }
 pub fn str_ext2_format_parse_ty() -> Expr {
     use oxilean_kernel::BinderInfo;
     let s = Expr::Const(Name::str("String"), vec![]);
     let opt_s = Expr::App(
-        Box::new(Expr::Const(Name::str("Option"), vec![])),
-        Box::new(s.clone()),
+        Node::new(Expr::Const(Name::str("Option"), vec![])),
+        Node::new(s.clone()),
     );
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(opt_s),
+        Node::new(s),
+        Node::new(opt_s),
     )
 }
 pub fn str_ext2_hash_consistent_ty() -> Expr {
@@ -1509,8 +1510,8 @@ pub fn str_ext2_hash_consistent_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), n))
@@ -1522,8 +1523,8 @@ pub fn str_ext2_hash_det_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(n),
+        Node::new(s),
+        Node::new(n),
     )
 }
 pub fn str_ext2_kmp_correct_ty() -> Expr {
@@ -1531,16 +1532,16 @@ pub fn str_ext2_kmp_correct_ty() -> Expr {
     let s = || Expr::Const(Name::str("String"), vec![]);
     let lst = || {
         Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         )
     };
     let arr = |a: Expr, b: Expr| {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), lst()))
@@ -1550,16 +1551,16 @@ pub fn str_ext2_rabin_karp_correct_ty() -> Expr {
     let s = || Expr::Const(Name::str("String"), vec![]);
     let lst = || {
         Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         )
     };
     let arr = |a: Expr, b: Expr| {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), lst()))
@@ -1569,16 +1570,16 @@ pub fn str_ext2_aho_corasick_ty() -> Expr {
     let s = || Expr::Const(Name::str("String"), vec![]);
     let lst = || {
         Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         )
     };
     let arr = |a: Expr, b: Expr| {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), lst())
@@ -1587,14 +1588,14 @@ pub fn str_ext2_suffix_array_sorted_ty() -> Expr {
     use oxilean_kernel::BinderInfo;
     let s = Expr::Const(Name::str("String"), vec![]);
     let lst = Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![])),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("List"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
     );
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(lst),
+        Node::new(s),
+        Node::new(lst),
     )
 }
 pub fn str_ext2_lcp_array_ty() -> Expr {
@@ -1604,8 +1605,8 @@ pub fn str_ext2_lcp_array_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(n),
+        Node::new(s),
+        Node::new(n),
     )
 }
 pub fn str_ext2_edit_dist_zero_ty() -> Expr {
@@ -1615,8 +1616,8 @@ pub fn str_ext2_edit_dist_zero_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("s"),
-        Box::new(s),
-        Box::new(n),
+        Node::new(s),
+        Node::new(n),
     )
 }
 pub fn str_ext2_edit_dist_sym_ty() -> Expr {
@@ -1627,8 +1628,8 @@ pub fn str_ext2_edit_dist_sym_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), n))
@@ -1641,8 +1642,8 @@ pub fn str_ext2_edit_dist_triangle_ty() -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     };
     arr(s(), arr(s(), arr(s(), b)))

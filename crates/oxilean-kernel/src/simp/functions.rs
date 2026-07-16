@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Literal, Name};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, LabelSet, MinHeap,
@@ -23,25 +25,25 @@ pub fn simplify(expr: &Expr) -> Expr {
                     return result;
                 }
             }
-            Expr::App(Box::new(f_simp), Box::new(a_simp))
+            Expr::App(Node::new(f_simp), Node::new(a_simp))
         }
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(simplify(ty)),
-            Box::new(simplify(body)),
+            Node::new(simplify(ty)),
+            Node::new(simplify(body)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(simplify(ty)),
-            Box::new(simplify(body)),
+            Node::new(simplify(ty)),
+            Node::new(simplify(body)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(simplify(ty)),
-            Box::new(simplify(val)),
-            Box::new(simplify(body)),
+            Node::new(simplify(ty)),
+            Node::new(simplify(val)),
+            Node::new(simplify(body)),
         ),
         _ => expr.clone(),
     }
@@ -50,7 +52,7 @@ fn try_simplify_nat_op(name: &Name, arg: &Expr) -> Option<Expr> {
     match name.to_string().as_str() {
         "Nat.succ" => {
             if let Expr::Lit(Literal::Nat(n)) = arg {
-                Some(Expr::Lit(Literal::Nat(n + 1)))
+                Some(Expr::Lit(Literal::Nat(n.succ())))
             } else {
                 None
             }
@@ -67,16 +69,16 @@ pub fn normalize(expr: &Expr) -> Expr {
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(normalize(ty)),
-            Box::new(normalize(body)),
+            Node::new(normalize(ty)),
+            Node::new(normalize(body)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(normalize(ty)),
-            Box::new(normalize(body)),
+            Node::new(normalize(ty)),
+            Node::new(normalize(body)),
         ),
-        Expr::App(f, a) => Expr::App(Box::new(normalize(f)), Box::new(normalize(a))),
+        Expr::App(f, a) => Expr::App(Node::new(normalize(f)), Node::new(normalize(a))),
         _ => whnf,
     }
 }
@@ -111,11 +113,11 @@ mod tests {
     #[test]
     fn test_simplify_nat_succ() {
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(5))),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(5))),
         );
         let result = simplify(&expr);
-        assert_eq!(result, Expr::Lit(Literal::Nat(6)));
+        assert_eq!(result, Expr::Lit(Literal::nat(6)));
     }
     #[test]
     fn test_alpha_eq_bvar() {
@@ -128,21 +130,21 @@ mod tests {
         let lam1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         let lam2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert!(alpha_eq(&lam1, &lam2));
     }
     #[test]
     fn test_alpha_eq_different() {
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         assert!(!alpha_eq(&e1, &e2));
     }
 }
@@ -170,20 +172,24 @@ pub fn decompose_app(expr: &Expr) -> (&Expr, Vec<&Expr>) {
 /// Build an application spine from a head and argument list.
 pub fn mk_app(head: Expr, args: Vec<Expr>) -> Expr {
     args.into_iter()
-        .fold(head, |f, a| Expr::App(Box::new(f), Box::new(a)))
+        .fold(head, |f, a| Expr::App(Node::new(f), Node::new(a)))
 }
 /// Evaluate a closed Nat arithmetic expression to a literal, if possible.
-pub fn eval_nat(expr: &Expr) -> Option<u64> {
+///
+/// Delegates all arithmetic to the single BigNat evaluator
+/// ([`crate::reduce::eval_nat_binop`]) so exactly one implementation of the
+/// Lean literal semantics exists in the kernel (in particular `x % 0 = x`
+/// and exact, non-wrapping `add`/`mul`/`pow`).
+pub fn eval_nat(expr: &Expr) -> Option<crate::bignat::BigNat> {
+    use crate::bignat::BigNat;
     match expr {
-        Expr::Lit(Literal::Nat(n)) => Some(*n),
+        Expr::Lit(Literal::Nat(n)) => Some(n.clone()),
+        Expr::Const(name, _) if name.to_string() == "Nat.zero" => Some(BigNat::zero()),
         Expr::App(f, a) => {
             if let Expr::Const(name, _) = f.as_ref() {
-                let name_str = name.to_string();
-                let arg_val = eval_nat(a);
-                match name_str.as_str() {
-                    "Nat.succ" => return arg_val.map(|n| n + 1),
-                    "Nat.pred" => return arg_val.map(|n| n.saturating_sub(1)),
-                    "Nat.zero" => return Some(0),
+                match name.to_string().as_str() {
+                    "Nat.succ" => return eval_nat(a).map(|n| n.succ()),
+                    "Nat.pred" => return eval_nat(a).map(|n| n.pred()),
                     _ => {}
                 }
             }
@@ -193,15 +199,11 @@ pub fn eval_nat(expr: &Expr) -> Option<u64> {
                     let lhs = eval_nat(a2)?;
                     let rhs = eval_nat(a)?;
                     return match name_str.as_str() {
-                        "Nat.add" => Some(lhs + rhs),
-                        "Nat.mul" => Some(lhs * rhs),
-                        "Nat.sub" => Some(lhs.saturating_sub(rhs)),
-                        "Nat.div" => Some(lhs.checked_div(rhs).unwrap_or(0)),
-                        "Nat.mod" => Some(lhs.checked_rem(rhs).unwrap_or(0)),
-                        "Nat.pow" => Some(lhs.saturating_pow(rhs as u32)),
-                        "Nat.min" => Some(lhs.min(rhs)),
-                        "Nat.max" => Some(lhs.max(rhs)),
-                        _ => None,
+                        // Nat.min/Nat.max are simp-only conveniences; both
+                        // reduce to comparisons, so no arithmetic drift.
+                        "Nat.min" => Some(if lhs <= rhs { lhs } else { rhs }),
+                        "Nat.max" => Some(if lhs >= rhs { lhs } else { rhs }),
+                        op => crate::reduce::eval_nat_binop(op, &lhs, &rhs),
                     };
                 }
             }
@@ -213,24 +215,24 @@ pub fn eval_nat(expr: &Expr) -> Option<u64> {
 /// Apply `simplify` to all sub-expressions one level deep.
 pub fn simp_congruence(expr: &Expr) -> Expr {
     match expr {
-        Expr::App(f, a) => Expr::App(Box::new(simplify(f)), Box::new(simplify(a))),
+        Expr::App(f, a) => Expr::App(Node::new(simplify(f)), Node::new(simplify(a))),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(simplify(ty)),
-            Box::new(simplify(body)),
+            Node::new(simplify(ty)),
+            Node::new(simplify(body)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(simplify(ty)),
-            Box::new(simplify(body)),
+            Node::new(simplify(ty)),
+            Node::new(simplify(body)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(simplify(ty)),
-            Box::new(simplify(val)),
-            Box::new(simplify(body)),
+            Node::new(simplify(ty)),
+            Node::new(simplify(val)),
+            Node::new(simplify(body)),
         ),
         other => other.clone(),
     }
@@ -250,19 +252,19 @@ pub fn simplify_bounded(expr: &Expr, max_depth: usize) -> Expr {
                     return r;
                 }
             }
-            Expr::App(Box::new(f_s), Box::new(a_s))
+            Expr::App(Node::new(f_s), Node::new(a_s))
         }
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(simp_sub(ty)),
-            Box::new(simp_sub(body)),
+            Node::new(simp_sub(ty)),
+            Node::new(simp_sub(body)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(simp_sub(ty)),
-            Box::new(simp_sub(body)),
+            Node::new(simp_sub(ty)),
+            Node::new(simp_sub(body)),
         ),
         other => other.clone(),
     }
@@ -308,20 +310,20 @@ fn shift_bvars(expr: &Expr, shift: i32, cutoff: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_bvars(f, shift, cutoff)),
-            Box::new(shift_bvars(a, shift, cutoff)),
+            Node::new(shift_bvars(f, shift, cutoff)),
+            Node::new(shift_bvars(a, shift, cutoff)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, shift, cutoff)),
-            Box::new(shift_bvars(body, shift, cutoff + 1)),
+            Node::new(shift_bvars(ty, shift, cutoff)),
+            Node::new(shift_bvars(body, shift, cutoff + 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, shift, cutoff)),
-            Box::new(shift_bvars(body, shift, cutoff + 1)),
+            Node::new(shift_bvars(ty, shift, cutoff)),
+            Node::new(shift_bvars(body, shift, cutoff + 1)),
         ),
         other => other.clone(),
     }
@@ -357,11 +359,11 @@ mod simp_extra_tests {
     #[test]
     fn test_is_app_of() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(1))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(2))),
+            Node::new(Expr::Lit(Literal::nat(2))),
         );
         assert!(is_app_of(&e, "Nat.add"));
         assert!(!is_app_of(&e, "Nat.mul"));
@@ -369,11 +371,11 @@ mod simp_extra_tests {
     #[test]
     fn test_decompose_app() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(1))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(2))),
+            Node::new(Expr::Lit(Literal::nat(2))),
         );
         let (head, args) = decompose_app(&e);
         assert!(matches!(head, Expr::Const(_, _)));
@@ -381,91 +383,91 @@ mod simp_extra_tests {
     }
     #[test]
     fn test_eval_nat_literal() {
-        let e = Expr::Lit(Literal::Nat(42));
-        assert_eq!(eval_nat(&e), Some(42));
+        let e = Expr::Lit(Literal::nat(42));
+        assert_eq!(eval_nat(&e), Some(crate::bignat::BigNat::from(42u64)));
     }
     #[test]
     fn test_eval_nat_succ() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(4))),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(4))),
         );
-        assert_eq!(eval_nat(&e), Some(5));
+        assert_eq!(eval_nat(&e), Some(crate::bignat::BigNat::from(5u64)));
     }
     #[test]
     fn test_eval_nat_add() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(3))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(3))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(7))),
+            Node::new(Expr::Lit(Literal::nat(7))),
         );
-        assert_eq!(eval_nat(&e), Some(10));
+        assert_eq!(eval_nat(&e), Some(crate::bignat::BigNat::from(10u64)));
     }
     #[test]
     fn test_eval_nat_pred() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.pred"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(5))),
+            Node::new(Expr::Const(Name::str("Nat.pred"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(5))),
         );
-        assert_eq!(eval_nat(&e), Some(4));
+        assert_eq!(eval_nat(&e), Some(crate::bignat::BigNat::from(4u64)));
         let e_zero = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.pred"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("Nat.pred"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
         );
-        assert_eq!(eval_nat(&e_zero), Some(0));
+        assert_eq!(eval_nat(&e_zero), Some(crate::bignat::BigNat::from(0u64)));
     }
     #[test]
     fn test_eval_nat_pow() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.pow"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(2))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.pow"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(2))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(3))),
+            Node::new(Expr::Lit(Literal::nat(3))),
         );
-        assert_eq!(eval_nat(&e), Some(8));
+        assert_eq!(eval_nat(&e), Some(crate::bignat::BigNat::from(8u64)));
     }
     #[test]
     fn test_simplify_nat_succ_chain() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(0))),
             )),
         );
         let result = simplify(&e);
-        assert_eq!(result, Expr::Lit(Literal::Nat(2)));
+        assert_eq!(result, Expr::Lit(Literal::nat(2)));
     }
     #[test]
     fn test_contains_bvar() {
         assert!(contains_bvar(&Expr::BVar(0), 0));
         assert!(!contains_bvar(&Expr::BVar(1), 0));
-        let app = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let app = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         assert!(contains_bvar(&app, 0));
         assert!(contains_bvar(&app, 1));
         assert!(!contains_bvar(&app, 2));
     }
     #[test]
     fn test_expr_size() {
-        let lit = Expr::Lit(Literal::Nat(1));
+        let lit = Expr::Lit(Literal::nat(1));
         assert_eq!(expr_size(&lit), 1);
-        let app = Expr::App(Box::new(lit.clone()), Box::new(lit.clone()));
+        let app = Expr::App(Node::new(lit.clone()), Node::new(lit.clone()));
         assert_eq!(expr_size(&app), 3);
     }
     #[test]
     fn test_expr_depth() {
-        let lit = Expr::Lit(Literal::Nat(1));
+        let lit = Expr::Lit(Literal::nat(1));
         assert_eq!(expr_depth(&lit), 0);
-        let app = Expr::App(Box::new(lit.clone()), Box::new(lit.clone()));
+        let app = Expr::App(Node::new(lit.clone()), Node::new(lit.clone()));
         assert_eq!(expr_depth(&app), 1);
     }
     #[test]
     fn test_simp_lemma_reversed() {
-        let lhs = Expr::Lit(Literal::Nat(1));
-        let rhs = Expr::Lit(Literal::Nat(2));
+        let lhs = Expr::Lit(Literal::nat(1));
+        let rhs = Expr::Lit(Literal::nat(2));
         let lemma = SimpLemma::forward(Name::str("test"), lhs.clone(), rhs.clone());
         assert_eq!(lemma.direction, SimpDirection::Forward);
         let rev = lemma.reversed();
@@ -474,30 +476,30 @@ mod simp_extra_tests {
     #[test]
     fn test_mk_app() {
         let head = Expr::Const(Name::str("f"), vec![]);
-        let args = vec![Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))];
+        let args = vec![Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))];
         let e = mk_app(head, args);
         assert!(matches!(e, Expr::App(_, _)));
     }
     #[test]
     fn test_simplify_bounded_depth_zero() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(5))),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(5))),
         );
         let result = simplify_bounded(&e, 0);
         assert_eq!(result, e);
     }
     #[test]
     fn test_alpha_eq_lit() {
-        let e1 = Expr::Lit(Literal::Nat(42));
-        let e2 = Expr::Lit(Literal::Nat(42));
-        let e3 = Expr::Lit(Literal::Nat(43));
+        let e1 = Expr::Lit(Literal::nat(42));
+        let e2 = Expr::Lit(Literal::nat(42));
+        let e3 = Expr::Lit(Literal::nat(43));
         assert!(alpha_eq(&e1, &e2));
         assert!(!alpha_eq(&e1, &e3));
     }
     #[test]
     fn test_eta_reduce_no_change() {
-        let e = Expr::Lit(Literal::Nat(5));
+        let e = Expr::Lit(Literal::nat(5));
         assert_eq!(eta_reduce(&e), e);
     }
 }
@@ -538,19 +540,19 @@ pub fn rewrite_once(expr: &Expr, lhs: &Expr, rhs: &Expr) -> (Expr, bool) {
             let (new_f, c1) = rewrite_once(f, lhs, rhs);
             let (new_a, c2) = rewrite_once(a, lhs, rhs);
             changed = c1 || c2;
-            Expr::App(Box::new(new_f), Box::new(new_a))
+            Expr::App(Node::new(new_f), Node::new(new_a))
         }
         Expr::Lam(bi, name, ty, body) => {
             let (new_ty, c1) = rewrite_once(ty, lhs, rhs);
             let (new_body, c2) = rewrite_once(body, lhs, rhs);
             changed = c1 || c2;
-            Expr::Lam(*bi, name.clone(), Box::new(new_ty), Box::new(new_body))
+            Expr::Lam(*bi, name.clone(), Node::new(new_ty), Node::new(new_body))
         }
         Expr::Pi(bi, name, ty, body) => {
             let (new_ty, c1) = rewrite_once(ty, lhs, rhs);
             let (new_body, c2) = rewrite_once(body, lhs, rhs);
             changed = c1 || c2;
-            Expr::Pi(*bi, name.clone(), Box::new(new_ty), Box::new(new_body))
+            Expr::Pi(*bi, name.clone(), Node::new(new_ty), Node::new(new_body))
         }
         other => other.clone(),
     };
@@ -605,33 +607,33 @@ mod simp_extra_tests2 {
     use crate::{FVarId, Name};
     #[test]
     fn test_is_nat_lit() {
-        assert!(is_nat_lit(&Expr::Lit(Literal::Nat(5)), 5));
-        assert!(!is_nat_lit(&Expr::Lit(Literal::Nat(5)), 6));
+        assert!(is_nat_lit(&Expr::Lit(Literal::nat(5)), 5));
+        assert!(!is_nat_lit(&Expr::Lit(Literal::nat(5)), 6));
     }
     #[test]
     fn test_is_zero() {
-        assert!(is_zero(&Expr::Lit(Literal::Nat(0))));
+        assert!(is_zero(&Expr::Lit(Literal::nat(0))));
         assert!(is_zero(&Expr::Const(Name::str("Nat.zero"), vec![])));
-        assert!(!is_zero(&Expr::Lit(Literal::Nat(1))));
+        assert!(!is_zero(&Expr::Lit(Literal::nat(1))));
     }
     #[test]
     fn test_is_succ_and_succ_of() {
         let succ_n = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(3))),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(3))),
         );
         assert!(is_succ(&succ_n));
         assert!(succ_of(&succ_n).is_some());
-        assert!(!is_succ(&Expr::Lit(Literal::Nat(5))));
-        assert!(succ_of(&Expr::Lit(Literal::Nat(5))).is_none());
+        assert!(!is_succ(&Expr::Lit(Literal::nat(5))));
+        assert!(succ_of(&Expr::Lit(Literal::nat(5))).is_none());
     }
     #[test]
     fn test_rewrite_once() {
-        let lhs = Expr::Lit(Literal::Nat(1));
-        let rhs = Expr::Lit(Literal::Nat(99));
+        let lhs = Expr::Lit(Literal::nat(1));
+        let rhs = Expr::Lit(Literal::nat(99));
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(lhs.clone()),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(lhs.clone()),
         );
         let (new_expr, changed) = rewrite_once(&expr, &lhs, &rhs);
         assert!(changed);
@@ -643,14 +645,14 @@ mod simp_extra_tests2 {
     }
     #[test]
     fn test_rewrite_all() {
-        let lhs = Expr::Lit(Literal::Nat(0));
-        let rhs = Expr::Lit(Literal::Nat(100));
+        let lhs = Expr::Lit(Literal::nat(0));
+        let rhs = Expr::Lit(Literal::nat(100));
         let expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(lhs.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(lhs.clone()),
             )),
-            Box::new(lhs.clone()),
+            Node::new(lhs.clone()),
         );
         let result = rewrite_all(&expr, &lhs, &rhs);
         let size = expr_size(&result);
@@ -665,7 +667,7 @@ mod simp_extra_tests2 {
     }
     #[test]
     fn test_is_closed() {
-        let lit = Expr::Lit(Literal::Nat(5));
+        let lit = Expr::Lit(Literal::nat(5));
         assert!(is_closed(&lit));
         let fvar = Expr::FVar(FVarId(1));
         assert!(!is_closed(&fvar));
@@ -726,23 +728,23 @@ pub fn fold_nat_constants(expr: &Expr) -> Expr {
         Expr::App(f, a) => {
             let f2 = fold_nat_constants(f);
             let a2 = fold_nat_constants(a);
-            if let Some(n) = eval_nat(&Expr::App(Box::new(f2.clone()), Box::new(a2.clone()))) {
+            if let Some(n) = eval_nat(&Expr::App(Node::new(f2.clone()), Node::new(a2.clone()))) {
                 Expr::Lit(Literal::Nat(n))
             } else {
-                Expr::App(Box::new(f2), Box::new(a2))
+                Expr::App(Node::new(f2), Node::new(a2))
             }
         }
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(fold_nat_constants(ty)),
-            Box::new(fold_nat_constants(body)),
+            Node::new(fold_nat_constants(ty)),
+            Node::new(fold_nat_constants(body)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(fold_nat_constants(ty)),
-            Box::new(fold_nat_constants(body)),
+            Node::new(fold_nat_constants(ty)),
+            Node::new(fold_nat_constants(body)),
         ),
         other => other.clone(),
     }
@@ -752,7 +754,7 @@ mod simp_set_tests {
     use super::*;
     use crate::Name;
     fn mk_lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn mk_c(s: &str) -> Expr {
         Expr::Const(Name::str(s), vec![])
@@ -837,8 +839,8 @@ mod simp_set_tests {
     #[test]
     fn test_fold_nat_constants_succ() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(mk_lit(3)),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(mk_lit(3)),
         );
         let result = fold_nat_constants(&e);
         assert_eq!(result, mk_lit(4));
@@ -1015,7 +1017,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

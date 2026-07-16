@@ -13,6 +13,7 @@
 //! - registry: Package registry integration
 //! - scripts: Custom build scripts and hooks
 
+#![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![warn(clippy::all)]
 #![allow(clippy::result_large_err)]
@@ -49,6 +50,7 @@
 pub mod analytics;
 pub mod cache_eviction;
 pub mod cache_invalidation;
+pub mod convenience;
 pub mod dep_analysis;
 pub mod distributed;
 pub mod executor;
@@ -64,3 +66,5 @@ pub mod scripts;
 
 pub mod core_types;
 pub use core_types::*;
+
+pub use convenience::build_project;

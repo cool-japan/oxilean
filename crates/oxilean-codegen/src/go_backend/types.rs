@@ -629,6 +629,7 @@ impl GoBackend {
     pub fn compile_type(&self, ty: &LcnfType) -> GoType {
         match ty {
             LcnfType::Nat => GoType::GoInt,
+            LcnfType::Int => GoType::GoInt,
             LcnfType::LcnfString => GoType::GoString,
             LcnfType::Erased | LcnfType::Irrelevant | LcnfType::Unit => GoType::GoUnit,
             LcnfType::Object => GoType::GoInterface,
@@ -767,6 +768,7 @@ impl GoBackend {
     pub(super) fn compile_lit(&self, lit: &LcnfLit) -> GoExpr {
         match lit {
             LcnfLit::Nat(n) => GoExpr::Lit(GoLit::Int(*n as i64)),
+            LcnfLit::Int(i) => GoExpr::Lit(GoLit::Int(*i)),
             LcnfLit::Str(s) => GoExpr::Lit(GoLit::Str(s.clone())),
         }
     }

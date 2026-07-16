@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{Declaration, Expr, Name, ReducibilityHint};
 use oxilean_parse::AttributeKind;
 use std::collections::{HashMap, HashSet};
@@ -379,15 +380,15 @@ impl WellFoundedRecursion {
         let mut result = self.block.clone();
         let wf_rel: Expr = match (&self.measure, &self.rel) {
             (Some(m), _) => Expr::App(
-                Box::new(Expr::Const(Name::str("Measure"), vec![])),
-                Box::new(Expr::Const(m.clone(), vec![])),
+                Node::new(Expr::Const(Name::str("Measure"), vec![])),
+                Node::new(Expr::Const(m.clone(), vec![])),
             ),
             (None, Some(r)) => r.clone(),
             (None, None) => unreachable!("checked above"),
         };
         let wf_proof = Expr::App(
-            Box::new(Expr::Const(Name::str("WellFounded.wf"), vec![])),
-            Box::new(wf_rel.clone()),
+            Node::new(Expr::Const(Name::str("WellFounded.wf"), vec![])),
+            Node::new(wf_rel.clone()),
         );
         let call_graph = CallGraph::build_from_block(&self.block);
         for name in &self.block.names {
@@ -410,19 +411,19 @@ impl WellFoundedRecursion {
                 let step = Expr::Lam(
                     oxilean_kernel::BinderInfo::Default,
                     name.clone(),
-                    Box::new(rec_ty),
-                    Box::new(body.clone()),
+                    Node::new(rec_ty),
+                    Node::new(body.clone()),
                 );
                 let init_arg = Expr::BVar(dec_idx as u32);
                 let wrapped = Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("WellFounded.fix"), vec![])),
-                            Box::new(wf_proof.clone()),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("WellFounded.fix"), vec![])),
+                            Node::new(wf_proof.clone()),
                         )),
-                        Box::new(step),
+                        Node::new(step),
                     )),
-                    Box::new(init_arg),
+                    Node::new(init_arg),
                 );
                 result.bodies.insert(name.clone(), wrapped);
             }

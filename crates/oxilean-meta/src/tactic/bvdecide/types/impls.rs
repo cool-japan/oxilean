@@ -325,16 +325,17 @@ impl GoalAnalyzer {
         match expr {
             Expr::Lit(lit) => match lit {
                 oxilean_kernel::Literal::Nat(n) => {
-                    let width = BitWidth::new(if *n <= u8::MAX as u64 {
+                    let v = n.to_u64()?;
+                    let width = BitWidth::new(if v <= u8::MAX as u64 {
                         8
-                    } else if *n <= u16::MAX as u64 {
+                    } else if v <= u16::MAX as u64 {
                         16
-                    } else if *n <= u32::MAX as u64 {
+                    } else if v <= u32::MAX as u64 {
                         32
                     } else {
                         64
                     });
-                    Some(BvExpr::Const(BitVec::from_u128(*n as u128, width)))
+                    Some(BvExpr::Const(BitVec::from_u128(v as u128, width)))
                 }
                 oxilean_kernel::Literal::Str(_) => None,
             },

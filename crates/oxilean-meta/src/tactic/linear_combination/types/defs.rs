@@ -250,14 +250,58 @@ pub struct RatMatrix {
     pub data: Vec<Vec<Rat>>,
 }
 
-/// A Farkas certificate for infeasibility of a linear system.
-#[allow(dead_code)]
+/// Orientation of a linear constraint as used in a Farkas refutation.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConOrient {
+    /// Constraint is `lhs ≥ 0` (or equivalently `0 ≤ lhs`).
+    GeZero,
+    /// Constraint is `lhs ≤ 0`.
+    LeZero,
+}
+
+/// One entry in a Farkas refutation: a source constraint scaled by a nonneg multiplier.
+#[derive(Debug, Clone)]
+pub struct FarkasCertEntry {
+    /// Index into the original constraint array passed to `find_farkas_certificate`.
+    pub constraint_index: usize,
+    /// Nonneg rational multiplier.
+    pub multiplier: Rat,
+    /// Sense of the source constraint.
+    pub orient: ConOrient,
+}
+
+/// Records the kernel-level provenance of a single Farkas constraint entry.
+///
+/// `None` for `hyp_name` indicates the negated goal (used when the tactic
+/// derives a contradiction from the negated goal + hypotheses).
+#[derive(Debug, Clone)]
+pub struct ConSource {
+    /// Name of the source hypothesis, or `None` for the negated goal.
+    pub hyp_name: Option<oxilean_kernel::Name>,
+    /// The kernel type of the hypothesis: e.g. `Int.le L R` or `LE.le Int inst L R`.
+    pub hyp_type: oxilean_kernel::Expr,
+    /// Orientation of the constraint (GeZero or LeZero).
+    pub orient: ConOrient,
+}
+
+/// A Farkas infeasibility certificate.
+///
+/// A set of `FarkasCertEntry` records that, when their scaled constraints
+/// are summed, yields a contradiction of the form `0 ≤ negative_constant`.
+///
+/// Produced by `find_farkas_certificate`; consumed by `farkas_cert_to_expr`
+/// in `oxilean-elab` to reconstruct a kernel-verified proof term.
 #[derive(Debug, Clone)]
 pub struct FarkasCert {
-    /// Non-negative multipliers for each inequality.
-    pub multipliers: Vec<Rat>,
-    /// The resulting contradiction value (should be < 0 for infeasibility).
+    /// The participating constraints with their multipliers.
+    pub entries: Vec<FarkasCertEntry>,
+    /// The contradictory constant sum (negative rational — proved ≤ 0, showing inconsistency).
     pub combined_rhs: Rat,
+    /// Per-entry source provenance, indexed by `entry.constraint_index`.
+    ///
+    /// May be empty if the caller doesn't populate it (graceful degradation:
+    /// proof reconstruction falls back to `sorry` when sources are absent).
+    pub sources: Vec<ConSource>,
 }
 
 /// A configuration store for TacticLinearCombination.

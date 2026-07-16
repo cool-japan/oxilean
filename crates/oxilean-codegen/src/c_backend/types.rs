@@ -1077,6 +1077,7 @@ impl CBackend {
             LcnfLetValue::Lit(lit) => {
                 let c_expr = match lit {
                     LcnfLit::Nat(n) => CExpr::UIntLit(*n),
+                    LcnfLit::Int(i) => CExpr::call("lean_int64_to_obj", vec![CExpr::IntLit(*i)]),
                     LcnfLit::Str(s) => {
                         CExpr::call("lean_mk_string", vec![CExpr::StringLit(s.clone())])
                     }
@@ -1126,6 +1127,7 @@ impl CBackend {
             LcnfArg::Var(id) => CExpr::var(&var_name(*id)),
             LcnfArg::Lit(lit) => match lit {
                 LcnfLit::Nat(n) => CExpr::UIntLit(*n),
+                LcnfLit::Int(i) => CExpr::call("lean_int64_to_obj", vec![CExpr::IntLit(*i)]),
                 LcnfLit::Str(s) => CExpr::call("lean_mk_string", vec![CExpr::StringLit(s.clone())]),
             },
             LcnfArg::Erased => lean_box(CExpr::UIntLit(0)),

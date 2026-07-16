@@ -47,6 +47,7 @@
 //! See the README for a configuration example using `CodegenConfig` and
 //! `CodegenTarget`, and the [`pipeline`] module for the end-to-end driver.
 
+#![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_mut)]
@@ -203,6 +204,9 @@ pub mod wasm_component_backend;
 pub mod wgsl_backend;
 pub mod x86_64_backend;
 pub mod zig_backend;
+
+pub mod doc_ir;
+pub use doc_ir::{emit_doc_ir, DocIR, DocIRItem};
 
 pub mod core_types;
 pub use core_types::*;

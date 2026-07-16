@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_elab::{eval_tactic_block, Goal, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 
 use super::functions::{mk_eq, mk_pi, parses};
@@ -92,26 +93,29 @@ fn tactic_by_contra_cases_false() {
 /// Helper for group C: build `And a b`.
 fn mk_and_gc(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Helper for group C: build `Or a b`.
 fn mk_or_gc(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Helper for group C: build `Not p`.
 fn mk_not_gc(p: Expr) -> Expr {
-    Expr::App(Box::new(Expr::Const(Name::str("Not"), vec![])), Box::new(p))
+    Expr::App(
+        Node::new(Expr::Const(Name::str("Not"), vec![])),
+        Node::new(p),
+    )
 }
 /// `(A → B) ∧ (B → C) → A → C` via cases on hypothesis + apply + assumption.
 ///
@@ -242,11 +246,11 @@ fn tactic_and_comm_iff() {
     let and_ab = mk_and_gc(a.clone(), b.clone());
     let and_ba = mk_and_gc(b.clone(), a.clone());
     let target = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Iff"), vec![])),
-            Box::new(and_ab),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Iff"), vec![])),
+            Node::new(and_ab),
         )),
-        Box::new(and_ba),
+        Node::new(and_ba),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
@@ -269,11 +273,11 @@ fn tactic_true_and_iff() {
     let p = Expr::Const(Name::str("TAI_P"), vec![]);
     let and_true_p = mk_and_gc(true_e.clone(), p.clone());
     let target = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Iff"), vec![])),
-            Box::new(and_true_p),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Iff"), vec![])),
+            Node::new(and_true_p),
         )),
-        Box::new(p.clone()),
+        Node::new(p.clone()),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
@@ -326,7 +330,7 @@ fn tactic_deep_and_extract() {
 fn tactic_induction_with_sorry_succ() {
     use oxilean_kernel::Literal;
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(Literal::Nat(0));
+    let zero = Expr::Lit(Literal::nat(0));
     let target_body = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
     let target = mk_pi("n", nat_ty.clone(), target_body);
     let mut state = TacticState::new();
@@ -351,8 +355,8 @@ fn tactic_induction_with_sorry_succ() {
 fn tactic_rw_changes_bvar_target() {
     use oxilean_kernel::Literal;
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(Literal::Nat(0));
-    let one = Expr::Lit(Literal::Nat(1));
+    let zero = Expr::Lit(Literal::nat(0));
+    let one = Expr::Lit(Literal::nat(1));
     let eq_0_1 = mk_eq(nat_ty.clone(), zero.clone(), one.clone());
     let _eq_1_1 = mk_eq(nat_ty.clone(), one.clone(), one.clone());
     let mut goal = Goal::new(Name::str("main"), eq_0_1.clone());
@@ -375,7 +379,7 @@ fn tactic_rw_changes_bvar_target() {
 fn tactic_simp_only_two_lemmas() {
     use oxilean_kernel::Literal;
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(Literal::Nat(0));
+    let zero = Expr::Lit(Literal::nat(0));
     let eq_0_0 = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
     let mut goal = Goal::new(Name::str("main"), eq_0_0.clone());
     goal.add_hypothesis(Name::str("h1"), eq_0_0.clone());
@@ -395,7 +399,7 @@ fn tactic_simp_only_two_lemmas() {
 fn tactic_simp_all_closes_from_hyp() {
     use oxilean_kernel::Literal;
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let two = Expr::Lit(Literal::Nat(2));
+    let two = Expr::Lit(Literal::nat(2));
     let eq_2_2 = mk_eq(nat_ty.clone(), two.clone(), two.clone());
     let mut goal = Goal::new(Name::str("main"), eq_2_2.clone());
     goal.add_hypothesis(Name::str("h"), eq_2_2.clone());
@@ -417,8 +421,8 @@ fn tactic_simp_all_closes_from_hyp() {
 fn tactic_rw_at_hyp_changes_type() {
     use oxilean_kernel::Literal;
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(Literal::Nat(0));
-    let one = Expr::Lit(Literal::Nat(1));
+    let zero = Expr::Lit(Literal::nat(0));
+    let one = Expr::Lit(Literal::nat(1));
     let eq_0_1 = mk_eq(nat_ty.clone(), zero.clone(), one.clone());
     let eq_1_1 = mk_eq(nat_ty.clone(), one.clone(), one.clone());
     let mut goal = Goal::new(Name::str("main"), eq_1_1.clone());
@@ -536,28 +540,31 @@ fn theorem_exists_unique_parse() {
 /// Helper (Group G): build `Not p`.
 #[allow(dead_code)]
 fn mk_not_gf(p: Expr) -> Expr {
-    Expr::App(Box::new(Expr::Const(Name::str("Not"), vec![])), Box::new(p))
+    Expr::App(
+        Node::new(Expr::Const(Name::str("Not"), vec![])),
+        Node::new(p),
+    )
 }
 /// Helper (Group G): build `And a b`.
 #[allow(dead_code)]
 fn mk_and_gf(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Helper (Group G): build `Or a b`.
 #[allow(dead_code)]
 fn mk_or_gf(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Helper (Group G): build Pi (anonymous arrow).
@@ -566,8 +573,8 @@ fn mk_pi_gf(domain: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(domain),
-        Box::new(body),
+        Node::new(domain),
+        Node::new(body),
     )
 }
 /// Prove ¬ False via `push_neg; trivial` (push_neg converts ¬ False → True).
@@ -829,12 +836,12 @@ fn tactic_prove_double_neg_elim_via_push() {
 fn tactic_omega_closes_refl_goal() {
     use oxilean_kernel::Literal;
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(Literal::Nat(0));
+    let zero = Expr::Lit(Literal::nat(0));
     let goal_expr = {
         let eq_const = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
-        let eq_ty = Expr::App(Box::new(eq_const), Box::new(nat_ty));
-        let eq_lhs = Expr::App(Box::new(eq_ty), Box::new(zero.clone()));
-        Expr::App(Box::new(eq_lhs), Box::new(zero.clone()))
+        let eq_ty = Expr::App(Node::new(eq_const), Node::new(nat_ty));
+        let eq_lhs = Expr::App(Node::new(eq_ty), Node::new(zero.clone()));
+        Expr::App(Node::new(eq_lhs), Node::new(zero.clone()))
     };
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), goal_expr));

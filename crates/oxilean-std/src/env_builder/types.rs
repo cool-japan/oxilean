@@ -92,6 +92,14 @@ impl EnvBuilder {
     pub fn env(&self) -> &Environment {
         &self.env
     }
+    /// Get a mutable reference to the underlying environment.
+    pub fn env_mut(&mut self) -> &mut Environment {
+        &mut self.env
+    }
+    /// Push an error string into the builder's error list.
+    pub fn push_error(&mut self, msg: String) {
+        self.errors.push(msg);
+    }
     /// `true` if no errors have been accumulated.
     pub fn is_ok(&self) -> bool {
         self.errors.is_empty()

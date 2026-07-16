@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{BinderInfo, Expr, FVarId, Name};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, Context, ContextChain, ContextDiff, ContextEntry, ContextStats, DecisionNode,
@@ -22,26 +24,26 @@ pub(super) fn abstract_fvar_at(expr: Expr, fvar: FVarId, depth: u32) -> Expr {
     match expr {
         Expr::FVar(id) if id == fvar => Expr::BVar(depth),
         Expr::App(f, a) => Expr::App(
-            Box::new(abstract_fvar_at(*f, fvar, depth)),
-            Box::new(abstract_fvar_at(*a, fvar, depth)),
+            Node::new(abstract_fvar_at((*f).clone(), fvar, depth)),
+            Node::new(abstract_fvar_at((*a).clone(), fvar, depth)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             bi,
             n,
-            Box::new(abstract_fvar_at(*ty, fvar, depth)),
-            Box::new(abstract_fvar_at(*body, fvar, depth + 1)),
+            Node::new(abstract_fvar_at((*ty).clone(), fvar, depth)),
+            Node::new(abstract_fvar_at((*body).clone(), fvar, depth + 1)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             bi,
             n,
-            Box::new(abstract_fvar_at(*ty, fvar, depth)),
-            Box::new(abstract_fvar_at(*body, fvar, depth + 1)),
+            Node::new(abstract_fvar_at((*ty).clone(), fvar, depth)),
+            Node::new(abstract_fvar_at((*body).clone(), fvar, depth + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n,
-            Box::new(abstract_fvar_at(*ty, fvar, depth)),
-            Box::new(abstract_fvar_at(*val, fvar, depth)),
-            Box::new(abstract_fvar_at(*body, fvar, depth + 1)),
+            Node::new(abstract_fvar_at((*ty).clone(), fvar, depth)),
+            Node::new(abstract_fvar_at((*val).clone(), fvar, depth)),
+            Node::new(abstract_fvar_at((*body).clone(), fvar, depth + 1)),
         ),
         _ => expr,
     }
@@ -121,7 +123,7 @@ mod tests {
     fn test_local_with_value() {
         let mut ctx = Context::new();
         let ty = Expr::Sort(Level::zero());
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         let fvar = ctx.push_local(Name::str("x"), ty, Some(val.clone()));
         let local = ctx.get_local(fvar).expect("local should be present");
         assert!(local.val.is_some());
@@ -148,7 +150,7 @@ mod tests {
     fn test_mk_let_decl() {
         let mut ctx = Context::new();
         let ty = Expr::Sort(Level::zero());
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         let fvar_expr = ctx.mk_let_decl(Name::str("x"), ty, val);
         if let Expr::FVar(id) = fvar_expr {
             assert!(ctx.is_let(id));
@@ -210,13 +212,13 @@ mod tests {
     fn test_abstract_fvar() {
         let fvar_id = FVarId(42);
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::FVar(fvar_id)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::FVar(fvar_id)),
         );
         let abstracted = abstract_fvar(expr, fvar_id);
         let expected = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(abstracted, expected);
     }
@@ -272,7 +274,7 @@ mod extended_ctx_tests {
         let e = ContextEntry::let_binding(
             Name::str("x"),
             Expr::Sort(Level::zero()),
-            Expr::Lit(Literal::Nat(1)),
+            Expr::Lit(Literal::nat(1)),
         );
         assert!(e.is_let());
     }
@@ -320,7 +322,7 @@ mod extended_ctx_tests {
         ctx.push_local(
             Name::str("y"),
             Expr::Sort(Level::zero()),
-            Some(Expr::Lit(Literal::Nat(0))),
+            Some(Expr::Lit(Literal::nat(0))),
         );
         let chain = ContextChain::from_context(&ctx);
         assert_eq!(chain.len(), 2);
@@ -420,26 +422,26 @@ pub fn rename_fvar(expr: Expr, old: FVarId, new: FVarId) -> Expr {
     match expr {
         Expr::FVar(id) if id == old => Expr::FVar(new),
         Expr::App(f, a) => Expr::App(
-            Box::new(rename_fvar(*f, old, new)),
-            Box::new(rename_fvar(*a, old, new)),
+            Node::new(rename_fvar((*f).clone(), old, new)),
+            Node::new(rename_fvar((*a).clone(), old, new)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             bi,
             n,
-            Box::new(rename_fvar(*ty, old, new)),
-            Box::new(rename_fvar(*body, old, new)),
+            Node::new(rename_fvar((*ty).clone(), old, new)),
+            Node::new(rename_fvar((*body).clone(), old, new)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             bi,
             n,
-            Box::new(rename_fvar(*ty, old, new)),
-            Box::new(rename_fvar(*body, old, new)),
+            Node::new(rename_fvar((*ty).clone(), old, new)),
+            Node::new(rename_fvar((*body).clone(), old, new)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n,
-            Box::new(rename_fvar(*ty, old, new)),
-            Box::new(rename_fvar(*val, old, new)),
-            Box::new(rename_fvar(*body, old, new)),
+            Node::new(rename_fvar((*ty).clone(), old, new)),
+            Node::new(rename_fvar((*val).clone(), old, new)),
+            Node::new(rename_fvar((*body).clone(), old, new)),
         ),
         other => other,
     }
@@ -503,8 +505,8 @@ mod scoped_ctx_tests {
         let old = FVarId(0);
         let new = FVarId(1);
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::FVar(old)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::FVar(old)),
         );
         let renamed = rename_fvar(expr, old, new);
         if let Expr::App(_, a) = renamed {
@@ -517,21 +519,21 @@ mod scoped_ctx_tests {
     fn test_collect_fvars() {
         let e1 = Expr::FVar(FVarId(0));
         let e2 = Expr::FVar(FVarId(1));
-        let expr = Expr::App(Box::new(e1), Box::new(e2));
+        let expr = Expr::App(Node::new(e1), Node::new(e2));
         let fvars = collect_fvars(&expr);
         assert_eq!(fvars.len(), 2);
     }
     #[test]
     fn test_collect_fvars_dedup() {
         let fv = FVarId(5);
-        let expr = Expr::App(Box::new(Expr::FVar(fv)), Box::new(Expr::FVar(fv)));
+        let expr = Expr::App(Node::new(Expr::FVar(fv)), Node::new(Expr::FVar(fv)));
         let fvars = collect_fvars(&expr);
         assert_eq!(fvars.len(), 1);
     }
     #[test]
     fn test_count_fvar() {
         let fv = FVarId(3);
-        let expr = Expr::App(Box::new(Expr::FVar(fv)), Box::new(Expr::FVar(fv)));
+        let expr = Expr::App(Node::new(Expr::FVar(fv)), Node::new(Expr::FVar(fv)));
         assert_eq!(count_fvar(&expr, fv), 2);
         assert_eq!(count_fvar(&expr, FVarId(99)), 0);
     }
@@ -760,7 +762,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

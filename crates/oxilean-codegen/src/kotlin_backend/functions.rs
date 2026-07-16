@@ -20,6 +20,7 @@ use std::fmt;
 pub(super) fn lcnf_type_to_kotlin(ty: &LcnfType) -> KotlinType {
     match ty {
         LcnfType::Nat => KotlinType::KtLong,
+        LcnfType::Int => KotlinType::KtLong,
         LcnfType::LcnfString => KotlinType::KtString,
         LcnfType::Unit => KotlinType::KtUnit,
         LcnfType::Erased | LcnfType::Irrelevant => KotlinType::KtUnit,

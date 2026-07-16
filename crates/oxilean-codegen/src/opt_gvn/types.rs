@@ -1318,6 +1318,7 @@ impl GVNPass {
     pub(super) fn normalise_let_value(&self, value: &LcnfLetValue, fact: &GVNFact) -> NormExpr {
         match value {
             LcnfLetValue::Lit(LcnfLit::Nat(n)) => NormExpr::Lit(*n),
+            LcnfLetValue::Lit(LcnfLit::Int(_)) => NormExpr::Unknown,
             LcnfLetValue::Lit(LcnfLit::Str(s)) => NormExpr::LitStr(s.clone()),
             LcnfLetValue::Erased => NormExpr::Erased,
             LcnfLetValue::FVar(v) => {
@@ -1351,6 +1352,7 @@ impl GVNPass {
                 NormArg::Vn(vn)
             }
             LcnfArg::Lit(LcnfLit::Nat(n)) => NormArg::LitNat(*n),
+            LcnfArg::Lit(LcnfLit::Int(_)) => NormArg::Erased,
             LcnfArg::Lit(LcnfLit::Str(s)) => NormArg::LitStr(s.clone()),
             LcnfArg::Erased => NormArg::Erased,
             LcnfArg::Type(_) => NormArg::Erased,

@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 #![allow(clippy::items_after_test_module)]
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 use std::f64::consts::PI;
 
@@ -11,7 +12,7 @@ use super::types::{MobiusTransform, C64};
 
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -32,7 +33,7 @@ pub fn type0() -> Expr {
     Expr::Sort(Level::succ(Level::zero()))
 }
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     pi(BinderInfo::Default, "_", a, b)
@@ -220,7 +221,7 @@ pub fn fundamental_theorem_algebra_ty() -> Expr {
                             cst("Complex.ofReal"),
                             app(
                                 cst("Real.ofNat"),
-                                Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+                                Expr::Lit(oxilean_kernel::Literal::nat(0)),
                             ),
                         ),
                     ),
@@ -261,7 +262,7 @@ pub fn cauchy_integral_theorem_ty() -> Expr {
                     app2(cst("ContourIntegral"), bvar(1), bvar(0)),
                     app(
                         cst("Complex.ofReal"),
-                        Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+                        Expr::Lit(oxilean_kernel::Literal::nat(0)),
                     ),
                 ),
             ),
@@ -277,7 +278,7 @@ pub fn roots_of_unity_ty() -> Expr {
         arrow(
             app2(
                 cst("Nat.lt"),
-                Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+                Expr::Lit(oxilean_kernel::Literal::nat(0)),
                 bvar(0),
             ),
             app2(
@@ -598,7 +599,7 @@ pub fn hardy_banach_ty() -> Expr {
         arrow(
             app2(
                 cst("Real.le"),
-                Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+                Expr::Lit(oxilean_kernel::Literal::nat(1)),
                 bvar(0),
             ),
             app(cst("IsBanachSpace"), app(cst("HardySpace"), bvar(0))),
@@ -628,7 +629,7 @@ pub fn nevanlinna_second_theorem_ty() -> Expr {
             app2(
                 app(cst("Real.le"), prop()),
                 app(cst("NevanlinnaDeficiencySum"), bvar(0)),
-                Expr::Lit(oxilean_kernel::Literal::Nat(2)),
+                Expr::Lit(oxilean_kernel::Literal::nat(2)),
             ),
         ),
     )
@@ -803,7 +804,7 @@ pub fn jensen_formula_ty() -> Expr {
                 arrow(
                     app2(
                         cst("Real.lt"),
-                        Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+                        Expr::Lit(oxilean_kernel::Literal::nat(0)),
                         bvar(0),
                     ),
                     app2(cst("JensenEquality"), bvar(1), bvar(0)),
@@ -850,7 +851,7 @@ pub fn riemann_hypothesis_ty() -> Expr {
             app2(
                 app(cst("Eq"), real_ty()),
                 app(cst("Complex.re"), bvar(0)),
-                Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+                Expr::Lit(oxilean_kernel::Literal::nat(0)),
             ),
         ),
     )

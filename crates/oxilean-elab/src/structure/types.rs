@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Name};
 use oxilean_parse::Decl;
 use std::collections::HashMap;
@@ -173,14 +174,14 @@ impl StructUpdateBuilder {
                 if let Some((_, val)) = self.updates.iter().find(|(n, _)| n == &f.name) {
                     val.clone()
                 } else {
-                    Expr::Proj(f.name.clone(), f.idx as u32, Box::new(self.base.clone()))
+                    Expr::Proj(f.name.clone(), f.idx as u32, Node::new(self.base.clone()))
                 }
             })
             .collect();
         let ctor = Expr::Const(info.ctor_name.clone(), vec![]);
         let result = args
             .into_iter()
-            .fold(ctor, |acc, arg| Expr::App(Box::new(acc), Box::new(arg)));
+            .fold(ctor, |acc, arg| Expr::App(Node::new(acc), Node::new(arg)));
         Ok(result)
     }
     /// Return the number of updates.
@@ -364,17 +365,17 @@ impl<'env> StructureElaborator<'env> {
             let proj_ty = Expr::Pi(
                 BinderInfo::Default,
                 Name::str("self"),
-                Box::new(struct_ty.clone()),
-                Box::new(field.ty.clone()),
+                Node::new(struct_ty.clone()),
+                Node::new(field.ty.clone()),
             );
             let proj_val = Expr::Lam(
                 BinderInfo::Default,
                 Name::str("self"),
-                Box::new(struct_ty.clone()),
-                Box::new(Expr::Proj(
+                Node::new(struct_ty.clone()),
+                Node::new(Expr::Proj(
                     info.name.clone(),
                     field.idx as u32,
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
             );
             projections.push(ProjectionDecl {
@@ -403,18 +404,18 @@ impl<'env> StructureElaborator<'env> {
         let motive_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(struct_ty.clone()),
-            Box::new(Expr::Sort(Level::Param(Name::str("u")))),
+            Node::new(struct_ty.clone()),
+            Node::new(Expr::Sort(Level::Param(Name::str("u")))),
         );
         let rec_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("motive"),
-            Box::new(motive_ty),
-            Box::new(Expr::Pi(
+            Node::new(motive_ty),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("t"),
-                Box::new(struct_ty),
-                Box::new(Expr::Sort(Level::Param(Name::str("u")))),
+                Node::new(struct_ty),
+                Node::new(Expr::Sort(Level::Param(Name::str("u")))),
             )),
         );
         RecursorDecl {
@@ -436,7 +437,12 @@ impl<'env> StructureElaborator<'env> {
         };
         let mut ty = base;
         for (name, param_ty, bi) in info.params.iter().rev() {
-            ty = Expr::Pi(*bi, name.clone(), Box::new(param_ty.clone()), Box::new(ty));
+            ty = Expr::Pi(
+                *bi,
+                name.clone(),
+                Node::new(param_ty.clone()),
+                Node::new(ty),
+            );
         }
         ty
     }
@@ -450,8 +456,8 @@ impl<'env> StructureElaborator<'env> {
             ty = Expr::Pi(
                 field.binder_info,
                 field.name.clone(),
-                Box::new(field.ty.clone()),
-                Box::new(ty),
+                Node::new(field.ty.clone()),
+                Node::new(ty),
             );
         }
         ty
@@ -520,12 +526,12 @@ impl<'env> StructureElaborator<'env> {
         for (i, _) in class_info.params.iter().enumerate() {
             let param_count = class_info.params.len();
             result = Expr::App(
-                Box::new(result),
-                Box::new(Expr::BVar((param_count - 1 - i) as u32)),
+                Node::new(result),
+                Node::new(Expr::BVar((param_count - 1 - i) as u32)),
             );
         }
         for (name, ty, bi) in class_info.params.iter().rev() {
-            result = Expr::Pi(*bi, name.clone(), Box::new(ty.clone()), Box::new(result));
+            result = Expr::Pi(*bi, name.clone(), Node::new(ty.clone()), Node::new(result));
         }
         result
     }
@@ -557,10 +563,10 @@ impl<'env> StructureElaborator<'env> {
                     Expr::Proj(
                         struct_name.clone(),
                         field.idx as u32,
-                        Box::new(base.clone()),
+                        Node::new(base.clone()),
                     )
                 };
-            ctor_app = Expr::App(Box::new(ctor_app), Box::new(field_val));
+            ctor_app = Expr::App(Node::new(ctor_app), Node::new(field_val));
         }
         Ok(ctor_app)
     }
@@ -590,7 +596,7 @@ impl<'env> StructureElaborator<'env> {
         }
         let mut result = Expr::Const(info.ctor_name.clone(), Vec::new());
         for arg in args {
-            result = Expr::App(Box::new(result), Box::new(arg.clone()));
+            result = Expr::App(Node::new(result), Node::new(arg.clone()));
         }
         Ok(result)
     }
@@ -612,9 +618,9 @@ impl<'env> StructureElaborator<'env> {
             let proj = Expr::Proj(
                 struct_name.clone(),
                 field.idx as u32,
-                Box::new(expr.clone()),
+                Node::new(expr.clone()),
             );
-            result = Expr::App(Box::new(result), Box::new(proj));
+            result = Expr::App(Node::new(result), Node::new(proj));
         }
         Ok(result)
     }

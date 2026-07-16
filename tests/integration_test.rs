@@ -11,6 +11,7 @@
 //! - Error handling and edge cases
 
 use oxilean_elab::{elaborate_expr, ElabContext};
+use oxilean_kernel::Node;
 use oxilean_kernel::{env::Environment, expr::Expr, level::Level, name::Name};
 use oxilean_parse::{
     Binder, BinderKind, Lexer, Literal as ParseLiteral, Located, Parser, Span, SurfaceExpr, Token,
@@ -579,7 +580,7 @@ fn kernel_fvar() {
 
 #[test]
 fn kernel_app() {
-    let a = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+    let a = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
     assert!(a.is_app());
 }
 
@@ -588,8 +589,8 @@ fn kernel_lambda() {
     let l = Expr::Lam(
         oxilean_kernel::expr::BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::Sort(Level::zero())),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::BVar(0)),
     );
     assert!(l.is_lambda());
 }
@@ -599,8 +600,8 @@ fn kernel_pi() {
     let p = Expr::Pi(
         oxilean_kernel::expr::BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::Sort(Level::zero())),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::BVar(0)),
     );
     assert!(p.is_pi());
 }
@@ -609,9 +610,9 @@ fn kernel_pi() {
 fn kernel_let() {
     let l = Expr::Let(
         Name::str("x"),
-        Box::new(Expr::Sort(Level::zero())),
-        Box::new(Expr::BVar(0)),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(0)),
     );
     assert!(l == l);
 }
@@ -1512,15 +1513,15 @@ fn kern_8() {
 }
 #[test]
 fn kern_9() {
-    let _x = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+    let _x = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
 }
 #[test]
 fn kern_10() {
     let _x = Expr::Lam(
         oxilean_kernel::expr::BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::Sort(Level::zero())),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::BVar(0)),
     );
 }
 

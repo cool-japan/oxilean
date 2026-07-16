@@ -22,6 +22,11 @@ pub fn marshal_type(lcnf_ty: &LcnfType) -> FfiMarshalInfo {
             "lean_unbox(${arg})",
             "lean_box(${result})",
         ),
+        LcnfType::Int => FfiMarshalInfo::with_conversion(
+            FfiNativeType::I64,
+            "lean_scalar_to_int64(${arg})",
+            "lean_int64_to_obj(${result})",
+        ),
         LcnfType::LcnfString => FfiMarshalInfo {
             native_type: FfiNativeType::CStr,
             to_native: "lean_string_cstr(${arg})".to_string(),

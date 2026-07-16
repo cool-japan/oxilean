@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Literal, Name};
 
 use super::types::{
@@ -751,8 +752,8 @@ mod lib_extended_tests {
     fn test_might_be_recursive_yes() {
         let name = Name::str("fib");
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("fib"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("fib"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert!(might_be_recursive(&name, &body));
     }

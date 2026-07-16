@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Expr, Level, Literal, Name};
 
 use super::functions::Show;
@@ -64,8 +65,8 @@ fn shw_ext_show_string_escaped(env: &mut oxilean_kernel::Environment) -> Result<
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("s"),
-        Box::new(string_ty.clone()),
-        Box::new(string_ty),
+        Node::new(string_ty.clone()),
+        Node::new(string_ty),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.stringEscaped"),
@@ -142,8 +143,8 @@ fn shw_ext_pretty_doc_group(env: &mut oxilean_kernel::Environment) -> Result<(),
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("d"),
-        Box::new(doc()),
-        Box::new(doc()),
+        Node::new(doc()),
+        Node::new(doc()),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("PrettyDoc.group"),
@@ -160,19 +161,19 @@ fn shw_ext_show_tree_recursive(env: &mut oxilean_kernel::Environment) -> Result<
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Show"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Show"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Show"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Tree"), vec![])),
-                    Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Show"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Tree"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -193,8 +194,8 @@ fn shw_ext_diagnostic_severity_prefix(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("sev"),
-        Box::new(nat_ty),
-        Box::new(string_ty),
+        Node::new(nat_ty),
+        Node::new(string_ty),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Diagnostic.severityPrefix"),

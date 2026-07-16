@@ -5,6 +5,7 @@
 use super::types::{DivisionPattern, FieldSimpConfig, FieldSimpResult};
 use crate::basic::{MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Literal, Name};
 
 // ---------------------------------------------------------------------------
@@ -38,11 +39,11 @@ fn extract_eq_sides(expr: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(func2, lhs) = func.as_ref() {
             if let Expr::App(eq_expr, _ty) = func2.as_ref() {
                 if is_eq_const(eq_expr) {
-                    return Some((*lhs.clone(), *rhs.clone()));
+                    return Some(((**lhs).clone(), (**rhs).clone()));
                 }
             }
             if is_eq_const(func2) {
-                return Some((*lhs.clone(), *rhs.clone()));
+                return Some(((**lhs).clone(), (**rhs).clone()));
             }
         }
     }
@@ -68,8 +69,8 @@ fn is_div_or_inv(name: &str) -> bool {
 fn make_mul(lhs: Expr, rhs: Expr) -> Expr {
     let mul_const = Expr::Const(Name::str("HMul.hMul"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(mul_const), Box::new(lhs))),
-        Box::new(rhs),
+        Node::new(Expr::App(Node::new(mul_const), Node::new(lhs))),
+        Node::new(rhs),
     )
 }
 
@@ -95,7 +96,7 @@ fn find_division_patterns_inner(expr: &Expr, out: &mut Vec<DivisionPattern>) {
             if let Some(name) = const_name(func) {
                 if matches!(name.as_str(), "Inv.inv" | "inv" | "Field.inv") {
                     out.push(DivisionPattern::Inv {
-                        inner: *arg.clone(),
+                        inner: (**arg).clone(),
                     });
                     // Still recurse into inner.
                     find_division_patterns_inner(arg, out);
@@ -107,8 +108,8 @@ fn find_division_patterns_inner(expr: &Expr, out: &mut Vec<DivisionPattern>) {
                 if let Some(op_name) = const_name(func2) {
                     if is_div_or_inv(op_name.as_str()) {
                         out.push(DivisionPattern::Div {
-                            numerator: *lhs.clone(),
-                            denominator: *arg.clone(),
+                            numerator: (**lhs).clone(),
+                            denominator: (**arg).clone(),
                         });
                         find_division_patterns_inner(lhs, out);
                         find_division_patterns_inner(arg, out);
@@ -120,8 +121,8 @@ fn find_division_patterns_inner(expr: &Expr, out: &mut Vec<DivisionPattern>) {
                     if let Some(op_name) = const_name(func3) {
                         if is_div_or_inv(op_name.as_str()) {
                             out.push(DivisionPattern::Div {
-                                numerator: *lhs.clone(),
-                                denominator: *arg.clone(),
+                                numerator: (**lhs).clone(),
+                                denominator: (**arg).clone(),
                             });
                             find_division_patterns_inner(lhs, out);
                             find_division_patterns_inner(arg, out);
@@ -195,8 +196,8 @@ pub fn normalize_fractions(expr: &Expr) -> Expr {
                             if exprs_structurally_equal(&lhs_den, &rhs_num) {
                                 let div_const = Expr::Const(Name::str("HDiv.hDiv"), vec![]);
                                 return Expr::App(
-                                    Box::new(Expr::App(Box::new(div_const), Box::new(lhs_num))),
-                                    Box::new(rhs_den),
+                                    Node::new(Expr::App(Node::new(div_const), Node::new(lhs_num))),
+                                    Node::new(rhs_den),
                                 );
                             }
                         }
@@ -211,29 +212,29 @@ pub fn normalize_fractions(expr: &Expr) -> Expr {
             }) = try_extract_div_pattern_from_app(&norm_func, &norm_arg)
             {
                 if exprs_structurally_equal(&numerator, &denominator) {
-                    return Expr::Lit(oxilean_kernel::Literal::Nat(1));
+                    return Expr::Lit(oxilean_kernel::Literal::nat(1));
                 }
             }
 
-            Expr::App(Box::new(norm_func), Box::new(norm_arg))
+            Expr::App(Node::new(norm_func), Node::new(norm_arg))
         }
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(normalize_fractions(ty)),
-            Box::new(normalize_fractions(body)),
+            Node::new(normalize_fractions(ty)),
+            Node::new(normalize_fractions(body)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(normalize_fractions(ty)),
-            Box::new(normalize_fractions(body)),
+            Node::new(normalize_fractions(ty)),
+            Node::new(normalize_fractions(body)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(normalize_fractions(ty)),
-            Box::new(normalize_fractions(val)),
-            Box::new(normalize_fractions(body)),
+            Node::new(normalize_fractions(ty)),
+            Node::new(normalize_fractions(val)),
+            Node::new(normalize_fractions(body)),
         ),
         other => other.clone(),
     }
@@ -247,7 +248,7 @@ fn try_extract_div_pattern_from_app(func: &Expr, arg: &Expr) -> Option<DivisionP
         if let Some(name) = const_name(inner_func) {
             if is_div_or_inv(name.as_str()) {
                 return Some(DivisionPattern::Div {
-                    numerator: *lhs.clone(),
+                    numerator: (**lhs).clone(),
                     denominator: arg.clone(),
                 });
             }
@@ -429,8 +430,8 @@ pub fn tac_field_simp_with_config(
 fn build_eq_expr(lhs: Expr, rhs: Expr) -> Expr {
     let eq_const = Expr::Const(Name::str("Eq"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(eq_const), Box::new(lhs))),
-        Box::new(rhs),
+        Node::new(Expr::App(Node::new(eq_const), Node::new(lhs))),
+        Node::new(rhs),
     )
 }
 
@@ -448,14 +449,14 @@ mod tests {
     }
 
     fn nat_lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
 
     fn div_expr(num: Expr, den: Expr) -> Expr {
         let div_const = const_expr("HDiv.hDiv");
         Expr::App(
-            Box::new(Expr::App(Box::new(div_const), Box::new(num))),
-            Box::new(den),
+            Node::new(Expr::App(Node::new(div_const), Node::new(num))),
+            Node::new(den),
         )
     }
 
@@ -485,7 +486,10 @@ mod tests {
         let a = const_expr("a");
         let b = const_expr("b");
         let add = const_expr("HAdd.hAdd");
-        let expr = Expr::App(Box::new(Expr::App(Box::new(add), Box::new(a))), Box::new(b));
+        let expr = Expr::App(
+            Node::new(Expr::App(Node::new(add), Node::new(a))),
+            Node::new(b),
+        );
         let patterns = find_division_patterns(&expr);
         assert!(patterns.is_empty());
     }
@@ -509,12 +513,15 @@ mod tests {
         // new_lhs should be `c * a`
         let mul_const = const_expr("HMul.hMul");
         let expected_lhs = Expr::App(
-            Box::new(Expr::App(Box::new(mul_const.clone()), Box::new(c.clone()))),
-            Box::new(a),
+            Node::new(Expr::App(
+                Node::new(mul_const.clone()),
+                Node::new(c.clone()),
+            )),
+            Node::new(a),
         );
         let expected_rhs = Expr::App(
-            Box::new(Expr::App(Box::new(mul_const), Box::new(c))),
-            Box::new(b),
+            Node::new(Expr::App(Node::new(mul_const), Node::new(c))),
+            Node::new(b),
         );
         assert!(exprs_structurally_equal(&new_lhs, &expected_lhs));
         assert!(exprs_structurally_equal(&new_rhs, &expected_rhs));

@@ -1,0 +1,124 @@
+{
+  "tool": {
+    "name": "oxilean-verify",
+    "version": "0.1.2"
+  },
+  "pins": {
+    "lean4export_commit": "3de59f10bc4b4a0f2de698597aeb1246caa0df0a",
+    "lean_toolchain": "v4.32.0-rc1",
+    "reader_format_version": "3.1.0",
+    "file_format_version": "3.1.0",
+    "file_lean_version": "4.32.0-rc1",
+    "file_lean_githash": "b4812ae53eea93439ad5dce5a5c26591c31cb697"
+  },
+  "input": {
+    "path": "/home/kitasan/work/oxilean-corpus/Init.ndjson",
+    "sha256": "9e824677f2cb5c8504e4a8c2c2ee72eeca5ad874fd5f2f7f2138400770b2744a",
+    "size_bytes": 345683034,
+    "format_version": "3.1.0"
+  },
+  "totals": {
+    "verified": 35223,
+    "unsupported": 22054,
+    "rejected": 0,
+    "wall_ms": 4827016
+  },
+  "unsupported_features": [
+    {
+      "feature": "nested inductives",
+      "count": 1,
+      "decls_capped": false,
+      "decls": [
+        "Lean.Syntax"
+      ]
+    },
+    {
+      "feature": "dependency on an unsupported declaration",
+      "count": 21876,
+      "decls_capped": true,
+      "decls": [
+        "autoParam",
+        "Lean.mkAtom",
+        "LawfulGetElem.getElem?_def._autoParam",
+        "LawfulGetElem.getElem!_def._autoParam",
+        "LawfulGetElem",
+        "LawfulGetElem.getElem?_def",
+        "getElem?_pos",
+        "List.instLawfulGetElemNatLtLength",
+        "Lean.Omega.IntList.get_cons_zero",
+        "Lean.Omega.IntList.dot_set_left",
+        "Lean.Omega.LinearCombo.coordinate_eval",
+        "Lean.Omega.LinearCombo.coordinate_eval_0",
+        "Lean.Omega.LinearCombo.coordinate_eval_1",
+        "Lean.Omega.LinearCombo.coordinate_eval_2",
+        "_private.Init.Data.Range.Polymorphic.Nat.0.Std.PRange.instLawfulUpwardEnumerableNat._proof_1",
+        "Std.PRange.instLawfulUpwardEnumerableNat",
+        "_private.Init.Data.Range.Polymorphic.Instances.0.Std.Rxc.instIsAlwaysFiniteOfLawfulHasSize._proof_4",
+        "_private.Init.Data.Range.Polymorphic.Instances.0.Std.Rxc.instIsAlwaysFiniteOfLawfulHasSize._proof_5",
+        "Std.Rxc.instIsAlwaysFiniteOfLawfulHasSize",
+        "_private.Init.Data.Range.Polymorphic.Nat.0.Std.PRange.instLawfulHasSizeNat._proof_1",
+        "Lean.Omega.LinearCombo.coordinate_eval_4",
+        "Lean.Omega.LinearCombo.coordinate_eval_3",
+        "_private.Init.Data.Range.Polymorphic.Nat.0.Std.PRange.instLawfulHasSizeNat._proof_2",
+        "Std.PRange.instLawfulHasSizeNat",
+        "Std.PRange.instIsAlwaysFiniteNat",
+        "getElem?_neg",
+        "Array.instLawfulGetElemNatLtSize",
+        "Array.getD_eq_getD_getElem?",
+        "LawfulMonad.mk'._auto_1",
+        "LawfulMonad.mk'._auto_3",
+        "LawfulMonad.mk'._auto_5",
+        "LawfulMonad.mk'._auto_7"
+      ]
+    },
+    {
+      "feature": "resource limit exceeded: per-declaration clone-fuel budget",
+      "count": 175,
+      "decls_capped": true,
+      "decls": [
+        "Array.foldlM_toList.aux._unary",
+        "_private.Init.Data.String.Decode.0.ByteArray.utf8DecodeChar?.helper₃",
+        "String.utf8EncodeChar_eq_utf8EncodeCharFast",
+        "_private.Init.Data.Array.Extract.0.Array.extract_append_extract._proof_1_1",
+        "_private.Init.Data.Array.Extract.0.Array.extract_append_extract._proof_1_3",
+        "_private.Init.Data.Array.Extract.0.Array.extract_extract._proof_1_1",
+        "_private.Init.Data.Array.Extract.0.Array.extract_append._proof_1_1",
+        "_private.Init.Data.Array.Extract.0.Array.extract_append._proof_1_4",
+        "_private.Init.Data.Array.Extract.0.Array.extract_append._proof_1_3",
+        "USize.toUInt16_add",
+        "Std.IterM.toList_filterMapM_map",
+        "_private.Init.Data.Fin.Fold.0.Fin.foldrM.loop._unary.eq_def",
+        "USize.toUInt64_eq_mod_usizeSize_iff",
+        "UInt64.toUSize_add",
+        "UInt8.toUInt64_add",
+        "UInt64.succ?_ofBitVec",
+        "Std.IterM.DefaultConsumers.forIn'_eq_match_step",
+        "Std.IterM.step_filterMap",
+        "UInt32.succ?_ofBitVec",
+        "UInt64.toUInt32_toUInt16",
+        "UInt64.toUInt32_mul",
+        "UInt32.toFin_shiftLeft",
+        "_private.Init.Data.Iterators.Lemmas.Combinators.Monadic.FilterMap.0.Std.IterM.toList_filterMapWithPostcondition_filterMapWithPostcondition'",
+        "Std.IterM.DefaultConsumers.forIn'.wf._unary.eq_def",
+        "_private.Init.Data.Range.Polymorphic.RangeIterator.0.Std.Rxi.Iterator.instIteratorLoop.loopWf_eq._unary",
+        "UInt64.toUInt16_toUInt32",
+        "Int8.toUInt8_not",
+        "_private.Init.Data.Dyadic.Basic.0.Dyadic.toRat_mul._proof_1_8",
+        "USize.toUInt32_eq",
+        "_private.Init.Data.Range.Polymorphic.RangeIterator.0.Std.Rxc.Iterator.instIteratorLoop.loop_eq_wf",
+        "_private.Init.Data.Range.Polymorphic.RangeIterator.0.Std.Rxc.Iterator.instIteratorLoop.loopWf_eq._unary",
+        "Lean.Grind.Linarith.Poly.denote_insert"
+      ]
+    },
+    {
+      "feature": "declaration materializes too large (per-declaration budget)",
+      "count": 2,
+      "decls_capped": false,
+      "decls": [
+        "_private.Init.Data.String.Lemmas.Pattern.String.ForwardSearcher.0.String.Slice.Pattern.Model.ForwardSliceSearcher.Invariants.isValidSearchFrom_toList",
+        "WellFounded.partialExtrinsicFix₃_eq_partialExtrinsicFix"
+      ]
+    }
+  ],
+  "rejected": []
+}

@@ -460,6 +460,7 @@ impl JavaBackend {
     pub(super) fn compile_lit(&self, lit: &LcnfLit) -> JavaExpr {
         match lit {
             LcnfLit::Nat(n) => JavaExpr::Lit(JavaLit::Long(*n as i64)),
+            LcnfLit::Int(i) => JavaExpr::Lit(JavaLit::Long(*i)),
             LcnfLit::Str(s) => JavaExpr::Lit(JavaLit::Str(s.clone())),
         }
     }

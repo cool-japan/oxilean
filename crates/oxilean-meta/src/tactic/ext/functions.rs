@@ -10,6 +10,7 @@ use super::types::{
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::discr_tree::DiscrTree;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 
 /// Default priority for extensionality lemmas.
@@ -285,11 +286,11 @@ pub(super) fn known_struct_ext(name: &Name) -> Option<StructExtInfo> {
 pub(super) fn mk_eq_expr(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
     let eq = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(Box::new(eq), Box::new(ty))),
-            Box::new(lhs),
+        Node::new(Expr::App(
+            Node::new(Expr::App(Node::new(eq), Node::new(ty))),
+            Node::new(lhs),
         )),
-        Box::new(rhs),
+        Node::new(rhs),
     )
 }
 /// Build a DiscrTree lookup pattern `@Eq <TypeHead> _ _` for a given type head.
@@ -300,18 +301,26 @@ pub(super) fn mk_eq_pattern(type_head: &str) -> Expr {
 /// Build `@Iff P Q`.
 pub(super) fn mk_iff_expr(p: Expr, q: Expr) -> Expr {
     let iff = Expr::Const(Name::str("Iff"), vec![]);
-    Expr::App(Box::new(Expr::App(Box::new(iff), Box::new(p))), Box::new(q))
+    Expr::App(
+        Node::new(Expr::App(Node::new(iff), Node::new(p))),
+        Node::new(q),
+    )
 }
 /// Build `∀ (x : α), body` (a Pi type).
 pub(super) fn mk_forall(name: Name, domain: Expr, body: Expr) -> Expr {
-    Expr::Pi(BinderInfo::Default, name, Box::new(domain), Box::new(body))
+    Expr::Pi(
+        BinderInfo::Default,
+        name,
+        Node::new(domain),
+        Node::new(body),
+    )
 }
 /// Build `@Membership.mem _ _ _ element set`.
 pub(super) fn mk_mem_expr(element: Expr, set: Expr) -> Expr {
     let mem = Expr::Const(Name::str("Membership.mem"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(mem), Box::new(element))),
-        Box::new(set),
+        Node::new(Expr::App(Node::new(mem), Node::new(element))),
+        Node::new(set),
     )
 }
 /// Substitute BVar(idx) with `replacement` in `expr`.
@@ -329,27 +338,32 @@ pub(super) fn substitute_bvar(expr: &Expr, idx: u32, replacement: &Expr) -> Expr
         Expr::App(f, a) => {
             let f2 = substitute_bvar(f, idx, replacement);
             let a2 = substitute_bvar(a, idx, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Lam(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Pi(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(name, ty, val, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let val2 = substitute_bvar(val, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                name.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(name, i, e) => {
             let e2 = substitute_bvar(e, idx, replacement);
-            Expr::Proj(name.clone(), *i, Box::new(e2))
+            Expr::Proj(name.clone(), *i, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -416,23 +430,23 @@ pub(super) fn apply_funext(
     let intro_name = user_name.unwrap_or(codomain_binder_name);
     let fvar_id = ctx.mk_local_decl(intro_name.clone(), domain.clone(), BinderInfo::Default);
     let x = Expr::FVar(fvar_id);
-    let lhs_app = Expr::App(Box::new(eq_info.lhs.clone()), Box::new(x.clone()));
-    let rhs_app = Expr::App(Box::new(eq_info.rhs.clone()), Box::new(x.clone()));
+    let lhs_app = Expr::App(Node::new(eq_info.lhs.clone()), Node::new(x.clone()));
+    let rhs_app = Expr::App(Node::new(eq_info.rhs.clone()), Node::new(x.clone()));
     let codomain = compute_codomain(&eq_info.eq_type, &x);
     let new_target = mk_eq_expr(codomain, lhs_app, rhs_app);
     let (new_goal_id, new_goal_expr) = ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
     let proof_body = Expr::Lam(
         BinderInfo::Default,
         intro_name,
-        Box::new(domain),
-        Box::new(new_goal_expr),
+        Node::new(domain),
+        Node::new(new_goal_expr),
     );
     let funext_proof = Expr::App(
-        Box::new(Expr::Const(
+        Node::new(Expr::Const(
             Name::str("funext"),
             vec![Level::zero(), Level::zero()],
         )),
-        Box::new(proof_body),
+        Node::new(proof_body),
     );
     ctx.assign_mvar(goal, funext_proof);
     state.replace_goal(vec![new_goal_id]);
@@ -473,12 +487,12 @@ pub(super) fn apply_propext(
     let (bwd_id, bwd_expr) = ctx.mk_fresh_expr_mvar(backward_ty, MetavarKind::Natural);
     let iff_intro = Expr::Const(Name::str("Iff.intro"), vec![]);
     let iff_proof = Expr::App(
-        Box::new(Expr::App(Box::new(iff_intro), Box::new(fwd_expr))),
-        Box::new(bwd_expr),
+        Node::new(Expr::App(Node::new(iff_intro), Node::new(fwd_expr))),
+        Node::new(bwd_expr),
     );
     let propext_proof = Expr::App(
-        Box::new(Expr::Const(Name::str("propext"), vec![])),
-        Box::new(iff_proof),
+        Node::new(Expr::Const(Name::str("propext"), vec![])),
+        Node::new(iff_proof),
     );
     ctx.assign_mvar(goal, propext_proof);
     state.replace_goal(vec![fwd_id, bwd_id]);
@@ -502,12 +516,12 @@ pub(super) fn apply_set_ext(
     let new_target = mk_forall(var_name.clone(), elem_type, iff_goal);
     let (new_goal_id, new_goal_expr) = ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
     let set_ext_proof = Expr::App(
-        Box::new(Expr::Const(Name::str("Set.ext"), vec![Level::zero()])),
-        Box::new(Expr::Lam(
+        Node::new(Expr::Const(Name::str("Set.ext"), vec![Level::zero()])),
+        Node::new(Expr::Lam(
             BinderInfo::Default,
             var_name,
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(new_goal_expr),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(new_goal_expr),
         )),
     );
     ctx.assign_mvar(goal, set_ext_proof);
@@ -535,7 +549,7 @@ pub(super) fn apply_struct_ext(
     let ext_name = Name::str(format!("{}.ext", struct_info.struct_name));
     let mut proof = Expr::Const(ext_name, vec![Level::zero()]);
     for fp in &field_proofs {
-        proof = Expr::App(Box::new(proof), Box::new(fp.clone()));
+        proof = Expr::App(Node::new(proof), Node::new(fp.clone()));
     }
     ctx.assign_mvar(goal, proof);
     state.replace_goal(new_goal_ids.clone());
@@ -555,7 +569,7 @@ pub(super) fn apply_custom_ext(
     for _ in 0..params {
         let (arg_id, arg_expr) = ctx.mk_fresh_expr_mvar(sort_ty.clone(), MetavarKind::Natural);
         new_goal_ids.push(arg_id);
-        app = Expr::App(Box::new(app), Box::new(arg_expr));
+        app = Expr::App(Node::new(app), Node::new(arg_expr));
     }
     ctx.assign_mvar(goal, app);
     state.replace_goal(new_goal_ids.clone());
@@ -686,8 +700,8 @@ pub(super) fn apply_ext_step(
         let (bwd_id, bwd_expr) = ctx.mk_fresh_expr_mvar(backward_ty, MetavarKind::Natural);
         let iff_intro = Expr::Const(Name::str("Iff.intro"), vec![]);
         let proof = Expr::App(
-            Box::new(Expr::App(Box::new(iff_intro), Box::new(fwd_expr))),
-            Box::new(bwd_expr),
+            Node::new(Expr::App(Node::new(iff_intro), Node::new(fwd_expr))),
+            Node::new(bwd_expr),
         );
         ctx.assign_mvar(goal, proof);
         state.replace_goal(vec![fwd_id, bwd_id]);
@@ -825,8 +839,8 @@ mod tests {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat()),
-            Box::new(nat()),
+            Node::new(nat()),
+            Node::new(nat()),
         )
     }
     fn mk_eq_nat(lhs: Expr, rhs: Expr) -> Expr {
@@ -1206,8 +1220,8 @@ mod tests {
     fn test_ext_set_eq() {
         let mut ctx = mk_ctx();
         let set_nat = Expr::App(
-            Box::new(Expr::Const(Name::str("Set"), vec![])),
-            Box::new(nat()),
+            Node::new(Expr::Const(Name::str("Set"), vec![])),
+            Node::new(nat()),
         );
         let goal_ty = mk_eq_expr(set_nat, const_expr("S"), const_expr("T"));
         let (_id, mut state) = mk_goal(&mut ctx, goal_ty);
@@ -1218,11 +1232,11 @@ mod tests {
     fn test_ext_struct_eq() {
         let mut ctx = mk_ctx();
         let prod_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                Box::new(nat()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                Node::new(nat()),
             )),
-            Box::new(nat()),
+            Node::new(nat()),
         );
         let goal_ty = mk_eq_expr(prod_ty, const_expr("a"), const_expr("b"));
         let (_id, mut state) = mk_goal(&mut ctx, goal_ty);
@@ -1342,10 +1356,10 @@ mod tests {
     }
     #[test]
     fn test_substitute_bvar_in_app() {
-        let body = Expr::App(Box::new(Expr::BVar(0)), Box::new(const_expr("y")));
+        let body = Expr::App(Node::new(Expr::BVar(0)), Node::new(const_expr("y")));
         let replacement = const_expr("x");
         let result = substitute_bvar(&body, 0, &replacement);
-        let expected = Expr::App(Box::new(const_expr("x")), Box::new(const_expr("y")));
+        let expected = Expr::App(Node::new(const_expr("x")), Node::new(const_expr("y")));
         assert_eq!(result, expected);
     }
     #[test]

@@ -58,19 +58,19 @@ impl PlatformCaps {
         caps.threads && caps.file_io && caps.env_vars && caps.heap
     }
 }
-/// A simple timer abstraction backed by `std::time::Instant` in std builds.
+/// A simple timer abstraction backed by `crate::wall_clock::Instant` in std builds.
 ///
 /// In a `no_std` build this would be backed by a hardware counter.
 #[allow(dead_code)]
 pub struct CrossPlatformTimer {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl CrossPlatformTimer {
     /// Starts a new timer.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
         }
     }
     /// Returns elapsed time in microseconds.
@@ -83,7 +83,7 @@ impl CrossPlatformTimer {
     }
     /// Resets the timer.
     pub fn reset(&mut self) {
-        self.start = std::time::Instant::now();
+        self.start = crate::wall_clock::Instant::now();
     }
 }
 /// Provides information about the current compilation target platform.

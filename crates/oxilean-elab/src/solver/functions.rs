@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::infer::{Constraint, MetaVarId};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Literal, Name};
 use std::collections::HashMap;
 
@@ -93,31 +94,31 @@ pub fn apply_assignments_impl(expr: &Expr, assignments: &HashMap<MetaVarId, Expr
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(apply_assignments_impl(f, assignments)),
-            Box::new(apply_assignments_impl(a, assignments)),
+            Node::new(apply_assignments_impl(f, assignments)),
+            Node::new(apply_assignments_impl(a, assignments)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(apply_assignments_impl(ty, assignments)),
-            Box::new(apply_assignments_impl(body, assignments)),
+            Node::new(apply_assignments_impl(ty, assignments)),
+            Node::new(apply_assignments_impl(body, assignments)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(apply_assignments_impl(ty, assignments)),
-            Box::new(apply_assignments_impl(body, assignments)),
+            Node::new(apply_assignments_impl(ty, assignments)),
+            Node::new(apply_assignments_impl(body, assignments)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(apply_assignments_impl(ty, assignments)),
-            Box::new(apply_assignments_impl(val, assignments)),
-            Box::new(apply_assignments_impl(body, assignments)),
+            Node::new(apply_assignments_impl(ty, assignments)),
+            Node::new(apply_assignments_impl(val, assignments)),
+            Node::new(apply_assignments_impl(body, assignments)),
         ),
         Expr::Proj(name, idx, inner) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(apply_assignments_impl(inner, assignments)),
+            Node::new(apply_assignments_impl(inner, assignments)),
         ),
         _ => expr.clone(),
     }
@@ -161,14 +162,14 @@ mod tests {
     #[test]
     fn test_solve_equal() {
         let mut solver = ConstraintSolver::new();
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         solver.add_constraint(Constraint::Equal(e.clone(), e));
         assert!(solver.solve().is_ok());
     }
     #[test]
     fn test_solve_assign() {
         let mut solver = ConstraintSolver::new();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         solver.add_constraint(Constraint::Assign(1, expr.clone()));
         solver.solve().expect("test operation should succeed");
         assert_eq!(solver.get_assignment(1), Some(&expr));
@@ -182,9 +183,9 @@ mod tests {
     #[test]
     fn test_unify_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(42));
-        let e1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let e2 = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(42));
+        let e1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let e2 = Expr::App(Node::new(f), Node::new(a));
         assert!(is_unifiable(&e1, &e2));
     }
     #[test]
@@ -197,14 +198,14 @@ mod tests {
     #[test]
     fn test_priority_solver_add_normal() {
         let mut solver = PrioritySolver::new();
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         solver.add_normal(Constraint::Equal(e.clone(), e));
         assert_eq!(solver.pending_count(), 1);
     }
     #[test]
     fn test_priority_solver_solve_assign() {
         let mut solver = PrioritySolver::new();
-        let expr = Expr::Lit(Literal::Nat(99));
+        let expr = Expr::Lit(Literal::nat(99));
         solver.add_urgent_assign(42, expr.clone());
         solver.solve().expect("test operation should succeed");
         assert_eq!(solver.get_assignment(42), Some(&expr));
@@ -273,8 +274,8 @@ mod tests {
     fn test_apply_assignments_app() {
         let assignments = HashMap::new();
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         let result = apply_assignments_impl(&e, &assignments);
         assert_eq!(result, e);
@@ -291,7 +292,7 @@ mod tests {
     #[test]
     fn test_priority_solver_equal_literals() {
         let mut solver = PrioritySolver::new();
-        let e = Expr::Lit(Literal::Nat(7));
+        let e = Expr::Lit(Literal::nat(7));
         solver.add_normal(Constraint::Equal(e.clone(), e));
         assert!(solver.solve().is_ok());
         assert_eq!(solver.num_solved, 1);
@@ -489,7 +490,7 @@ mod incremental_tests {
     #[test]
     fn test_incremental_solver_solve_assign() {
         let mut s = IncrementalSolver::new();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         s.add(Constraint::Assign(1, expr.clone()));
         s.step();
         assert_eq!(s.get_assignment(1), Some(&expr));
@@ -512,8 +513,8 @@ mod incremental_tests {
     #[test]
     fn test_incremental_solver_solve_all() {
         let mut s = IncrementalSolver::new();
-        s.add(Constraint::Assign(1, Expr::Lit(Literal::Nat(1))));
-        s.add(Constraint::Assign(2, Expr::Lit(Literal::Nat(2))));
+        s.add(Constraint::Assign(1, Expr::Lit(Literal::nat(1))));
+        s.add(Constraint::Assign(2, Expr::Lit(Literal::nat(2))));
         s.solve_all();
         assert!(s.is_complete());
         assert_eq!(s.num_solved, 2);
@@ -622,7 +623,7 @@ mod constraint_queue_tests {
         Expr::Sort(Level::zero())
     }
     fn nat_lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn meta(id: u64) -> Expr {
         Expr::FVar(FVarId(MVAR_OFFSET + id))
@@ -849,7 +850,7 @@ mod solver_ext_tests {
     #[test]
     fn test_occurs_check_in_app() {
         let assignments = HashMap::new();
-        let app = Expr::App(Box::new(nat_const()), Box::new(meta(0)));
+        let app = Expr::App(Node::new(nat_const()), Node::new(meta(0)));
         assert!(OccursCheck::occurs(0, &app, &assignments));
         assert!(!OccursCheck::occurs(1, &app, &assignments));
     }

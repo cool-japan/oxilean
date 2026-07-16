@@ -1,0 +1,1814 @@
+{"name": "Nat", "verdict": "verified", "detail": null}
+{"name": "LT", "verdict": "verified", "detail": null}
+{"name": "LT.lt", "verdict": "verified", "detail": null}
+{"name": "Nat.le", "verdict": "verified", "detail": null}
+{"name": "Nat.lt", "verdict": "verified", "detail": null}
+{"name": "instLTNat", "verdict": "verified", "detail": null}
+{"name": "Fin", "verdict": "verified", "detail": null}
+{"name": "Eq", "verdict": "verified", "detail": null}
+{"name": "HEq", "verdict": "verified", "detail": null}
+{"name": "Fin.casesOn", "verdict": "verified", "detail": null}
+{"name": "Fin.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Eq.ndrec", "verdict": "verified", "detail": null}
+{"name": "cast", "verdict": "verified", "detail": null}
+{"name": "rfl", "verdict": "verified", "detail": null}
+{"name": "eq_of_heq", "verdict": "verified", "detail": null}
+{"name": "Fin.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Pow", "verdict": "verified", "detail": null}
+{"name": "Pow.casesOn", "verdict": "verified", "detail": null}
+{"name": "Pow.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Pow.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Nat.casesOn", "verdict": "verified", "detail": null}
+{"name": "False", "verdict": "verified", "detail": null}
+{"name": "False.elim", "verdict": "verified", "detail": null}
+{"name": "Nat.le.casesOn", "verdict": "verified", "detail": null}
+{"name": "Bool", "verdict": "verified", "detail": null}
+{"name": "True", "verdict": "verified", "detail": null}
+{"name": "PUnit", "verdict": "verified", "detail": null}
+{"name": "PProd", "verdict": "verified", "detail": null}
+{"name": "Nat.below", "verdict": "verified", "detail": null}
+{"name": "Nat.brecOn.go", "verdict": "verified", "detail": null}
+{"name": "Nat.brecOn", "verdict": "verified", "detail": null}
+{"name": "Unit", "verdict": "verified", "detail": null}
+{"name": "Unit.unit", "verdict": "verified", "detail": null}
+{"name": "Nat.beq.match_1", "verdict": "verified", "detail": null}
+{"name": "Nat.beq._f", "verdict": "verified", "detail": null}
+{"name": "Nat.beq", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.noConfusion_of_Nat.aux.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.noConfusion_of_Nat.aux._f", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.noConfusion_of_Nat.aux", "verdict": "verified", "detail": null}
+{"name": "congrArg", "verdict": "verified", "detail": null}
+{"name": "noConfusion_of_Nat", "verdict": "verified", "detail": null}
+{"name": "Nat.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Nat.div.go.match_1", "verdict": "verified", "detail": null}
+{"name": "outParam", "verdict": "verified", "detail": null}
+{"name": "HPow", "verdict": "verified", "detail": null}
+{"name": "HPow.hPow", "verdict": "verified", "detail": null}
+{"name": "Pow.pow", "verdict": "verified", "detail": null}
+{"name": "instHPow", "verdict": "verified", "detail": null}
+{"name": "NatPow", "verdict": "verified", "detail": null}
+{"name": "NatPow.pow", "verdict": "verified", "detail": null}
+{"name": "instPowNat", "verdict": "verified", "detail": null}
+{"name": "OfNat", "verdict": "verified", "detail": null}
+{"name": "OfNat.ofNat", "verdict": "verified", "detail": null}
+{"name": "instOfNatNat", "verdict": "verified", "detail": null}
+{"name": "Nat.pow.match_1", "verdict": "verified", "detail": null}
+{"name": "Nat.mul.match_1", "verdict": "verified", "detail": null}
+{"name": "Nat.add.match_1", "verdict": "verified", "detail": null}
+{"name": "Nat.add._f", "verdict": "verified", "detail": null}
+{"name": "Nat.add", "verdict": "verified", "detail": null}
+{"name": "Nat.mul._f", "verdict": "verified", "detail": null}
+{"name": "Nat.mul", "verdict": "verified", "detail": null}
+{"name": "Nat.pow._f", "verdict": "verified", "detail": null}
+{"name": "Nat.pow", "verdict": "verified", "detail": null}
+{"name": "instNatPowNat", "verdict": "verified", "detail": null}
+{"name": "BitVec", "verdict": "verified", "detail": null}
+{"name": "UInt8", "verdict": "verified", "detail": null}
+{"name": "Fin.val", "verdict": "verified", "detail": null}
+{"name": "BitVec.toFin", "verdict": "verified", "detail": null}
+{"name": "BitVec.toNat", "verdict": "verified", "detail": null}
+{"name": "instLTBitVec", "verdict": "verified", "detail": null}
+{"name": "UInt8.toBitVec", "verdict": "verified", "detail": null}
+{"name": "UInt8.lt", "verdict": "verified", "detail": null}
+{"name": "Or", "verdict": "verified", "detail": null}
+{"name": "Or.casesOn", "verdict": "verified", "detail": null}
+{"name": "List", "verdict": "verified", "detail": null}
+{"name": "Array", "verdict": "verified", "detail": null}
+{"name": "ByteArray", "verdict": "verified", "detail": null}
+{"name": "UInt32", "verdict": "verified", "detail": null}
+{"name": "And", "verdict": "verified", "detail": null}
+{"name": "Nat.isValidChar", "verdict": "verified", "detail": null}
+{"name": "UInt32.toBitVec", "verdict": "verified", "detail": null}
+{"name": "UInt32.toNat", "verdict": "verified", "detail": null}
+{"name": "UInt32.isValidChar", "verdict": "verified", "detail": null}
+{"name": "Char", "verdict": "verified", "detail": null}
+{"name": "List.below", "verdict": "verified", "detail": null}
+{"name": "List.brecOn.go", "verdict": "verified", "detail": null}
+{"name": "List.brecOn", "verdict": "verified", "detail": null}
+{"name": "List.casesOn", "verdict": "verified", "detail": null}
+{"name": "List.toByteArray.match_1", "verdict": "verified", "detail": null}
+{"name": "ByteArray.casesOn", "verdict": "verified", "detail": null}
+{"name": "ByteArray.push.match_1", "verdict": "verified", "detail": null}
+{"name": "List.concat.match_1", "verdict": "verified", "detail": null}
+{"name": "List.concat._f", "verdict": "verified", "detail": null}
+{"name": "List.concat", "verdict": "verified", "detail": null}
+{"name": "Array.toList", "verdict": "verified", "detail": null}
+{"name": "Array.push", "verdict": "verified", "detail": null}
+{"name": "ByteArray.push", "verdict": "verified", "detail": null}
+{"name": "List.toByteArray.loop._f", "verdict": "verified", "detail": null}
+{"name": "List.toByteArray.loop", "verdict": "verified", "detail": null}
+{"name": "Array.emptyWithCapacity", "verdict": "verified", "detail": null}
+{"name": "Array.empty", "verdict": "verified", "detail": null}
+{"name": "ByteArray.emptyWithCapacity", "verdict": "verified", "detail": null}
+{"name": "ByteArray.empty", "verdict": "verified", "detail": null}
+{"name": "List.toByteArray", "verdict": "verified", "detail": null}
+{"name": "List.flatten.match_1", "verdict": "verified", "detail": null}
+{"name": "List.append.match_1", "verdict": "verified", "detail": null}
+{"name": "List.append._f", "verdict": "verified", "detail": null}
+{"name": "List.append", "verdict": "verified", "detail": null}
+{"name": "List.flatten._f", "verdict": "verified", "detail": null}
+{"name": "List.flatten", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqList.match_1", "verdict": "verified", "detail": null}
+{"name": "List.map._f", "verdict": "verified", "detail": null}
+{"name": "List.map", "verdict": "verified", "detail": null}
+{"name": "List.flatMap", "verdict": "verified", "detail": null}
+{"name": "Char.val", "verdict": "verified", "detail": null}
+{"name": "Not", "verdict": "verified", "detail": null}
+{"name": "Decidable", "verdict": "verified", "detail": null}
+{"name": "Decidable.casesOn", "verdict": "verified", "detail": null}
+{"name": "ite", "verdict": "verified", "detail": null}
+{"name": "LE", "verdict": "verified", "detail": null}
+{"name": "LE.le", "verdict": "verified", "detail": null}
+{"name": "instLENat", "verdict": "verified", "detail": null}
+{"name": "dite", "verdict": "verified", "detail": null}
+{"name": "Nat.ble.match_1", "verdict": "verified", "detail": null}
+{"name": "Nat.ble._f", "verdict": "verified", "detail": null}
+{"name": "Nat.ble", "verdict": "verified", "detail": null}
+{"name": "DecidableEq", "verdict": "verified", "detail": null}
+{"name": "Bool.casesOn", "verdict": "verified", "detail": null}
+{"name": "Bool.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "Bool.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Bool.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Bool.decEq", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqBool", "verdict": "verified", "detail": null}
+{"name": "Eq.casesOn", "verdict": "verified", "detail": null}
+{"name": "Bool.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.le_of_ble_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.zero_le.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.zero_le._f", "verdict": "verified", "detail": null}
+{"name": "Nat.zero_le", "verdict": "verified", "detail": null}
+{"name": "Nat.le.below", "verdict": "verified", "detail": null}
+{"name": "Nat.le.brecOn", "verdict": "verified", "detail": null}
+{"name": "Nat.le.below.casesOn", "verdict": "verified", "detail": null}
+{"name": "Eq.symm", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.succ_le_succ.match_1_7", "verdict": "verified", "detail": null}
+{"name": "HAdd", "verdict": "verified", "detail": null}
+{"name": "HAdd.hAdd", "verdict": "verified", "detail": null}
+{"name": "Add", "verdict": "verified", "detail": null}
+{"name": "Add.add", "verdict": "verified", "detail": null}
+{"name": "instHAdd", "verdict": "verified", "detail": null}
+{"name": "instAddNat", "verdict": "verified", "detail": null}
+{"name": "Nat.succ_le_succ", "verdict": "verified", "detail": null}
+{"name": "Nat.le_of_ble_eq_true._f", "verdict": "verified", "detail": null}
+{"name": "Nat.le_of_ble_eq_true", "verdict": "verified", "detail": null}
+{"name": "absurd", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.ble_eq_true_of_le.match_1_7", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.ble_self_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.ble_self_eq_true._f", "verdict": "verified", "detail": null}
+{"name": "Nat.ble_self_eq_true", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.ble_succ_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.ble_succ_eq_true._f", "verdict": "verified", "detail": null}
+{"name": "Nat.ble_succ_eq_true", "verdict": "verified", "detail": null}
+{"name": "Nat.ble_eq_true_of_le", "verdict": "verified", "detail": null}
+{"name": "Nat.not_le_of_not_ble_eq_true", "verdict": "verified", "detail": null}
+{"name": "Nat.decLe", "verdict": "verified", "detail": null}
+{"name": "HMod", "verdict": "verified", "detail": null}
+{"name": "HMod.hMod", "verdict": "verified", "detail": null}
+{"name": "Mod", "verdict": "verified", "detail": null}
+{"name": "Mod.mod", "verdict": "verified", "detail": null}
+{"name": "instHMod", "verdict": "verified", "detail": null}
+{"name": "namedPattern", "verdict": "verified", "detail": null}
+{"name": "Nat.mod.match_1", "verdict": "verified", "detail": null}
+{"name": "Nat.decLt", "verdict": "verified", "detail": null}
+{"name": "HSub", "verdict": "verified", "detail": null}
+{"name": "HSub.hSub", "verdict": "verified", "detail": null}
+{"name": "Sub", "verdict": "verified", "detail": null}
+{"name": "Sub.sub", "verdict": "verified", "detail": null}
+{"name": "instHSub", "verdict": "verified", "detail": null}
+{"name": "Nat.pred", "verdict": "verified", "detail": null}
+{"name": "Nat.sub._f", "verdict": "verified", "detail": null}
+{"name": "Nat.sub", "verdict": "verified", "detail": null}
+{"name": "instSubNat", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.le_trans.match_1_10", "verdict": "verified", "detail": null}
+{"name": "Nat.le_trans", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_of_lt_of_le", "verdict": "verified", "detail": null}
+{"name": "And.casesOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.div_rec_lemma.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.sub_lt.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.not_succ_le_self.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Nat.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Nat.not_succ_le_zero", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.pred_le_pred.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.le_succ", "verdict": "verified", "detail": null}
+{"name": "Nat.pred_le_pred", "verdict": "verified", "detail": null}
+{"name": "Nat.le_of_succ_le_succ", "verdict": "verified", "detail": null}
+{"name": "Nat.not_succ_le_self._f", "verdict": "verified", "detail": null}
+{"name": "Nat.not_succ_le_self", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_irrefl", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_succ_of_le", "verdict": "verified", "detail": null}
+{"name": "Nat.le_refl", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.pred_le.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.pred_le", "verdict": "verified", "detail": null}
+{"name": "Nat.sub_le", "verdict": "verified", "detail": null}
+{"name": "Nat.succ_sub_succ_eq_sub", "verdict": "verified", "detail": null}
+{"name": "Nat.sub_lt", "verdict": "verified", "detail": null}
+{"name": "Nat.div_rec_lemma", "verdict": "verified", "detail": null}
+{"name": "Nat.le_of_lt_succ", "verdict": "verified", "detail": null}
+{"name": "Nat.div_rec_fuel_lemma", "verdict": "verified", "detail": null}
+{"name": "Nat.modCore.go._f", "verdict": "verified", "detail": null}
+{"name": "Nat.modCore.go", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_add_one", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_succ_self", "verdict": "verified", "detail": null}
+{"name": "Nat.modCore", "verdict": "verified", "detail": null}
+{"name": "Nat.mod", "verdict": "verified", "detail": null}
+{"name": "Nat.instMod", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.mod_lt.match_1_3", "verdict": "verified", "detail": null}
+{"name": "Nat.zero_lt_succ", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.mod_lt.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.modCore_lt.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.not_lt_zero", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.modCoreGo_lt.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Or.elim.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Or.elim", "verdict": "verified", "detail": null}
+{"name": "id", "verdict": "verified", "detail": null}
+{"name": "Or.resolve_right", "verdict": "verified", "detail": null}
+{"name": "GE.ge", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.lt_or_ge.match_1_5", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.lt_or_ge.match_1_3", "verdict": "verified", "detail": null}
+{"name": "Nat.le_succ_of_le", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.lt_or_ge.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.eq_or_lt_of_le.match_1_3", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.eq_or_lt_of_le.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.eq_or_lt_of_le._f", "verdict": "verified", "detail": null}
+{"name": "Nat.eq_or_lt_of_le", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_or_ge._f", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_or_ge", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_of_not_le", "verdict": "verified", "detail": null}
+{"name": "Nat.modCoreGo_lt", "verdict": "verified", "detail": null}
+{"name": "Nat.modCore_lt", "verdict": "verified", "detail": null}
+{"name": "Nat.mod_lt", "verdict": "verified", "detail": null}
+{"name": "Fin.Internal.ofNat", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.pow_pos.match_1_1", "verdict": "verified", "detail": null}
+{"name": "HMul", "verdict": "verified", "detail": null}
+{"name": "HMul.hMul", "verdict": "verified", "detail": null}
+{"name": "Mul", "verdict": "verified", "detail": null}
+{"name": "Mul.mul", "verdict": "verified", "detail": null}
+{"name": "instHMul", "verdict": "verified", "detail": null}
+{"name": "instMulNat", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.mul_pos.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.add_pos_right.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.add_pos_right", "verdict": "verified", "detail": null}
+{"name": "Nat.mul_pos", "verdict": "verified", "detail": null}
+{"name": "Nat.pow_pos._f", "verdict": "verified", "detail": null}
+{"name": "Nat.pow_pos", "verdict": "verified", "detail": null}
+{"name": "BitVec.ofNat._proof_1", "verdict": "verified", "detail": null}
+{"name": "BitVec.ofNat", "verdict": "verified", "detail": null}
+{"name": "UInt8.ofNat", "verdict": "verified", "detail": null}
+{"name": "HDiv", "verdict": "verified", "detail": null}
+{"name": "HDiv.hDiv", "verdict": "verified", "detail": null}
+{"name": "Div", "verdict": "verified", "detail": null}
+{"name": "Div.div", "verdict": "verified", "detail": null}
+{"name": "instHDiv", "verdict": "verified", "detail": null}
+{"name": "Nat.div.go._f", "verdict": "verified", "detail": null}
+{"name": "Nat.div.go", "verdict": "verified", "detail": null}
+{"name": "Nat.div", "verdict": "verified", "detail": null}
+{"name": "Nat.instDiv", "verdict": "verified", "detail": null}
+{"name": "String.utf8EncodeChar", "verdict": "verified", "detail": null}
+{"name": "List.utf8Encode", "verdict": "verified", "detail": null}
+{"name": "ByteArray.IsValidUTF8", "verdict": "verified", "detail": null}
+{"name": "String", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw", "verdict": "verified", "detail": null}
+{"name": "optParam", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo", "verdict": "verified", "detail": null}
+{"name": "Lean.Name", "verdict": "verified", "detail": null}
+{"name": "Lean.SyntaxNodeKind", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax", "verdict": "unsupported", "detail": "nested inductives"}
+{"name": "Array.mkArray7", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node7", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "semiOutParam", "verdict": "verified", "detail": null}
+{"name": "MonadReaderOf", "verdict": "verified", "detail": null}
+{"name": "MonadReaderOf.read", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.casesOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Dvd", "verdict": "verified", "detail": null}
+{"name": "Dvd.casesOn", "verdict": "verified", "detail": null}
+{"name": "Dvd.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Dvd.noConfusion", "verdict": "verified", "detail": null}
+{"name": "SeqRight", "verdict": "verified", "detail": null}
+{"name": "SeqRight.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Decidable.recOn", "verdict": "verified", "detail": null}
+{"name": "Bind", "verdict": "verified", "detail": null}
+{"name": "instDecidableAnd.match_1", "verdict": "verified", "detail": null}
+{"name": "instDecidableOr.match_1", "verdict": "verified", "detail": null}
+{"name": "instDecidableOr._proof_1", "verdict": "verified", "detail": null}
+{"name": "instDecidableOr", "verdict": "verified", "detail": null}
+{"name": "Inhabited", "verdict": "verified", "detail": null}
+{"name": "Nonempty", "verdict": "verified", "detail": null}
+{"name": "Subtype", "verdict": "verified", "detail": null}
+{"name": "NonemptyType", "verdict": "verified", "detail": null}
+{"name": "Inhabited.default", "verdict": "verified", "detail": null}
+{"name": "instInhabitedNonemptyType", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.MethodsRefPointed", "verdict": "verified", "detail": null}
+{"name": "BEq", "verdict": "verified", "detail": null}
+{"name": "BEq.casesOn", "verdict": "verified", "detail": null}
+{"name": "BEq.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ReaderT", "verdict": "verified", "detail": null}
+{"name": "Subtype.val", "verdict": "verified", "detail": null}
+{"name": "NonemptyType.type", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.MethodsRef", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScope", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Context", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "EStateM.Result", "verdict": "verified", "detail": null}
+{"name": "EStateM", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Exception", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Prod", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroM", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Bind.bind", "verdict": "verified", "detail": null}
+{"name": "Functor", "verdict": "verified", "detail": null}
+{"name": "Pure", "verdict": "verified", "detail": null}
+{"name": "Seq", "verdict": "verified", "detail": null}
+{"name": "SeqLeft", "verdict": "verified", "detail": null}
+{"name": "Applicative", "verdict": "verified", "detail": null}
+{"name": "Monad", "verdict": "verified", "detail": null}
+{"name": "Monad.toBind", "verdict": "verified", "detail": null}
+{"name": "Functor.map", "verdict": "verified", "detail": null}
+{"name": "Applicative.toFunctor", "verdict": "verified", "detail": null}
+{"name": "Monad.toApplicative", "verdict": "verified", "detail": null}
+{"name": "Functor.mapConst", "verdict": "verified", "detail": null}
+{"name": "ReaderT.instFunctorOfMonad", "verdict": "verified", "detail": null}
+{"name": "Pure.pure", "verdict": "verified", "detail": null}
+{"name": "Applicative.toPure", "verdict": "verified", "detail": null}
+{"name": "ReaderT.pure", "verdict": "verified", "detail": null}
+{"name": "Seq.seq", "verdict": "verified", "detail": null}
+{"name": "Applicative.toSeq", "verdict": "verified", "detail": null}
+{"name": "SeqLeft.seqLeft", "verdict": "verified", "detail": null}
+{"name": "Applicative.toSeqLeft", "verdict": "verified", "detail": null}
+{"name": "SeqRight.seqRight", "verdict": "verified", "detail": null}
+{"name": "Applicative.toSeqRight", "verdict": "verified", "detail": null}
+{"name": "ReaderT.instApplicativeOfMonad", "verdict": "verified", "detail": null}
+{"name": "ReaderT.bind", "verdict": "verified", "detail": null}
+{"name": "ReaderT.instMonad", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.casesOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.bind.match_1", "verdict": "verified", "detail": null}
+{"name": "EStateM.map", "verdict": "verified", "detail": null}
+{"name": "Function.comp", "verdict": "verified", "detail": null}
+{"name": "Function.const", "verdict": "verified", "detail": null}
+{"name": "EStateM.pure", "verdict": "verified", "detail": null}
+{"name": "EStateM.bind", "verdict": "verified", "detail": null}
+{"name": "EStateM.seqRight", "verdict": "verified", "detail": null}
+{"name": "EStateM.instMonad", "verdict": "verified", "detail": null}
+{"name": "Option", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "instInhabitedReaderT", "verdict": "verified", "detail": null}
+{"name": "instInhabitedOfMonad", "verdict": "verified", "detail": null}
+{"name": "Pi.instInhabited", "verdict": "verified", "detail": null}
+{"name": "instInhabitedOption", "verdict": "verified", "detail": null}
+{"name": "Lean.instInhabitedName", "verdict": "verified", "detail": null}
+{"name": "instInhabitedBool.default", "verdict": "verified", "detail": null}
+{"name": "instInhabitedBool", "verdict": "verified", "detail": null}
+{"name": "instInhabitedList", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.instInhabitedMethods.default", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.instInhabitedMethods", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.getMethods", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Methods.resolveNamespace", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.resolveNamespace", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "String.toByteArray", "verdict": "verified", "detail": null}
+{"name": "HomogeneousPow", "verdict": "verified", "detail": null}
+{"name": "HomogeneousPow.pow", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.SepArray", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HAdd.recOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Mul.casesOn", "verdict": "verified", "detail": null}
+{"name": "Mul.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Mul.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.below", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.below_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.below_2", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.brecOn_2.go", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.brecOn_2", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.brecOn_2.eq", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Prod.casesOn", "verdict": "verified", "detail": null}
+{"name": "Prod.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Prod.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Eq.subst", "verdict": "verified", "detail": null}
+{"name": "heq_of_eq", "verdict": "verified", "detail": null}
+{"name": "Prod.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instInhabitedSort", "verdict": "verified", "detail": null}
+{"name": "Array.mkEmpty", "verdict": "verified", "detail": null}
+{"name": "Max", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "_private.Init.Prelude.0.Lean.Syntax.setKind.match_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.setKind", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "_private.Init.Prelude.0.Nat.lt_of_le_of_ne.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.le_antisymm.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_of_le_of_lt", "verdict": "verified", "detail": null}
+{"name": "Nat.le_antisymm", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_of_le_of_ne", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.below", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.brecOn.go", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.brecOn", "verdict": "verified", "detail": null}
+{"name": "Neg", "verdict": "verified", "detail": null}
+{"name": "Neg.casesOn", "verdict": "verified", "detail": null}
+{"name": "Neg.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Neg.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadState", "verdict": "verified", "detail": null}
+{"name": "MonadState.modifyGet", "verdict": "verified", "detail": null}
+{"name": "getModify", "verdict": "verified", "detail": null}
+{"name": "Inv", "verdict": "verified", "detail": null}
+{"name": "Inv.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Char.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.get", "verdict": "verified", "detail": null}
+{"name": "getThe", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.set", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.modifyGet", "verdict": "verified", "detail": null}
+{"name": "instMonadStateOfMonadStateOf", "verdict": "verified", "detail": null}
+{"name": "Lean.SyntaxNodeKinds", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.TSepArray", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.TSepArray.elemsAndSeps", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadFunctor", "verdict": "verified", "detail": null}
+{"name": "MonadFunctor.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadFunctor.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "cond.match_1", "verdict": "verified", "detail": null}
+{"name": "cond", "verdict": "verified", "detail": null}
+{"name": "PULift", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadRef.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "UInt64", "verdict": "verified", "detail": null}
+{"name": "Hashable", "verdict": "verified", "detail": null}
+{"name": "Hashable.casesOn", "verdict": "verified", "detail": null}
+{"name": "Bind.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "List.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "List.noConfusion", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "List.instDecidableEqNil", "verdict": "verified", "detail": null}
+{"name": "MonadEvalT", "verdict": "verified", "detail": null}
+{"name": "MonadEvalT.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadEvalT.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MProd", "verdict": "verified", "detail": null}
+{"name": "MProd.casesOn", "verdict": "verified", "detail": null}
+{"name": "MProd.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft", "verdict": "verified", "detail": null}
+{"name": "HEq.rfl", "verdict": "verified", "detail": null}
+{"name": "ReaderT.instMonadFunctor", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "PULift.down", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.ctorElim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.nodeWithAntiquot.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Exception.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Exception.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Exception.ctorElimType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Exception.ctorElim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Exception.unsupportedSyntax.elim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.PrettyPrinter.UnexpandM", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.PrettyPrinter.Unexpander", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Methods.getCurrNamespace", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Name.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.ctorElim", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.num.elim", "verdict": "verified", "detail": null}
+{"name": "UInt64.casesOn", "verdict": "verified", "detail": null}
+{"name": "UInt64.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "UInt64.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt64.ofBitVec.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.TSyntax", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.TSyntaxArray", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.TSyntaxArray.mk", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "OrOp", "verdict": "verified", "detail": null}
+{"name": "OrOp.casesOn", "verdict": "verified", "detail": null}
+{"name": "OrOp.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "OrOp.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadLift", "verdict": "verified", "detail": null}
+{"name": "MonadLift.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadLift.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadLift.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt32.size", "verdict": "verified", "detail": null}
+{"name": "ByteArray.size.match_1", "verdict": "verified", "detail": null}
+{"name": "List.length._f", "verdict": "verified", "detail": null}
+{"name": "List.length", "verdict": "verified", "detail": null}
+{"name": "Array.size", "verdict": "verified", "detail": null}
+{"name": "ByteArray.size", "verdict": "verified", "detail": null}
+{"name": "String.utf8ByteSize", "verdict": "verified", "detail": null}
+{"name": "String.rawEndPos", "verdict": "verified", "detail": null}
+{"name": "String.toRawSubstring", "verdict": "verified", "detail": null}
+{"name": "String.toRawSubstring'", "verdict": "verified", "detail": null}
+{"name": "One", "verdict": "verified", "detail": null}
+{"name": "Pure.casesOn", "verdict": "verified", "detail": null}
+{"name": "Pure.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Zero", "verdict": "verified", "detail": null}
+{"name": "Zero.casesOn", "verdict": "verified", "detail": null}
+{"name": "Zero.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Zero.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Zero.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "EStateM.get", "verdict": "verified", "detail": null}
+{"name": "EStateM.set", "verdict": "verified", "detail": null}
+{"name": "EStateM.modifyGet.match_1", "verdict": "verified", "detail": null}
+{"name": "EStateM.modifyGet", "verdict": "verified", "detail": null}
+{"name": "EStateM.instMonadStateOf", "verdict": "verified", "detail": null}
+{"name": "Lean.TSyntax.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadReaderOf.casesOn", "verdict": "verified", "detail": null}
+{"name": "Option.casesOn", "verdict": "verified", "detail": null}
+{"name": "Option.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Option.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Option.some.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Exception.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Exception.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Exception.error.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "UInt8.casesOn", "verdict": "verified", "detail": null}
+{"name": "UInt8.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "BitVec.casesOn", "verdict": "verified", "detail": null}
+{"name": "BitVec.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqFin.match_1", "verdict": "verified", "detail": null}
+{"name": "decEq", "verdict": "verified", "detail": null}
+{"name": "Nat.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.eq_of_beq_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.eq_of_beq_eq_true._f", "verdict": "verified", "detail": null}
+{"name": "Nat.eq_of_beq_eq_true", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nat.ne_of_beq_eq_false.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.ne_of_beq_eq_false._f", "verdict": "verified", "detail": null}
+{"name": "Nat.ne_of_beq_eq_false", "verdict": "verified", "detail": null}
+{"name": "Nat.decEq", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqNat", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Fin.eq_of_val_eq.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Fin.eq_of_val_eq", "verdict": "verified", "detail": null}
+{"name": "Fin.val_eq_of_eq", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqFin._proof_1", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqFin", "verdict": "verified", "detail": null}
+{"name": "BitVec.decEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "BitVec.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "BitVec.noConfusion", "verdict": "verified", "detail": null}
+{"name": "BitVec.decEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "BitVec.decEq", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqBitVec", "verdict": "verified", "detail": null}
+{"name": "UInt8.decEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "UInt8.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "UInt8.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt8.decEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "UInt8.decEq", "verdict": "verified", "detail": null}
+{"name": "instInhabitedNat", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.instInhabitedState.default", "verdict": "verified", "detail": null}
+{"name": "PLift", "verdict": "verified", "detail": null}
+{"name": "PLift.down", "verdict": "verified", "detail": null}
+{"name": "PLift.down_up", "verdict": "verified", "detail": null}
+{"name": "UInt64.toBitVec", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.TSepArray.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Empty", "verdict": "verified", "detail": null}
+{"name": "Empty.casesOn", "verdict": "verified", "detail": null}
+{"name": "Empty.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkStr", "verdict": "verified", "detail": null}
+{"name": "Applicative.casesOn", "verdict": "verified", "detail": null}
+{"name": "Applicative.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Applicative.noConfusion", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft.shiftLeft", "verdict": "verified", "detail": null}
+{"name": "instHShiftLeftOfShiftLeft", "verdict": "verified", "detail": null}
+{"name": "instLEBitVec", "verdict": "verified", "detail": null}
+{"name": "UInt8.le", "verdict": "verified", "detail": null}
+{"name": "Quot", "verdict": "verified", "detail": null}
+{"name": "Quot.mk", "verdict": "verified", "detail": null}
+{"name": "Quot.lift", "verdict": "verified", "detail": null}
+{"name": "Quot.ind", "verdict": "verified", "detail": null}
+{"name": "instInhabitedForall", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.ctorElim", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.ok.elim", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT.monadLift", "verdict": "verified", "detail": null}
+{"name": "liftM", "verdict": "verified", "detail": null}
+{"name": "MonadLift.monadLift", "verdict": "verified", "detail": null}
+{"name": "instMonadLiftTOfMonadLift", "verdict": "verified", "detail": null}
+{"name": "instMonadLiftT", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef.getRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadFunctorT", "verdict": "verified", "detail": null}
+{"name": "MonadFunctorT.monadMap", "verdict": "verified", "detail": null}
+{"name": "MonadFunctor.monadMap", "verdict": "verified", "detail": null}
+{"name": "instMonadFunctorTOfMonadFunctor", "verdict": "verified", "detail": null}
+{"name": "monadFunctorRefl", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef.withRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.instMonadRefOfMonadLiftOfMonadFunctor", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "SMul", "verdict": "verified", "detail": null}
+{"name": "SMul.casesOn", "verdict": "verified", "detail": null}
+{"name": "SMul.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "SMul.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HOrElse", "verdict": "verified", "detail": null}
+{"name": "MonadEvalT.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "String.casesOn", "verdict": "verified", "detail": null}
+{"name": "String.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.SepArray.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.SepArray.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.SepArray.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.SepArray.mk.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Append", "verdict": "verified", "detail": null}
+{"name": "Append.casesOn", "verdict": "verified", "detail": null}
+{"name": "Append.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HMul.casesOn", "verdict": "verified", "detail": null}
+{"name": "HMul.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Trans", "verdict": "verified", "detail": null}
+{"name": "Trans.casesOn", "verdict": "verified", "detail": null}
+{"name": "Trans.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Trans.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Max.casesOn", "verdict": "verified", "detail": null}
+{"name": "Max.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Max.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Max.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "EStateM.throw", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.save", "verdict": "verified", "detail": null}
+{"name": "EStateM.tryCatch.match_1", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.restore", "verdict": "verified", "detail": null}
+{"name": "EStateM.tryCatch", "verdict": "verified", "detail": null}
+{"name": "EStateM.instMonadExceptOfOfBacktrackable", "verdict": "verified", "detail": null}
+{"name": "HAndThen", "verdict": "verified", "detail": null}
+{"name": "HAndThen.casesOn", "verdict": "verified", "detail": null}
+{"name": "HAndThen.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HAndThen.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf.throw", "verdict": "verified", "detail": null}
+{"name": "throwThe", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.below", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.brecOn.go", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.brecOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.hasMacroScopes.match_1", "verdict": "verified", "detail": null}
+{"name": "BEq.beq", "verdict": "verified", "detail": null}
+{"name": "Decidable.decide", "verdict": "verified", "detail": null}
+{"name": "instBEqOfDecidableEq", "verdict": "verified", "detail": null}
+{"name": "Array.casesOn", "verdict": "verified", "detail": null}
+{"name": "String.decEq.match_3", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq._proof_3", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq.match_3", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq.match_1", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq.match_5", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq._f", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq._proof_4", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq._proof_5", "verdict": "verified", "detail": null}
+{"name": "List.hasDecEq._proof_6", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqList", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqUInt8", "verdict": "verified", "detail": null}
+{"name": "String.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "String.decEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "ByteArray.data", "verdict": "verified", "detail": null}
+{"name": "String.decEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "String.decEq", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqString", "verdict": "verified", "detail": null}
+{"name": "And.right", "verdict": "verified", "detail": null}
+{"name": "instDecidableAnd._proof_1", "verdict": "verified", "detail": null}
+{"name": "And.left", "verdict": "verified", "detail": null}
+{"name": "instDecidableAnd._proof_2", "verdict": "verified", "detail": null}
+{"name": "instDecidableAnd", "verdict": "verified", "detail": null}
+{"name": "BitVec.ofNatLT", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.isValidChar_UInt32.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nat.lt_trans", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.of_decide_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.ne_true_of_eq_false.match_1_1", "verdict": "verified", "detail": null}
+{"name": "ne_true_of_eq_false", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.decide_eq_false.match_1_1", "verdict": "verified", "detail": null}
+{"name": "decide_eq_false", "verdict": "verified", "detail": null}
+{"name": "of_decide_eq_true", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.isValidChar_UInt32", "verdict": "verified", "detail": null}
+{"name": "Char.ofNatAux._private_1", "verdict": "verified", "detail": null}
+{"name": "Char.ofNatAux", "verdict": "verified", "detail": null}
+{"name": "Char.ofNat._proof_1", "verdict": "verified", "detail": null}
+{"name": "Char.ofNat._proof_2", "verdict": "verified", "detail": null}
+{"name": "Char.ofNat", "verdict": "verified", "detail": null}
+{"name": "String.ofList._proof_1", "verdict": "verified", "detail": null}
+{"name": "String.ofList", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.hasMacroScopes._f", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.hasMacroScopes", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractMacroScopesAux.match_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractImported.match_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.assembleParts.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkNum", "verdict": "verified", "detail": null}
+{"name": "panicCore", "verdict": "verified", "detail": null}
+{"name": "panic", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.assembleParts._f", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.assembleParts", "verdict": "verified", "detail": null}
+{"name": "Lean.instInhabitedMacroScopesView", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractImported._f", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractImported", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractMainModule._f", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractMainModule", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractMacroScopesAux._f", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.extractMacroScopesAux", "verdict": "verified", "detail": null}
+{"name": "Lean.extractMacroScopes", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Name.beq.match_1", "verdict": "verified", "detail": null}
+{"name": "Bool.and.match_1", "verdict": "verified", "detail": null}
+{"name": "Bool.and", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.beq._f", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.beq", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.instBEq", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.ctx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.MacroScopesView.review.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.scopes", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.name", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.appendCore.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.appendCore._f", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.appendCore", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.imported", "verdict": "verified", "detail": null}
+{"name": "List.foldl.match_1", "verdict": "verified", "detail": null}
+{"name": "List.foldl._f", "verdict": "verified", "detail": null}
+{"name": "List.foldl", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.review", "verdict": "verified", "detail": null}
+{"name": "Lean.addMacroScope", "verdict": "verified", "detail": null}
+{"name": "AndThen", "verdict": "verified", "detail": null}
+{"name": "False.casesOn", "verdict": "verified", "detail": null}
+{"name": "Add.casesOn", "verdict": "verified", "detail": null}
+{"name": "Add.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "LT.casesOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.SourceInfo.fromRef.match_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.SourceInfo.getPos?.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.getPos?", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Syntax.getHeadInfo?.loop.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.getHeadInfo?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.getHeadInfo", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.getPos?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.getTailPos?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.SourceInfo.fromRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Name.mkStr4", "verdict": "verified", "detail": null}
+{"name": "OrElse", "verdict": "verified", "detail": null}
+{"name": "OrElse.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Context.quotContext", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MacroScopesView.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Except", "verdict": "verified", "detail": null}
+{"name": "Except.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadFunctorT.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.reservedMacroScope", "verdict": "verified", "detail": null}
+{"name": "Lean.firstFrontendMacroScope", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.recOn", "verdict": "verified", "detail": null}
+{"name": "Bind.casesOn", "verdict": "verified", "detail": null}
+{"name": "Bind.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.TSyntax.raw", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Except.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.ofExcept.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadQuotation", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadQuotation.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadQuotation.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadQuotation.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadQuotation.mk.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "And.recOn", "verdict": "verified", "detail": null}
+{"name": "AndOp", "verdict": "verified", "detail": null}
+{"name": "HAnd", "verdict": "verified", "detail": null}
+{"name": "AndOp.and", "verdict": "verified", "detail": null}
+{"name": "instHAndOfAndOp", "verdict": "verified", "detail": null}
+{"name": "HDiv.casesOn", "verdict": "verified", "detail": null}
+{"name": "Add.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Add.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.System.Platform.getNumBits._proof_1", "verdict": "verified", "detail": null}
+{"name": "System.Platform.getNumBits", "verdict": "verified", "detail": null}
+{"name": "System.Platform.numBits", "verdict": "verified", "detail": null}
+{"name": "USize", "verdict": "verified", "detail": null}
+{"name": "USize.casesOn", "verdict": "verified", "detail": null}
+{"name": "USize.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "UInt16", "verdict": "verified", "detail": null}
+{"name": "UInt16.size", "verdict": "verified", "detail": null}
+{"name": "UInt16.ofNatLT", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt16._proof_1", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt16", "verdict": "verified", "detail": null}
+{"name": "Array.mkArray3", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node3", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "ULift", "verdict": "verified", "detail": null}
+{"name": "ULift.down", "verdict": "verified", "detail": null}
+{"name": "ULift.up_down", "verdict": "verified", "detail": null}
+{"name": "OrElse.casesOn", "verdict": "verified", "detail": null}
+{"name": "OrElse.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Functor.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "ULift.casesOn", "verdict": "verified", "detail": null}
+{"name": "ULift.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ULift.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Inv.casesOn", "verdict": "verified", "detail": null}
+{"name": "Inv.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Inv.noConfusion", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft.casesOn", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Min", "verdict": "verified", "detail": null}
+{"name": "XorOp", "verdict": "verified", "detail": null}
+{"name": "XorOp.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadEval", "verdict": "verified", "detail": null}
+{"name": "MonadEval.casesOn", "verdict": "verified", "detail": null}
+{"name": "Array.mkArray1", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Methods.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Methods.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HAnd.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "UInt16.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadWithReaderOf", "verdict": "verified", "detail": null}
+{"name": "MonadWithReaderOf.withReader", "verdict": "verified", "detail": null}
+{"name": "withTheReader", "verdict": "verified", "detail": null}
+{"name": "instMonadWithReaderOfOfMonadFunctor", "verdict": "verified", "detail": null}
+{"name": "HShiftRight", "verdict": "verified", "detail": null}
+{"name": "HShiftRight.casesOn", "verdict": "verified", "detail": null}
+{"name": "Nat.brecOn.eq", "verdict": "verified", "detail": null}
+{"name": "OfNat.casesOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.orElse", "verdict": "verified", "detail": null}
+{"name": "EStateM.instOrElseOfBacktrackable", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkStr1", "verdict": "verified", "detail": null}
+{"name": "Lean.numLitKind", "verdict": "verified", "detail": null}
+{"name": "Char.casesOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Char.ext.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Char.ext", "verdict": "verified", "detail": null}
+{"name": "Char.val_ne_of_ne", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.ctorElim", "verdict": "verified", "detail": null}
+{"name": "HSub.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadFunctorT.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadFunctorT.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadFunctorT.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Monad.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.ctorElimType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.ctorElim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.atom.elim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Sub.casesOn", "verdict": "verified", "detail": null}
+{"name": "Sub.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Sub.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Sub.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "SMul.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "UInt64.size", "verdict": "verified", "detail": null}
+{"name": "UInt64.ofNatLT", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt64._proof_1", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt64", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.ctorElim", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.original.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.synthetic.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.none.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "NatPow.casesOn", "verdict": "verified", "detail": null}
+{"name": "NatPow.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.instInhabitedSyntax", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.instInhabitedTSyntax", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "PProd.casesOn", "verdict": "verified", "detail": null}
+{"name": "PProd.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "PProd.noConfusion", "verdict": "verified", "detail": null}
+{"name": "PProd.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.missing.elim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.node.elim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.ident.elim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.ident.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HomogeneousPow.casesOn", "verdict": "verified", "detail": null}
+{"name": "HomogeneousPow.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HomogeneousPow.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HomogeneousPow.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "USize.noConfusion", "verdict": "verified", "detail": null}
+{"name": "USize.ofBitVec.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Array.mkArray6", "verdict": "verified", "detail": null}
+{"name": "congrFun'", "verdict": "verified", "detail": null}
+{"name": "MonadEvalT.monadEval", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.str", "verdict": "verified", "detail": null}
+{"name": "DecidableRel", "verdict": "verified", "detail": null}
+{"name": "minOfLe", "verdict": "verified", "detail": null}
+{"name": "instLEUInt32", "verdict": "verified", "detail": null}
+{"name": "instDecidableLeBitVec", "verdict": "verified", "detail": null}
+{"name": "UInt32.decLe", "verdict": "verified", "detail": null}
+{"name": "instMinUInt32", "verdict": "verified", "detail": null}
+{"name": "HAppend", "verdict": "verified", "detail": null}
+{"name": "Append.append", "verdict": "verified", "detail": null}
+{"name": "instHAppendOfAppend", "verdict": "verified", "detail": null}
+{"name": "Zero.zero", "verdict": "verified", "detail": null}
+{"name": "MonadWithReaderOf.casesOn", "verdict": "verified", "detail": null}
+{"name": "HSMul", "verdict": "verified", "detail": null}
+{"name": "ULift.down_up", "verdict": "verified", "detail": null}
+{"name": "MonadReader", "verdict": "verified", "detail": null}
+{"name": "MonadReader.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "AndThen.andThen", "verdict": "verified", "detail": null}
+{"name": "instHAndThenOfAndThen", "verdict": "verified", "detail": null}
+{"name": "HMod.casesOn", "verdict": "verified", "detail": null}
+{"name": "HMod.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HMod.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HMod.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadEval.monadEval", "verdict": "verified", "detail": null}
+{"name": "instMonadEvalTOfMonadEval", "verdict": "verified", "detail": null}
+{"name": "Membership", "verdict": "verified", "detail": null}
+{"name": "Membership.casesOn", "verdict": "verified", "detail": null}
+{"name": "Membership.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Bool.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "Bool.ctorElim", "verdict": "verified", "detail": null}
+{"name": "Bool.false.elim", "verdict": "verified", "detail": null}
+{"name": "HOrElse.casesOn", "verdict": "verified", "detail": null}
+{"name": "HOrElse.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.interpolatedStrLitKind", "verdict": "verified", "detail": null}
+{"name": "HAppend.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "OrOp.recOn", "verdict": "verified", "detail": null}
+{"name": "String.hash", "verdict": "verified", "detail": null}
+{"name": "instHashableString", "verdict": "verified", "detail": null}
+{"name": "MonadReader.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadReader.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.brecOn_1.go", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.brecOn_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.brecOn_1.eq", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HDiv.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadState.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadFunctorT.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Array.mkArray8", "verdict": "verified", "detail": null}
+{"name": "MonadWithReader", "verdict": "verified", "detail": null}
+{"name": "Lean.groupKind", "verdict": "verified", "detail": null}
+{"name": "HShiftRight.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HShiftRight.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HShiftRight.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Inhabited.casesOn", "verdict": "verified", "detail": null}
+{"name": "Inhabited.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "SeqLeft.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Char.val_eq_of_eq.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Char.val_eq_of_eq", "verdict": "verified", "detail": null}
+{"name": "Char.ne_of_val_ne", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.TSepArray.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.TSepArray.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.TSepArray.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.TSepArray.mk.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HXor", "verdict": "verified", "detail": null}
+{"name": "HXor.hXor", "verdict": "verified", "detail": null}
+{"name": "HSub.casesOn", "verdict": "verified", "detail": null}
+{"name": "HSub.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HDiv.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HDiv.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Seq.casesOn", "verdict": "verified", "detail": null}
+{"name": "ShiftRight", "verdict": "verified", "detail": null}
+{"name": "Complement", "verdict": "verified", "detail": null}
+{"name": "Complement.recOn", "verdict": "verified", "detail": null}
+{"name": "Prod.snd", "verdict": "verified", "detail": null}
+{"name": "PULift.down_up", "verdict": "verified", "detail": null}
+{"name": "HAndThen.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.cat.elim", "verdict": "verified", "detail": null}
+{"name": "AndThen.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HOrElse.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadQuotation.toMonadRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HAndThen.hAndThen", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Context.maxRecDepth", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.ParserDescr.const.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.unary.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.binary.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.node.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.trailingNode.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.symbol.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.nonReservedSymbol.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.parser.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.sepBy.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.sepBy1.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.unicodeSymbol.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.symbol.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadQuotation.getContext", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadQuotation.getCurrMacroScope", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadQuotation.addMacroScope", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadReader.read", "verdict": "verified", "detail": null}
+{"name": "readThe", "verdict": "verified", "detail": null}
+{"name": "instMonadReaderOfMonadReaderOf", "verdict": "verified", "detail": null}
+{"name": "ReaderT.read", "verdict": "verified", "detail": null}
+{"name": "instMonadReaderOfReaderTOfMonad", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Context.ref", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadWithReader.withReader", "verdict": "verified", "detail": null}
+{"name": "instMonadWithReaderOfMonadWithReaderOf", "verdict": "verified", "detail": null}
+{"name": "instMonadWithReaderOfReaderT", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Context.methods", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Context.currMacroScope", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Context.currRecDepth", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.instMonadRefMacroM", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "instMonadStateOfOfMonadLift", "verdict": "verified", "detail": null}
+{"name": "ReaderT.instMonadLift", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State.macroScope", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State.traceMsgs", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Macro.State.expandedMacroDecls", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.withFreshMacroScope", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.instMonadQuotationMacroM", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.addMacroScope", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.SourceInfo.getTailPos?", "verdict": "verified", "detail": null}
+{"name": "PULift.casesOn", "verdict": "verified", "detail": null}
+{"name": "Complement.casesOn", "verdict": "verified", "detail": null}
+{"name": "Complement.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.ne_false_of_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "ne_false_of_eq_true", "verdict": "verified", "detail": null}
+{"name": "Hashable.recOn", "verdict": "verified", "detail": null}
+{"name": "PEmpty", "verdict": "verified", "detail": null}
+{"name": "PEmpty.casesOn", "verdict": "verified", "detail": null}
+{"name": "HPow.recOn", "verdict": "verified", "detail": null}
+{"name": "ShiftRight.shiftRight", "verdict": "verified", "detail": null}
+{"name": "instHShiftRightOfShiftRight", "verdict": "verified", "detail": null}
+{"name": "PUnit.recOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Applicative.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadWithReaderOf.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Mod.casesOn", "verdict": "verified", "detail": null}
+{"name": "Mod.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Mod.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Nat.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "Nat.ctorElim", "verdict": "verified", "detail": null}
+{"name": "Nat.succ.elim", "verdict": "verified", "detail": null}
+{"name": "Inv.inv", "verdict": "verified", "detail": null}
+{"name": "HAdd.casesOn", "verdict": "verified", "detail": null}
+{"name": "HAdd.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Except.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "USize.size", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.USize.size_eq.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Subtype.property", "verdict": "verified", "detail": null}
+{"name": "System.Platform.numBits_eq", "verdict": "verified", "detail": null}
+{"name": "USize.size_eq", "verdict": "verified", "detail": null}
+{"name": "HXor.recOn", "verdict": "verified", "detail": null}
+{"name": "Hashable.hash", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.nullKind", "verdict": "verified", "detail": null}
+{"name": "Lean.mkNode", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.mkNullNode", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HMul.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "List.recOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Syntax.isIdent.match_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.isIdent", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Fin.recOn", "verdict": "verified", "detail": null}
+{"name": "HAnd.casesOn", "verdict": "verified", "detail": null}
+{"name": "HAnd.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ShiftRight.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.unary.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HOr", "verdict": "verified", "detail": null}
+{"name": "HOr.casesOn", "verdict": "verified", "detail": null}
+{"name": "HOr.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HOr.noConfusion", "verdict": "verified", "detail": null}
+{"name": "OfNat.recOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Syntax.getKind.match_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Name.mkSimple", "verdict": "verified", "detail": null}
+{"name": "Lean.identKind", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.getKind", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "instDecidableEqChar.match_1", "verdict": "verified", "detail": null}
+{"name": "List.get.match_1", "verdict": "verified", "detail": null}
+{"name": "List.get._f", "verdict": "verified", "detail": null}
+{"name": "List.get", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadState.casesOn", "verdict": "verified", "detail": null}
+{"name": "True.recOn", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw.casesOn", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw.noConfusion", "verdict": "verified", "detail": null}
+{"name": "inferInstanceAs", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.nonReservedSymbol.noConfusion", "verdict": "verified", "detail": null}
+{"name": "List.lengthTRAux.match_1", "verdict": "verified", "detail": null}
+{"name": "List.lengthTRAux._f", "verdict": "verified", "detail": null}
+{"name": "List.lengthTRAux", "verdict": "verified", "detail": null}
+{"name": "List.lengthTR", "verdict": "verified", "detail": null}
+{"name": "Option.getD.match_1", "verdict": "verified", "detail": null}
+{"name": "MonadState.recOn", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "OrElse.noConfusion", "verdict": "verified", "detail": null}
+{"name": "OrElse.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "SeqLeft.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods.expandMacro?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "AndOp.casesOn", "verdict": "verified", "detail": null}
+{"name": "AndOp.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Min.min", "verdict": "verified", "detail": null}
+{"name": "instMinNat", "verdict": "verified", "detail": null}
+{"name": "Array.appendCore.loop.match_1", "verdict": "verified", "detail": null}
+{"name": "Array.getInternal", "verdict": "verified", "detail": null}
+{"name": "Array.extract.loop._f", "verdict": "verified", "detail": null}
+{"name": "Array.extract.loop", "verdict": "verified", "detail": null}
+{"name": "Array.extract", "verdict": "verified", "detail": null}
+{"name": "MonadFunctor.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadFunctor.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Trans.recOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.withRef?.match_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "_private.Init.Prelude.0.Lean.replaceRef.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.replaceRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.withRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.withRef?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "ReaderT.mk", "verdict": "verified", "detail": null}
+{"name": "Subtype.casesOn", "verdict": "verified", "detail": null}
+{"name": "Subtype.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft.recOn", "verdict": "verified", "detail": null}
+{"name": "SMul.smul", "verdict": "verified", "detail": null}
+{"name": "instHSMul", "verdict": "verified", "detail": null}
+{"name": "String.noConfusion", "verdict": "verified", "detail": null}
+{"name": "String.ofByteArray.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Nat.succ_pos", "verdict": "verified", "detail": null}
+{"name": "Monad.casesOn", "verdict": "verified", "detail": null}
+{"name": "Monad.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Monad.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Bool.true.elim", "verdict": "verified", "detail": null}
+{"name": "One.casesOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Eq.recOn", "verdict": "verified", "detail": null}
+{"name": "HSMul.hSMul", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.atom.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "AndThen.recOn", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft.casesOn", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Array.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Array.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Array.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt16.casesOn", "verdict": "verified", "detail": null}
+{"name": "UInt16.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "UInt16.decEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "UInt16.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "UInt16.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt16.decEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "UInt16.decEq", "verdict": "verified", "detail": null}
+{"name": "HAppend.hAppend", "verdict": "verified", "detail": null}
+{"name": "Dvd.recOn", "verdict": "verified", "detail": null}
+{"name": "HSMul.casesOn", "verdict": "verified", "detail": null}
+{"name": "Option.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Option.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "Option.ctorElim", "verdict": "verified", "detail": null}
+{"name": "Option.none.elim", "verdict": "verified", "detail": null}
+{"name": "LT.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.anonymous.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.str.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.parser.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Decidable.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Decidable.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Decidable.isTrue.noConfusion", "verdict": "verified", "detail": null}
+{"name": "inferInstance", "verdict": "verified", "detail": null}
+{"name": "Classical.choice", "verdict": "verified", "detail": null}
+{"name": "Classical.ofNonempty._proof_1", "verdict": "verified", "detail": null}
+{"name": "Classical.ofNonempty", "verdict": "verified", "detail": null}
+{"name": "Pi.instNonempty", "verdict": "verified", "detail": null}
+{"name": "UInt32.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.recOn", "verdict": "verified", "detail": null}
+{"name": "One.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "One.noConfusion", "verdict": "verified", "detail": null}
+{"name": "One.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.decide_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "decide_eq_true", "verdict": "verified", "detail": null}
+{"name": "MonadExcept", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.throw", "verdict": "verified", "detail": null}
+{"name": "MonadExceptOf.tryCatch", "verdict": "verified", "detail": null}
+{"name": "tryCatchThe", "verdict": "verified", "detail": null}
+{"name": "instMonadExceptOfMonadExceptOf", "verdict": "verified", "detail": null}
+{"name": "ReaderT.instMonadExceptOf", "verdict": "verified", "detail": null}
+{"name": "EStateM.dummySave", "verdict": "verified", "detail": null}
+{"name": "EStateM.dummyRestore", "verdict": "verified", "detail": null}
+{"name": "EStateM.nonBacktrackable", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.throwError", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.throwErrorAt", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.hygieneInfoKind", "verdict": "verified", "detail": null}
+{"name": "Max.recOn", "verdict": "verified", "detail": null}
+{"name": "instLTUInt8", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.TSyntax.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.TSyntax.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "instTransEq", "verdict": "verified", "detail": null}
+{"name": "HEq.casesOn", "verdict": "verified", "detail": null}
+{"name": "Neg.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.charLitKind", "verdict": "verified", "detail": null}
+{"name": "Sub.recOn", "verdict": "verified", "detail": null}
+{"name": "modify", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Name.hash.match_1", "verdict": "verified", "detail": null}
+{"name": "mixHash", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.hash._f", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.hash", "verdict": "verified", "detail": null}
+{"name": "Lean.instHashableName", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Context.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.ParserDescr.cat.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HAnd.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.isOfKind", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.getNumArgs", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.isNodeOf", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "ULift.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.tryCatch", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.orElse", "verdict": "verified", "detail": null}
+{"name": "UInt32.casesOn", "verdict": "verified", "detail": null}
+{"name": "UInt32.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "UInt32.decEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "UInt32.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "UInt32.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt32.decEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "UInt32.decEq", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State.recOn", "verdict": "verified", "detail": null}
+{"name": "Char.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Array.recOn", "verdict": "verified", "detail": null}
+{"name": "XorOp.casesOn", "verdict": "verified", "detail": null}
+{"name": "XorOp.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ShiftRight.recOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.ok.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadWithReader.recOn", "verdict": "verified", "detail": null}
+{"name": "instInhabitedRaw", "verdict": "verified", "detail": null}
+{"name": "Array.mkArray4", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node4", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Mul.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HMul.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadQuotation.withFreshMacroScope", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.instMonadQuotationOfMonadFunctorOfMonadLift", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MacroScopesView.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.trace", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HDiv.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.hexnumKind", "verdict": "verified", "detail": null}
+{"name": "Char.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt16.recOn", "verdict": "verified", "detail": null}
+{"name": "HOrElse.noConfusion", "verdict": "verified", "detail": null}
+{"name": "AndThen.casesOn", "verdict": "verified", "detail": null}
+{"name": "AndThen.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Complement.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Complement.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Bind.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instLEUInt8", "verdict": "verified", "detail": null}
+{"name": "MonadWithReaderOf.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadWithReaderOf.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadWithReaderOf.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.eraseMacroScopesAux.match_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.eraseMacroScopesAux._f", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.eraseMacroScopesAux", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.eraseMacroScopes", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.getId", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.matchesIdent", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Array.appendCore.loop._f", "verdict": "verified", "detail": null}
+{"name": "Array.appendCore.loop", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.num.noConfusion", "verdict": "verified", "detail": null}
+{"name": "USize.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "USize.decEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "USize.decEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "USize.decEq", "verdict": "verified", "detail": null}
+{"name": "ByteArray.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ByteArray.noConfusion", "verdict": "verified", "detail": null}
+{"name": "List.brecOn.eq", "verdict": "verified", "detail": null}
+{"name": "OfNat.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "OfNat.noConfusion", "verdict": "verified", "detail": null}
+{"name": "OfNat.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Div.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.decl.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft.noConfusion", "verdict": "verified", "detail": null}
+{"name": "SeqRight.casesOn", "verdict": "verified", "detail": null}
+{"name": "SeqRight.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "PLift.casesOn", "verdict": "verified", "detail": null}
+{"name": "PEmpty.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "UInt8.ofBitVec.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instMonadEvalT", "verdict": "verified", "detail": null}
+{"name": "LT.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "LT.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Or.recOn", "verdict": "verified", "detail": null}
+{"name": "HShiftRight.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadReaderOf.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadReaderOf.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadReaderOf.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.SepArray.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Trans.trans", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node8", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Seq.recOn", "verdict": "verified", "detail": null}
+{"name": "Fin.isLt", "verdict": "verified", "detail": null}
+{"name": "Lean.nameLitKind", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Nat.le.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.strLitKind", "verdict": "verified", "detail": null}
+{"name": "Mod.recOn", "verdict": "verified", "detail": null}
+{"name": "Sub.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Monad.recOn", "verdict": "verified", "detail": null}
+{"name": "LT.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HSub.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HSub.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Array.mkArray0", "verdict": "verified", "detail": null}
+{"name": "MonadState.set", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.binary.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt16.ofBitVec.noConfusion", "verdict": "verified", "detail": null}
+{"name": "congr", "verdict": "verified", "detail": null}
+{"name": "Div.casesOn", "verdict": "verified", "detail": null}
+{"name": "Div.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Div.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Except.noConfusion", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw.recOn", "verdict": "verified", "detail": null}
+{"name": "SeqRight.recOn", "verdict": "verified", "detail": null}
+{"name": "Min.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "instNonemptyOfInhabited", "verdict": "verified", "detail": null}
+{"name": "Bool.dcond.match_1", "verdict": "verified", "detail": null}
+{"name": "MonadReader.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Except.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Except.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "Except.ctorElim", "verdict": "verified", "detail": null}
+{"name": "Except.ok.elim", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.brecOn.eq", "verdict": "verified", "detail": null}
+{"name": "LE.casesOn", "verdict": "verified", "detail": null}
+{"name": "USize.ofNatLT", "verdict": "verified", "detail": null}
+{"name": "MonadReaderOf.recOn", "verdict": "verified", "detail": null}
+{"name": "AndThen.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Nat.ctorIdx_zero", "verdict": "verified", "detail": null}
+{"name": "instLTFin", "verdict": "verified", "detail": null}
+{"name": "Fin.decLt", "verdict": "verified", "detail": null}
+{"name": "maxOfLe", "verdict": "verified", "detail": null}
+{"name": "Eq.trans", "verdict": "verified", "detail": null}
+{"name": "XorOp.xor", "verdict": "verified", "detail": null}
+{"name": "instHXorOfXorOp", "verdict": "verified", "detail": null}
+{"name": "Or.intro_left", "verdict": "verified", "detail": null}
+{"name": "instMaxUInt32", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Exception.error.elim", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Seq.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Seq.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Seq.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.recOn", "verdict": "verified", "detail": null}
+{"name": "Inv.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HomogeneousPow.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Inhabited.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.SepArray.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "DecidablePred", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Option.some.elim", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instInhabitedExcept", "verdict": "verified", "detail": null}
+{"name": "instDecidableLtBitVec", "verdict": "verified", "detail": null}
+{"name": "Min.casesOn", "verdict": "verified", "detail": null}
+{"name": "Min.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Min.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instInhabitedRaw_1", "verdict": "verified", "detail": null}
+{"name": "UInt32.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadState.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadState.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadState.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Append.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Bool.or", "verdict": "verified", "detail": null}
+{"name": "PProd.snd", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "modifyGetThe", "verdict": "verified", "detail": null}
+{"name": "Pure.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.throwUnsupported", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.ParserDescr.nodeWithAntiquot.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt32.ofNatLT", "verdict": "verified", "detail": null}
+{"name": "GT.gt", "verdict": "verified", "detail": null}
+{"name": "HOr.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "LE.recOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.SourceInfo.getTrailing?.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.getTrailing?", "verdict": "verified", "detail": null}
+{"name": "Except.ok.noConfusion", "verdict": "verified", "detail": null}
+{"name": "PULift.up_down", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.of_decide_eq_self_eq_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "of_decide_eq_self_eq_true", "verdict": "verified", "detail": null}
+{"name": "HAnd.hAnd", "verdict": "verified", "detail": null}
+{"name": "Lean.TrailingParserDescr", "verdict": "verified", "detail": null}
+{"name": "NatPow.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Char.utf8Size._proof_1", "verdict": "verified", "detail": null}
+{"name": "Char.utf8Size._proof_2", "verdict": "verified", "detail": null}
+{"name": "Char.utf8Size._proof_3", "verdict": "verified", "detail": null}
+{"name": "Char.utf8Size", "verdict": "verified", "detail": null}
+{"name": "HXor.casesOn", "verdict": "verified", "detail": null}
+{"name": "HXor.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HXor.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Array.mkArray5", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node5", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.maxRecDepthErrorMessage", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.withIncRecDepth", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "ByteArray.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Syntax.matchesLit.match_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Array.getD", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.matchesLit", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Zero.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods.mk.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Nat.succ.noConfusion", "verdict": "verified", "detail": null}
+{"name": "PLift.recOn", "verdict": "verified", "detail": null}
+{"name": "Min.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.ofExcept", "verdict": "verified", "detail": null}
+{"name": "Neg.recOn", "verdict": "verified", "detail": null}
+{"name": "Array.appendCore", "verdict": "verified", "detail": null}
+{"name": "Neg.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Functor.casesOn", "verdict": "verified", "detail": null}
+{"name": "Functor.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "SeqLeft.casesOn", "verdict": "verified", "detail": null}
+{"name": "SeqLeft.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "SeqLeft.noConfusion", "verdict": "verified", "detail": null}
+{"name": "SeqLeft.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Div.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Array.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "DecidableLE", "verdict": "verified", "detail": null}
+{"name": "USize.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "BEq.noConfusion", "verdict": "verified", "detail": null}
+{"name": "BEq.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.TSepArray.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Zero.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Functor.recOn", "verdict": "verified", "detail": null}
+{"name": "PProd.recOn", "verdict": "verified", "detail": null}
+{"name": "UInt64.decEq.match_1", "verdict": "verified", "detail": null}
+{"name": "UInt64.decEq._proof_1", "verdict": "verified", "detail": null}
+{"name": "UInt64.decEq._proof_2", "verdict": "verified", "detail": null}
+{"name": "UInt64.decEq", "verdict": "verified", "detail": null}
+{"name": "instTransEq_1", "verdict": "verified", "detail": null}
+{"name": "OrOp.or", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.append.match_1", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.append", "verdict": "verified", "detail": null}
+{"name": "UInt8.recOn", "verdict": "verified", "detail": null}
+{"name": "HAdd.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Pow.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MProd.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MProd.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.casesOn", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.bsize.match_1", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw.byteIdx", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.bsize", "verdict": "verified", "detail": null}
+{"name": "List.instDecidableNilEq", "verdict": "verified", "detail": null}
+{"name": "Neg.neg", "verdict": "verified", "detail": null}
+{"name": "AndThen.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Membership.recOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.USize.size_pos.match_1_1", "verdict": "verified", "detail": null}
+{"name": "USize.size_pos", "verdict": "verified", "detail": null}
+{"name": "modifyThe", "verdict": "verified", "detail": null}
+{"name": "Hashable.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadQuotation.getMainModule", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Char.valid", "verdict": "verified", "detail": null}
+{"name": "Nat.recOn", "verdict": "verified", "detail": null}
+{"name": "instMonadReaderOfOfMonadLift", "verdict": "verified", "detail": null}
+{"name": "PEmpty.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Array.mkArray2", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node2", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Option.map", "verdict": "verified", "detail": null}
+{"name": "HAppend.casesOn", "verdict": "verified", "detail": null}
+{"name": "HAppend.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "HAppend.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Inv.recOn", "verdict": "verified", "detail": null}
+{"name": "Pow.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "LE.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "LE.noConfusion", "verdict": "verified", "detail": null}
+{"name": "LE.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Mod.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.mkAtomFrom", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Applicative.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node6", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "AndOp.noConfusion", "verdict": "verified", "detail": null}
+{"name": "AndOp.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Option.getD", "verdict": "verified", "detail": null}
+{"name": "HSMul.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "sorryAx", "verdict": "verified", "detail": null}
+{"name": "Pure.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqUInt16", "verdict": "verified", "detail": null}
+{"name": "instSMulOfMul", "verdict": "verified", "detail": null}
+{"name": "XorOp.noConfusion", "verdict": "verified", "detail": null}
+{"name": "XorOp.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HAndThen.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.interpolatedStrKind", "verdict": "verified", "detail": null}
+{"name": "List.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.recOn", "verdict": "verified", "detail": null}
+{"name": "ByteArray.recOn", "verdict": "verified", "detail": null}
+{"name": "UInt8.size", "verdict": "verified", "detail": null}
+{"name": "UInt8.ofNatLT", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt8._proof_1", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt8", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.node.noConfusion", "verdict": "verified", "detail": null}
+{"name": "NatPow.noConfusion", "verdict": "verified", "detail": null}
+{"name": "SeqRight.noConfusion", "verdict": "verified", "detail": null}
+{"name": "SeqRight.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Mod.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "EStateM.run", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State.casesOn", "verdict": "verified", "detail": null}
+{"name": "Membership.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "One.one", "verdict": "verified", "detail": null}
+{"name": "Membership.mem", "verdict": "verified", "detail": null}
+{"name": "One.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.brecOn.go", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.brecOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.brecOn.eq", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Pure.recOn", "verdict": "verified", "detail": null}
+{"name": "ReaderT.run", "verdict": "verified", "detail": null}
+{"name": "HShiftRight.recOn", "verdict": "verified", "detail": null}
+{"name": "HMul.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.const.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.TSyntax.mk.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HPow.casesOn", "verdict": "verified", "detail": null}
+{"name": "HPow.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Append.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Append.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Bool.toCtorIdx", "verdict": "verified", "detail": null}
+{"name": "Inhabited.recOn", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft.hShiftLeft", "verdict": "verified", "detail": null}
+{"name": "Lean.TSyntaxArray.raw", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Substring.Raw.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadReader.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Or.resolve_left", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "OrOp.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Nonempty.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadState.get", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.instInhabitedState", "verdict": "verified", "detail": null}
+{"name": "MonadReaderOf.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadWithReader.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadWithReader.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadWithReader.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HAppend.recOn", "verdict": "verified", "detail": null}
+{"name": "False.recOn", "verdict": "verified", "detail": null}
+{"name": "HOr.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "ShiftRight.casesOn", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT.recOn", "verdict": "verified", "detail": null}
+{"name": "instLTUInt32", "verdict": "verified", "detail": null}
+{"name": "String.isValidUTF8", "verdict": "verified", "detail": null}
+{"name": "SMul.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instDecidableNot", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.getArg", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "True.casesOn", "verdict": "verified", "detail": null}
+{"name": "instNonemptyForall", "verdict": "verified", "detail": null}
+{"name": "Bool.dcond", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Context.casesOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Context.noConfusionType", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Context.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.Context.mk.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadEvalT.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadEvalT.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "ShiftRight.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "ShiftRight.noConfusion", "verdict": "verified", "detail": null}
+{"name": "ShiftRight.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instLEFin", "verdict": "verified", "detail": null}
+{"name": "HAnd.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadLift.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HSMul.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Or.neg_resolve_left", "verdict": "verified", "detail": null}
+{"name": "Nat.zero.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.PrettyPrinter.instMonadQuotationUnexpandM", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.getArgs", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "UInt16.toBitVec", "verdict": "verified", "detail": null}
+{"name": "Monad.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef.mkInfoFromRefPos", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Array.get!Internal", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.getOptional?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.choiceKind", "verdict": "verified", "detail": null}
+{"name": "Trans.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "NatPow.recOn", "verdict": "verified", "detail": null}
+{"name": "HPow.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HPow.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "instPowOfHomogeneousPow", "verdict": "verified", "detail": null}
+{"name": "Subtype.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Subtype.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Trans.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Syntax.getInfo?.match_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.getInfo?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "DecidableLT", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkStr6", "verdict": "verified", "detail": null}
+{"name": "UInt32.ofBitVec.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.sepBy1.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Nonempty.casesOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Nonempty.elim.match_1_1", "verdict": "verified", "detail": null}
+{"name": "Nonempty.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.matchesNull", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HAdd.noConfusion", "verdict": "verified", "detail": null}
+{"name": "EStateM.adaptExcept.match_1", "verdict": "verified", "detail": null}
+{"name": "Fin.decLe", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.recOn", "verdict": "verified", "detail": null}
+{"name": "SMul.recOn", "verdict": "verified", "detail": null}
+{"name": "Bind.recOn", "verdict": "verified", "detail": null}
+{"name": "HOrElse.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadWithReaderOf.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "PLift.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "PLift.noConfusion", "verdict": "verified", "detail": null}
+{"name": "PLift.up.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Max.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "BitVec.ofFin.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Complement.complement", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.SourceInfo.getTrailingTailPos?.match_1", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.stopPos", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.getTrailingTailPos?", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUSize", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.instNonemptyMethodsRef", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.mkMethods", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.instInhabitedMethodsRef", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadReader.recOn", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft.recOn", "verdict": "verified", "detail": null}
+{"name": "Or.intro_right", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqUInt32", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqChar", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkStr3", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.trailingNode.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Functor.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Functor.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadQuotation.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "USize.toBitVec", "verdict": "verified", "detail": null}
+{"name": "Lean.MacroScopesView.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.of_decide_eq_false.match_1_1", "verdict": "verified", "detail": null}
+{"name": "of_decide_eq_false", "verdict": "verified", "detail": null}
+{"name": "Membership.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Membership.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HOr.hOr", "verdict": "verified", "detail": null}
+{"name": "HSMul.recOn", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.startPos", "verdict": "verified", "detail": null}
+{"name": "List.ctorElimType", "verdict": "verified", "detail": null}
+{"name": "List.ctorElim", "verdict": "verified", "detail": null}
+{"name": "List.cons.elim", "verdict": "verified", "detail": null}
+{"name": "UInt8.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.error.noConfusion", "verdict": "verified", "detail": null}
+{"name": "EStateM.Backtrackable.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadRef.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MonadRef.mk.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HSMul.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HSMul.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadLift.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Decidable.isFalse.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MProd.recOn", "verdict": "verified", "detail": null}
+{"name": "Except.error.elim", "verdict": "verified", "detail": null}
+{"name": "OrElse.orElse", "verdict": "verified", "detail": null}
+{"name": "Subtype.recOn", "verdict": "verified", "detail": null}
+{"name": "PUnit.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.mkAtom", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HAdd.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.namespace.elim", "verdict": "verified", "detail": null}
+{"name": "String.Pos.Raw.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "OrOp.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Except.error.noConfusion", "verdict": "verified", "detail": null}
+{"name": "USize.recOn", "verdict": "verified", "detail": null}
+{"name": "HAndThen.recOn", "verdict": "verified", "detail": null}
+{"name": "PULift.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadEval.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Eq.ndrec_symm", "verdict": "verified", "detail": null}
+{"name": "Empty.recOn", "verdict": "verified", "detail": null}
+{"name": "PLift.up_down", "verdict": "verified", "detail": null}
+{"name": "Lean.instAppendName", "verdict": "verified", "detail": null}
+{"name": "Applicative.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "instInhabitedForallOfMonad", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods.hasDecl", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "EStateM.adaptExcept", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkStr5", "verdict": "verified", "detail": null}
+{"name": "Add.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.recOn", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadStateOf.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.defaultMaxRecDepth", "verdict": "verified", "detail": null}
+{"name": "Inhabited.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadFunctorT.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.getCurrNamespace", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "List.nil.elim", "verdict": "verified", "detail": null}
+{"name": "BEq.recOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.eq_true_of_ne_false.match_1_1", "verdict": "verified", "detail": null}
+{"name": "eq_true_of_ne_false", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.node.noConfusion", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Min.recOn", "verdict": "verified", "detail": null}
+{"name": "Option.recOn", "verdict": "verified", "detail": null}
+{"name": "Max.max", "verdict": "verified", "detail": null}
+{"name": "List.toArray", "verdict": "verified", "detail": null}
+{"name": "List.set.match_1", "verdict": "verified", "detail": null}
+{"name": "List.set._f", "verdict": "verified", "detail": null}
+{"name": "List.set", "verdict": "verified", "detail": null}
+{"name": "Pow.recOn", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.eq_false_of_ne_true.match_1_1", "verdict": "verified", "detail": null}
+{"name": "eq_false_of_ne_true", "verdict": "verified", "detail": null}
+{"name": "Bool.not", "verdict": "verified", "detail": null}
+{"name": "OrElse.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadFunctor.recOn", "verdict": "verified", "detail": null}
+{"name": "Complement.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkStr8", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.instOrElse", "verdict": "verified", "detail": null}
+{"name": "Mul.recOn", "verdict": "verified", "detail": null}
+{"name": "letFun", "verdict": "verified", "detail": null}
+{"name": "UInt8.decLt._aux_1", "verdict": "verified", "detail": null}
+{"name": "UInt8.decLt", "verdict": "verified", "detail": null}
+{"name": "Seq.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "String.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Char.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Char.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HPow.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "MonadEval.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "MonadEval.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadEval.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Add.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "PProd.fst", "verdict": "verified", "detail": null}
+{"name": "MonadWithReader.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadFunctor.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "PEmpty.recOn", "verdict": "verified", "detail": null}
+{"name": "Or.neg_resolve_right", "verdict": "verified", "detail": null}
+{"name": "List.cons.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HShiftRight.hShiftRight", "verdict": "verified", "detail": null}
+{"name": "ByteArray.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HOrElse.hOrElse", "verdict": "verified", "detail": null}
+{"name": "AndOp.recOn", "verdict": "verified", "detail": null}
+{"name": "id_eq", "verdict": "verified", "detail": null}
+{"name": "XorOp.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqRaw.match_3", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqRaw.match_1", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqRaw._proof_1", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqRaw._proof_2", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqRaw", "verdict": "verified", "detail": null}
+{"name": "HXor.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadExcept.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HAppend.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.fieldIdxKind", "verdict": "verified", "detail": null}
+{"name": "UInt8.decLe._aux_1", "verdict": "verified", "detail": null}
+{"name": "UInt8.decLe", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.sepBy.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Empty.noConfusion", "verdict": "verified", "detail": null}
+{"name": "PULift.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "PULift.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadLift.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.synthetic.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Bind.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.instNonemptyOfMonad.match_1", "verdict": "verified", "detail": null}
+{"name": "instNonemptyOfMonad", "verdict": "verified", "detail": null}
+{"name": "EStateM.Result.error.elim", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Context.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "EStateM.instInhabited", "verdict": "verified", "detail": null}
+{"name": "Lean.MonadQuotation.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "LE.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.SepArray.elemsAndSeps", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "OfNat.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "HMul.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HDiv.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "One.recOn", "verdict": "verified", "detail": null}
+{"name": "Dvd.dvd", "verdict": "verified", "detail": null}
+{"name": "Hashable.noConfusionType", "verdict": "verified", "detail": null}
+{"name": "Hashable.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Hashable.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "String.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.recOn", "verdict": "verified", "detail": null}
+{"name": "instHOrOfOrOp", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.hasDecl", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.ParserDescr.unicodeSymbol.noConfusion", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.simpMacroScopesAux.match_1", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.simpMacroScopesAux._f", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.simpMacroScopesAux", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.simpMacroScopes", "verdict": "verified", "detail": null}
+{"name": "LT.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.instInhabitedSourceInfo", "verdict": "verified", "detail": null}
+{"name": "ReaderT.adapt", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.mkStr7", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Exception.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Name.mkStr2", "verdict": "verified", "detail": null}
+{"name": "UInt64.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "EStateM.run'", "verdict": "verified", "detail": null}
+{"name": "HomogeneousPow.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Name.str.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.decl.elim", "verdict": "verified", "detail": null}
+{"name": "instHashableSubtype", "verdict": "verified", "detail": null}
+{"name": "HXor.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "BitVec.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "ByteArray.IsValidUTF8.recOn", "verdict": "verified", "detail": null}
+{"name": "MProd.snd", "verdict": "verified", "detail": null}
+{"name": "Lean.TSyntax.ctorIdx", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "MonadExceptOf.recOn", "verdict": "verified", "detail": null}
+{"name": "HOrElse.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "instHOrElseOfOrElse", "verdict": "verified", "detail": null}
+{"name": "instMonadEvalOfMonadLift", "verdict": "verified", "detail": null}
+{"name": "MonadEvalT.recOn", "verdict": "verified", "detail": null}
+{"name": "Append.recOn", "verdict": "verified", "detail": null}
+{"name": "Prod.recOn", "verdict": "verified", "detail": null}
+{"name": "HMod.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Pure.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Fin.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.instInhabitedParserDescr", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.State.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Div.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Dvd.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Nat.ctorIdx_succ", "verdict": "verified", "detail": null}
+{"name": "HSub.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.expandMacro?", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.TSyntax.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "NatPow.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Fin.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "HEq.recOn", "verdict": "verified", "detail": null}
+{"name": "Dvd.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "ULift.up.noConfusion", "verdict": "verified", "detail": null}
+{"name": "ByteArray.IsValidUTF8.casesOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Syntax.Preresolved.namespace.noConfusion", "verdict": "verified", "detail": null}
+{"name": "Lean.ParserDescr.brecOn.eq", "verdict": "verified", "detail": null}
+{"name": "Substring.Raw.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "_private.Init.Prelude.0.Lean.Syntax.isMissing.match_1", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Syntax.isMissing", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.MacroScopesView.recOn", "verdict": "verified", "detail": null}
+{"name": "EStateM.instInhabitedResult", "verdict": "verified", "detail": null}
+{"name": "ShiftLeft.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqUSize", "verdict": "verified", "detail": null}
+{"name": "HMod.recOn", "verdict": "verified", "detail": null}
+{"name": "UInt64.recOn", "verdict": "verified", "detail": null}
+{"name": "Bool.recOn", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods.resolveGlobalName", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "HAnd.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadWithReader.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt32._proof_1", "verdict": "verified", "detail": null}
+{"name": "instInhabitedUInt32", "verdict": "verified", "detail": null}
+{"name": "MonadEval.recOn", "verdict": "verified", "detail": null}
+{"name": "instInhabitedULift", "verdict": "verified", "detail": null}
+{"name": "Lean.Macro.Methods.recOn", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "Lean.Macro.resolveGlobalName", "verdict": "unsupported", "detail": "dependency on an unsupported declaration"}
+{"name": "AndOp.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Lean.SourceInfo.original.noConfusion", "verdict": "verified", "detail": null}
+{"name": "UInt32.decLt", "verdict": "verified", "detail": null}
+{"name": "Lean.scientificLitKind", "verdict": "verified", "detail": null}
+{"name": "Mul.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MonadLiftT.ctorIdx", "verdict": "verified", "detail": null}
+{"name": "Prod.fst", "verdict": "verified", "detail": null}
+{"name": "HOr.recOn", "verdict": "verified", "detail": null}
+{"name": "PULift.up.noConfusion", "verdict": "verified", "detail": null}
+{"name": "MProd.fst", "verdict": "verified", "detail": null}
+{"name": "instDecidableEqUInt64", "verdict": "verified", "detail": null}
+{"name": "HShiftLeft.mk.noConfusion", "verdict": "verified", "detail": null}
+{"name": "congrFun", "verdict": "verified", "detail": null}
+{"name": "BitVec.recOn", "verdict": "verified", "detail": null}

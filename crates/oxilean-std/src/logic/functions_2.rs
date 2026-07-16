@@ -15,10 +15,10 @@ mod tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn nat_one() -> Expr {
-        Expr::Lit(Literal::Nat(1))
+        Expr::Lit(Literal::nat(1))
     }
     fn nat_two() -> Expr {
-        Expr::Lit(Literal::Nat(2))
+        Expr::Lit(Literal::nat(2))
     }
     #[test]
     fn test_build_logic_env() {
@@ -363,9 +363,9 @@ mod tests {
     fn test_mk_eq_structure() {
         let e = mk_eq(nat_ty(), nat_one(), nat_two());
         if let Expr::App(f, rhs) = &e {
-            assert!(matches!(rhs.as_ref(), Expr::Lit(Literal::Nat(2))));
+            assert!(matches!(rhs.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 2u64));
             if let Expr::App(g, lhs) = f.as_ref() {
-                assert!(matches!(lhs.as_ref(), Expr::Lit(Literal::Nat(1))));
+                assert!(matches!(lhs.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 1u64));
                 if let Expr::App(h, ty) = g.as_ref() {
                     assert!(matches!(ty.as_ref(), Expr::Const(_, _)));
                     if let Expr::Const(n, _) = h.as_ref() {
@@ -381,7 +381,7 @@ mod tests {
     fn test_mk_heq_structure() {
         let e = mk_heq(nat_ty(), nat_one(), nat_ty(), nat_two());
         if let Expr::App(_, b_expr) = &e {
-            assert!(matches!(b_expr.as_ref(), Expr::Lit(Literal::Nat(2))));
+            assert!(matches!(b_expr.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 2u64));
         } else {
             panic!("expected App");
         }

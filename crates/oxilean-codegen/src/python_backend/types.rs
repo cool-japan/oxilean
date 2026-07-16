@@ -398,6 +398,7 @@ impl PythonBackend {
     pub(super) fn compile_lit(&self, lit: &LcnfLit) -> PythonExpr {
         match lit {
             LcnfLit::Nat(n) => PythonExpr::Lit(PythonLit::Int(*n as i64)),
+            LcnfLit::Int(i) => PythonExpr::Lit(PythonLit::Int(*i)),
             LcnfLit::Str(s) => PythonExpr::Lit(PythonLit::Str(s.clone())),
         }
     }

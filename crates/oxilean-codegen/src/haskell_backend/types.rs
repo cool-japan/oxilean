@@ -572,6 +572,7 @@ impl HaskellBackend {
             }
             LcnfLetValue::Lit(lit) => match lit {
                 LcnfLit::Nat(n) => HaskellExpr::Lit(HaskellLit::Int(*n as i64)),
+                LcnfLit::Int(i) => HaskellExpr::Lit(HaskellLit::Int(*i)),
                 LcnfLit::Str(s) => HaskellExpr::Lit(HaskellLit::Str(s.clone())),
             },
             LcnfLetValue::Erased | LcnfLetValue::Reset(_) => HaskellExpr::Lit(HaskellLit::Unit),
@@ -610,6 +611,7 @@ impl HaskellBackend {
             LcnfArg::Var(v) => HaskellExpr::Var(format!("{}", v)),
             LcnfArg::Lit(lit) => match lit {
                 LcnfLit::Nat(n) => HaskellExpr::Lit(HaskellLit::Int(*n as i64)),
+                LcnfLit::Int(i) => HaskellExpr::Lit(HaskellLit::Int(*i)),
                 LcnfLit::Str(s) => HaskellExpr::Lit(HaskellLit::Str(s.clone())),
             },
             LcnfArg::Erased | LcnfArg::Type(_) => HaskellExpr::Lit(HaskellLit::Unit),

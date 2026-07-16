@@ -13,8 +13,8 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use oxilean_kernel::{
     alpha_equiv, beta_normalize, beta_step, init_builtin_env, instantiate, is_def_eq_simple,
     normalize, normalize_env, normalize_whnf, reduce_nat_op, simplify, whnf, BinderInfo,
-    Declaration, DefEqChecker, Environment, Expr, Level, Literal, Name, Reducer, ReducibilityHint,
-    TypeChecker,
+    Declaration, DefEqChecker, Environment, Expr, Level, Literal, Name, Node, Reducer,
+    ReducibilityHint, TypeChecker,
 };
 use std::hint::black_box;
 
@@ -27,19 +27,24 @@ fn mk_identity(ty: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(ty),
-        Box::new(Expr::BVar(0)),
+        Node::new(ty),
+        Node::new(Expr::BVar(0)),
     )
 }
 
 /// Build `f arg`.
 fn mk_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 
 /// Build a `let x : τ := v in body` expression.
 fn mk_let(name: &str, ty: Expr, val: Expr, body: Expr) -> Expr {
-    Expr::Let(Name::str(name), Box::new(ty), Box::new(val), Box::new(body))
+    Expr::Let(
+        Name::str(name),
+        Node::new(ty),
+        Node::new(val),
+        Node::new(body),
+    )
 }
 
 /// Build `Π (x : τ), σ`.
@@ -47,14 +52,14 @@ fn mk_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 
 /// Build a `Nat` literal expression.
 fn nat(n: u64) -> Expr {
-    Expr::Lit(Literal::Nat(n))
+    Expr::Lit(Literal::nat(n))
 }
 
 /// Build `Nat.add m n` in explicit application form.
@@ -205,12 +210,12 @@ fn bench_whnf(c: &mut Criterion) {
             Expr::Lam(
                 BinderInfo::Default,
                 Name::str("f"),
-                Expr::Sort(Level::zero()).into(),
-                Box::new(Expr::Lam(
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::Lam(
                     BinderInfo::Default,
                     Name::str("x"),
-                    Expr::Sort(Level::zero()).into(),
-                    Box::new(mk_app(Expr::BVar(1), Expr::BVar(0))),
+                    Node::new(Expr::Sort(Level::zero())),
+                    Node::new(mk_app(Expr::BVar(1), Expr::BVar(0))),
                 )),
             ),
             mk_identity(Expr::Sort(Level::zero())),
@@ -387,8 +392,8 @@ fn bench_infer(c: &mut Criterion) {
             lam = Expr::Lam(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(nat_ty.clone()),
-                Box::new(lam),
+                Node::new(nat_ty.clone()),
+                Node::new(lam),
             );
         }
         group.bench_with_input(
@@ -644,8 +649,8 @@ fn bench_alpha(c: &mut Criterion) {
     let lam2 = Expr::Lam(
         BinderInfo::Default,
         Name::str("y"), // different binder name — alpha-equivalent
-        Box::new(Expr::Sort(Level::zero())),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::BVar(0)),
     );
     group.bench_function("alpha_lambda_rename", |b| {
         b.iter(|| alpha_equiv(black_box(&lam1), black_box(&lam2)));
@@ -655,8 +660,8 @@ fn bench_alpha(c: &mut Criterion) {
     let lam_not_id = Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::Sort(Level::zero())),
-        Box::new(nat(0)), // constant body, not BVar(0)
+        Node::new(Expr::Sort(Level::zero())),
+        Node::new(nat(0)), // constant body, not BVar(0)
     );
     group.bench_function("alpha_not_equiv", |b| {
         b.iter(|| alpha_equiv(black_box(&lam1), black_box(&lam_not_id)));

@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 use std::sync::{Arc, OnceLock};
 
@@ -14,8 +15,8 @@ pub fn build_lazy_env(env: &mut Environment) -> Result<(), String> {
     let lazy_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(type2.clone()),
+        Node::new(type1.clone()),
+        Node::new(type2.clone()),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Lazy"),
@@ -26,19 +27,19 @@ pub fn build_lazy_env(env: &mut Environment) -> Result<(), String> {
     let mk_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("f"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                Box::new(Expr::BVar(1)),
+                Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     );
@@ -51,15 +52,15 @@ pub fn build_lazy_env(env: &mut Environment) -> Result<(), String> {
     let force_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(1)),
         )),
     );
     env.add(Declaration::Axiom {
@@ -71,30 +72,30 @@ pub fn build_lazy_env(env: &mut Environment) -> Result<(), String> {
     let map_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("x"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -115,14 +116,14 @@ pub fn build_lazy_combinators(env: &mut Environment) -> Result<(), String> {
     let pure_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     );
@@ -135,33 +136,33 @@ pub fn build_lazy_combinators(env: &mut Environment) -> Result<(), String> {
     let bind_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("la"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -176,33 +177,33 @@ pub fn build_lazy_combinators(env: &mut Environment) -> Result<(), String> {
     let zip_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("la"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("lb"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
                 )),
@@ -237,28 +238,28 @@ pub fn lazy_range(lo: u64, hi: u64) -> LazyList<u64> {
 /// Build an `Expr` for `Lazy.mk α f`.
 pub fn make_lazy_mk(alpha: Expr, f: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Lazy.mk"), vec![])),
-            Box::new(alpha),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Lazy.mk"), vec![])),
+            Node::new(alpha),
         )),
-        Box::new(f),
+        Node::new(f),
     )
 }
 /// Build an `Expr` for `Lazy.force α x`.
 pub fn make_lazy_force(alpha: Expr, x: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Lazy.force"), vec![])),
-            Box::new(alpha),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Lazy.force"), vec![])),
+            Node::new(alpha),
         )),
-        Box::new(x),
+        Node::new(x),
     )
 }
 /// Build an `Expr` for `Lazy α`.
 pub fn make_lazy_type(alpha: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+        Node::new(alpha),
     )
 }
 /// Return all Lazy-related names registered in the environment.
@@ -498,17 +499,17 @@ pub fn register_lazy_to_thunk(env: &mut oxilean_kernel::Environment) -> Result<(
     let to_thunk_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Thunk"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Thunk"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     );
@@ -526,14 +527,14 @@ pub fn register_lazy_const_axiom(env: &mut oxilean_kernel::Environment) -> Resul
     let const_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     );
@@ -709,17 +710,17 @@ pub fn lzy_ext_call_by_need_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("thunk"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                Box::new(Expr::BVar(1)),
+                Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(1)),
         )),
     )
 }
@@ -730,25 +731,25 @@ pub fn lzy_ext_call_by_value_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("val"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("k"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(2)),
+                    Node::new(Expr::BVar(2)),
                 )),
             )),
         )),
@@ -762,15 +763,15 @@ pub fn lzy_ext_sharing_axiom_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(prop),
+            Node::new(prop),
         )),
     )
 }
@@ -790,8 +791,8 @@ pub fn lzy_ext_conat_succ_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("CoNat"), vec![])),
-        Box::new(Expr::Const(Name::str("CoNat"), vec![])),
+        Node::new(Expr::Const(Name::str("CoNat"), vec![])),
+        Node::new(Expr::Const(Name::str("CoNat"), vec![])),
     )
 }
 /// `CoNat.infinity`: the infinite conatural number.
@@ -806,24 +807,24 @@ pub fn lzy_ext_conat_corecursor_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("σ"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("f"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Option"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Option"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("s0"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Const(Name::str("CoNat"), vec![])),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Const(Name::str("CoNat"), vec![])),
             )),
         )),
     )
@@ -836,8 +837,8 @@ pub fn lzy_ext_nakano_later_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(type2),
+        Node::new(type1),
+        Node::new(type2),
     )
 }
 /// `Nakano.next`: introduction for the later modality.
@@ -847,14 +848,14 @@ pub fn lzy_ext_nakano_next_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nakano.later"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nakano.later"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     )
@@ -866,33 +867,33 @@ pub fn lzy_ext_nakano_ap_later_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("lf"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nakano.later"), vec![])),
-                    Box::new(Expr::Pi(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nakano.later"), vec![])),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(1)),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("la"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Nakano.later"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Nakano.later"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Nakano.later"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Nakano.later"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -906,20 +907,20 @@ pub fn lzy_ext_lob_axiom_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("step"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nakano.later"), vec![])),
-                    Box::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nakano.later"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::BVar(1)),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(1)),
         )),
     )
 }
@@ -931,8 +932,8 @@ pub fn lzy_ext_delay_monad_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(type2),
+        Node::new(type1),
+        Node::new(type2),
     )
 }
 /// `Delay.now`: inject a value into the delay monad immediately.
@@ -942,14 +943,14 @@ pub fn lzy_ext_delay_now_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     )
@@ -961,17 +962,17 @@ pub fn lzy_ext_delay_later_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("d"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     )
@@ -983,33 +984,33 @@ pub fn lzy_ext_delay_bind_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("da"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -1024,28 +1025,28 @@ pub fn lzy_ext_capretta_setoid_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("R"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                    Box::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Delay"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Delay"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(prop.clone()),
+                    Node::new(prop.clone()),
                 )),
             )),
-            Box::new(prop),
+            Node::new(prop),
         )),
     )
 }
@@ -1057,13 +1058,13 @@ pub fn lzy_ext_omega_chain_colimit_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("F"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(type1.clone()),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(type1.clone()),
         )),
-        Box::new(type2),
+        Node::new(type2),
     )
 }
 /// `Coinductive.terminal_coalgebra`: coinductive types as terminal coalgebras.
@@ -1075,13 +1076,13 @@ pub fn lzy_ext_terminal_coalgebra_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("F"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1),
-            Box::new(type2),
+            Node::new(type1),
+            Node::new(type2),
         )),
-        Box::new(prop),
+        Node::new(prop),
     )
 }
 /// `Bisimulation.corecursion_principle`: bisimulation corecursion.
@@ -1092,8 +1093,8 @@ pub fn lzy_ext_bisim_corecursion_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(prop),
+        Node::new(type1),
+        Node::new(prop),
     )
 }
 /// `LazyStateMachine.type`: lazy state machine type.
@@ -1104,12 +1105,12 @@ pub fn lzy_ext_lazy_state_machine_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("S"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("I"),
-            Box::new(type1),
-            Box::new(type2),
+            Node::new(type1),
+            Node::new(type2),
         )),
     )
 }
@@ -1121,12 +1122,12 @@ pub fn lzy_ext_lazy_array_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(type2),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(type2),
         )),
     )
 }
@@ -1137,31 +1138,31 @@ pub fn lzy_ext_lazy_array_lookup_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("n"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("arr"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("LazyArray"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("LazyArray"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("i"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                        Box::new(Expr::BVar(3)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                        Node::new(Expr::BVar(3)),
                     )),
                 )),
             )),
@@ -1175,22 +1176,22 @@ pub fn lzy_ext_strict_pair_fst_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("p"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(2)),
             )),
         )),
     )
@@ -1203,12 +1204,12 @@ pub fn lzy_ext_lazy_pair_type_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(type2),
+            Node::new(type1),
+            Node::new(type2),
         )),
     )
 }
@@ -1220,12 +1221,12 @@ pub fn lzy_ext_force_pure_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(prop),
+            Node::new(Expr::BVar(0)),
+            Node::new(prop),
         )),
     )
 }
@@ -1237,28 +1238,28 @@ pub fn lzy_ext_map_force_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("la"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(prop),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -1277,15 +1278,15 @@ pub fn lzy_ext_eta_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("la"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(prop),
+            Node::new(prop),
         )),
     )
 }
@@ -1296,33 +1297,33 @@ pub fn lzy_ext_productive_corecursion_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("σ"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("step"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(0)),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                    Node::new(Expr::BVar(0)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("s0"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                        Box::new(Expr::BVar(3)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                        Node::new(Expr::BVar(3)),
                     )),
                 )),
             )),
@@ -1337,28 +1338,28 @@ pub fn lzy_ext_monad_left_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
-                    Box::new(prop),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -1372,15 +1373,15 @@ pub fn lzy_ext_monad_right_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("la"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Lazy"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Lazy"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(prop),
+            Node::new(prop),
         )),
     )
 }
@@ -1392,16 +1393,16 @@ pub fn lzy_ext_monad_assoc_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1),
-                Box::new(prop),
+                Node::new(type1),
+                Node::new(prop),
             )),
         )),
     )
@@ -1418,15 +1419,15 @@ pub fn lzy_ext_guarded_force_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("la"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nakano.later"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nakano.later"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(1)),
         )),
     )
 }

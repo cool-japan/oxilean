@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -30,20 +31,20 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 pub fn pi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
     app(app(f, a), b)
@@ -757,16 +758,16 @@ pub fn register_cubical_type_theory(env: &mut Environment) {
     let path_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::Pi(
+            Node::new(bvar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_y"),
-                Box::new(bvar(1)),
-                Box::new(type0()),
+                Node::new(bvar(1)),
+                Node::new(type0()),
             )),
         )),
     );
@@ -778,17 +779,17 @@ pub fn register_cubical_type_theory(env: &mut Environment) {
     let refl_path_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(Box::new(cst("PathType")), Box::new(bvar(1)))),
-                    Box::new(bvar(0)),
+            Node::new(bvar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(Node::new(cst("PathType")), Node::new(bvar(1)))),
+                    Node::new(bvar(0)),
                 )),
-                Box::new(bvar(0)),
+                Node::new(bvar(0)),
             )),
         )),
     );
@@ -800,20 +801,20 @@ pub fn register_cubical_type_theory(env: &mut Environment) {
     let sym_path_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::Pi(
+            Node::new(bvar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("y"),
-                Box::new(bvar(1)),
-                Box::new(Expr::Pi(
+                Node::new(bvar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_p"),
-                    Box::new(cst("Unit")),
-                    Box::new(cst("Unit")),
+                    Node::new(cst("Unit")),
+                    Node::new(cst("Unit")),
                 )),
             )),
         )),
@@ -826,28 +827,28 @@ pub fn register_cubical_type_theory(env: &mut Environment) {
     let comp_path_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::Pi(
+            Node::new(bvar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("y"),
-                Box::new(bvar(1)),
-                Box::new(Expr::Pi(
+                Node::new(bvar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("z"),
-                    Box::new(bvar(2)),
-                    Box::new(Expr::Pi(
+                    Node::new(bvar(2)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_p"),
-                        Box::new(cst("Unit")),
-                        Box::new(Expr::Pi(
+                        Node::new(cst("Unit")),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_q"),
-                            Box::new(cst("Unit")),
-                            Box::new(cst("Unit")),
+                            Node::new(cst("Unit")),
+                            Node::new(cst("Unit")),
                         )),
                     )),
                 )),
@@ -883,20 +884,20 @@ pub fn register_observational_type_theory(env: &mut Environment) {
     let heq_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::Pi(
+            Node::new(bvar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("B"),
-                Box::new(type0()),
-                Box::new(Expr::Pi(
+                Node::new(type0()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_y"),
-                    Box::new(bvar(0)),
-                    Box::new(prop()),
+                    Node::new(bvar(0)),
+                    Node::new(prop()),
                 )),
             )),
         )),
@@ -909,16 +910,16 @@ pub fn register_observational_type_theory(env: &mut Environment) {
     let propeq_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::Pi(
+            Node::new(bvar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_y"),
-                Box::new(bvar(1)),
-                Box::new(prop()),
+                Node::new(bvar(1)),
+                Node::new(prop()),
             )),
         )),
     );
@@ -930,20 +931,20 @@ pub fn register_observational_type_theory(env: &mut Environment) {
     let coerce_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("B"),
-            Box::new(type0()),
-            Box::new(Expr::Pi(
+            Node::new(type0()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_eq"),
-                Box::new(cst("Unit")),
-                Box::new(Expr::Pi(
+                Node::new(cst("Unit")),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_x"),
-                    Box::new(bvar(2)),
-                    Box::new(bvar(3)),
+                    Node::new(bvar(2)),
+                    Node::new(bvar(3)),
                 )),
             )),
         )),
@@ -959,12 +960,12 @@ pub fn register_observational_type_theory(env: &mut Environment) {
         ty: Expr::Pi(
             BinderInfo::Default,
             Name::str("A"),
-            Box::new(type0()),
-            Box::new(Expr::Pi(
+            Node::new(type0()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_x"),
-                Box::new(bvar(0)),
-                Box::new(prop()),
+                Node::new(bvar(0)),
+                Node::new(prop()),
             )),
         ),
     });
@@ -974,34 +975,34 @@ pub fn register_observational_type_theory(env: &mut Environment) {
         ty: Expr::Pi(
             BinderInfo::Default,
             Name::str("A"),
-            Box::new(type0()),
-            Box::new(Expr::Pi(
+            Node::new(type0()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("B"),
-                Box::new(type0()),
-                Box::new(Expr::Pi(
+                Node::new(type0()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(bvar(1)),
-                        Box::new(bvar(2)),
+                        Node::new(bvar(1)),
+                        Node::new(bvar(2)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_g"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_"),
-                            Box::new(bvar(2)),
-                            Box::new(bvar(3)),
+                            Node::new(bvar(2)),
+                            Node::new(bvar(3)),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_h"),
-                            Box::new(cst("Unit")),
-                            Box::new(prop()),
+                            Node::new(cst("Unit")),
+                            Node::new(prop()),
                         )),
                     )),
                 )),
@@ -1014,16 +1015,16 @@ pub fn register_higher_observational_tt(env: &mut Environment) {
     let id_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::Pi(
+            Node::new(bvar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_y"),
-                Box::new(bvar(1)),
-                Box::new(type0()),
+                Node::new(bvar(1)),
+                Node::new(type0()),
             )),
         )),
     );
@@ -1035,28 +1036,28 @@ pub fn register_higher_observational_tt(env: &mut Environment) {
     let j_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(Expr::Pi(
+        Node::new(type0()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("x"),
-            Box::new(bvar(0)),
-            Box::new(Expr::Pi(
+            Node::new(bvar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_P"),
-                Box::new(cst("Unit")),
-                Box::new(Expr::Pi(
+                Node::new(cst("Unit")),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_r"),
-                    Box::new(cst("Unit")),
-                    Box::new(Expr::Pi(
+                    Node::new(cst("Unit")),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_y"),
-                        Box::new(bvar(3)),
-                        Box::new(Expr::Pi(
+                        Node::new(bvar(3)),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_p"),
-                            Box::new(cst("Unit")),
-                            Box::new(cst("Unit")),
+                            Node::new(cst("Unit")),
+                            Node::new(cst("Unit")),
                         )),
                     )),
                 )),
@@ -1074,8 +1075,8 @@ pub fn register_higher_observational_tt(env: &mut Environment) {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("A"),
-            Box::new(type0()),
-            Box::new(Expr::Const(Name::str("True"), vec![])),
+            Node::new(type0()),
+            Node::new(Expr::Const(Name::str("True"), vec![])),
         ),
     });
     let _ = env.add(Declaration::Axiom {
@@ -1084,33 +1085,33 @@ pub fn register_higher_observational_tt(env: &mut Environment) {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("A"),
-            Box::new(type0()),
-            Box::new(Expr::Pi(
+            Node::new(type0()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("B"),
-                Box::new(type0()),
-                Box::new(Expr::Pi(
+                Node::new(type0()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(bvar(1)),
-                        Box::new(bvar(2)),
+                        Node::new(bvar(1)),
+                        Node::new(bvar(2)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Implicit,
                         Name::str("x"),
-                        Box::new(bvar(2)),
-                        Box::new(Expr::Pi(
+                        Node::new(bvar(2)),
+                        Node::new(Expr::Pi(
                             BinderInfo::Implicit,
                             Name::str("y"),
-                            Box::new(bvar(3)),
-                            Box::new(Expr::Pi(
+                            Node::new(bvar(3)),
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("_p"),
-                                Box::new(cst("Unit")),
-                                Box::new(cst("Unit")),
+                                Node::new(cst("Unit")),
+                                Node::new(cst("Unit")),
                             )),
                         )),
                     )),
@@ -1121,8 +1122,8 @@ pub fn register_higher_observational_tt(env: &mut Environment) {
     let trunc_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("A"),
-        Box::new(type0()),
-        Box::new(type0()),
+        Node::new(type0()),
+        Node::new(type0()),
     );
     let _ = env.add(Declaration::Axiom {
         name: Name::str("PropTrunc"),
@@ -1135,12 +1136,12 @@ pub fn register_higher_observational_tt(env: &mut Environment) {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("A"),
-            Box::new(type0()),
-            Box::new(Expr::Pi(
+            Node::new(type0()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_x"),
-                Box::new(bvar(0)),
-                Box::new(Expr::App(Box::new(cst("PropTrunc")), Box::new(bvar(1)))),
+                Node::new(bvar(0)),
+                Node::new(Expr::App(Node::new(cst("PropTrunc")), Node::new(bvar(1)))),
             )),
         ),
     });
@@ -1150,20 +1151,20 @@ pub fn register_higher_observational_tt(env: &mut Environment) {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("A"),
-            Box::new(type0()),
-            Box::new(Expr::Pi(
+            Node::new(type0()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_P"),
-                Box::new(prop()),
-                Box::new(Expr::Pi(
+                Node::new(prop()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_f"),
-                    Box::new(cst("Unit")),
-                    Box::new(Expr::Pi(
+                    Node::new(cst("Unit")),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_x"),
-                        Box::new(Expr::App(Box::new(cst("PropTrunc")), Box::new(bvar(3)))),
-                        Box::new(bvar(3)),
+                        Node::new(Expr::App(Node::new(cst("PropTrunc")), Node::new(bvar(3)))),
+                        Node::new(bvar(3)),
                     )),
                 )),
             )),

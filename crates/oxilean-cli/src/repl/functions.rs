@@ -655,13 +655,15 @@ mod tests {
     #[test]
     fn test_repl_state_new() {
         let state = ReplState::new();
-        assert!(state.env.is_empty());
+        // env is pre-seeded with omega helper lemmas (18 axioms), so not empty.
+        assert!(!state.env.is_empty());
         assert_eq!(state.mode, ReplMode::Normal);
         assert!(state.undo_stack.is_empty());
     }
     #[test]
     fn test_repl_state_push_pop_undo() {
         let mut state = ReplState::new();
+        let baseline = state.env.len();
         state
             .env
             .add(Declaration::Axiom {
@@ -679,10 +681,13 @@ mod tests {
                 ty: Expr::Sort(Level::zero()),
             })
             .expect("test operation should succeed");
-        assert_eq!(state.env.len(), 2);
+        // env now has baseline + 2 entries ("foo" and "bar").
+        assert_eq!(state.env.len(), baseline + 2);
         let entry = state.pop_undo().expect("test operation should succeed");
         assert_eq!(entry.name, Name::str("foo"));
-        assert_eq!(state.env.len(), 1);
+        // After undo, env is restored to the snapshot taken at push_undo time,
+        // which was baseline + 1 ("foo" only).
+        assert_eq!(state.env.len(), baseline + 1);
     }
     #[test]
     fn test_repl_state_pop_undo_empty() {
@@ -703,7 +708,8 @@ mod tests {
         state.mode = ReplMode::Proof;
         state.used_sorry = true;
         state.reset_state();
-        assert!(state.env.is_empty());
+        // After reset, env is re-seeded with omega helper lemmas (not empty).
+        assert!(!state.env.is_empty());
         assert_eq!(state.mode, ReplMode::Normal);
         assert!(!state.used_sorry);
     }

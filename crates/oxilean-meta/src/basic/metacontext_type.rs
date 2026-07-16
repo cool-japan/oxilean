@@ -6,6 +6,8 @@ use oxilean_kernel::{Environment, Expr, FVarId, Level};
 use std::collections::HashMap;
 
 use super::types::{LocalDecl, MVarId, MetaConfig, MetavarDecl, PostponedConstraint};
+use crate::tactic::certificate::PolyrithCert;
+use crate::tactic::ProofCertificate;
 
 /// The core meta context.
 ///
@@ -36,4 +38,8 @@ pub struct MetaContext {
     pub(super) depth: u32,
     /// The kernel environment (immutable during meta operations).
     pub(super) env: Environment,
+    /// The last proof certificate produced by a tactic (e.g., omega).
+    pub last_certificate: Option<ProofCertificate>,
+    /// The last polyrith certificate (separate field for convenient access by elab).
+    pub last_polyrith_cert: Option<PolyrithCert>,
 }

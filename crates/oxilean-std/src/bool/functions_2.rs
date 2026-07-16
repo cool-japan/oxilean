@@ -133,6 +133,8 @@ pub fn verify_functional_completeness() -> bool {
     !nand_not(true) && nand_not(false) && !nor_not(true) && nor_not(false)
 }
 #[cfg(test)]
+use oxilean_kernel::Node;
+#[cfg(test)]
 mod extended_bool_tests {
     use super::*;
     fn setup_extended_env() -> (Environment, InductiveEnv) {
@@ -144,8 +146,8 @@ mod extended_bool_tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::Sort(Level::succ(Level::zero()))),
-                Box::new(Expr::Sort(Level::succ(Level::zero()))),
+                Node::new(Expr::Sort(Level::succ(Level::zero()))),
+                Node::new(Expr::Sort(Level::succ(Level::zero()))),
             ),
         })
         .expect("operation should succeed");

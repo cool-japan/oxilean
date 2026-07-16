@@ -829,7 +829,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -839,7 +839,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -853,7 +853,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;

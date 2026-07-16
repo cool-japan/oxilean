@@ -266,7 +266,7 @@ mod tests {
     }
     #[test]
     fn test_attr_entry_with_args() {
-        let args = vec![Expr::Lit(Literal::Nat(42))];
+        let args = vec![Expr::Lit(Literal::nat(42))];
         let entry = AttrEntry::with_args(
             AttributeKind::Custom("my_attr".into()),
             Name::str("f"),

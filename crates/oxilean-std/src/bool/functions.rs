@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, InductiveEnv, Level, Name};
 
 use super::types::{BoolExpr, TruthTable};
@@ -23,111 +24,111 @@ pub fn bool_false() -> Expr {
 #[allow(dead_code)]
 pub fn bool_not(b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Bool.not"), vec![])),
-        Box::new(b),
+        Node::new(Expr::Const(Name::str("Bool.not"), vec![])),
+        Node::new(b),
     )
 }
 /// Create `Bool.and a b`.
 #[allow(dead_code)]
 pub fn bool_and(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Bool.and"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Bool.and"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Create `Bool.or a b`.
 #[allow(dead_code)]
 pub fn bool_or(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Bool.or"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Bool.or"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Create `Bool.xor a b`.
 #[allow(dead_code)]
 pub fn bool_xor(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Bool.xor"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Bool.xor"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Create `Bool.beq a b`.
 #[allow(dead_code)]
 pub fn bool_beq(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Bool.beq"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Bool.beq"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Create `Bool.rec motive false_case true_case b`.
 #[allow(dead_code)]
 pub fn bool_rec(motive: Expr, false_case: Expr, true_case: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Bool.rec"), vec![])),
-                    Box::new(motive),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Bool.rec"), vec![])),
+                    Node::new(motive),
                 )),
-                Box::new(false_case),
+                Node::new(false_case),
             )),
-            Box::new(true_case),
+            Node::new(true_case),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Create `Eq a b` where both are Bool.
 #[allow(dead_code)]
 pub fn mk_bool_eq(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                Box::new(bool_ty()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                Node::new(bool_ty()),
             )),
-            Box::new(a),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 pub fn forall_bool(name: &str, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(bool_ty()),
-        Box::new(body),
+        Node::new(bool_ty()),
+        Node::new(body),
     )
 }
 pub fn eq_bool(lhs: Expr, rhs: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                Box::new(bool_ty()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                Node::new(bool_ty()),
             )),
-            Box::new(lhs),
+            Node::new(lhs),
         )),
-        Box::new(rhs),
+        Node::new(rhs),
     )
 }
 /// Build the Bool type and all associated declarations.
@@ -188,20 +189,23 @@ pub fn build_bool_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Res
     let rec_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("C"),
-        Box::new(motive_ty),
-        Box::new(Expr::Pi(
+        Node::new(motive_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("hf"),
-            Box::new(Expr::App(Box::new(Expr::BVar(0)), Box::new(bool_false()))),
-            Box::new(Expr::Pi(
+            Node::new(Expr::App(Node::new(Expr::BVar(0)), Node::new(bool_false()))),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("ht"),
-                Box::new(Expr::App(Box::new(Expr::BVar(1)), Box::new(bool_true()))),
-                Box::new(Expr::Pi(
+                Node::new(Expr::App(Node::new(Expr::BVar(1)), Node::new(bool_true()))),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(bool_c.clone()),
-                    Box::new(Expr::App(Box::new(Expr::BVar(3)), Box::new(Expr::BVar(0)))),
+                    Node::new(bool_c.clone()),
+                    Node::new(Expr::App(
+                        Node::new(Expr::BVar(3)),
+                        Node::new(Expr::BVar(0)),
+                    )),
                 )),
             )),
         )),
@@ -216,20 +220,23 @@ pub fn build_bool_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Res
     let cases_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("C"),
-        Box::new(cases_motive_ty),
-        Box::new(Expr::Pi(
+        Node::new(cases_motive_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(bool_c.clone()),
-            Box::new(Expr::Pi(
+            Node::new(bool_c.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("hf"),
-                Box::new(Expr::App(Box::new(Expr::BVar(1)), Box::new(bool_false()))),
-                Box::new(Expr::Pi(
+                Node::new(Expr::App(Node::new(Expr::BVar(1)), Node::new(bool_false()))),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("ht"),
-                    Box::new(Expr::App(Box::new(Expr::BVar(2)), Box::new(bool_true()))),
-                    Box::new(Expr::App(Box::new(Expr::BVar(3)), Box::new(Expr::BVar(2)))),
+                    Node::new(Expr::App(Node::new(Expr::BVar(2)), Node::new(bool_true()))),
+                    Node::new(Expr::App(
+                        Node::new(Expr::BVar(3)),
+                        Node::new(Expr::BVar(2)),
+                    )),
                 )),
             )),
         )),
@@ -241,8 +248,8 @@ pub fn build_bool_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Res
     })
     .map_err(|e| e.to_string())?;
     let dec_eq_bool = Expr::App(
-        Box::new(Expr::Const(Name::str("DecidableEq"), vec![])),
-        Box::new(bool_c.clone()),
+        Node::new(Expr::Const(Name::str("DecidableEq"), vec![])),
+        Node::new(bool_c.clone()),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Bool.decEq"),
@@ -262,23 +269,23 @@ pub fn build_bool_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Res
     let beq_beq_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("a"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("inst"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("BEq"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("BEq"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("y"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(bool_c),
+                    Node::new(Expr::BVar(2)),
+                    Node::new(bool_c),
                 )),
             )),
         )),
@@ -486,8 +493,8 @@ pub fn build_bool_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Res
                 Expr::Pi(
                     BinderInfo::Default,
                     Name::str("h"),
-                    Box::new(eq_bool(bool_beq(Expr::BVar(1), Expr::BVar(0)), bool_true())),
-                    Box::new(eq_bool(Expr::BVar(2), Expr::BVar(1))),
+                    Node::new(eq_bool(bool_beq(Expr::BVar(1), Expr::BVar(0)), bool_true())),
+                    Node::new(eq_bool(Expr::BVar(2), Expr::BVar(1))),
                 ),
             ),
         ),
@@ -503,16 +510,16 @@ pub fn add_eq_if_missing(env: &mut Environment) -> Result<(), String> {
     let eq_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("a"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Pi(
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("y"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Sort(Level::zero())),
             )),
         )),
     );
@@ -546,8 +553,8 @@ mod tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::Sort(Level::succ(Level::zero()))),
-                Box::new(Expr::Sort(Level::succ(Level::zero()))),
+                Node::new(Expr::Sort(Level::succ(Level::zero()))),
+                Node::new(Expr::Sort(Level::succ(Level::zero()))),
             ),
         })
         .expect("operation should succeed");
@@ -635,8 +642,8 @@ mod tests {
         let motive = Expr::Lam(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(bool_ty()),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(bool_ty()),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
         );
         let fc = Expr::Const(Name::str("Nat"), vec![]);
         let tc = Expr::Const(Name::str("Bool"), vec![]);
@@ -784,8 +791,8 @@ mod tests {
         let motive = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(bool_ty()),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(bool_ty()),
+            Node::new(Expr::Sort(Level::zero())),
         );
         let fc = Expr::Const(Name::str("proof_false"), vec![]);
         let tc = Expr::Const(Name::str("proof_true"), vec![]);
@@ -1141,12 +1148,12 @@ pub fn bl_ext_heyting_implication(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(bool_ty()),
-            Box::new(Expr::Pi(
+            Node::new(bool_ty()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(bool_ty()),
-                Box::new(bool_ty()),
+                Node::new(bool_ty()),
+                Node::new(bool_ty()),
             )),
         ),
     })
@@ -1158,11 +1165,11 @@ pub fn bl_ext_heyting_implication(env: &mut Environment) -> Result<(), String> {
             "b",
             eq_bool(
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("BoolImply"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("BoolImply"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 ),
                 bool_or(bool_not(Expr::BVar(1)), Expr::BVar(0)),
             ),
@@ -1198,19 +1205,19 @@ pub fn bl_ext_decidable_to_bool(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Default,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("DecidableEq"), vec![])),
-                    Box::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("DecidableEq"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(bool_ty()),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(bool_ty()),
                 )),
             )),
         ),
@@ -1236,8 +1243,8 @@ pub fn bl_ext_beq_bool_instance(env: &mut Environment) -> Result<(), String> {
         name: Name::str("BEqBoolInst"),
         univ_params: vec![],
         ty: Expr::App(
-            Box::new(Expr::Const(Name::str("BEq"), vec![])),
-            Box::new(bool_ty()),
+            Node::new(Expr::Const(Name::str("BEq"), vec![])),
+            Node::new(bool_ty()),
         ),
     })
     .map_err(|e| e.to_string())
@@ -1252,21 +1259,21 @@ pub fn bl_ext_bool_pred_prop(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("p"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(0)),
-                    Box::new(bool_ty()),
+                    Node::new(Expr::BVar(0)),
+                    Node::new(bool_ty()),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Sort(Level::zero())),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Sort(Level::zero())),
                 )),
             )),
         ),
@@ -1317,12 +1324,12 @@ pub fn bl_ext_nand_complete(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(bool_ty()),
-            Box::new(Expr::Pi(
+            Node::new(bool_ty()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(bool_ty()),
-                Box::new(bool_ty()),
+                Node::new(bool_ty()),
+                Node::new(bool_ty()),
             )),
         ),
     })
@@ -1333,11 +1340,11 @@ pub fn bl_ext_nand_complete(env: &mut Environment) -> Result<(), String> {
             "b",
             eq_bool(
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Bool.nand"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Bool.nand"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 ),
                 bool_not(bool_and(Expr::BVar(1), Expr::BVar(0))),
             ),
@@ -1354,12 +1361,12 @@ pub fn bl_ext_nor_complete(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(bool_ty()),
-            Box::new(Expr::Pi(
+            Node::new(bool_ty()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(bool_ty()),
-                Box::new(bool_ty()),
+                Node::new(bool_ty()),
+                Node::new(bool_ty()),
             )),
         ),
     })
@@ -1370,11 +1377,11 @@ pub fn bl_ext_nor_complete(env: &mut Environment) -> Result<(), String> {
             "b",
             eq_bool(
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Bool.nor"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Bool.nor"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 ),
                 bool_not(bool_or(Expr::BVar(1), Expr::BVar(0))),
             ),
@@ -1420,21 +1427,21 @@ pub fn bl_ext_bool_fold_all(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("p"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(0)),
-                    Box::new(bool_ty()),
+                    Node::new(Expr::BVar(0)),
+                    Node::new(bool_ty()),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_xs"),
-                    Box::new(type1.clone()),
-                    Box::new(bool_ty()),
+                    Node::new(type1.clone()),
+                    Node::new(bool_ty()),
                 )),
             )),
         ),
@@ -1451,21 +1458,21 @@ pub fn bl_ext_bool_fold_any(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("p"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(0)),
-                    Box::new(bool_ty()),
+                    Node::new(Expr::BVar(0)),
+                    Node::new(bool_ty()),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_xs"),
-                    Box::new(type1.clone()),
-                    Box::new(bool_ty()),
+                    Node::new(type1.clone()),
+                    Node::new(bool_ty()),
                 )),
             )),
         ),
@@ -1482,20 +1489,20 @@ pub fn bl_ext_ite_semantics(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("cond"),
-                Box::new(bool_ty()),
-                Box::new(Expr::Pi(
+                Node::new(bool_ty()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("t"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("f"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::BVar(3)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(3)),
                     )),
                 )),
             )),
@@ -1512,8 +1519,8 @@ pub fn bl_ext_ite_true(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(type1.clone()),
+            Node::new(Expr::Sort(Level::zero())),
         ),
     })
     .map_err(|e| e.to_string())
@@ -1527,8 +1534,8 @@ pub fn bl_ext_ite_false(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(type1.clone()),
+            Node::new(Expr::Sort(Level::zero())),
         ),
     })
     .map_err(|e| e.to_string())
@@ -1554,12 +1561,12 @@ pub fn bl_ext_kleene_three_value(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(Expr::Const(Name::str("Kleene3"), vec![])),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Const(Name::str("Kleene3"), vec![])),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::Const(Name::str("Kleene3"), vec![])),
-                Box::new(Expr::Const(Name::str("Kleene3"), vec![])),
+                Node::new(Expr::Const(Name::str("Kleene3"), vec![])),
+                Node::new(Expr::Const(Name::str("Kleene3"), vec![])),
             )),
         ),
     })

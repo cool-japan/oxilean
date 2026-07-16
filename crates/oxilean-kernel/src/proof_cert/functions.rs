@@ -3,7 +3,9 @@
 //! Provides creation, verification, serialization, and deserialization of
 //! `ProofCertificate` values using FNV-1a structural hashing.
 
+use crate::Node;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::declaration::ConstantInfo;
 use crate::env::Environment;
@@ -476,7 +478,7 @@ mod tests {
     fn test_hash_app() {
         let f = const_expr("f");
         let a = const_expr("a");
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         let h = hash_expr(&app);
         assert_ne!(h, 0);
     }
@@ -488,8 +490,8 @@ mod tests {
         let lam = Expr::Lam(
             crate::BinderInfo::Default,
             Name::from_str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let h = hash_expr(&lam);
         assert_ne!(h, 0);
@@ -502,8 +504,8 @@ mod tests {
         let pi = Expr::Pi(
             crate::BinderInfo::Default,
             Name::from_str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let h = hash_expr(&pi);
         assert_ne!(h, 0);
@@ -511,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_hash_deterministic() {
-        let e = Expr::App(Box::new(const_expr("Nat.succ")), Box::new(bvar(0)));
+        let e = Expr::App(Node::new(const_expr("Nat.succ")), Node::new(bvar(0)));
         assert_eq!(hash_expr(&e), hash_expr(&e));
     }
 
@@ -519,9 +521,9 @@ mod tests {
     fn test_hash_let() {
         let e = Expr::Let(
             Name::from_str("x"),
-            Box::new(prop()),
-            Box::new(bvar(0)),
-            Box::new(bvar(1)),
+            Node::new(prop()),
+            Node::new(bvar(0)),
+            Node::new(bvar(1)),
         );
         let h = hash_expr(&e);
         assert_ne!(h, 0);
@@ -529,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_hash_proj() {
-        let e = Expr::Proj(Name::from_str("Prod.fst"), 0, Box::new(const_expr("p")));
+        let e = Expr::Proj(Name::from_str("Prod.fst"), 0, Node::new(const_expr("p")));
         let h = hash_expr(&e);
         assert_ne!(h, 0);
     }

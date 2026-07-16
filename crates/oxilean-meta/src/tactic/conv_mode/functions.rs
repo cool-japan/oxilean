@@ -8,6 +8,7 @@ use crate::tactic::ring::functions::{expr_to_polynomial, simplify_add_mul_pow};
 use crate::tactic::simp::main::simp as simp_expr;
 use crate::tactic::simp::types::{SimpConfig, SimpResult, SimpTheorems};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
 
 use super::types::{
@@ -28,7 +29,7 @@ pub(super) fn parse_eq_expr(expr: &Expr) -> Option<(Expr, Expr, Expr)> {
             if let Expr::App(eq_const, ty) = f2.as_ref() {
                 if let Expr::Const(name, _) = &**eq_const {
                     if name.to_string().contains("Eq") || name.to_string().contains("eq") {
-                        return Some((*ty.clone(), *lhs.clone(), *rhs.clone()));
+                        return Some(((**ty).clone(), (**lhs).clone(), (**rhs).clone()));
                     }
                 }
             }
@@ -43,11 +44,11 @@ pub(super) fn parse_relation(expr: &Expr) -> Option<(Expr, Expr, Name)> {
         if let Expr::App(rel, lhs) = f1.as_ref() {
             match rel.as_ref() {
                 Expr::Const(name, _) => {
-                    return Some((*lhs.clone(), *rhs.clone(), name.clone()));
+                    return Some(((**lhs).clone(), (**rhs).clone(), name.clone()));
                 }
                 Expr::App(inner_f, _) => {
                     if let Some(name) = get_head_const(inner_f) {
-                        return Some((*lhs.clone(), *rhs.clone(), name));
+                        return Some(((**lhs).clone(), (**rhs).clone(), name));
                     }
                 }
                 _ => {}
@@ -70,8 +71,8 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
     let mut args = Vec::new();
     let mut head = expr.clone();
     while let Expr::App(f, a) = head {
-        args.push(*a);
-        head = *f;
+        args.push((*a).clone());
+        head = (*f).clone();
     }
     args.reverse();
     (head, args)
@@ -80,7 +81,7 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
 pub(super) fn mk_app(head: Expr, args: Vec<Expr>) -> Expr {
     let mut result = head;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg));
+        result = Expr::App(Node::new(result), Node::new(arg));
     }
     result
 }
@@ -88,19 +89,19 @@ pub(super) fn mk_app(head: Expr, args: Vec<Expr>) -> Expr {
 pub(super) fn mk_eq(ty: &Expr, lhs: &Expr, rhs: &Expr) -> Expr {
     let eq_const = Expr::Const(Name::str("Eq"), vec![Level::Zero]);
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(Box::new(eq_const), Box::new(ty.clone()))),
-            Box::new(lhs.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(Node::new(eq_const), Node::new(ty.clone()))),
+            Node::new(lhs.clone()),
         )),
-        Box::new(rhs.clone()),
+        Node::new(rhs.clone()),
     )
 }
 /// Build `@Eq.refl α a` : `a = a`.
 pub(super) fn mk_eq_refl(ty: &Expr, a: &Expr) -> Expr {
     let refl_const = Expr::Const(Name::str("Eq").append_str("refl"), vec![Level::Zero]);
     Expr::App(
-        Box::new(Expr::App(Box::new(refl_const), Box::new(ty.clone()))),
-        Box::new(a.clone()),
+        Node::new(Expr::App(Node::new(refl_const), Node::new(ty.clone()))),
+        Node::new(a.clone()),
     )
 }
 /// Build `@Eq.trans α a b c hab hbc` : if `a = b` and `b = c` then `a = c`.
@@ -196,7 +197,7 @@ pub(super) fn mk_funext(alpha: &Expr, beta: &Expr, f: &Expr, g: &Expr, h: Expr) 
 /// Attempt to get the argument type and return type of a Pi/arrow type.
 pub(super) fn decompose_pi(ty: &Expr) -> Option<(BinderInfo, Name, Expr, Expr)> {
     if let Expr::Pi(bi, name, dom, cod) = ty {
-        Some((*bi, name.clone(), *dom.clone(), *cod.clone()))
+        Some((*bi, name.clone(), (**dom).clone(), (**cod).clone()))
     } else {
         None
     }
@@ -204,7 +205,7 @@ pub(super) fn decompose_pi(ty: &Expr) -> Option<(BinderInfo, Name, Expr, Expr)> 
 /// Attempt to get the binder info and body of a lambda.
 pub(super) fn decompose_lambda(expr: &Expr) -> Option<(BinderInfo, Name, Expr, Expr)> {
     if let Expr::Lam(bi, name, ty, body) = expr {
-        Some((*bi, name.clone(), *ty.clone(), *body.clone()))
+        Some((*bi, name.clone(), (**ty).clone(), (**body).clone()))
     } else {
         None
     }
@@ -364,7 +365,7 @@ pub(super) fn navigate_one_step(dir: &ConvDirection, expr: &Expr) -> TacticResul
     match dir {
         ConvDirection::Left => {
             if let Expr::App(f, _a) = expr {
-                Ok((*f.clone(), 0))
+                Ok(((**f).clone(), 0))
             } else {
                 Err(TacticError::Failed(
                     "conv left: expression is not an application".to_string(),
@@ -373,7 +374,7 @@ pub(super) fn navigate_one_step(dir: &ConvDirection, expr: &Expr) -> TacticResul
         }
         ConvDirection::Right => {
             if let Expr::App(_f, a) = expr {
-                Ok((*a.clone(), 1))
+                Ok(((**a).clone(), 1))
             } else {
                 Err(TacticError::Failed(
                     "conv right: expression is not an application".to_string(),
@@ -402,7 +403,7 @@ pub(super) fn navigate_one_step(dir: &ConvDirection, expr: &Expr) -> TacticResul
         }
         ConvDirection::Ext => {
             if let Expr::Lam(_bi, _name, _ty, body) = expr {
-                Ok((*body.clone(), 0))
+                Ok(((**body).clone(), 0))
             } else {
                 Err(TacticError::Failed(
                     "conv ext: expression is not a lambda".to_string(),
@@ -642,11 +643,11 @@ pub(super) fn parse_equality_type(ty: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(eq_a, lhs) = eq_a_lhs.as_ref() {
             if let Expr::App(eq_const, _alpha) = eq_a.as_ref() {
                 if is_eq_const(eq_const) {
-                    return Some((*lhs.clone(), *rhs.clone()));
+                    return Some(((**lhs).clone(), (**rhs).clone()));
                 }
             }
             if is_eq_const(eq_a) {
-                return Some((*lhs.clone(), *rhs.clone()));
+                return Some(((**lhs).clone(), (**rhs).clone()));
             }
         }
     }
@@ -658,7 +659,7 @@ pub(super) fn parse_eq_alpha(ty: &Expr) -> Option<Expr> {
         if let Expr::App(eq_a, _lhs) = eq_a_lhs.as_ref() {
             if let Expr::App(eq_const, alpha) = eq_a.as_ref() {
                 if is_eq_const(eq_const) {
-                    return Some(*alpha.clone());
+                    return Some((**alpha).clone());
                 }
             }
         }
@@ -679,29 +680,29 @@ pub(super) fn replace_in_expr(expr: &Expr, from: &Expr, to: &Expr) -> Expr {
     }
     match expr {
         Expr::App(f, a) => Expr::App(
-            Box::new(replace_in_expr(f, from, to)),
-            Box::new(replace_in_expr(a, from, to)),
+            Node::new(replace_in_expr(f, from, to)),
+            Node::new(replace_in_expr(a, from, to)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(replace_in_expr(ty, from, to)),
-            Box::new(replace_in_expr(body, from, to)),
+            Node::new(replace_in_expr(ty, from, to)),
+            Node::new(replace_in_expr(body, from, to)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(replace_in_expr(ty, from, to)),
-            Box::new(replace_in_expr(body, from, to)),
+            Node::new(replace_in_expr(ty, from, to)),
+            Node::new(replace_in_expr(body, from, to)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(replace_in_expr(ty, from, to)),
-            Box::new(replace_in_expr(val, from, to)),
-            Box::new(replace_in_expr(body, from, to)),
+            Node::new(replace_in_expr(ty, from, to)),
+            Node::new(replace_in_expr(val, from, to)),
+            Node::new(replace_in_expr(body, from, to)),
         ),
         Expr::Proj(name, i, e) => {
-            Expr::Proj(name.clone(), *i, Box::new(replace_in_expr(e, from, to)))
+            Expr::Proj(name.clone(), *i, Node::new(replace_in_expr(e, from, to)))
         }
         _ => expr.clone(),
     }
@@ -805,11 +806,11 @@ pub(super) fn polynomial_to_expr(poly: &crate::tactic::ring::Polynomial) -> Expr
         .into_iter()
         .reduce(|acc, t| {
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                    Box::new(acc),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                    Node::new(acc),
                 )),
-                Box::new(t),
+                Node::new(t),
             )
         })
         .unwrap_or_else(|| Expr::Const(Name::str("zero"), vec![]))
@@ -822,20 +823,20 @@ pub(super) fn monomial_term_to_expr(
 ) -> Expr {
     let coeff_expr = if den == 1 {
         if num >= 0 {
-            Expr::Lit(Literal::Nat(num as u64))
+            Expr::Lit(Literal::nat(num.unsigned_abs()))
         } else {
             Expr::App(
-                Box::new(Expr::Const(Name::str("Neg.neg"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(num.unsigned_abs()))),
+                Node::new(Expr::Const(Name::str("Neg.neg"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(num.unsigned_abs()))),
             )
         }
     } else {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("HDiv.hDiv"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(num.unsigned_abs()))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("HDiv.hDiv"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(num.unsigned_abs()))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(den as u64))),
+            Node::new(Expr::Lit(Literal::nat(den as u64))),
         )
     };
     if mono.exponents.is_empty() {
@@ -850,21 +851,21 @@ pub(super) fn monomial_term_to_expr(
                 var
             } else {
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("HPow.hPow"), vec![])),
-                        Box::new(var),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("HPow.hPow"), vec![])),
+                        Node::new(var),
                     )),
-                    Box::new(Expr::Lit(Literal::Nat(*exp as u64))),
+                    Node::new(Expr::Lit(Literal::nat(*exp as u64))),
                 )
             }
         })
         .reduce(|acc, v| {
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nat.mul"), vec![])),
-                    Box::new(acc),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nat.mul"), vec![])),
+                    Node::new(acc),
                 )),
-                Box::new(v),
+                Node::new(v),
             )
         })
         .expect("exponents is non-empty; checked above before building var_expr");
@@ -872,11 +873,11 @@ pub(super) fn monomial_term_to_expr(
         var_expr
     } else {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.mul"), vec![])),
-                Box::new(coeff_expr),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.mul"), vec![])),
+                Node::new(coeff_expr),
             )),
-            Box::new(var_expr),
+            Node::new(var_expr),
         )
     }
 }
@@ -1044,7 +1045,7 @@ pub(super) fn wrap_proof_with_congr(
                     if i == *n {
                         break;
                     }
-                    result = Expr::App(Box::new(result), Box::new(arg.clone()));
+                    result = Expr::App(Node::new(result), Node::new(arg.clone()));
                 }
                 result
             };
@@ -1080,7 +1081,7 @@ pub(super) fn wrap_proof_with_congr(
         }
         ConvDirection::Ext => {
             if let Expr::Lam(_bi, _name, lam_ty, _body) = context_expr {
-                let alpha = *lam_ty.clone();
+                let alpha = (*lam_ty).clone().clone();
                 let beta = ty.clone();
                 let f_old = context_expr.clone();
                 let f_new = Expr::Const(Name::str("_ext_new"), vec![]);
@@ -1115,7 +1116,7 @@ pub(super) fn rebuild_one_step(
     match direction {
         ConvDirection::Left => {
             if let Expr::App(_f, a) = context_expr {
-                Ok(Expr::App(Box::new(inner), a.clone()))
+                Ok(Expr::App(Node::new(inner), a.clone()))
             } else {
                 Err(TacticError::Internal(
                     "rebuild: expected App for Left".into(),
@@ -1124,7 +1125,7 @@ pub(super) fn rebuild_one_step(
         }
         ConvDirection::Right => {
             if let Expr::App(f, _a) = context_expr {
-                Ok(Expr::App(f.clone(), Box::new(inner)))
+                Ok(Expr::App(f.clone(), Node::new(inner)))
             } else {
                 Err(TacticError::Internal(
                     "rebuild: expected App for Right".into(),
@@ -1145,7 +1146,7 @@ pub(super) fn rebuild_one_step(
         }
         ConvDirection::Ext => {
             if let Expr::Lam(bi, name, ty, _body) = context_expr {
-                Ok(Expr::Lam(*bi, name.clone(), ty.clone(), Box::new(inner)))
+                Ok(Expr::Lam(*bi, name.clone(), ty.clone(), Node::new(inner)))
             } else {
                 Err(TacticError::Internal(
                     "rebuild: expected Lam for Ext".into(),
@@ -1223,22 +1224,22 @@ mod tests {
         let eq_const = Expr::Const(Name::str("Eq"), vec![Level::Zero]);
         let nat = mk_nat_const();
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(eq_const), Box::new(nat))),
-                Box::new(lhs),
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(eq_const), Node::new(nat))),
+                Node::new(lhs),
             )),
-            Box::new(rhs),
+            Node::new(rhs),
         )
     }
     fn mk_app_expr(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     fn mk_lam(name: &str, ty: Expr, body: Expr) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         )
     }
     #[test]
@@ -1615,8 +1616,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(dom.clone()),
-            Box::new(cod.clone()),
+            Node::new(dom.clone()),
+            Node::new(cod.clone()),
         );
         let result = decompose_pi(&pi);
         assert!(result.is_some());

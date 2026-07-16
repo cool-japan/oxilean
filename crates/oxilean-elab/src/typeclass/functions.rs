@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::context::ElabContext;
+use oxilean_kernel::Node;
 
 use super::types::{
     ClassConstraint, ClassError, CoherenceChecker, CoherenceError, CoherenceViolation,
@@ -491,17 +492,17 @@ mod tests_extra {
     #[test]
     fn test_type_matches_app_heads_equal() {
         let list_nat = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(nat_ty()),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(nat_ty()),
         );
         let list_bool = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Bool"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Bool"), vec![])),
         );
         assert!(!type_matches(&list_nat, &list_bool));
         let list_wild = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert!(type_matches(&list_wild, &list_nat));
         assert!(type_matches(&list_wild, &list_bool));
@@ -519,8 +520,8 @@ mod tests_extra {
     #[test]
     fn test_decompose_app_constraint() {
         let eq_nat = Expr::App(
-            Box::new(Expr::Const(Name::str("Eq"), vec![])),
-            Box::new(nat_ty()),
+            Node::new(Expr::Const(Name::str("Eq"), vec![])),
+            Node::new(nat_ty()),
         );
         let (cls, ty) = decompose_constraint(&Name::str("Eq"), &eq_nat);
         assert_eq!(cls, Name::str("Eq"));
@@ -529,8 +530,8 @@ mod tests_extra {
     #[test]
     fn test_decompose_app_different_head() {
         let ord_nat = Expr::App(
-            Box::new(Expr::Const(Name::str("Ord"), vec![])),
-            Box::new(nat_ty()),
+            Node::new(Expr::Const(Name::str("Ord"), vec![])),
+            Node::new(nat_ty()),
         );
         let (cls, ty) = decompose_constraint(&Name::str("Eq"), &ord_nat);
         assert_eq!(cls, Name::str("Eq"));
@@ -568,8 +569,8 @@ mod tests_extra {
         let env = oxilean_kernel::Environment::new();
         let ctx = crate::context::ElabContext::new(&env);
         let app_constraint = Expr::App(
-            Box::new(Expr::Const(Name::str("Eq"), vec![])),
-            Box::new(nat_ty()),
+            Node::new(Expr::Const(Name::str("Eq"), vec![])),
+            Node::new(nat_ty()),
         );
         let result = resolve_constraint(&ctx, &registry, &Name::str("Eq"), &app_constraint);
         assert_eq!(result, Some(impl_expr));

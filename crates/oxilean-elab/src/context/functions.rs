@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use std::collections::HashMap;
 
 use super::elabcontext_type::ElabContext;
@@ -431,8 +432,8 @@ pub fn build_telescope(locals: &[LocalEntry], body: oxilean_kernel::Expr) -> oxi
         result = Expr::Pi(
             BinderInfo::Default,
             entry.name.clone(),
-            Box::new(entry.ty.clone()),
-            Box::new(result),
+            Node::new(entry.ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -710,8 +711,8 @@ pub fn abstract_fvar(
     Expr::Lam(
         BinderInfo::Default,
         name,
-        Box::new(ty),
-        Box::new(abstracted),
+        Node::new(ty),
+        Node::new(abstracted),
     )
 }
 fn abstract_fvar_in_expr(
@@ -722,31 +723,31 @@ fn abstract_fvar_in_expr(
     match expr {
         Expr::FVar(id) if *id == fvar => Expr::BVar(depth),
         Expr::App(f, a) => Expr::App(
-            Box::new(abstract_fvar_in_expr(fvar, f, depth)),
-            Box::new(abstract_fvar_in_expr(fvar, a, depth)),
+            Node::new(abstract_fvar_in_expr(fvar, f, depth)),
+            Node::new(abstract_fvar_in_expr(fvar, a, depth)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(abstract_fvar_in_expr(fvar, ty, depth)),
-            Box::new(abstract_fvar_in_expr(fvar, body, depth + 1)),
+            Node::new(abstract_fvar_in_expr(fvar, ty, depth)),
+            Node::new(abstract_fvar_in_expr(fvar, body, depth + 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(abstract_fvar_in_expr(fvar, ty, depth)),
-            Box::new(abstract_fvar_in_expr(fvar, body, depth + 1)),
+            Node::new(abstract_fvar_in_expr(fvar, ty, depth)),
+            Node::new(abstract_fvar_in_expr(fvar, body, depth + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(abstract_fvar_in_expr(fvar, ty, depth)),
-            Box::new(abstract_fvar_in_expr(fvar, val, depth)),
-            Box::new(abstract_fvar_in_expr(fvar, body, depth + 1)),
+            Node::new(abstract_fvar_in_expr(fvar, ty, depth)),
+            Node::new(abstract_fvar_in_expr(fvar, val, depth)),
+            Node::new(abstract_fvar_in_expr(fvar, body, depth + 1)),
         ),
         Expr::Proj(n, idx, inner) => Expr::Proj(
             n.clone(),
             *idx,
-            Box::new(abstract_fvar_in_expr(fvar, inner, depth)),
+            Node::new(abstract_fvar_in_expr(fvar, inner, depth)),
         ),
         _ => expr.clone(),
     }

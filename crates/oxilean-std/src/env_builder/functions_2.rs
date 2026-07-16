@@ -486,6 +486,58 @@ pub fn add_classical(b: &mut EnvBuilder) {
         ),
     );
 }
+/// Add `LE`/`LE.le` type class, `absurd`, and the omega helper lemma bundle.
+///
+/// This function ensures the production environment contains:
+/// - `LE` (the less-than-or-equal type class, `Type → Type 1`)
+/// - `LE.le` (the relation method, `{α : Type} → [LE α] → α → α → Prop`)
+/// - `absurd` (`{a b : Prop} → a → Not a → b`)
+/// - All 18 omega helper lemmas (10 core + 2 bridge axioms + 2 closing axioms
+///   + 3 strict-inequality transitivity lemmas + 1 direct Farkas contradiction closer)
+///   including `Int.absurd_le_zero` and `Int.zero_lt_one` for Farkas reconstruction
+///
+/// Each declaration is guarded: if already present it is silently skipped.
+pub fn add_omega_lemmas(b: &mut EnvBuilder) {
+    // LE : Type → Type 1 (type class)
+    if !b.contains("LE") {
+        b.axiom("LE", pi(type0(), type1()));
+    }
+    // LE.le : {α : Type} → [_inst : LE α] → α → α → Prop
+    if !b.contains("LE.le") {
+        let le_le_ty = pi_implicit(
+            "α",
+            type0(),
+            pi_inst(
+                "_inst",
+                app(var("LE"), bvar(0)),
+                pi_named("a", bvar(1), pi_named("b", bvar(2), prop())),
+            ),
+        );
+        b.axiom("LE.le", le_le_ty);
+    }
+    // absurd : {a b : Prop} → a → Not a → b
+    if !b.contains("absurd") {
+        let absurd_ty = pi_implicit(
+            "a",
+            prop(),
+            pi_implicit(
+                "b",
+                prop(),
+                pi_named(
+                    "ha",
+                    bvar(1),
+                    pi_named("hna", app(var("Not"), bvar(2)), bvar(2)),
+                ),
+            ),
+        );
+        b.axiom("absurd", absurd_ty);
+    }
+    // omega helper lemma bundle (18 lemmas; skips any already present)
+    if let Err(e) = crate::omega_helper::register_omega_helper(b.env_mut()) {
+        b.push_error(format!("register_omega_helper failed: {e}"));
+    }
+}
+
 /// Build a complete standard environment with all core primitives.
 #[allow(dead_code)]
 pub fn build_full_std_env() -> EnvBuilder {
@@ -516,6 +568,7 @@ pub fn build_full_std_env() -> EnvBuilder {
     add_type_classes(&mut b);
     add_decidable(&mut b);
     add_classical(&mut b);
+    add_omega_lemmas(&mut b);
     b
 }
 #[cfg(test)]
@@ -777,6 +830,86 @@ mod extended_tests {
         assert!(b.contains("WellFounded.rec"));
         assert!(b.contains("Acc"));
         assert!(b.contains("Acc.intro"));
+    }
+    #[test]
+    fn test_add_omega_lemmas() {
+        let mut b = EnvBuilder::fresh();
+        // add_int_arith first so Int and Int.le are known
+        add_int_arith(&mut b);
+        add_prop_logic(&mut b);
+        add_omega_lemmas(&mut b);
+        assert!(b.is_ok(), "add_omega_lemmas errors: {:?}", b.errors());
+        // LE bridge
+        assert!(b.contains("LE"));
+        assert!(b.contains("LE.le"));
+        // absurd
+        assert!(b.contains("absurd"));
+        // all 12 omega lemmas
+        let omega_lemmas = [
+            "Int.le_refl",
+            "Int.le_trans",
+            "Int.le_antisymm",
+            "Int.lt_irrefl",
+            "Int.lt_iff_add_one_le",
+            "Int.le_of_lt",
+            "Int.add_le_add",
+            "Int.mul_le_mul_of_nonneg_left",
+            "Int.le_of_eq",
+            "Int.le_total",
+            "le_of_int_le",
+            "int_le_of_le",
+        ];
+        for name in &omega_lemmas {
+            assert!(b.contains(name), "missing omega lemma: {name}");
+        }
+    }
+    #[test]
+    fn test_build_full_std_env_has_omega_and_absurd() {
+        let b = build_full_std_env();
+        assert!(b.is_ok(), "full std env errors: {:?}", b.errors());
+        // absurd present
+        assert!(b.contains("absurd"), "production env should contain absurd");
+        // LE bridge present
+        assert!(b.contains("LE"), "production env should contain LE");
+        assert!(b.contains("LE.le"), "production env should contain LE.le");
+        // all 12 omega lemmas present
+        let omega_lemmas = [
+            "Int.le_refl",
+            "Int.le_trans",
+            "Int.le_antisymm",
+            "Int.lt_irrefl",
+            "Int.lt_iff_add_one_le",
+            "Int.le_of_lt",
+            "Int.add_le_add",
+            "Int.mul_le_mul_of_nonneg_left",
+            "Int.le_of_eq",
+            "Int.le_total",
+            "le_of_int_le",
+            "int_le_of_le",
+        ];
+        for name in &omega_lemmas {
+            assert!(
+                b.contains(name),
+                "production env missing omega lemma: {name}"
+            );
+        }
+    }
+    #[test]
+    fn test_add_omega_lemmas_idempotent() {
+        let mut b = EnvBuilder::fresh();
+        add_int_arith(&mut b);
+        add_prop_logic(&mut b);
+        add_omega_lemmas(&mut b);
+        // Second call should be idempotent
+        add_omega_lemmas(&mut b);
+        assert!(
+            b.is_ok(),
+            "second add_omega_lemmas errors: {:?}",
+            b.errors()
+        );
+        assert!(b.contains("le_of_int_le"));
+        assert!(b.contains("int_le_of_le"));
+        assert!(b.contains("absurd"));
     }
 }
 /// Add `Sum` (coproduct / disjoint union) type with `.inl` and `.inr`.

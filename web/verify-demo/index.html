@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kernel in a Tab — an independent Lean 4 proof checker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Kernel in a Tab</h1>
+      <p class="tagline">An independent, Pure-Rust Lean&nbsp;4 kernel — checking a
+        <code>lean4export</code> file, live, in your browser.</p>
+      <!-- The "N KB" is written at build/copy time from the gzipped .wasm size. -->
+      <p class="badge" id="badge">
+        kernel: <span id="kb">144</span>&nbsp;KB wasm
+        &middot; 0 external dependencies
+        &middot; 0 unsafe
+        &middot; 0 bytes uploaded
+      </p>
+    </header>
+
+    <section id="drop" class="drop" tabindex="0" aria-label="Drop a .export or .ndjson file here">
+      <div class="drop-inner">
+        <p class="drop-hint">Drop a Lean&nbsp;<code>.export</code> / <code>.ndjson</code> file here</p>
+        <p class="drop-sub">or <button type="button" id="pick" class="link">choose a file</button>
+          &middot; <button type="button" id="sample" class="link">try the sample</button></p>
+        <input type="file" id="file" accept=".ndjson,.export,.txt" hidden />
+      </div>
+    </section>
+
+    <section id="run" class="run" hidden>
+      <div class="stream" id="stream" role="log" aria-live="polite"></div>
+      <p class="summary" id="summary"></p>
+      <p class="closing" id="closing" hidden>
+        Nothing left your machine. This kernel has never seen Lean's source code.
+      </p>
+    </section>
+
+    <footer id="pins" class="pins"></footer>
+  </main>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -7,6 +7,7 @@ use oxilean_elab::{
     eval_tactic_block, tactic_cases, tactic_induction, tactic_intro, Goal, TacticState,
 };
 use oxilean_kernel::env::Environment;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 use oxilean_parse::{Lexer, Parser};
 
@@ -675,15 +676,15 @@ pub(super) fn mk_pi(name: &str, domain: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(domain),
-        Box::new(body),
+        Node::new(domain),
+        Node::new(body),
     )
 }
 pub(super) fn mk_eq(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
     let eq_const = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
-    let eq_ty = Expr::App(Box::new(eq_const), Box::new(ty));
-    let eq_lhs = Expr::App(Box::new(eq_ty), Box::new(lhs));
-    Expr::App(Box::new(eq_lhs), Box::new(rhs))
+    let eq_ty = Expr::App(Node::new(eq_const), Node::new(ty));
+    let eq_lhs = Expr::App(Node::new(eq_ty), Node::new(lhs));
+    Expr::App(Node::new(eq_lhs), Node::new(rhs))
 }
 /// Test: `intro` on a Pi goal introduces a hypothesis and returns sub-goal.
 #[test]
@@ -705,7 +706,7 @@ fn tactic_intro_on_pi_goal() {
 #[test]
 fn tactic_refl_closes_eq_goal() {
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let target = mk_eq(nat_ty, zero.clone(), zero);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
@@ -717,8 +718,8 @@ fn tactic_refl_closes_eq_goal() {
 #[test]
 fn tactic_refl_fails_on_nonrefl() {
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
-    let one = Expr::Lit(oxilean_kernel::Literal::Nat(1));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
+    let one = Expr::Lit(oxilean_kernel::Literal::nat(1));
     let target = mk_eq(nat_ty, zero, one);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
@@ -778,7 +779,7 @@ fn tactic_intro_then_assumption_proves_identity() {
 #[test]
 fn tactic_multi_intro_then_refl() {
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let eq_goal = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
     let target = mk_pi("n", nat_ty.clone(), mk_pi("m", nat_ty.clone(), eq_goal));
     let mut state = TacticState::new();
@@ -825,7 +826,7 @@ fn tactic_exfalso_changes_goal() {
 #[test]
 fn tactic_engine_summary() {
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let prop_p = Expr::Const(Name::str("P"), vec![]);
     let cases: Vec<(&str, Expr, Vec<String>, bool)> = vec![
         (
@@ -857,7 +858,7 @@ fn tactic_engine_summary() {
             mk_eq(
                 nat_ty.clone(),
                 zero.clone(),
-                Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+                Expr::Lit(oxilean_kernel::Literal::nat(1)),
             ),
             vec!["refl".into()],
             false,
@@ -901,7 +902,7 @@ fn tactic_simp_closes_true() {
 #[test]
 fn tactic_simp_closes_refl() {
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let target = mk_eq(nat_ty, zero.clone(), zero);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), target));
@@ -1042,7 +1043,7 @@ fn tactic_simp_only_no_match_leaves_goal() {
 /// Test: `simp only []` (empty list) acts like plain `simp` (beta-reduce + trivial).
 #[test]
 fn tactic_simp_only_empty_list_acts_like_simp() {
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
     let target = mk_eq(nat_ty, zero.clone(), zero);
     let mut state = TacticState::new();
@@ -1058,8 +1059,8 @@ fn tactic_intro_then_simp_closes_identity() {
     let pi_target = Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(nat_ty.clone()),
-        Box::new(nat_ty.clone()),
+        Node::new(nat_ty.clone()),
+        Node::new(nat_ty.clone()),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), pi_target));
@@ -1077,7 +1078,7 @@ fn tactic_intro_then_simp_closes_identity() {
 /// Simp summary test: verifies simp handles multiple goal patterns correctly.
 #[test]
 fn tactic_simp_summary() {
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
     let true_expr = Expr::Const(Name::str("True"), vec![]);
     let t1 = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
@@ -1394,11 +1395,11 @@ fn tactic_constructor_splits_and() {
     let p = Expr::Const(Name::str("P"), vec![]);
     let q = Expr::Const(Name::str("Q"), vec![]);
     let and_pq = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(p.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(p.clone()),
         )),
-        Box::new(q.clone()),
+        Node::new(q.clone()),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), and_pq));
@@ -1411,11 +1412,11 @@ fn tactic_left_on_or_goal() {
     let p = Expr::Const(Name::str("P"), vec![]);
     let q = Expr::Const(Name::str("Q"), vec![]);
     let or_pq = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(p.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(p.clone()),
         )),
-        Box::new(q.clone()),
+        Node::new(q.clone()),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), or_pq));
@@ -1428,11 +1429,11 @@ fn tactic_right_on_or_goal() {
     let p = Expr::Const(Name::str("P"), vec![]);
     let q = Expr::Const(Name::str("Q"), vec![]);
     let or_pq = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(p.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(p.clone()),
         )),
-        Box::new(q.clone()),
+        Node::new(q.clone()),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), or_pq));
@@ -1478,14 +1479,14 @@ fn tactic_two_intros_sequential() {
     let inner_pi = Expr::Pi(
         BinderInfo::Default,
         Name::str("y"),
-        Box::new(nat_ty.clone()),
-        Box::new(nat_ty.clone()),
+        Node::new(nat_ty.clone()),
+        Node::new(nat_ty.clone()),
     );
     let outer_pi = Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(nat_ty.clone()),
-        Box::new(inner_pi),
+        Node::new(nat_ty.clone()),
+        Node::new(inner_pi),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), outer_pi));
@@ -1506,7 +1507,7 @@ fn tactic_two_intros_sequential() {
 /// `exact` on a literal closes a literal goal.
 #[test]
 fn tactic_exact_literal() {
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), nat_ty.clone()));
@@ -1519,17 +1520,17 @@ fn tactic_exact_literal() {
 fn tactic_prove_p_and_p() {
     let p = Expr::Const(Name::str("MyP"), vec![]);
     let and_pp = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(p.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(p.clone()),
         )),
-        Box::new(p.clone()),
+        Node::new(p.clone()),
     );
     let pi_target = Expr::Pi(
         BinderInfo::Default,
         Name::str("h"),
-        Box::new(p.clone()),
-        Box::new(and_pp),
+        Node::new(p.clone()),
+        Node::new(and_pp),
     );
     let mut state = TacticState::new();
     state.add_goal(Goal::new(Name::str("main"), pi_target));
@@ -1549,13 +1550,13 @@ fn tactic_sorry_closes_any_goal() {
     let complex_goal = Expr::Pi(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(Expr::Const(Name::str("P"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(Expr::Const(Name::str("P"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Q"), vec![])),
+            Node::new(Expr::Const(Name::str("Q"), vec![])),
         )),
     );
     let mut state = TacticState::new();
@@ -1568,7 +1569,7 @@ fn tactic_sorry_closes_any_goal() {
 #[test]
 fn tactic_engine_full_summary() {
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let p = Expr::Const(Name::str("TestP"), vec![]);
     let q = Expr::Const(Name::str("TestQ"), vec![]);
     let true_expr = Expr::Const(Name::str("True"), vec![]);
@@ -1619,8 +1620,8 @@ fn tactic_engine_full_summary() {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("h"),
-            Box::new(p.clone()),
-            Box::new(p.clone()),
+            Node::new(p.clone()),
+            Node::new(p.clone()),
         );
         let mut s = TacticState::new();
         s.add_goal(Goal::new(Name::str("g"), pi));
@@ -1673,21 +1674,21 @@ fn tactic_engine_full_summary() {
 /// Helper: build `And A B` expression.
 pub(super) fn mk_and(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Helper: build `Or A B` expression.
 pub(super) fn mk_or_expr(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Test: `cases h` on `h : And A B` splits into one goal with h_left/h_right.
@@ -1872,8 +1873,8 @@ fn tactic_induction_zero_goal_has_lit_zero_target() {
         .expect("should have zero goal");
     let expected = mk_eq(
         nat_ty,
-        Expr::Lit(oxilean_kernel::Literal::Nat(0)),
-        Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+        Expr::Lit(oxilean_kernel::Literal::nat(0)),
+        Expr::Lit(oxilean_kernel::Literal::nat(0)),
     );
     assert_eq!(
         zero_goal.target, expected,
@@ -1884,7 +1885,7 @@ fn tactic_induction_zero_goal_has_lit_zero_target() {
 #[test]
 fn tactic_induction_zero_proved_by_refl() {
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let target_body = mk_eq(nat_ty.clone(), zero.clone(), zero.clone());
     let pi_target = mk_pi("n", nat_ty.clone(), target_body.clone());
     let mut state = TacticState::new();

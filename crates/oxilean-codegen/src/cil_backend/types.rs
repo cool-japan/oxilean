@@ -479,6 +479,7 @@ impl CilBackend {
         match ty {
             LcnfType::Erased | LcnfType::Object | LcnfType::Irrelevant => CilType::Object,
             LcnfType::Nat => CilType::UInt64,
+            LcnfType::Int => CilType::Int64,
             LcnfType::LcnfString => CilType::String,
             LcnfType::Unit => CilType::Void,
             LcnfType::Var(name) => match name.as_str() {
@@ -510,6 +511,7 @@ impl CilBackend {
     pub fn emit_literal(&self, method: &mut CilMethod, lit: &LcnfLit) {
         match lit {
             LcnfLit::Nat(n) => method.emit(CilInstr::LdcI8(*n as i64)),
+            LcnfLit::Int(i) => method.emit(CilInstr::LdcI8(*i)),
             LcnfLit::Str(s) => method.emit(CilInstr::Ldstr(s.clone())),
         }
     }

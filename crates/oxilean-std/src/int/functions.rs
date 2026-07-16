@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Literal, Name};
 
 use super::types::{
@@ -10,7 +11,7 @@ use super::types::{
 };
 
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
     app(app(f, a), b)
@@ -19,7 +20,7 @@ pub fn app3(f: Expr, a: Expr, b: Expr, c: Expr) -> Expr {
     app(app2(f, a, b), c)
 }
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn cst(s: &str) -> Expr {
     Expr::Const(Name::str(s), vec![])
@@ -191,8 +192,8 @@ pub fn build_int_env(env: &mut Environment) -> Result<(), String> {
     );
     add_axiom(env, "Int.rec", vec![Name::str("u")], rec_ty)?;
     let ofnat_zero_ty = int_eq_expr(
-        app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0))),
-        app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0))),
+        app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0))),
+        app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0))),
     );
     add_axiom(env, "Int.ofNat_zero", vec![], ofnat_zero_ty)?;
     let ofnat_succ_ty = pi(
@@ -204,7 +205,7 @@ pub fn build_int_env(env: &mut Environment) -> Result<(), String> {
             app2(
                 cst("Int.add"),
                 app(cst("Int.ofNat"), bvar(0)),
-                app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(1))),
+                app(cst("Int.ofNat"), Expr::Lit(Literal::nat(1))),
             ),
         ),
     );
@@ -227,7 +228,7 @@ pub fn build_int_env(env: &mut Environment) -> Result<(), String> {
         ),
     ));
     add_axiom(env, "Int.add_assoc", vec![], add_assoc_ty)?;
-    let int_zero = app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0)));
+    let int_zero = app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0)));
     let add_zero_ty = forall1_int(int_eq_expr(
         app2(cst("Int.add"), bvar(0), int_zero.clone()),
         bvar(0),
@@ -266,7 +267,7 @@ pub fn build_int_env(env: &mut Environment) -> Result<(), String> {
         ),
     ));
     add_axiom(env, "Int.mul_assoc", vec![], mul_assoc_ty)?;
-    let int_one = app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(1)));
+    let int_one = app(cst("Int.ofNat"), Expr::Lit(Literal::nat(1)));
     let mul_one_ty = forall1_int(int_eq_expr(
         app2(cst("Int.mul"), bvar(0), int_one.clone()),
         bvar(0),
@@ -496,21 +497,21 @@ pub fn int_beq(a: Expr, b: Expr) -> Expr {
 #[allow(dead_code)]
 pub fn int_lit(n: i64) -> Expr {
     if n >= 0 {
-        app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(n as u64)))
+        app(cst("Int.ofNat"), Expr::Lit(Literal::nat(n as u64)))
     } else {
         let k = (-n - 1) as u64;
-        app(cst("Int.negSucc"), Expr::Lit(Literal::Nat(k)))
+        app(cst("Int.negSucc"), Expr::Lit(Literal::nat(k)))
     }
 }
 /// Int.ofNat 0.
 #[allow(dead_code)]
 pub fn int_zero() -> Expr {
-    app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0)))
+    app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0)))
 }
 /// Int.ofNat 1.
 #[allow(dead_code)]
 pub fn int_one() -> Expr {
-    app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(1)))
+    app(cst("Int.ofNat"), Expr::Lit(Literal::nat(1)))
 }
 /// Eq a b on Int.
 #[allow(dead_code)]
@@ -563,7 +564,7 @@ pub fn axiom_int_gcd_zero_right_ty() -> Expr {
         app2(
             cst("Int.gcd"),
             bvar(0),
-            app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0))),
+            app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0))),
         ),
         app(cst("Int.abs"), bvar(0)),
     ))
@@ -574,7 +575,7 @@ pub fn axiom_int_gcd_zero_left_ty() -> Expr {
     forall1_int(nat_eq_expr(
         app2(
             cst("Int.gcd"),
-            app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0))),
+            app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0))),
             bvar(0),
         ),
         app(cst("Int.abs"), bvar(0)),
@@ -824,7 +825,7 @@ pub fn axiom_int_abs_add_ty() -> Expr {
 pub fn axiom_int_abs_nonneg_ty() -> Expr {
     forall1_int(app2(
         cst("Nat.le"),
-        Expr::Lit(Literal::Nat(0)),
+        Expr::Lit(Literal::nat(0)),
         app(cst("Int.abs"), bvar(0)),
     ))
 }
@@ -948,8 +949,8 @@ pub fn axiom_int_pow_ty() -> Expr {
 #[allow(dead_code)]
 pub fn axiom_int_pow_zero_ty() -> Expr {
     forall1_int(int_eq_expr(
-        app2(cst("Int.pow"), bvar(0), Expr::Lit(Literal::Nat(0))),
-        app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(1))),
+        app2(cst("Int.pow"), bvar(0), Expr::Lit(Literal::nat(0))),
+        app(cst("Int.ofNat"), Expr::Lit(Literal::nat(1))),
     ))
 }
 /// Int.pow_succ : ∀ a n, Eq (Int.pow a (Nat.succ n)) (Int.mul (Int.pow a n) a)
@@ -1000,7 +1001,7 @@ pub fn axiom_int_pow_add_ty() -> Expr {
 pub fn axiom_int_sq_nonneg_ty() -> Expr {
     forall1_int(app2(
         cst("Int.le"),
-        app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0))),
+        app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0))),
         app2(cst("Int.mul"), bvar(0), bvar(0)),
     ))
 }
@@ -1012,7 +1013,7 @@ pub fn axiom_int_le_add_right_ty() -> Expr {
         "hb",
         app2(
             cst("Int.le"),
-            app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0))),
+            app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0))),
             bvar(0),
         ),
         app2(
@@ -1039,7 +1040,7 @@ pub fn axiom_int_add_le_add_left_ty() -> Expr {
 /// Int.mul_pos : ∀ a b, Int.lt 0 a → Int.lt 0 b → Int.lt 0 (Int.mul a b)
 #[allow(dead_code)]
 pub fn axiom_int_mul_pos_ty() -> Expr {
-    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0)));
+    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0)));
     forall2_int_eq(pi(
         BinderInfo::Default,
         "ha",
@@ -1055,7 +1056,7 @@ pub fn axiom_int_mul_pos_ty() -> Expr {
 /// Int.ediv_nonneg : ∀ a b, Int.le 0 a → Int.lt 0 b → Int.le 0 (Int.div a b)
 #[allow(dead_code)]
 pub fn axiom_int_ediv_nonneg_ty() -> Expr {
-    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0)));
+    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0)));
     forall2_int_eq(pi(
         BinderInfo::Default,
         "ha",
@@ -1109,7 +1110,7 @@ pub fn axiom_int_sign_neg_ty() -> Expr {
 /// Int.mod_nonneg : ∀ a b, Int.lt 0 b → Int.le 0 (Int.mod a b)
 #[allow(dead_code)]
 pub fn axiom_int_mod_nonneg_ty() -> Expr {
-    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0)));
+    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0)));
     forall2_int_eq(pi(
         BinderInfo::Default,
         "hb",
@@ -1120,7 +1121,7 @@ pub fn axiom_int_mod_nonneg_ty() -> Expr {
 /// Int.mod_lt : ∀ a b, Int.lt 0 b → Int.lt (Int.mod a b) b
 #[allow(dead_code)]
 pub fn axiom_int_mod_lt_ty() -> Expr {
-    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::Nat(0)));
+    let zero = app(cst("Int.ofNat"), Expr::Lit(Literal::nat(0)));
     forall2_int_eq(pi(
         BinderInfo::Default,
         "hb",
@@ -1283,23 +1284,23 @@ mod tests {
     }
     #[test]
     fn test_int_of_nat() {
-        let e = int_of_nat(Expr::Lit(Literal::Nat(5)));
+        let e = int_of_nat(Expr::Lit(Literal::nat(5)));
         assert!(matches!(e, Expr::App(_, _)));
         if let Expr::App(f, arg) = &e {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.ofNat"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(5))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 5u64));
         }
     }
     #[test]
     fn test_int_neg_succ() {
-        let e = int_neg_succ(Expr::Lit(Literal::Nat(3)));
+        let e = int_neg_succ(Expr::Lit(Literal::nat(3)));
         if let Expr::App(f, arg) = &e {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.negSucc"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(3))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 3u64));
         } else {
             panic!("expected App");
         }
@@ -1424,7 +1425,7 @@ mod tests {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.ofNat"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(42))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 42u64));
         } else {
             panic!("expected App");
         }
@@ -1436,7 +1437,7 @@ mod tests {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.negSucc"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(4))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 4u64));
         } else {
             panic!("expected App");
         }
@@ -1448,7 +1449,7 @@ mod tests {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.ofNat"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(0))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 0u64));
         } else {
             panic!("expected App");
         }
@@ -1460,7 +1461,7 @@ mod tests {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.ofNat"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(0))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 0u64));
         } else {
             panic!("expected App");
         }
@@ -1472,7 +1473,7 @@ mod tests {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.ofNat"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(1))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 1u64));
         } else {
             panic!("expected App");
         }
@@ -1503,7 +1504,7 @@ mod tests {
             if let Expr::Const(n, _) = f.as_ref() {
                 assert_eq!(*n, Name::str("Int.negSucc"));
             }
-            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(0))));
+            assert!(matches!(arg.as_ref(), Expr::Lit(Literal::Nat(ref n)) if *n == 0u64));
         } else {
             panic!("expected App");
         }

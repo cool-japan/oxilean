@@ -1,0 +1,25 @@
+[package]
+name = "oxilean-doc"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+description = "Documentation generator for OxiLean (.lean) source files"
+keywords = ["lean", "documentation", "doc-gen", "proof-assistant"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "oxilean-doc"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6", features = ["derive"] }
+anyhow = { version = "1.0" }
+oxilean-parse = { workspace = true }
+oxilean-codegen = { workspace = true }
+
+[dev-dependencies]
+tempfile = { version = "3.27" }

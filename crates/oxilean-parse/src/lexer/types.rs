@@ -515,13 +515,10 @@ impl Lexer {
                         self.advance();
                         break;
                     }
-                    if let Some(d) = ch.to_digit(16) {
-                        code = code * 16 + d;
-                        has_digit = true;
-                        self.advance();
-                    } else {
-                        return None;
-                    }
+                    let d = ch.to_digit(16)?;
+                    code = code * 16 + d;
+                    has_digit = true;
+                    self.advance();
                 }
                 if !has_digit {
                     return None;

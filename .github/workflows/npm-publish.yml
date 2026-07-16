@@ -55,17 +55,63 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack --version ${{ env.WASM_PACK_VERSION }} --locked || true
 
+      - name: Install wasm-tools (for export-gate)
+        run: cargo install wasm-tools --locked || true
+
       - name: Build for bundler target
         working-directory: crates/oxilean-wasm
-        run: wasm-pack build --scope ${{ env.SCOPE }} --target bundler --out-dir pkg-bundler --release
+        run: wasm-pack build --scope ${{ env.SCOPE }} --target bundler --out-dir pkg-bundler --release --features wasm
 
       - name: Build for web target
         working-directory: crates/oxilean-wasm
-        run: wasm-pack build --scope ${{ env.SCOPE }} --target web --out-dir pkg-web --release
+        run: wasm-pack build --scope ${{ env.SCOPE }} --target web --out-dir pkg-web --release --features wasm
 
       - name: Build for Node.js target
         working-directory: crates/oxilean-wasm
-        run: wasm-pack build --scope ${{ env.SCOPE }} --target nodejs --out-dir pkg-node --release
+        run: wasm-pack build --scope ${{ env.SCOPE }} --target nodejs --out-dir pkg-node --release --features wasm
+
+      - name: Verify WASM export count (bundler)
+        run: |
+          WASM_FILE=$(find crates/oxilean-wasm/pkg-bundler -maxdepth 1 -name "*.wasm" | head -1)
+          bash web/scripts/export-gate.sh "$WASM_FILE" 10
+
+      - name: Verify WASM export count (web)
+        run: |
+          WASM_FILE=$(find crates/oxilean-wasm/pkg-web -maxdepth 1 -name "*.wasm" | head -1)
+          bash web/scripts/export-gate.sh "$WASM_FILE" 10
+
+      - name: Verify WASM export count (node)
+        run: |
+          WASM_FILE=$(find crates/oxilean-wasm/pkg-node -maxdepth 1 -name "*.wasm" | head -1)
+          bash web/scripts/export-gate.sh "$WASM_FILE" 10
+
+      - name: WASM gzip size report
+        working-directory: crates/oxilean-wasm
+        run: |
+          WASM_FILE=$(find pkg-bundler -maxdepth 1 -name "*.wasm" | head -1)
+          RAW_BYTES=$(wc -c < "$WASM_FILE")
+          RAW_KB=$((RAW_BYTES / 1024))
+          GZIP_BYTES=$(gzip -c "$WASM_FILE" | wc -c)
+          GZIP_KB=$((GZIP_BYTES / 1024))
+          echo "=== WASM size report (bundler) ==="
+          echo "  Raw size:  ${RAW_KB} KB  (${RAW_BYTES} bytes)"
+          echo "  Gzip size: ${GZIP_KB} KB  (${GZIP_BYTES} bytes)"
+          echo "(informational — no hard limit enforced for oxilean-wasm full IDE package)"
+
+      - name: Copy hand-crafted TypeScript declarations into pkg directories
+        working-directory: crates/oxilean-wasm
+        run: |
+          # The auto-generated .d.ts from wasm-bindgen uses snake_case names and
+          # may not fully reflect the js_name= overrides in all wasm-pack versions.
+          # The hand-crafted oxilean.d.ts at the crate root is the authoritative
+          # TypeScript API surface; copy it alongside the generated file so npm
+          # consumers can import the correct types.
+          for dir in pkg-bundler pkg-web pkg-node; do
+            if [ -d "$dir" ]; then
+              cp oxilean.d.ts "${dir}/oxilean.d.ts"
+              echo "Copied oxilean.d.ts into ${dir}/"
+            fi
+          done
 
       - name: Rename packages to @cooljapan/oxilean
         working-directory: crates/oxilean-wasm
@@ -91,6 +137,9 @@ jobs:
           echo ""
           echo "=== WASM size ==="
           ls -lh pkg-bundler/*.wasm
+          echo ""
+          echo "=== bundler files ==="
+          ls -la pkg-bundler/
 
       - name: Upload bundler package
         uses: actions/upload-artifact@v4

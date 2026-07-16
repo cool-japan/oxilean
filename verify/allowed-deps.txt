@@ -1,0 +1,61 @@
+# verify/allowed-deps.txt — allow-list of runtime dependencies for the
+# oxilean-verify product: the proof-checking TCB plus the WASM "Kernel in a Tab"
+# shim's JS-glue closure.
+#
+# REVIEW RULE: Every entry here represents a crate whose entire transitive
+# dependency tree is trusted to participate in the trusted surface of the verify
+# product.  Before adding a new entry:
+#   1. Audit the crate's source for unsafe code and side-effects.
+#   2. Confirm the crate's own dependency tree is minimal.
+#   3. Get explicit approval in the PR from a maintainer with TCB authority.
+#   4. Add an inline justification comment on the same line.
+#
+# Format: one crate name per line; blank lines and lines starting with '#'
+# are ignored.  Only the crate's short name (no version) is listed; the
+# gate script compares against `cargo tree --edges normal --prefix none`.
+#
+# TWO SCOPES, deliberately separated:
+#
+#   * The PROOF-CHECKING TCB closure — oxilean-kernel + oxilean-export +
+#     oxilean-verify — has ZERO external crates and is gated as such on its own
+#     (scripts/gate-zero-deps.sh + gate-allow-list.sh over exactly those three).
+#     Nothing below the "── WASM shim ──" divider is in that closure.
+#
+#   * The WASM shim (oxilean-verify-wasm) additionally links the wasm-bindgen
+#     family for JS glue. That family has no runtime proof-checking logic — it is
+#     codegen + the JS↔wasm ABI — but it does drag in a transitive build/runtime
+#     tree, listed explicitly below so a single crates.io dependency cannot sneak
+#     into the shim unreviewed.
+
+# ── Proof-checking TCB closure (G3) — this is the product; audited by eye ──────
+oxilean-kernel    # zero external deps; the proof-checking TCB
+oxilean-export    # lean4export NDJSON reader + replay; kernel is its only dep
+oxilean-verify    # the product CLI/engine; deps are kernel + export ONLY
+
+# ── WASM shim closure (oxilean-verify-wasm) — JS glue only, no proof logic ─────
+oxilean-verify-wasm       # the "Kernel in a Tab" cdylib; wasm-only, non-optional glue
+wasm-bindgen              # JS-glue codegen + the JS↔wasm ABI; no runtime proof logic
+js-sys                    # Function.call for the per-decl streaming callback
+# wasm-bindgen family transitive closure (glue codegen; not in the TCB closure):
+wasm-bindgen-macro        # proc-macro entry point for #[wasm_bindgen]
+wasm-bindgen-macro-support  # proc-macro implementation
+wasm-bindgen-shared       # shared ABI constants
+bumpalo                   # bump allocator used by wasm-bindgen codegen
+cfg-if                    # cfg selection helper (wasm-bindgen)
+once_cell                 # lazy statics (wasm-bindgen glue)
+futures-core              # future traits (js-sys/wasm-bindgen-futures surface)
+futures-task              # future task traits
+futures-util              # future combinators
+pin-project-lite          # pin projection (futures)
+slab                      # slab allocator (futures)
+proc-macro2               # proc-macro token trees (build-time codegen)
+quote                     # quasi-quoting (build-time codegen)
+syn                       # Rust parser (build-time codegen)
+unicode-ident             # identifier classification (syn)
+
+# History (closed):
+#   [x] export-count gate  -> web/scripts/export-gate.sh (G5)
+#   [x] gzip-size gate      -> web/scripts/size-gate.sh (G6, <=400 KB)
+#   [x] demo http.server smoke -> scripts/gate-demo-smoke.sh (G8)
+#   [~] native-vs-WASM determinism -> scripts/gate-determinism.sh (G7 native half;
+#       wasm half TODO(wave4): needs a JS runtime, absent in this env)

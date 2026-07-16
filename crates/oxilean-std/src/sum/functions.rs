@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     BinderInfo, Declaration, Environment, Expr, InductiveEnv, InductiveType, IntroRule, Level, Name,
 };
@@ -14,32 +15,32 @@ pub fn build_sum_env(env: &mut Environment, ind_env: &mut InductiveEnv) -> Resul
     let sum_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
     );
     let inl_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -47,21 +48,21 @@ pub fn build_sum_env(env: &mut Environment, ind_env: &mut InductiveEnv) -> Resul
     let inr_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -111,44 +112,44 @@ pub fn build_sum_combinators(env: &mut Environment) -> Result<(), String> {
     let elim_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("g"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_"),
-                            Box::new(Expr::BVar(2)),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("s"),
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                                    Box::new(Expr::BVar(4)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                                    Node::new(Expr::BVar(4)),
                                 )),
-                                Box::new(Expr::BVar(3)),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(3)),
+                            Node::new(Expr::BVar(3)),
                         )),
                     )),
                 )),
@@ -164,53 +165,53 @@ pub fn build_sum_combinators(env: &mut Environment) -> Result<(), String> {
     let map_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("δ"),
-                    Box::new(type1.clone()),
-                    Box::new(Expr::Pi(
+                    Node::new(type1.clone()),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("f"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_"),
-                            Box::new(Expr::BVar(3)),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(3)),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("g"),
-                            Box::new(Expr::Pi(
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("_"),
-                                Box::new(Expr::BVar(3)),
-                                Box::new(Expr::BVar(2)),
+                                Node::new(Expr::BVar(3)),
+                                Node::new(Expr::BVar(2)),
                             )),
-                            Box::new(Expr::Pi(
+                            Node::new(Expr::Pi(
                                 BinderInfo::Default,
                                 Name::str("s"),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                                        Box::new(Expr::BVar(5)),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                                        Node::new(Expr::BVar(5)),
                                     )),
-                                    Box::new(Expr::BVar(4)),
+                                    Node::new(Expr::BVar(4)),
                                 )),
-                                Box::new(Expr::App(
-                                    Box::new(Expr::App(
-                                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                                        Box::new(Expr::BVar(4)),
+                                Node::new(Expr::App(
+                                    Node::new(Expr::App(
+                                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                                        Node::new(Expr::BVar(4)),
                                     )),
-                                    Box::new(Expr::BVar(3)),
+                                    Node::new(Expr::BVar(3)),
                                 )),
                             )),
                         )),
@@ -228,27 +229,27 @@ pub fn build_sum_combinators(env: &mut Environment) -> Result<(), String> {
     let swap_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("s"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(2)),
+                    Node::new(Expr::BVar(2)),
                 )),
             )),
         )),
@@ -262,22 +263,22 @@ pub fn build_sum_combinators(env: &mut Environment) -> Result<(), String> {
     let is_left_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("s"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                Node::new(Expr::Const(Name::str("Bool"), vec![])),
             )),
         )),
     );
@@ -377,25 +378,25 @@ pub fn factor_left<A: Clone, B, C>(
 /// Build an `Expr` for `Sum.inl α β a`.
 pub fn make_sum_inl(alpha: Expr, beta: Expr, a: Expr) -> Expr {
     let base = Expr::Const(Name::str("Sum.inl"), vec![]);
-    let e1 = Expr::App(Box::new(base), Box::new(alpha));
-    let e2 = Expr::App(Box::new(e1), Box::new(beta));
-    Expr::App(Box::new(e2), Box::new(a))
+    let e1 = Expr::App(Node::new(base), Node::new(alpha));
+    let e2 = Expr::App(Node::new(e1), Node::new(beta));
+    Expr::App(Node::new(e2), Node::new(a))
 }
 /// Build an `Expr` for `Sum.inr α β b`.
 pub fn make_sum_inr(alpha: Expr, beta: Expr, b: Expr) -> Expr {
     let base = Expr::Const(Name::str("Sum.inr"), vec![]);
-    let e1 = Expr::App(Box::new(base), Box::new(alpha));
-    let e2 = Expr::App(Box::new(e1), Box::new(beta));
-    Expr::App(Box::new(e2), Box::new(b))
+    let e1 = Expr::App(Node::new(base), Node::new(alpha));
+    let e2 = Expr::App(Node::new(e1), Node::new(beta));
+    Expr::App(Node::new(e2), Node::new(b))
 }
 /// Build an `Expr` for `Sum α β`.
 pub fn make_sum_type(alpha: Expr, beta: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Sum"), vec![])),
-            Box::new(alpha),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Sum"), vec![])),
+            Node::new(alpha),
         )),
-        Box::new(beta),
+        Node::new(beta),
     )
 }
 /// Return all Sum-related names registered in the environment.
@@ -808,16 +809,16 @@ pub(super) fn sm_ext_sum_categorical_coproduct(env: &mut Environment) -> Result<
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 Bi::Implicit,
                 Name::str("Z"),
-                Box::new(type1),
-                Box::new(prop),
+                Node::new(type1),
+                Node::new(prop),
             )),
         )),
     );
@@ -837,34 +838,34 @@ pub(super) fn sm_ext_sum_universal_property(env: &mut Environment) -> Result<(),
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 Bi::Implicit,
                 Name::str("Z"),
-                Box::new(type1),
-                Box::new(Expr::Pi(
+                Node::new(type1),
+                Node::new(Expr::Pi(
                     Bi::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         Bi::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         Bi::Default,
                         Name::str("g"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             Bi::Default,
                             Name::str("_"),
-                            Box::new(Expr::BVar(2)),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(prop),
+                        Node::new(prop),
                     )),
                 )),
             )),
@@ -886,20 +887,20 @@ pub(super) fn sm_ext_inl_injective(env: &mut Environment) -> Result<(), String> 
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("a1"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     Bi::Default,
                     Name::str("a2"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(prop),
+                    Node::new(Expr::BVar(2)),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -920,20 +921,20 @@ pub(super) fn sm_ext_inr_injective(env: &mut Environment) -> Result<(), String> 
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("b1"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::Pi(
                     Bi::Default,
                     Name::str("b2"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(prop),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -954,20 +955,20 @@ pub(super) fn sm_ext_inl_inr_disjoint(env: &mut Environment) -> Result<(), Strin
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     Bi::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(prop),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -988,12 +989,12 @@ pub(super) fn sm_ext_sum_functor_id(env: &mut Environment) -> Result<(), String>
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1),
-            Box::new(prop),
+            Node::new(type1),
+            Node::new(prop),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1035,21 +1036,21 @@ pub(super) fn sm_ext_sum_monad_return(env: &mut Environment) -> Result<(), Strin
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("E"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("A"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -1117,21 +1118,21 @@ pub(super) fn sm_ext_sum_applicative_pure(env: &mut Environment) -> Result<(), S
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("E"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("A"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -1162,25 +1163,25 @@ pub(super) fn sm_ext_sum_swap_involution(env: &mut Environment) -> Result<(), St
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let prop = Expr::Sort(Level::zero());
     let sum_ab = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Sum"), vec![])),
-            Box::new(Expr::BVar(1)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Sum"), vec![])),
+            Node::new(Expr::BVar(1)),
         )),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(0)),
     );
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("s"),
-                Box::new(sum_ab),
-                Box::new(prop),
+                Node::new(sum_ab),
+                Node::new(prop),
             )),
         )),
     );
@@ -1199,16 +1200,16 @@ pub(super) fn sm_ext_sum_assoc_iso(env: &mut Environment) -> Result<(), String> 
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 Bi::Implicit,
                 Name::str("C"),
-                Box::new(type1),
-                Box::new(Expr::Const(Name::str("Prop"), vec![])),
+                Node::new(type1),
+                Node::new(Expr::Const(Name::str("Prop"), vec![])),
             )),
         )),
     );
@@ -1227,8 +1228,8 @@ pub(super) fn sm_ext_sum_void_initial(env: &mut Environment) -> Result<(), Strin
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1),
-        Box::new(Expr::Const(Name::str("Prop"), vec![])),
+        Node::new(type1),
+        Node::new(Expr::Const(Name::str("Prop"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Sum.voidInitial"),
@@ -1245,16 +1246,16 @@ pub(super) fn sm_ext_sum_distributes_over_prod(env: &mut Environment) -> Result<
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 Bi::Implicit,
                 Name::str("C"),
-                Box::new(type1),
-                Box::new(Expr::Const(Name::str("Prop"), vec![])),
+                Node::new(type1),
+                Node::new(Expr::Const(Name::str("Prop"), vec![])),
             )),
         )),
     );
@@ -1272,25 +1273,25 @@ pub(super) fn sm_ext_sum_disjoint_union(env: &mut Environment) -> Result<(), Str
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let prop = Expr::Sort(Level::zero());
     let sum_ab = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Sum"), vec![])),
-            Box::new(Expr::BVar(1)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Sum"), vec![])),
+            Node::new(Expr::BVar(1)),
         )),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(0)),
     );
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("s"),
-                Box::new(sum_ab),
-                Box::new(prop),
+                Node::new(sum_ab),
+                Node::new(prop),
             )),
         )),
     );
@@ -1310,55 +1311,55 @@ pub(super) fn sm_ext_sum_case_analysis(env: &mut Environment) -> Result<(), Stri
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 Bi::Implicit,
                 Name::str("P"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     Bi::Default,
                     Name::str("_"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                            Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                            Node::new(Expr::BVar(1)),
                         )),
-                        Box::new(Expr::BVar(0)),
+                        Node::new(Expr::BVar(0)),
                     )),
-                    Box::new(type1.clone()),
+                    Node::new(type1.clone()),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     Bi::Default,
                     Name::str("hl"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         Bi::Default,
                         Name::str("a"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(prop.clone()),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(prop.clone()),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         Bi::Default,
                         Name::str("hr"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             Bi::Default,
                             Name::str("b"),
-                            Box::new(Expr::BVar(2)),
-                            Box::new(prop.clone()),
+                            Node::new(Expr::BVar(2)),
+                            Node::new(prop.clone()),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             Bi::Default,
                             Name::str("s"),
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                                    Box::new(Expr::BVar(4)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                                    Node::new(Expr::BVar(4)),
                                 )),
-                                Box::new(Expr::BVar(3)),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(prop),
+                            Node::new(prop),
                         )),
                     )),
                 )),
@@ -1439,29 +1440,29 @@ pub(super) fn sm_ext_sum_path_space(env: &mut Environment) -> Result<(), String>
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let prop = Expr::Sort(Level::zero());
     let sum_ab = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Sum"), vec![])),
-            Box::new(Expr::BVar(1)),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Sum"), vec![])),
+            Node::new(Expr::BVar(1)),
         )),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(0)),
     );
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("s"),
-                Box::new(sum_ab.clone()),
-                Box::new(Expr::Pi(
+                Node::new(sum_ab.clone()),
+                Node::new(Expr::Pi(
                     Bi::Default,
                     Name::str("t"),
-                    Box::new(sum_ab),
-                    Box::new(prop),
+                    Node::new(sum_ab),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -1505,17 +1506,17 @@ pub(super) fn sm_ext_sigma_intro(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("B"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("_"),
-                Box::new(Expr::BVar(0)),
-                Box::new(type1.clone()),
+                Node::new(Expr::BVar(0)),
+                Node::new(type1.clone()),
             )),
-            Box::new(type1),
+            Node::new(type1),
         )),
     );
     match env.add(Declaration::Axiom {

@@ -1,5 +1,6 @@
 //! Auto-generated module structure
 
+pub mod derive;
 pub mod focusstack_traits;
 pub mod functions;
 pub mod inductiveenv_traits;
@@ -13,6 +14,10 @@ pub mod types;
 pub mod windowiterator_traits;
 
 // Re-export all types
+pub use derive::{
+    add_inductive_family, check_and_derive_family, derive_family_unchecked, DerivedFamily,
+    InductiveSpec,
+};
 pub use focusstack_traits::*;
 pub use functions::*;
 pub use inductiveenv_traits::*;

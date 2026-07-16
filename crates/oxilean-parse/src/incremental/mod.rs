@@ -1,5 +1,7 @@
 //! Auto-generated module structure
 
+pub mod api;
+pub mod ast_diff;
 pub mod atomicversion_traits;
 pub mod changedetector_traits;
 pub mod decldependencytracker_traits;
@@ -22,5 +24,7 @@ pub mod transaction_traits;
 pub mod types;
 
 // Re-export all types
+pub use api::{parse_incremental_change, IncrementalChangeResult};
+pub use ast_diff::{diff_modules, DeclEdit, DeclFingerprint, DeclKind, EditKind};
 pub use functions::*;
 pub use types::*;

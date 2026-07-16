@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     BinderInfo, Declaration, Environment, Expr, InductiveEnv, InductiveType, IntroRule, Level, Name,
 };
@@ -28,27 +29,27 @@ fn sm_ext_sigma_fst(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("A"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("B"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("_"),
-                Box::new(Expr::BVar(0)),
-                Box::new(type1.clone()),
+                Node::new(Expr::BVar(0)),
+                Node::new(type1.clone()),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("s"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sigma"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sigma"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(2)),
             )),
         )),
     );

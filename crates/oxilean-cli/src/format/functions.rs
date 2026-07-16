@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{print_expr, BinderInfo, Expr, Level, Literal, Name};
 
 use super::types::{
@@ -496,7 +497,7 @@ mod tests {
     }
     #[test]
     fn test_format_literal_nat() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let doc = format_expr(&expr, 0);
         assert_eq!(doc.pretty_print(80), "42");
     }
@@ -515,8 +516,8 @@ mod tests {
     #[test]
     fn test_format_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app = Expr::App(Node::new(f), Node::new(a));
         let doc = format_expr(&app, 0);
         let result = doc.pretty_print(80);
         assert!(result.contains("f"));
@@ -529,8 +530,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let doc = format_expr(&lam, 0);
         let result = doc.pretty_print(80);
@@ -544,8 +545,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let doc = format_expr(&pi, 0);
         let result = doc.pretty_print(80);
@@ -558,8 +559,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let doc = format_expr(&pi, 0);
         let result = doc.pretty_print(80);
@@ -575,7 +576,7 @@ mod tests {
         let result = format_def_str(
             &Name::str("answer"),
             &Expr::Const(Name::str("Nat"), vec![]),
-            &Expr::Lit(Literal::Nat(42)),
+            &Expr::Lit(Literal::nat(42)),
         );
         assert!(result.contains("def answer"));
         assert!(result.contains("Nat"));
@@ -855,10 +856,10 @@ mod tests {
     #[test]
     fn test_format_multiple_apps() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a1 = Expr::Lit(Literal::Nat(1));
-        let a2 = Expr::Lit(Literal::Nat(2));
-        let app1 = Expr::App(Box::new(f), Box::new(a1));
-        let app2 = Expr::App(Box::new(app1), Box::new(a2));
+        let a1 = Expr::Lit(Literal::nat(1));
+        let a2 = Expr::Lit(Literal::nat(2));
+        let app1 = Expr::App(Node::new(f), Node::new(a1));
+        let app2 = Expr::App(Node::new(app1), Node::new(a2));
         let doc = format_expr(&app2, 0);
         let result = doc.pretty_print(80);
         assert!(result.contains("f"));

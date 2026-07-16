@@ -37,8 +37,8 @@ pub(super) fn peel_lam_params(expr: &Expr) -> (Vec<(Name, Expr)>, Expr) {
     loop {
         match cur {
             Expr::Lam(_, name, ty, body) => {
-                params.push((name, *ty));
-                cur = *body;
+                params.push((name, (*ty).clone()));
+                cur = (*body).clone();
             }
             other => {
                 return (params, other);

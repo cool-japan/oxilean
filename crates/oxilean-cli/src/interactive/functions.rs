@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_elab::{Goal, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{print_expr, Environment, Expr, Name};
 
 use super::types::{
@@ -57,8 +58,8 @@ fn execute_intro(state: &TacticState, args: &str) -> Result<TacticState, String>
             };
             let mut new_goal = goal.clone();
             new_goal.name = Name::str(format!("{}_intro", goal.name));
-            new_goal.add_hypothesis(intro_name, *domain.clone());
-            new_goal.target = *body.clone();
+            new_goal.add_hypothesis(intro_name, (**domain).clone());
+            new_goal.target = (**body).clone();
             let mut new_state = state.clone();
             let old_name = new_state.goals()[0].name.clone();
             new_state.solve_goal(&old_name);
@@ -108,8 +109,8 @@ fn execute_apply(state: &TacticState, args: &str) -> Result<TacticState, String>
                 return Ok(new_state);
             }
             if let Expr::Pi(_bi, _n, dom, cod) = cur {
-                sub_goals.push(*dom);
-                cur = *cod;
+                sub_goals.push((*dom).clone());
+                cur = (*cod).clone();
             } else {
                 break;
             }
@@ -251,7 +252,7 @@ fn as_and_type(ty: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(and_const, a) = and_a.as_ref() {
             if let Expr::Const(name, _) = and_const.as_ref() {
                 if *name == Name::str("And") {
-                    return Some((*a.clone(), *b.clone()));
+                    return Some(((**a).clone(), (**b).clone()));
                 }
             }
         }
@@ -264,7 +265,7 @@ fn as_or_type(ty: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(or_const, a) = or_a.as_ref() {
             if let Expr::Const(name, _) = or_const.as_ref() {
                 if *name == Name::str("Or") {
-                    return Some((*a.clone(), *b.clone()));
+                    return Some(((**a).clone(), (**b).clone()));
                 }
             }
         }
@@ -571,20 +572,20 @@ mod tests {
         Expr::Pi(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(domain),
-            Box::new(body),
+            Node::new(domain),
+            Node::new(body),
         )
     }
     fn mk_eq(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(ty),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(ty),
                 )),
-                Box::new(lhs),
+                Node::new(lhs),
             )),
-            Box::new(rhs),
+            Node::new(rhs),
         )
     }
     fn mk_state_with_goal(goal: Goal) -> TacticState {
@@ -902,7 +903,7 @@ mod tests {
     #[test]
     fn test_suggest_refl() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let zero = Expr::Lit(Literal::Nat(0));
+        let zero = Expr::Lit(Literal::nat(0));
         let target = mk_eq(nat, zero.clone(), zero);
         let goal = Goal::new(Name::str("g1"), target);
         let state = mk_state_with_goal(goal);
@@ -999,7 +1000,7 @@ mod tests {
         let env = Environment::new();
         let mut session = InteractiveSession::new(&env);
         assert!(session.show_goals().contains("accomplished"));
-        session.start_proof(Name::str("test"), Expr::Lit(Literal::Nat(42)));
+        session.start_proof(Name::str("test"), Expr::Lit(Literal::nat(42)));
         assert!(session.show_goals().contains("Goal 1/1"));
     }
     #[test]

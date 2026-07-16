@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -467,8 +468,8 @@ impl GrindState {
     /// Build a proof from inconsistency (True = False).
     fn build_inconsistency_proof(&self) -> Expr {
         Expr::App(
-            Box::new(Expr::Const(Name::str("absurd"), vec![])),
-            Box::new(Expr::Const(Name::str("grind_false_proof"), vec![])),
+            Node::new(Expr::Const(Name::str("absurd"), vec![])),
+            Node::new(Expr::Const(Name::str("grind_false_proof"), vec![])),
         )
     }
     /// Update the max eclass size statistic.
@@ -540,6 +541,29 @@ impl EClass {
         self.nodes.len()
     }
 }
+/// Label on a proof-forest edge: why two E-nodes are directly equal.
+///
+/// Used by the Nieuwenhuis-Oliveras proof-forest to record the justification
+/// for each direct equality assertion so that [`crate::tactic::grind::cc_proof::explain`]
+/// can reconstruct a full proof term.
+#[derive(Clone, Debug)]
+pub enum ProofLabel {
+    /// Direct hypothesis `hyp_name : lhs_expr = rhs_expr`.
+    ///
+    /// `fwd = true` means the edge records the hypothesis's own direction
+    /// (lhs → rhs). `fwd = false` means it was stored reversed.
+    Input {
+        hyp_name: Name,
+        lhs_expr: Expr,
+        rhs_expr: Expr,
+        fwd: bool,
+    },
+    /// Congruence: `f(a1..an) = f(b1..bn)` because each `ai = bi`.
+    ///
+    /// `n1` = left-side application ENodeId, `n2` = right-side application ENodeId.
+    Congruence { n1: ENodeId, n2: ENodeId },
+}
+
 /// Reason why two nodes were merged (for proof reconstruction).
 #[derive(Clone, Debug)]
 pub enum MergeReason {
@@ -630,6 +654,11 @@ pub struct CongruenceClosure {
     pub(super) sig_table: HashMap<(Name, Vec<EClassId>), ENodeId>,
     /// Mapping from kernel Expr to ENodeId for deduplication.
     pub(super) expr_to_node: HashMap<Expr, ENodeId>,
+    /// Proof forest for the Nieuwenhuis-Oliveras explain algorithm.
+    ///
+    /// `proof_parent[i]` = parent ENodeId and the label on the edge from
+    /// node `i` to its parent.  `None` means node `i` is a forest root.
+    pub proof_parent: Vec<Option<(ENodeId, ProofLabel)>>,
     /// Merge log for proof reconstruction.
     pub(super) merge_log: Vec<(EClassId, EClassId, MergeReason)>,
     /// Pending merges worklist.
@@ -651,6 +680,7 @@ impl CongruenceClosure {
         CongruenceClosure {
             uf: UnionFind::new(),
             nodes: Vec::new(),
+            proof_parent: Vec::new(),
             classes: HashMap::new(),
             sig_table: HashMap::new(),
             expr_to_node: HashMap::new(),
@@ -668,6 +698,7 @@ impl CongruenceClosure {
         CongruenceClosure {
             uf: UnionFind::with_capacity(cap),
             nodes: Vec::with_capacity(cap),
+            proof_parent: Vec::with_capacity(cap),
             classes: HashMap::with_capacity(cap),
             sig_table: HashMap::with_capacity(cap),
             expr_to_node: HashMap::with_capacity(cap),
@@ -821,6 +852,8 @@ impl CongruenceClosure {
         }
         let node = ENode::with_origin(func.clone(), args.clone(), class_id, expr.clone());
         self.nodes.push(node);
+        // Every new node starts as a proof-forest root (no parent).
+        self.proof_parent.push(None);
         let sig = self.make_sig_from_classes(&func, &args);
         self.sig_table.insert(sig, node_id);
         for &arg_id in &args {
@@ -850,8 +883,105 @@ impl CongruenceClosure {
     pub fn merge(&mut self, a: ENodeId, b: ENodeId) {
         self.merge_with_reason(a, b, MergeReason::Assertion);
     }
+    // ── Proof-forest (Nieuwenhuis-Oliveras) ──────────────────────────────────
+
+    /// Add a proof-forest edge connecting `a_node` → `b_node` with `label`.
+    ///
+    /// This implements the NO `merge` operation on the proof forest:
+    /// first reroot the forest at `a_node` (reversing parent pointers),
+    /// then record `a_node`'s parent as `b_node`.
+    pub(super) fn add_proof_forest_edge(
+        &mut self,
+        a_node: ENodeId,
+        b_node: ENodeId,
+        label: ProofLabel,
+    ) {
+        // Only connect if they are currently different forest roots.
+        // (If a_node already has a parent we reroot first, which always works.)
+        self.reroot_proof_tree(a_node);
+        let idx = a_node.0 as usize;
+        if idx < self.proof_parent.len() {
+            self.proof_parent[idx] = Some((b_node, label));
+        }
+    }
+
+    /// Reroot the proof forest at `node`.
+    ///
+    /// Traverses the chain from `node` to its current root, then reverses
+    /// all parent pointers along the path so that `node` becomes the new root.
+    fn reroot_proof_tree(&mut self, node: ENodeId) {
+        // Collect the path: [(child, parent, label_on_edge_child→parent), ...].
+        let mut path: Vec<(ENodeId, ENodeId, ProofLabel)> = Vec::new();
+        let mut cur = node;
+        while let Some(entry) = self.proof_parent.get(cur.0 as usize) {
+            if let Some((parent, label)) = entry.clone() {
+                path.push((cur, parent, label));
+                cur = parent;
+            } else {
+                break;
+            }
+        }
+        // Reverse the chain: parent now points back to child.
+        for (child, parent, label) in path.iter().rev() {
+            let flipped = Self::flip_label(label);
+            let parent_idx = parent.0 as usize;
+            if parent_idx < self.proof_parent.len() {
+                self.proof_parent[parent_idx] = Some((*child, flipped));
+            }
+        }
+        // Make `node` a forest root.
+        let node_idx = node.0 as usize;
+        if node_idx < self.proof_parent.len() {
+            self.proof_parent[node_idx] = None;
+        }
+    }
+
+    /// Flip a proof-forest edge label (invert direction).
+    fn flip_label(label: &ProofLabel) -> ProofLabel {
+        match label {
+            ProofLabel::Input {
+                hyp_name,
+                lhs_expr,
+                rhs_expr,
+                fwd,
+            } => ProofLabel::Input {
+                hyp_name: hyp_name.clone(),
+                lhs_expr: lhs_expr.clone(),
+                rhs_expr: rhs_expr.clone(),
+                fwd: !fwd,
+            },
+            ProofLabel::Congruence { n1, n2 } => ProofLabel::Congruence { n1: *n2, n2: *n1 },
+        }
+    }
+
     /// Merge two E-nodes with a given reason.
     pub fn merge_with_reason(&mut self, a: ENodeId, b: ENodeId, reason: MergeReason) {
+        // Add a proof-forest edge BEFORE the union-find merge, using the specific
+        // ENodeIds that caused this merge.
+        match &reason {
+            MergeReason::Hypothesis(name, hyp_ty) => {
+                if let Some((_, lhs_expr, rhs_expr)) =
+                    crate::tactic::grind::functions::decompose_eq_full(hyp_ty)
+                {
+                    let label = ProofLabel::Input {
+                        hyp_name: name.clone(),
+                        lhs_expr,
+                        rhs_expr,
+                        fwd: true,
+                    };
+                    self.add_proof_forest_edge(a, b, label);
+                }
+                // If the hypothesis can't be decomposed, skip forest edge.
+            }
+            MergeReason::Congruence(n1, n2) => {
+                let label = ProofLabel::Congruence { n1: *n1, n2: *n2 };
+                self.add_proof_forest_edge(a, b, label);
+            }
+            // EMatchInstance, Reduction, Assertion, Reflexivity: no forest edge
+            // (these can't be faithfully reconstructed into kernel terms).
+            _ => {}
+        }
+
         let ca = self.nodes[a.0 as usize].eclass;
         let cb = self.nodes[b.0 as usize].eclass;
         self.merge_classes(ca, cb, reason);

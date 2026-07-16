@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -162,7 +163,7 @@ pub fn coleman_integration_statement() -> &'static str {
      in the theory of p-adic heights."
 }
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
     app(app(f, a), b)
@@ -183,8 +184,8 @@ pub fn pi_k(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn arrow_k(a: Expr, b: Expr) -> Expr {
@@ -403,8 +404,8 @@ pub fn build_env() -> oxilean_kernel::Environment {
         Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("_"),
-            Box::new(a),
-            Box::new(b),
+            Node::new(a),
+            Node::new(b),
         )
     }
     let mut env = Environment::new();

@@ -1,0 +1,140 @@
+/* Kernel in a Tab — dependency-free stylesheet (no framework, no CDN). */
+
+:root {
+  --bg: #0f1115;
+  --fg: #e6e6e6;
+  --muted: #8a91a0;
+  --accent: #7cc7ff;
+  --verified: #4ec97a;
+  --unsupported: #e0b64b;
+  --rejected: #ff5c5c;
+  --panel: #171a21;
+  --border: #262b36;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+
+.tagline { margin: 0 0 1rem; color: var(--muted); }
+.tagline code, .drop code { font-family: var(--mono); color: var(--accent); }
+
+.badge {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  display: inline-block;
+}
+.badge #kb { color: var(--fg); }
+
+.drop {
+  margin: 1.75rem 0;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+.drop.dragover {
+  border-color: var(--accent);
+  background: #1b222e;
+}
+.drop-inner { padding: 2.5rem 1rem; text-align: center; }
+.drop-hint { margin: 0 0 0.35rem; font-size: 1.05rem; }
+.drop-sub { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.run { margin-top: 1rem; }
+
+.stream {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: #0b0d11;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  max-height: 52vh;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+.line { display: flex; align-items: baseline; gap: 0.6rem; }
+.line .mark { width: 1.1rem; flex: 0 0 auto; text-align: center; }
+.line .name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line .aux { flex: 0 0 auto; color: var(--muted); text-align: right; }
+
+.line.verified .mark { color: var(--verified); }
+.line.unsupported .mark { color: var(--unsupported); }
+.line.unsupported .aux { color: var(--unsupported); }
+.line.rejected { background: rgba(255, 92, 92, 0.10); border-radius: 4px; }
+.line.rejected .mark { color: var(--rejected); }
+.line.rejected .aux { color: var(--rejected); }
+
+.summary {
+  font-family: var(--mono);
+  font-size: 1rem;
+  margin: 1rem 0 0.25rem;
+}
+.summary .n-verified { color: var(--verified); }
+.summary .n-unsupported { color: var(--unsupported); }
+.summary .n-rejected { color: var(--rejected); }
+/* The alarm: a non-zero rejected count must visibly stand out (brief §7). */
+.summary.has-rejected .n-rejected {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.closing {
+  margin: 0.75rem 0 0;
+  font-size: 1.05rem;
+  color: var(--fg);
+}
+
+.error {
+  color: var(--rejected);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+}
+
+.pins {
+  margin-top: 2.5rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -40,7 +41,7 @@ pub fn ackermann_function_terminates() -> bool {
     true
 }
 pub fn app(f: Expr, x: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(x))
+    Expr::App(Node::new(f), Node::new(x))
 }
 pub fn app2(f: Expr, x: Expr, y: Expr) -> Expr {
     app(app(f, x), y)
@@ -61,8 +62,8 @@ pub fn pi(name: &str, domain: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(domain),
-        Box::new(body),
+        Node::new(domain),
+        Node::new(body),
     )
 }
 pub fn arrow(a: Expr, b: Expr) -> Expr {

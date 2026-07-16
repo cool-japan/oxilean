@@ -4,6 +4,7 @@
 
 use super::functions::*;
 use crate::basic::{MVarId, MetaContext};
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     reduce::TransparencyMode, ConstantInfo, Environment, Expr, Level, Name, Reducer,
 };
@@ -205,7 +206,7 @@ impl MetaWhnf {
             result = oxilean_kernel::instantiate(&result, arg);
         }
         for arg in args.iter().skip(major_idx + 1) {
-            result = Expr::App(Box::new(result), Box::new(arg.clone()));
+            result = Expr::App(Node::new(result), Node::new(arg.clone()));
         }
         Some(result)
     }
@@ -215,7 +216,7 @@ impl MetaWhnf {
             let inner_result = self.whnf_core(inner, ctx);
             match &inner_result {
                 WhnfResult::Stuck(e, id) => {
-                    WhnfResult::Stuck(Expr::Proj(_name.clone(), *idx, Box::new(e.clone())), *id)
+                    WhnfResult::Stuck(Expr::Proj(_name.clone(), *idx, Node::new(e.clone())), *id)
                 }
                 WhnfResult::Reduced(inner_whnf) => {
                     let (ctor_head, ctor_args) = collect_app(inner_whnf);
@@ -233,7 +234,7 @@ impl MetaWhnf {
                     WhnfResult::Reduced(Expr::Proj(
                         _name.clone(),
                         *idx,
-                        Box::new(inner_whnf.clone()),
+                        Node::new(inner_whnf.clone()),
                     ))
                 }
             }

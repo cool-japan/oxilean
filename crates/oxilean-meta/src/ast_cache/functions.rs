@@ -12,6 +12,7 @@ use super::types::{
     LazyExprCache, LruCacheExt, MemoTransformExt, SubstCache, TieredCache, TtlCache, TwoLevelCache,
     VersionedCache, WarmableCache, WarmingStrategy, WhnfCache,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level};
 use std::hash::{Hash, Hasher};
 
@@ -91,31 +92,31 @@ pub(super) fn substitute_bvar(expr: &Expr, target_depth: u32, replacement: &Expr
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(substitute_bvar(f, target_depth, replacement)),
-            Box::new(substitute_bvar(a, target_depth, replacement)),
+            Node::new(substitute_bvar(f, target_depth, replacement)),
+            Node::new(substitute_bvar(a, target_depth, replacement)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(substitute_bvar(ty, target_depth, replacement)),
-            Box::new(substitute_bvar(body, target_depth + 1, replacement)),
+            Node::new(substitute_bvar(ty, target_depth, replacement)),
+            Node::new(substitute_bvar(body, target_depth + 1, replacement)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(substitute_bvar(ty, target_depth, replacement)),
-            Box::new(substitute_bvar(body, target_depth + 1, replacement)),
+            Node::new(substitute_bvar(ty, target_depth, replacement)),
+            Node::new(substitute_bvar(body, target_depth + 1, replacement)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(substitute_bvar(ty, target_depth, replacement)),
-            Box::new(substitute_bvar(val, target_depth, replacement)),
-            Box::new(substitute_bvar(body, target_depth + 1, replacement)),
+            Node::new(substitute_bvar(ty, target_depth, replacement)),
+            Node::new(substitute_bvar(val, target_depth, replacement)),
+            Node::new(substitute_bvar(body, target_depth + 1, replacement)),
         ),
         Expr::Proj(name, idx, inner) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(substitute_bvar(inner, target_depth, replacement)),
+            Node::new(substitute_bvar(inner, target_depth, replacement)),
         ),
         Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
     }
@@ -147,14 +148,14 @@ mod tests {
         Expr::Const(name(s), vec![])
     }
     fn app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     fn lam(body: Expr) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             name("x"),
-            Box::new(sort0()),
-            Box::new(body),
+            Node::new(sort0()),
+            Node::new(body),
         )
     }
     #[test]

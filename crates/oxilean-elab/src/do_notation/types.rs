@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Name};
 use std::collections::HashMap;
 
@@ -235,21 +236,21 @@ impl MonadInstance {
         let continuation = Expr::Lam(
             BinderInfo::Default,
             var.clone(),
-            Box::new(var_ty.clone()),
-            Box::new(body.clone()),
+            Node::new(var_ty.clone()),
+            Node::new(body.clone()),
         );
-        let app1 = Expr::App(Box::new(self.bind_fn.clone()), Box::new(rhs.clone()));
-        Expr::App(Box::new(app1), Box::new(continuation))
+        let app1 = Expr::App(Node::new(self.bind_fn.clone()), Node::new(rhs.clone()));
+        Expr::App(Node::new(app1), Node::new(continuation))
     }
     /// Build a pure expression: `pure val`.
     pub fn mk_pure(&self, val: &Expr) -> Expr {
-        Expr::App(Box::new(self.pure_fn.clone()), Box::new(val.clone()))
+        Expr::App(Node::new(self.pure_fn.clone()), Node::new(val.clone()))
     }
     /// Build a seq expression: `seq a b` or `bind a (fun _ => b)`.
     pub fn mk_seq(&self, first: &Expr, second: &Expr) -> Expr {
         if let Some(seq_fn) = &self.seq_fn {
-            let app1 = Expr::App(Box::new(seq_fn.clone()), Box::new(first.clone()));
-            Expr::App(Box::new(app1), Box::new(second.clone()))
+            let app1 = Expr::App(Node::new(seq_fn.clone()), Node::new(first.clone()));
+            Expr::App(Node::new(app1), Node::new(second.clone()))
         } else {
             let unit_ty = Expr::Const(Name::str("Unit"), vec![]);
             self.mk_bind(&Name::str("_"), &unit_ty, first, second)
@@ -258,12 +259,12 @@ impl MonadInstance {
     /// Build a map expression: `map f a` or `bind a (fun x => pure (f x))`.
     pub fn mk_map(&self, f: &Expr, action: &Expr) -> Expr {
         if let Some(map_fn) = &self.map_fn {
-            let app1 = Expr::App(Box::new(map_fn.clone()), Box::new(f.clone()));
-            Expr::App(Box::new(app1), Box::new(action.clone()))
+            let app1 = Expr::App(Node::new(map_fn.clone()), Node::new(f.clone()));
+            Expr::App(Node::new(app1), Node::new(action.clone()))
         } else {
             let x_name = Name::str("x");
             let x_var = Expr::BVar(0);
-            let f_x = Expr::App(Box::new(f.clone()), Box::new(x_var));
+            let f_x = Expr::App(Node::new(f.clone()), Node::new(x_var));
             let pure_f_x = self.mk_pure(&f_x);
             let inferred_ty = Expr::Const(Name::str("_"), vec![]);
             self.mk_bind(&x_name, &inferred_ty, action, &pure_f_x)
@@ -485,7 +486,7 @@ impl DoBlockOptimizer {
                     if let Expr::App(f, arg) = &rhs {
                         if let Expr::Const(fn_name, _) = f.as_ref() {
                             if fn_name == &Name::str("pure") {
-                                return DoElem::let_bind(pat, *arg.clone());
+                                return DoElem::let_bind(pat, (**arg).clone());
                             }
                         }
                     }

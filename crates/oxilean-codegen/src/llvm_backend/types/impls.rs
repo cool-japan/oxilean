@@ -806,6 +806,7 @@ impl LlvmBackend {
             LcnfType::Ctor(_, _) => LlvmType::Ptr,
             LcnfType::Object => LlvmType::Ptr,
             LcnfType::Nat => LlvmType::I64,
+            LcnfType::Int => LlvmType::I64,
             LcnfType::LcnfString => LlvmType::Ptr,
             LcnfType::Unit => LlvmType::I64,
             LcnfType::Irrelevant => LlvmType::I64,
@@ -962,6 +963,7 @@ impl LlvmBackend {
             LcnfLetValue::Lit(lit) => {
                 let const_val = match lit {
                     LcnfLit::Nat(n) => LlvmValue::Const(*n as i64),
+                    LcnfLit::Int(i) => LlvmValue::Const(*i),
                     LcnfLit::Str(_) => LlvmValue::Null,
                 };
                 body.push(LlvmInstr::Add {
@@ -1059,6 +1061,7 @@ impl LlvmBackend {
         match arg {
             LcnfArg::Var(id) => LlvmValue::LocalRef(format!("x{}", id.0)),
             LcnfArg::Lit(LcnfLit::Nat(n)) => LlvmValue::Const(*n as i64),
+            LcnfArg::Lit(LcnfLit::Int(i)) => LlvmValue::Const(*i),
             LcnfArg::Lit(LcnfLit::Str(_)) => LlvmValue::Null,
             LcnfArg::Erased => LlvmValue::Const(0),
             LcnfArg::Type(_) => LlvmValue::Const(0),

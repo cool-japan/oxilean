@@ -1,0 +1,42 @@
+[package]
+name = "oxilean-export-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+oxilean-export = { path = ".." }
+oxilean-kernel = { path = "../../oxilean-kernel" }
+# Dev-only differential oracle — stays outside the workspace and never ships.
+num-bigint = { version = "0.4", default-features = false }
+num-integer = { version = "0.1", default-features = false }
+num-traits = { version = "0.2", default-features = false }
+
+[[bin]]
+name = "fuzz_ndjson_parse"
+path = "fuzz_targets/fuzz_ndjson_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_bignat"
+path = "fuzz_targets/fuzz_bignat.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_replay"
+path = "fuzz_targets/fuzz_replay.rs"
+test = false
+doc = false
+bench = false
+
+# Detach from the parent workspace so `cargo check --workspace` from the repo
+# root does not try to build the fuzz crate (standard cargo-fuzz exclusion).
+[workspace]

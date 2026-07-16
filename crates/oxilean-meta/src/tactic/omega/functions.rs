@@ -10,6 +10,7 @@ use super::types::{
     TacticOmegaDiagnostics, TacticOmegaDiff, TacticOmegaPipeline, TacticOmegaResult,
 };
 use crate::basic::MetaContext;
+use crate::tactic::certificate::ProofCertificate;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
 use oxilean_kernel::{Expr, Level, Literal, Name};
 
@@ -136,7 +137,7 @@ pub(super) fn parse_comparison(expr: &Expr) -> Option<LinearConstraint> {
 /// - Negation: `Neg.neg x` -> `-x`
 pub(super) fn expr_to_linear(expr: &Expr) -> Option<LinearExpr> {
     match expr {
-        Expr::Lit(Literal::Nat(n)) => Some(LinearExpr::constant(*n as i64)),
+        Expr::Lit(Literal::Nat(n)) => n.to_u64().map(|v| LinearExpr::constant(v as i64)),
         Expr::Const(name, _) => Some(LinearExpr::var(name.clone())),
         Expr::FVar(fvar_id) => Some(LinearExpr::var(Name::str(format!("fvar_{}", fvar_id.0)))),
         Expr::BVar(i) => Some(LinearExpr::var(Name::str(format!("bvar_{i}")))),
@@ -242,6 +243,7 @@ pub fn tac_omega(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult
     let mut solver = OmegaSolver::new();
     match solver.solve(&constraints) {
         OmegaResult::Unsatisfiable(proof) => {
+            ctx.last_certificate = Some(ProofCertificate::Omega(proof.clone()));
             let proof_term = build_omega_proof(&proof, &target);
             state.close_goal(proof_term, ctx)?;
             Ok(())

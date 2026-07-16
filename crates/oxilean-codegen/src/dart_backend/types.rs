@@ -1023,6 +1023,7 @@ impl DartBackend {
     pub(super) fn compile_lit(&self, lit: &LcnfLit) -> DartExpr {
         match lit {
             LcnfLit::Nat(n) => DartExpr::Lit(DartLit::Int(*n as i64)),
+            LcnfLit::Int(i) => DartExpr::Lit(DartLit::Int(*i)),
             LcnfLit::Str(s) => DartExpr::Lit(DartLit::Str(s.clone())),
         }
     }

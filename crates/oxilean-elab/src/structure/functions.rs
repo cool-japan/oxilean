@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Name};
 use oxilean_parse::Decl;
 use std::collections::HashMap;
@@ -60,14 +61,14 @@ pub(super) fn surface_to_placeholder_type(surf: &oxilean_parse::SurfaceExpr) -> 
             Expr::Sort(Level::succ(Level::zero()))
         }
         SE::Sort(SortKind::Prop) | SE::Sort(SortKind::SortU(_)) => Expr::Sort(Level::zero()),
-        SE::Lit(oxilean_parse::Literal::Nat(n)) => Expr::Lit(oxilean_kernel::Literal::Nat(*n)),
+        SE::Lit(oxilean_parse::Literal::Nat(n)) => Expr::Lit(oxilean_kernel::Literal::nat(*n)),
         SE::Lit(oxilean_parse::Literal::String(s)) => {
             Expr::Lit(oxilean_kernel::Literal::Str(s.clone()))
         }
         SE::App(f, a) => {
             let f_expr = surface_to_placeholder_type(&f.value);
             let a_expr = surface_to_placeholder_type(&a.value);
-            Expr::App(Box::new(f_expr), Box::new(a_expr))
+            Expr::App(Node::new(f_expr), Node::new(a_expr))
         }
         SE::Pi(binders, body) => {
             let body_expr = surface_to_placeholder_type(&body.value);
@@ -83,7 +84,7 @@ pub(super) fn surface_to_placeholder_type(surf: &oxilean_parse::SurfaceExpr) -> 
                     BinderKind::Instance => oxilean_kernel::BinderInfo::InstImplicit,
                     BinderKind::Default => oxilean_kernel::BinderInfo::Default,
                 };
-                Expr::Pi(info, Name::str(&b.name), Box::new(dom), Box::new(acc))
+                Expr::Pi(info, Name::str(&b.name), Node::new(dom), Node::new(acc))
             })
         }
         SE::Lam(binders, body) => {
@@ -100,13 +101,13 @@ pub(super) fn surface_to_placeholder_type(surf: &oxilean_parse::SurfaceExpr) -> 
                     BinderKind::Instance => oxilean_kernel::BinderInfo::InstImplicit,
                     BinderKind::Default => oxilean_kernel::BinderInfo::Default,
                 };
-                Expr::Lam(info, Name::str(&b.name), Box::new(dom), Box::new(acc))
+                Expr::Lam(info, Name::str(&b.name), Node::new(dom), Node::new(acc))
             })
         }
         SE::Ann(e, _ty) => surface_to_placeholder_type(&e.value),
         SE::Proj(e, field) => {
             let e_expr = surface_to_placeholder_type(&e.value);
-            Expr::Proj(Name::str(field), 0, Box::new(e_expr))
+            Expr::Proj(Name::str(field), 0, Node::new(e_expr))
         }
         SE::Hole => Expr::Sort(Level::succ(Level::zero())),
         _ => Expr::Sort(Level::succ(Level::zero())),
@@ -204,7 +205,7 @@ pub(super) fn default_ctor_call(info: &StructureInfo) -> Expr {
             .default_val
             .clone()
             .unwrap_or_else(|| Expr::FVar(FVarId(2_000_000 + i as u64)));
-        result = Expr::App(Box::new(result), Box::new(arg));
+        result = Expr::App(Node::new(result), Node::new(arg));
     }
     result
 }
@@ -305,9 +306,9 @@ pub(super) fn generate_to_parent_coercion(
             let proj = Expr::Proj(
                 child_name.clone(),
                 child_field.idx as u32,
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
             );
-            body = Expr::App(Box::new(body), Box::new(proj));
+            body = Expr::App(Node::new(body), Node::new(proj));
         } else {
             return None;
         }
@@ -315,8 +316,8 @@ pub(super) fn generate_to_parent_coercion(
     Some(Expr::Lam(
         BinderInfo::Default,
         Name::str("self"),
-        Box::new(child_ty),
-        Box::new(body),
+        Node::new(child_ty),
+        Node::new(body),
     ))
 }
 /// Build a field-by-field equality proposition for two structure values.
@@ -326,24 +327,24 @@ pub(super) fn generate_to_parent_coercion(
 pub(super) fn field_wise_eq(struct_name: &Name, info: &StructureInfo, a: &Expr, b: &Expr) -> Expr {
     let mut result = Expr::Const(Name::str("True"), Vec::new());
     for field in info.fields.iter().rev() {
-        let proj_a = Expr::Proj(struct_name.clone(), field.idx as u32, Box::new(a.clone()));
-        let proj_b = Expr::Proj(struct_name.clone(), field.idx as u32, Box::new(b.clone()));
+        let proj_a = Expr::Proj(struct_name.clone(), field.idx as u32, Node::new(a.clone()));
+        let proj_b = Expr::Proj(struct_name.clone(), field.idx as u32, Node::new(b.clone()));
         let eq = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), Vec::new())),
-                    Box::new(field.ty.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), Vec::new())),
+                    Node::new(field.ty.clone()),
                 )),
-                Box::new(proj_a),
+                Node::new(proj_a),
             )),
-            Box::new(proj_b),
+            Node::new(proj_b),
         );
         result = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), Vec::new())),
-                Box::new(eq),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), Vec::new())),
+                Node::new(eq),
             )),
-            Box::new(result),
+            Node::new(result),
         );
     }
     result
@@ -703,8 +704,8 @@ mod tests {
             .expect("elaboration should succeed");
         elab.register_structure(info);
         let args = vec![
-            Expr::Lit(oxilean_kernel::Literal::Nat(1)),
-            Expr::Lit(oxilean_kernel::Literal::Nat(2)),
+            Expr::Lit(oxilean_kernel::Literal::nat(1)),
+            Expr::Lit(oxilean_kernel::Literal::nat(2)),
         ];
         let result = elab.resolve_anonymous_ctor(&Name::str("Point"), &args);
         assert!(result.is_ok());
@@ -724,7 +725,7 @@ mod tests {
             .elaborate_structure(&decl)
             .expect("elaboration should succeed");
         elab.register_structure(info);
-        let args = vec![Expr::Lit(oxilean_kernel::Literal::Nat(1))];
+        let args = vec![Expr::Lit(oxilean_kernel::Literal::nat(1))];
         let result = elab.resolve_anonymous_ctor(&Name::str("Point"), &args);
         assert!(result.is_err());
     }
@@ -868,7 +869,7 @@ mod tests {
             .expect("elaboration should succeed");
         elab.register_structure(info);
         let base = Expr::FVar(FVarId(99));
-        let updates = vec![(Name::str("x"), Expr::Lit(oxilean_kernel::Literal::Nat(10)))];
+        let updates = vec![(Name::str("x"), Expr::Lit(oxilean_kernel::Literal::nat(10)))];
         let result = elab.elaborate_struct_update(&Name::str("Point"), &base, &updates);
         assert!(result.is_ok());
     }
@@ -882,7 +883,7 @@ mod tests {
             .expect("elaboration should succeed");
         elab.register_structure(info);
         let base = Expr::FVar(FVarId(99));
-        let updates = vec![(Name::str("z"), Expr::Lit(oxilean_kernel::Literal::Nat(0)))];
+        let updates = vec![(Name::str("z"), Expr::Lit(oxilean_kernel::Literal::nat(0)))];
         let result = elab.elaborate_struct_update(&Name::str("Point"), &base, &updates);
         assert!(result.is_err());
     }
@@ -923,11 +924,11 @@ mod tests {
         elab.register_structure(info);
         let base = Expr::FVar(FVarId(42));
         let expanded = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Pair.mk"), Vec::new())),
-                Box::new(Expr::Proj(Name::str("Pair"), 0, Box::new(base.clone()))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Pair.mk"), Vec::new())),
+                Node::new(Expr::Proj(Name::str("Pair"), 0, Node::new(base.clone()))),
             )),
-            Box::new(Expr::Proj(Name::str("Pair"), 1, Box::new(base.clone()))),
+            Node::new(Expr::Proj(Name::str("Pair"), 1, Node::new(base.clone()))),
         );
         let reduced = elab.eta_reduce_struct(&Name::str("Pair"), &expanded);
         assert_eq!(reduced, Some(base));
@@ -950,11 +951,11 @@ mod tests {
         let base1 = Expr::FVar(FVarId(42));
         let base2 = Expr::FVar(FVarId(43));
         let expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Pair.mk"), Vec::new())),
-                Box::new(Expr::Proj(Name::str("Pair"), 0, Box::new(base1))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Pair.mk"), Vec::new())),
+                Node::new(Expr::Proj(Name::str("Pair"), 0, Node::new(base1))),
             )),
-            Box::new(Expr::Proj(Name::str("Pair"), 1, Box::new(base2))),
+            Node::new(Expr::Proj(Name::str("Pair"), 1, Node::new(base2))),
         );
         let reduced = elab.eta_reduce_struct(&Name::str("Pair"), &expr);
         assert!(reduced.is_none());
@@ -1007,8 +1008,8 @@ mod tests {
         let e1 = Expr::Const(Name::str("Foo"), Vec::new());
         assert_eq!(head_const_name(&e1), Some(Name::str("Foo")));
         let e2 = Expr::App(
-            Box::new(Expr::Const(Name::str("Bar"), Vec::new())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Bar"), Vec::new())),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(head_const_name(&e2), Some(Name::str("Bar")));
         let e3 = Expr::BVar(0);
@@ -1024,7 +1025,7 @@ mod tests {
                 name: Name::str("x"),
                 ty: Expr::Sort(Level::zero()),
                 binder_info: BinderInfo::Default,
-                default_val: Some(Expr::Lit(oxilean_kernel::Literal::Nat(0))),
+                default_val: Some(Expr::Lit(oxilean_kernel::Literal::nat(0))),
                 proj_name: Name::str("Test.x"),
                 idx: 0,
                 is_inherited: false,
@@ -1278,7 +1279,7 @@ mod tests {
                     name: Name::str("a"),
                     ty: Expr::Sort(Level::zero()),
                     binder_info: BinderInfo::Default,
-                    default_val: Some(Expr::Lit(oxilean_kernel::Literal::Nat(1))),
+                    default_val: Some(Expr::Lit(oxilean_kernel::Literal::nat(1))),
                     proj_name: Name::str("T.a"),
                     idx: 0,
                     is_inherited: false,
@@ -1374,10 +1375,10 @@ pub fn flatten_structure(
 pub fn normalize_projection_chain(expr: &Expr, info: &StructureInfo) -> Option<(Name, u32, Expr)> {
     if let Expr::Proj(field, idx, base) = expr {
         if let Expr::App(_, _) = base.as_ref() {
-            return Some((field.clone(), *idx, *base.clone()));
+            return Some((field.clone(), *idx, (**base).clone()));
         }
         if info.fields.iter().any(|f| &f.name == field) {
-            return Some((field.clone(), *idx, *base.clone()));
+            return Some((field.clone(), *idx, (**base).clone()));
         }
     }
     None

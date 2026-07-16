@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use std::collections::{HashMap, HashSet};
 
 use super::metavarcontext_type::MetaVarContext;
@@ -200,13 +201,13 @@ pub fn subst_metas_once(expr: &Expr, ctx: &MetaVarContext) -> (Expr, bool) {
         Expr::App(f, a) => {
             let (f2, c1) = subst_metas_once(f, ctx);
             let (a2, c2) = subst_metas_once(a, ctx);
-            (Expr::App(Box::new(f2), Box::new(a2)), c1 || c2)
+            (Expr::App(Node::new(f2), Node::new(a2)), c1 || c2)
         }
         Expr::Lam(i, n, ty, body) => {
             let (ty2, c1) = subst_metas_once(ty, ctx);
             let (body2, c2) = subst_metas_once(body, ctx);
             (
-                Expr::Lam(*i, n.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Lam(*i, n.clone(), Node::new(ty2), Node::new(body2)),
                 c1 || c2,
             )
         }
@@ -214,7 +215,7 @@ pub fn subst_metas_once(expr: &Expr, ctx: &MetaVarContext) -> (Expr, bool) {
             let (ty2, c1) = subst_metas_once(ty, ctx);
             let (body2, c2) = subst_metas_once(body, ctx);
             (
-                Expr::Pi(*i, n.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Pi(*i, n.clone(), Node::new(ty2), Node::new(body2)),
                 c1 || c2,
             )
         }
@@ -223,7 +224,7 @@ pub fn subst_metas_once(expr: &Expr, ctx: &MetaVarContext) -> (Expr, bool) {
             let (val2, c2) = subst_metas_once(val, ctx);
             let (body2, c3) = subst_metas_once(body, ctx);
             (
-                Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2)),
+                Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2)),
                 c1 || c2 || c3,
             )
         }
@@ -361,7 +362,7 @@ mod rich_tests {
     fn test_count_meta_occurrences() {
         let meta_expr = Expr::FVar(FVarId(1_000_001));
         assert_eq!(count_meta_occurrences(&meta_expr), 1);
-        let app = Expr::App(Box::new(meta_expr.clone()), Box::new(meta_expr.clone()));
+        let app = Expr::App(Node::new(meta_expr.clone()), Node::new(meta_expr.clone()));
         assert_eq!(count_meta_occurrences(&app), 2);
     }
     #[test]
@@ -795,7 +796,7 @@ mod scope_and_occurs_tests {
     fn test_scope_check_expr_app() {
         let f = Expr::FVar(FVarId(1));
         let a = Expr::FVar(FVarId(2));
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert!(scope_check_expr(&app, &[1, 2]));
         assert!(!scope_check_expr(&app, &[1]));
     }
@@ -887,31 +888,31 @@ pub fn subst_meta_fvar(expr: &Expr, meta_id: u64, replacement: &Expr) -> Expr {
     match expr {
         Expr::FVar(FVarId(id)) if *id == meta_id => replacement.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_meta_fvar(f, meta_id, replacement)),
-            Box::new(subst_meta_fvar(a, meta_id, replacement)),
+            Node::new(subst_meta_fvar(f, meta_id, replacement)),
+            Node::new(subst_meta_fvar(a, meta_id, replacement)),
         ),
         Expr::Lam(info, name, ty, body) => Expr::Lam(
             *info,
             name.clone(),
-            Box::new(subst_meta_fvar(ty, meta_id, replacement)),
-            Box::new(subst_meta_fvar(body, meta_id, replacement)),
+            Node::new(subst_meta_fvar(ty, meta_id, replacement)),
+            Node::new(subst_meta_fvar(body, meta_id, replacement)),
         ),
         Expr::Pi(info, name, ty, body) => Expr::Pi(
             *info,
             name.clone(),
-            Box::new(subst_meta_fvar(ty, meta_id, replacement)),
-            Box::new(subst_meta_fvar(body, meta_id, replacement)),
+            Node::new(subst_meta_fvar(ty, meta_id, replacement)),
+            Node::new(subst_meta_fvar(body, meta_id, replacement)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(subst_meta_fvar(ty, meta_id, replacement)),
-            Box::new(subst_meta_fvar(val, meta_id, replacement)),
-            Box::new(subst_meta_fvar(body, meta_id, replacement)),
+            Node::new(subst_meta_fvar(ty, meta_id, replacement)),
+            Node::new(subst_meta_fvar(val, meta_id, replacement)),
+            Node::new(subst_meta_fvar(body, meta_id, replacement)),
         ),
         Expr::Proj(name, idx, inner) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(subst_meta_fvar(inner, meta_id, replacement)),
+            Node::new(subst_meta_fvar(inner, meta_id, replacement)),
         ),
         _ => expr.clone(),
     }
@@ -928,31 +929,31 @@ pub fn apply_substitution(expr: &Expr, subst: &MetaSubstitution) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(apply_substitution(f, subst)),
-            Box::new(apply_substitution(a, subst)),
+            Node::new(apply_substitution(f, subst)),
+            Node::new(apply_substitution(a, subst)),
         ),
         Expr::Lam(info, name, ty, body) => Expr::Lam(
             *info,
             name.clone(),
-            Box::new(apply_substitution(ty, subst)),
-            Box::new(apply_substitution(body, subst)),
+            Node::new(apply_substitution(ty, subst)),
+            Node::new(apply_substitution(body, subst)),
         ),
         Expr::Pi(info, name, ty, body) => Expr::Pi(
             *info,
             name.clone(),
-            Box::new(apply_substitution(ty, subst)),
-            Box::new(apply_substitution(body, subst)),
+            Node::new(apply_substitution(ty, subst)),
+            Node::new(apply_substitution(body, subst)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(apply_substitution(ty, subst)),
-            Box::new(apply_substitution(val, subst)),
-            Box::new(apply_substitution(body, subst)),
+            Node::new(apply_substitution(ty, subst)),
+            Node::new(apply_substitution(val, subst)),
+            Node::new(apply_substitution(body, subst)),
         ),
         Expr::Proj(name, idx, inner) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(apply_substitution(inner, subst)),
+            Node::new(apply_substitution(inner, subst)),
         ),
         _ => expr.clone(),
     }
@@ -1092,7 +1093,7 @@ mod tests_extended {
     fn test_constraint_queue_simple_first() {
         let mut q = ConstraintQueue::new();
         let complex_c = MetaConstraint::new_eq(
-            Expr::App(Box::new(mk_fvar(1)), Box::new(mk_fvar(2))),
+            Expr::App(Node::new(mk_fvar(1)), Node::new(mk_fvar(2))),
             mk_fvar(3),
             "complex",
         );
@@ -1234,7 +1235,7 @@ mod tests_extended {
     }
     #[test]
     fn test_count_bvar_occurrences_in_app() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(0)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(0)));
         assert_eq!(count_bvar_occurrences(&e, 0), 2);
     }
     #[test]

@@ -10,6 +10,7 @@ pub mod labelset_traits;
 pub mod minheap_traits;
 pub mod pathbuf_traits;
 pub mod prefixcounter_traits;
+pub mod quot;
 pub mod rewriteruleset_traits;
 pub mod smallmap_traits;
 pub mod stackcalc_traits;
@@ -31,6 +32,10 @@ pub use labelset_traits::*;
 pub use minheap_traits::*;
 pub use pathbuf_traits::*;
 pub use prefixcounter_traits::*;
+pub use quot::{
+    canonical_quot_level_params, canonical_quot_sound_level_params, canonical_quot_sound_type,
+    canonical_quot_type, quot_sound_name,
+};
 pub use rewriteruleset_traits::*;
 pub use smallmap_traits::*;
 pub use stackcalc_traits::*;

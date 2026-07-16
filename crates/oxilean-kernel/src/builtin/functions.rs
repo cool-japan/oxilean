@@ -2,10 +2,11 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
-use crate::declaration::{
-    AxiomVal, ConstantInfo, ConstantVal, ConstructorVal, InductiveVal, RecursorRule, RecursorVal,
-};
+use crate::declaration::{AxiomVal, ConstantInfo, ConstantVal};
+use crate::inductive::derive::{add_inductive_family, InductiveSpec};
+use crate::Node;
 use crate::{BinderInfo, Declaration, Environment, Expr, Level, Name};
+use std::rc::Rc;
 
 use super::types::{
     BuiltinInfo, BuiltinKind, ConfigNode, DecisionNode, Either2, FlatSubstitution, FocusStack,
@@ -15,31 +16,40 @@ use super::types::{
 };
 
 /// Initialize the environment with built-in types and axioms.
+///
+/// All builtin inductive types (`Bool`, `Unit`, `Empty`, `Nat`, `Eq`,
+/// `Prod`, `List`, `String`) go through the kernel's *checked* declaration
+/// path ([`crate::inductive::derive::add_inductive_family`]): the recursors
+/// are derived — with real types and iota rules — rather than hand-written.
 pub fn init_builtin_env(env: &mut Environment) -> Result<(), String> {
-    add_legacy_axioms(env)?;
     add_bool_inductive(env)?;
     add_unit_inductive(env)?;
     add_empty_inductive(env)?;
     add_nat_inductive(env)?;
-    add_string_type(env)?;
+    add_legacy_axioms(env)?;
     add_core_axioms(env)?;
     add_decidable_eq(env)?;
     add_eq_inductive(env)?;
+    // Install the four `#QUOT` primitives with their canonical, kernel-built
+    // types. Must come after `Eq` is available (see `Environment::add_quot`).
+    env.add_quot().map_err(|e| e.to_string())?;
     add_prod_inductive(env)?;
     add_list_inductive(env)?;
+    add_string_type(env)?;
     Ok(())
 }
-/// Add legacy axiom declarations (backward compat).
-/// Uses the old flat-name convention.
+/// Declare a single builtin inductive through the checked kernel path.
+fn add_builtin_inductive(
+    env: &mut Environment,
+    lparams: Vec<Name>,
+    num_params: u32,
+    spec: InductiveSpec,
+) -> Result<(), String> {
+    add_inductive_family(env, lparams, num_params, vec![spec]).map_err(|e| e.to_string())
+}
+/// Add legacy value axioms (backward compat, flat-name convention):
+/// `true`, `false` : Bool and `unit` : Unit.
 pub(super) fn add_legacy_axioms(env: &mut Environment) -> Result<(), String> {
-    let type0 = Expr::Sort(Level::zero());
-    let type1 = Expr::Sort(Level::succ(Level::zero()));
-    env.add(Declaration::Axiom {
-        name: Name::str("Bool"),
-        univ_params: vec![],
-        ty: type1.clone(),
-    })
-    .map_err(|e| e.to_string())?;
     env.add(Declaration::Axiom {
         name: Name::str("true"),
         univ_params: vec![],
@@ -53,276 +63,70 @@ pub(super) fn add_legacy_axioms(env: &mut Environment) -> Result<(), String> {
     })
     .map_err(|e| e.to_string())?;
     env.add(Declaration::Axiom {
-        name: Name::str("Unit"),
-        univ_params: vec![],
-        ty: type1,
-    })
-    .map_err(|e| e.to_string())?;
-    env.add(Declaration::Axiom {
         name: Name::str("unit"),
         univ_params: vec![],
         ty: Expr::Const(Name::str("Unit"), vec![]),
     })
     .map_err(|e| e.to_string())?;
-    env.add(Declaration::Axiom {
-        name: Name::str("Empty"),
-        univ_params: vec![],
-        ty: type0.clone(),
-    })
-    .map_err(|e| e.to_string())?;
-    let rec_ty = Expr::Pi(
-        BinderInfo::Implicit,
-        Name::str("C"),
-        Box::new(type0),
-        Box::new(Expr::Pi(
-            BinderInfo::Default,
-            Name::str("_"),
-            Box::new(Expr::Const(Name::str("Empty"), vec![])),
-            Box::new(Expr::BVar(1)),
-        )),
-    );
-    env.add(Declaration::Axiom {
-        name: Name::str("Empty.rec"),
-        univ_params: vec![],
-        ty: rec_ty,
-    })
-    .map_err(|e| e.to_string())?;
     Ok(())
 }
-/// Add Bool as a proper inductive type (ConstantInfo only, no legacy overlap).
+/// Add Bool as a proper inductive type with a derived recursor.
 pub(super) fn add_bool_inductive(env: &mut Environment) -> Result<(), String> {
-    let type1 = Expr::Sort(Level::succ(Level::zero()));
     let bool_const = Expr::Const(Name::str("Bool"), vec![]);
-    let ctor_true = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("Bool.true"),
-            level_params: vec![],
-            ty: bool_const.clone(),
-        },
-        induct: Name::str("Bool"),
-        cidx: 0,
-        num_params: 0,
-        num_fields: 0,
-        is_unsafe: false,
-    });
-    let ctor_false = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("Bool.false"),
-            level_params: vec![],
-            ty: bool_const,
-        },
-        induct: Name::str("Bool"),
-        cidx: 1,
-        num_params: 0,
-        num_fields: 0,
-        is_unsafe: false,
-    });
-    let ind = ConstantInfo::Inductive(InductiveVal {
-        common: ConstantVal {
-            name: Name::str("Bool.ind"),
-            level_params: vec![],
-            ty: type1,
-        },
-        num_params: 0,
-        num_indices: 0,
-        all: vec![Name::str("Bool")],
-        ctors: vec![Name::str("Bool.true"), Name::str("Bool.false")],
-        num_nested: 0,
-        is_rec: false,
-        is_unsafe: false,
-        is_reflexive: false,
-        is_prop: false,
-    });
-    let rec = ConstantInfo::Recursor(RecursorVal {
-        common: ConstantVal {
-            name: Name::str("Bool.rec"),
-            level_params: vec![Name::str("u_1")],
-            ty: Expr::Sort(Level::zero()),
-        },
-        all: vec![Name::str("Bool")],
-        num_params: 0,
-        num_indices: 0,
-        num_motives: 1,
-        num_minors: 2,
-        rules: vec![
-            RecursorRule {
-                ctor: Name::str("Bool.true"),
-                nfields: 0,
-                rhs: Expr::BVar(0),
-            },
-            RecursorRule {
-                ctor: Name::str("Bool.false"),
-                nfields: 0,
-                rhs: Expr::BVar(0),
-            },
+    let spec = InductiveSpec::new(
+        Name::str("Bool"),
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![
+            (Name::str("Bool.true"), bool_const.clone()),
+            (Name::str("Bool.false"), bool_const),
         ],
-        k: false,
-        is_unsafe: false,
-    });
-    env.add_constant(ind).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_true).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_false).map_err(|e| e.to_string())?;
-    env.add_constant(rec).map_err(|e| e.to_string())?;
-    Ok(())
+    )
+    .with_rec_name(Name::str("Bool.rec"));
+    add_builtin_inductive(env, vec![], 0, spec)
 }
-/// Add Unit as a proper inductive type.
+/// Add Unit as a proper inductive type with a derived recursor.
 pub(super) fn add_unit_inductive(env: &mut Environment) -> Result<(), String> {
-    let type1 = Expr::Sort(Level::succ(Level::zero()));
-    let unit_const = Expr::Const(Name::str("Unit"), vec![]);
-    let ind = ConstantInfo::Inductive(InductiveVal {
-        common: ConstantVal {
-            name: Name::str("Unit.ind"),
-            level_params: vec![],
-            ty: type1,
-        },
-        num_params: 0,
-        num_indices: 0,
-        all: vec![Name::str("Unit")],
-        ctors: vec![Name::str("Unit.unit")],
-        num_nested: 0,
-        is_rec: false,
-        is_unsafe: false,
-        is_reflexive: false,
-        is_prop: false,
-    });
-    let ctor = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("Unit.unit"),
-            level_params: vec![],
-            ty: unit_const,
-        },
-        induct: Name::str("Unit"),
-        cidx: 0,
-        num_params: 0,
-        num_fields: 0,
-        is_unsafe: false,
-    });
-    let rec = ConstantInfo::Recursor(RecursorVal {
-        common: ConstantVal {
-            name: Name::str("Unit.rec"),
-            level_params: vec![Name::str("u_1")],
-            ty: Expr::Sort(Level::zero()),
-        },
-        all: vec![Name::str("Unit")],
-        num_params: 0,
-        num_indices: 0,
-        num_motives: 1,
-        num_minors: 1,
-        rules: vec![RecursorRule {
-            ctor: Name::str("Unit.unit"),
-            nfields: 0,
-            rhs: Expr::BVar(0),
-        }],
-        k: false,
-        is_unsafe: false,
-    });
-    env.add_constant(ind).map_err(|e| e.to_string())?;
-    env.add_constant(ctor).map_err(|e| e.to_string())?;
-    env.add_constant(rec).map_err(|e| e.to_string())?;
-    Ok(())
+    let spec = InductiveSpec::new(
+        Name::str("Unit"),
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![(
+            Name::str("Unit.unit"),
+            Expr::Const(Name::str("Unit"), vec![]),
+        )],
+    )
+    .with_rec_name(Name::str("Unit.rec"));
+    add_builtin_inductive(env, vec![], 0, spec)
 }
-/// Add Empty as a proper inductive type (no constructors).
+/// Add Empty as a proper Prop inductive type (no constructors) with a
+/// derived recursor. Having no constructors, it large-eliminates
+/// (ex falso): `Empty.rec.{u} : {motive : Empty → Sort u} → (t : Empty) →
+/// motive t`.
 pub(super) fn add_empty_inductive(env: &mut Environment) -> Result<(), String> {
-    let type0 = Expr::Sort(Level::zero());
-    let ind = ConstantInfo::Inductive(InductiveVal {
-        common: ConstantVal {
-            name: Name::str("Empty.ind"),
-            level_params: vec![],
-            ty: type0,
-        },
-        num_params: 0,
-        num_indices: 0,
-        all: vec![Name::str("Empty")],
-        ctors: vec![],
-        num_nested: 0,
-        is_rec: false,
-        is_unsafe: false,
-        is_reflexive: false,
-        is_prop: true,
-    });
-    env.add_constant(ind).map_err(|e| e.to_string())?;
-    Ok(())
+    let spec = InductiveSpec::new(Name::str("Empty"), Expr::Sort(Level::zero()), vec![])
+        .with_rec_name(Name::str("Empty.rec"));
+    add_builtin_inductive(env, vec![], 0, spec)
 }
-/// Add Nat as a proper inductive type.
+/// Add Nat as a proper inductive type with a derived recursor (the `succ`
+/// minor premise carries its induction hypothesis:
+/// `(n : Nat) → motive n → motive (Nat.succ n)`).
 pub(super) fn add_nat_inductive(env: &mut Environment) -> Result<(), String> {
-    let type1 = Expr::Sort(Level::succ(Level::zero()));
     let nat_const = Expr::Const(Name::str("Nat"), vec![]);
-    let ind = ConstantInfo::Inductive(InductiveVal {
-        common: ConstantVal {
-            name: Name::str("Nat"),
-            level_params: vec![],
-            ty: type1,
-        },
-        num_params: 0,
-        num_indices: 0,
-        all: vec![Name::str("Nat")],
-        ctors: vec![Name::str("Nat.zero"), Name::str("Nat.succ")],
-        num_nested: 0,
-        is_rec: true,
-        is_unsafe: false,
-        is_reflexive: false,
-        is_prop: false,
-    });
-    let ctor_zero = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("Nat.zero"),
-            level_params: vec![],
-            ty: nat_const.clone(),
-        },
-        induct: Name::str("Nat"),
-        cidx: 0,
-        num_params: 0,
-        num_fields: 0,
-        is_unsafe: false,
-    });
     let succ_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(nat_const.clone()),
-        Box::new(nat_const),
+        Node::new(nat_const.clone()),
+        Node::new(nat_const.clone()),
     );
-    let ctor_succ = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("Nat.succ"),
-            level_params: vec![],
-            ty: succ_ty,
-        },
-        induct: Name::str("Nat"),
-        cidx: 1,
-        num_params: 0,
-        num_fields: 1,
-        is_unsafe: false,
-    });
-    let rec = ConstantInfo::Recursor(RecursorVal {
-        common: ConstantVal {
-            name: Name::str("Nat.rec"),
-            level_params: vec![Name::str("u_1")],
-            ty: Expr::Sort(Level::zero()),
-        },
-        all: vec![Name::str("Nat")],
-        num_params: 0,
-        num_indices: 0,
-        num_motives: 1,
-        num_minors: 2,
-        rules: vec![
-            RecursorRule {
-                ctor: Name::str("Nat.zero"),
-                nfields: 0,
-                rhs: Expr::BVar(0),
-            },
-            RecursorRule {
-                ctor: Name::str("Nat.succ"),
-                nfields: 1,
-                rhs: Expr::BVar(0),
-            },
+    let spec = InductiveSpec::new(
+        Name::str("Nat"),
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![
+            (Name::str("Nat.zero"), nat_const),
+            (Name::str("Nat.succ"), succ_ty),
         ],
-        k: false,
-        is_unsafe: false,
-    });
-    env.add_constant(ind).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_zero).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_succ).map_err(|e| e.to_string())?;
-    env.add_constant(rec).map_err(|e| e.to_string())?;
+    )
+    .with_rec_name(Name::str("Nat.rec"));
+    add_builtin_inductive(env, vec![], 0, spec)?;
     register_nat_ops(env)?;
     Ok(())
 }
@@ -333,23 +137,23 @@ pub(super) fn register_nat_ops(env: &mut Environment) -> Result<(), String> {
     let nat_binop = Expr::Pi(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(nat.clone()),
-        Box::new(Expr::Pi(
+        Node::new(nat.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(nat.clone()),
-            Box::new(nat.clone()),
+            Node::new(nat.clone()),
+            Node::new(nat.clone()),
         )),
     );
     let nat_cmp = Expr::Pi(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(nat.clone()),
-        Box::new(Expr::Pi(
+        Node::new(nat.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(nat),
-            Box::new(bool_ty),
+            Node::new(nat),
+            Node::new(bool_ty),
         )),
     );
     let binop_names = [
@@ -389,17 +193,36 @@ pub(super) fn register_nat_ops(env: &mut Environment) -> Result<(), String> {
         }))
         .map_err(|e| e.to_string())?;
     }
+    // Unary op: Nat.log2 : Nat -> Nat (kernel literal extension).
+    let nat_unop = Expr::Pi(
+        BinderInfo::Default,
+        Name::str("a"),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+    );
+    env.add_constant(ConstantInfo::Axiom(AxiomVal {
+        common: ConstantVal {
+            name: Name::str("Nat.log2"),
+            level_params: vec![],
+            ty: nat_unop,
+        },
+        is_unsafe: false,
+    }))
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
-/// Add the String type.
+/// Add the String type as a proper inductive (`String.mk : List Char →
+/// String`) with a derived recursor, plus the `Char` scaffolding and the
+/// String literal operations. Must run after `add_list_inductive`.
 pub(super) fn add_string_type(env: &mut Environment) -> Result<(), String> {
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let str_ty = Expr::Const(Name::str("String"), vec![]);
     let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
     let bool_ty = Expr::Const(Name::str("Bool"), vec![]);
+    let char_ty = Expr::Const(Name::str("Char"), vec![]);
     env.add_constant(ConstantInfo::Axiom(AxiomVal {
         common: ConstantVal {
-            name: Name::str("String"),
+            name: Name::str("Char"),
             level_params: vec![],
             ty: type1,
         },
@@ -408,13 +231,44 @@ pub(super) fn add_string_type(env: &mut Environment) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
     env.add_constant(ConstantInfo::Axiom(AxiomVal {
         common: ConstantVal {
+            name: Name::str("Char.ofNat"),
+            level_params: vec![],
+            ty: Expr::Pi(
+                BinderInfo::Default,
+                Name::str("n"),
+                Node::new(nat_ty.clone()),
+                Node::new(char_ty.clone()),
+            ),
+        },
+        is_unsafe: false,
+    }))
+    .map_err(|e| e.to_string())?;
+    let list_char = Expr::App(
+        Node::new(Expr::Const(Name::str("List"), vec![Level::zero()])),
+        Node::new(char_ty),
+    );
+    let mk_ty = Expr::Pi(
+        BinderInfo::Default,
+        Name::str("data"),
+        Node::new(list_char),
+        Node::new(str_ty.clone()),
+    );
+    let spec = InductiveSpec::new(
+        Name::str("String"),
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![(Name::str("String.mk"), mk_ty)],
+    )
+    .with_rec_name(Name::str("String.rec"));
+    add_builtin_inductive(env, vec![], 0, spec)?;
+    env.add_constant(ConstantInfo::Axiom(AxiomVal {
+        common: ConstantVal {
             name: Name::str("String.length"),
             level_params: vec![],
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("s"),
-                Box::new(str_ty.clone()),
-                Box::new(nat_ty),
+                Node::new(str_ty.clone()),
+                Node::new(nat_ty),
             ),
         },
         is_unsafe: false,
@@ -427,12 +281,12 @@ pub(super) fn add_string_type(env: &mut Environment) -> Result<(), String> {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(str_ty.clone()),
-                Box::new(Expr::Pi(
+                Node::new(str_ty.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(str_ty.clone()),
-                    Box::new(str_ty.clone()),
+                    Node::new(str_ty.clone()),
+                    Node::new(str_ty.clone()),
                 )),
             ),
         },
@@ -446,12 +300,12 @@ pub(super) fn add_string_type(env: &mut Environment) -> Result<(), String> {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(str_ty.clone()),
-                Box::new(Expr::Pi(
+                Node::new(str_ty.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(str_ty),
-                    Box::new(bool_ty),
+                    Node::new(str_ty),
+                    Node::new(bool_ty),
                 )),
             ),
         },
@@ -466,12 +320,12 @@ pub(super) fn add_core_axioms(env: &mut Environment) -> Result<(), String> {
     let propext_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("a"),
-        Box::new(type0.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type0.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("b"),
-            Box::new(type0.clone()),
-            Box::new(type0.clone()),
+            Node::new(type0.clone()),
+            Node::new(type0.clone()),
         )),
     );
     env.add_constant(ConstantInfo::Axiom(AxiomVal {
@@ -483,35 +337,21 @@ pub(super) fn add_core_axioms(env: &mut Environment) -> Result<(), String> {
         is_unsafe: false,
     }))
     .map_err(|e| e.to_string())?;
-    let quot_ty = Expr::Pi(
-        BinderInfo::Implicit,
-        Name::str("α"),
-        Box::new(Expr::Sort(Level::param(Name::str("u")))),
-        Box::new(Expr::Pi(
-            BinderInfo::Default,
-            Name::str("r"),
-            Box::new(type0.clone()),
-            Box::new(Expr::Sort(Level::param(Name::str("u")))),
-        )),
-    );
-    env.add_constant(ConstantInfo::Axiom(AxiomVal {
-        common: ConstantVal {
-            name: Name::str("Quot"),
-            level_params: vec![Name::str("u")],
-            ty: quot_ty,
-        },
-        is_unsafe: false,
-    }))
-    .map_err(|e| e.to_string())?;
+    // NOTE: `Quot` (and `Quot.mk` / `Quot.lift` / `Quot.ind`) are NOT registered
+    // here. Quotients are a kernel primitive, not an axiom: they are installed
+    // with their canonical, kernel-constructed types via `Environment::add_quot`
+    // (called from `init_builtin_env` after `Eq` is available). The previous
+    // `Quot : {α : Sort u} → Prop → Sort u` axiom was both the wrong type (the
+    // relation binder must be `α → α → Prop`) and the wrong declaration kind.
     let choice_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(Expr::Sort(Level::param(Name::str("u")))),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Sort(Level::param(Name::str("u")))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type0),
-            Box::new(Expr::BVar(1)),
+            Node::new(type0),
+            Node::new(Expr::BVar(1)),
         )),
     );
     env.add_constant(ConstantInfo::Axiom(AxiomVal {
@@ -532,8 +372,8 @@ pub(super) fn add_decidable_eq(env: &mut Environment) -> Result<(), String> {
     let decidable_eq_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(type0),
+        Node::new(type1.clone()),
+        Node::new(type0),
     );
     env.add(Declaration::Axiom {
         name: Name::str("DecidableEq"),
@@ -544,23 +384,23 @@ pub(super) fn add_decidable_eq(env: &mut Environment) -> Result<(), String> {
     let decide_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("DecidableEq"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("DecidableEq"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::Const(Name::str("Bool"), vec![])),
                 )),
             )),
         )),
@@ -573,12 +413,13 @@ pub(super) fn add_decidable_eq(env: &mut Environment) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
     Ok(())
 }
-/// Add Eq (propositional equality) as a proper inductive type.
+/// Add Eq (propositional equality) as a proper inductive type with a
+/// derived recursor.
 ///
-/// ```text
-/// inductive Eq.{u} : {α : Sort u} → α → α → Prop where
-///   | refl : ∀ {α : Sort u} (a : α), Eq a a
-/// ```
+/// Lean-exact shape: `Eq.{u} {α : Sort u} (a b : α) : Prop` has **two**
+/// parameters (`α`, `a`) and one index (`b`); `Eq.refl {α} (a : α) : Eq a a`
+/// therefore has zero fields, which is what makes `Eq` K-like and a
+/// subsingleton eliminator (it large-eliminates despite living in Prop).
 pub(super) fn add_eq_inductive(env: &mut Environment) -> Result<(), String> {
     let u = Level::param(Name::str("u"));
     let prop = Expr::Sort(Level::zero());
@@ -586,90 +427,46 @@ pub(super) fn add_eq_inductive(env: &mut Environment) -> Result<(), String> {
     let eq_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(sort_u.clone()),
-        Box::new(Expr::Pi(
+        Node::new(sort_u.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Pi(
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(Expr::BVar(1)),
-                Box::new(prop.clone()),
+                Node::new(Expr::BVar(1)),
+                Node::new(prop),
             )),
         )),
     );
-    let ind = ConstantInfo::Inductive(InductiveVal {
-        common: ConstantVal {
-            name: Name::str("Eq"),
-            level_params: vec![Name::str("u")],
-            ty: eq_ty,
-        },
-        num_params: 1,
-        num_indices: 2,
-        all: vec![Name::str("Eq")],
-        ctors: vec![Name::str("Eq.refl")],
-        num_nested: 0,
-        is_rec: false,
-        is_unsafe: false,
-        is_reflexive: false,
-        is_prop: true,
-    });
     let eq_refl_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(sort_u),
-        Box::new(Expr::Pi(
+        Node::new(sort_u),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Eq"), vec![u.clone()])),
-                        Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Eq"), vec![u.clone()])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
             )),
         )),
     );
-    let ctor_refl = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("Eq.refl"),
-            level_params: vec![Name::str("u")],
-            ty: eq_refl_ty,
-        },
-        induct: Name::str("Eq"),
-        cidx: 0,
-        num_params: 1,
-        num_fields: 1,
-        is_unsafe: false,
-    });
-    let rec = ConstantInfo::Recursor(RecursorVal {
-        common: ConstantVal {
-            name: Name::str("Eq.rec"),
-            level_params: vec![Name::str("u"), Name::str("v")],
-            ty: prop.clone(),
-        },
-        all: vec![Name::str("Eq")],
-        num_params: 1,
-        num_indices: 2,
-        num_motives: 1,
-        num_minors: 1,
-        rules: vec![RecursorRule {
-            ctor: Name::str("Eq.refl"),
-            nfields: 1,
-            rhs: Expr::BVar(0),
-        }],
-        k: true,
-        is_unsafe: false,
-    });
-    env.add_constant(ind).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_refl).map_err(|e| e.to_string())?;
-    env.add_constant(rec).map_err(|e| e.to_string())?;
-    Ok(())
+    let spec = InductiveSpec::new(
+        Name::str("Eq"),
+        eq_ty,
+        vec![(Name::str("Eq.refl"), eq_refl_ty)],
+    )
+    .with_rec_name(Name::str("Eq.rec"));
+    add_builtin_inductive(env, vec![Name::str("u")], 2, spec)
 }
 /// Add Prod (dependent pair / product type) as a proper inductive type.
 ///
@@ -686,92 +483,48 @@ pub(super) fn add_prod_inductive(env: &mut Environment) -> Result<(), String> {
     let prod_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type_u.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type_u.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("β"),
-            Box::new(type_v.clone()),
-            Box::new(type_max),
+            Node::new(type_v.clone()),
+            Node::new(type_max),
         )),
     );
-    let ind = ConstantInfo::Inductive(InductiveVal {
-        common: ConstantVal {
-            name: Name::str("Prod"),
-            level_params: vec![Name::str("u"), Name::str("v")],
-            ty: prod_ty,
-        },
-        num_params: 2,
-        num_indices: 0,
-        all: vec![Name::str("Prod")],
-        ctors: vec![Name::str("Prod.mk")],
-        num_nested: 0,
-        is_rec: false,
-        is_unsafe: false,
-        is_reflexive: false,
-        is_prop: false,
-    });
     let prod_mk_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type_u),
-        Box::new(Expr::Pi(
+        Node::new(type_u),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type_v),
-            Box::new(Expr::Pi(
+            Node::new(type_v),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("fst"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("snd"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Prod"), vec![u.clone(), v.clone()])),
-                            Box::new(Expr::BVar(3)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Prod"), vec![u.clone(), v.clone()])),
+                            Node::new(Expr::BVar(3)),
                         )),
-                        Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
         )),
     );
-    let ctor_mk = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("Prod.mk"),
-            level_params: vec![Name::str("u"), Name::str("v")],
-            ty: prod_mk_ty,
-        },
-        induct: Name::str("Prod"),
-        cidx: 0,
-        num_params: 2,
-        num_fields: 2,
-        is_unsafe: false,
-    });
-    let rec = ConstantInfo::Recursor(RecursorVal {
-        common: ConstantVal {
-            name: Name::str("Prod.rec"),
-            level_params: vec![Name::str("u"), Name::str("v"), Name::str("w")],
-            ty: Expr::Sort(Level::zero()),
-        },
-        all: vec![Name::str("Prod")],
-        num_params: 2,
-        num_indices: 0,
-        num_motives: 1,
-        num_minors: 1,
-        rules: vec![RecursorRule {
-            ctor: Name::str("Prod.mk"),
-            nfields: 2,
-            rhs: Expr::BVar(0),
-        }],
-        k: false,
-        is_unsafe: false,
-    });
-    env.add_constant(ind).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_mk).map_err(|e| e.to_string())?;
-    env.add_constant(rec).map_err(|e| e.to_string())?;
-    Ok(())
+    let spec = InductiveSpec::new(
+        Name::str("Prod"),
+        prod_ty,
+        vec![(Name::str("Prod.mk"), prod_mk_ty)],
+    )
+    .with_rec_name(Name::str("Prod.rec"));
+    add_builtin_inductive(env, vec![Name::str("u"), Name::str("v")], 2, spec)
 }
 /// Add List as a proper inductive type.
 ///
@@ -784,108 +537,58 @@ pub(super) fn add_list_inductive(env: &mut Environment) -> Result<(), String> {
     let u = Level::param(Name::str("u"));
     let type_u = Expr::Sort(Level::succ(u.clone()));
     let list_bvar0 = Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![u.clone()])),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Const(Name::str("List"), vec![u.clone()])),
+        Node::new(Expr::BVar(0)),
     );
     let list_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type_u.clone()),
-        Box::new(type_u.clone()),
+        Node::new(type_u.clone()),
+        Node::new(type_u.clone()),
     );
-    let ind = ConstantInfo::Inductive(InductiveVal {
-        common: ConstantVal {
-            name: Name::str("List"),
-            level_params: vec![Name::str("u")],
-            ty: list_ty,
-        },
-        num_params: 1,
-        num_indices: 0,
-        all: vec![Name::str("List")],
-        ctors: vec![Name::str("List.nil"), Name::str("List.cons")],
-        num_nested: 0,
-        is_rec: true,
-        is_unsafe: false,
-        is_reflexive: false,
-        is_prop: false,
-    });
     let nil_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type_u.clone()),
-        Box::new(list_bvar0.clone()),
+        Node::new(type_u.clone()),
+        Node::new(list_bvar0.clone()),
     );
-    let ctor_nil = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("List.nil"),
-            level_params: vec![Name::str("u")],
-            ty: nil_ty,
-        },
-        induct: Name::str("List"),
-        cidx: 0,
-        num_params: 1,
-        num_fields: 0,
-        is_unsafe: false,
-    });
+    // cons : {α : Type u} → (head : α) → (tail : List α) → List α.
+    // The `α` reference is BVar(1) under `head` and BVar(2) under `tail`
+    // (the previous hand-written builtin used BVar(0) in both positions —
+    // an ill-typed `List head` / `List tail` — which the checked
+    // declaration path now rejects).
+    let list_of = |i: u32| {
+        Expr::App(
+            Node::new(Expr::Const(Name::str("List"), vec![u.clone()])),
+            Node::new(Expr::BVar(i)),
+        )
+    };
     let cons_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type_u),
-        Box::new(Expr::Pi(
+        Node::new(type_u),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("head"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Pi(
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("tail"),
-                Box::new(list_bvar0.clone()),
-                Box::new(list_bvar0),
+                Node::new(list_of(1)),
+                Node::new(list_of(2)),
             )),
         )),
     );
-    let ctor_cons = ConstantInfo::Constructor(ConstructorVal {
-        common: ConstantVal {
-            name: Name::str("List.cons"),
-            level_params: vec![Name::str("u")],
-            ty: cons_ty,
-        },
-        induct: Name::str("List"),
-        cidx: 1,
-        num_params: 1,
-        num_fields: 2,
-        is_unsafe: false,
-    });
-    let rec = ConstantInfo::Recursor(RecursorVal {
-        common: ConstantVal {
-            name: Name::str("List.rec"),
-            level_params: vec![Name::str("u"), Name::str("v")],
-            ty: Expr::Sort(Level::zero()),
-        },
-        all: vec![Name::str("List")],
-        num_params: 1,
-        num_indices: 0,
-        num_motives: 1,
-        num_minors: 2,
-        rules: vec![
-            RecursorRule {
-                ctor: Name::str("List.nil"),
-                nfields: 0,
-                rhs: Expr::BVar(0),
-            },
-            RecursorRule {
-                ctor: Name::str("List.cons"),
-                nfields: 2,
-                rhs: Expr::BVar(0),
-            },
+    let spec = InductiveSpec::new(
+        Name::str("List"),
+        list_ty,
+        vec![
+            (Name::str("List.nil"), nil_ty),
+            (Name::str("List.cons"), cons_ty),
         ],
-        k: false,
-        is_unsafe: false,
-    });
-    env.add_constant(ind).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_nil).map_err(|e| e.to_string())?;
-    env.add_constant(ctor_cons).map_err(|e| e.to_string())?;
-    env.add_constant(rec).map_err(|e| e.to_string())?;
-    Ok(())
+    )
+    .with_rec_name(Name::str("List.rec"));
+    add_builtin_inductive(env, vec![Name::str("u")], 1, spec)
 }
 /// Check if a name is a built-in primitive.
 pub fn is_builtin(name: &Name) -> bool {
@@ -939,6 +642,7 @@ pub fn is_nat_op(name: &Name) -> bool {
             | "Nat.xor"
             | "Nat.shiftLeft"
             | "Nat.shiftRight"
+            | "Nat.log2"
     )
 }
 /// Check if a name is a built-in String operation.
@@ -953,21 +657,19 @@ mod tests {
     fn test_init_builtin_env() {
         let mut env = Environment::new();
         assert!(init_builtin_env(&mut env).is_ok());
-        assert!(env.get(&Name::str("Bool")).is_some());
+        assert!(env.is_inductive(&Name::str("Bool")));
         assert!(env.get(&Name::str("true")).is_some());
         assert!(env.get(&Name::str("false")).is_some());
-        assert!(env.get(&Name::str("Unit")).is_some());
+        assert!(env.is_inductive(&Name::str("Unit")));
         assert!(env.get(&Name::str("unit")).is_some());
-        assert!(env.get(&Name::str("Empty")).is_some());
+        assert!(env.is_inductive(&Name::str("Empty")));
     }
     #[test]
     fn test_bool_axioms() {
         let mut env = Environment::new();
         init_builtin_env(&mut env).expect("value should be present");
-        let bool_decl = env
-            .get(&Name::str("Bool"))
-            .expect("bool_decl should be present");
-        assert!(matches!(bool_decl, Declaration::Axiom { .. }));
+        // Bool is now a real inductive (not a legacy axiom).
+        assert!(env.is_inductive(&Name::str("Bool")));
         let true_decl = env
             .get(&Name::str("true"))
             .expect("true_decl should be present");
@@ -977,10 +679,8 @@ mod tests {
     fn test_unit_axioms() {
         let mut env = Environment::new();
         init_builtin_env(&mut env).expect("value should be present");
-        let unit_decl = env
-            .get(&Name::str("Unit"))
-            .expect("unit_decl should be present");
-        assert!(matches!(unit_decl, Declaration::Axiom { .. }));
+        assert!(env.is_inductive(&Name::str("Unit")));
+        assert!(env.is_constructor(&Name::str("Unit.unit")));
         let unit_val = env
             .get(&Name::str("unit"))
             .expect("unit_val should be present");
@@ -990,14 +690,14 @@ mod tests {
     fn test_empty_axioms() {
         let mut env = Environment::new();
         init_builtin_env(&mut env).expect("value should be present");
-        let empty_decl = env
-            .get(&Name::str("Empty"))
-            .expect("empty_decl should be present");
-        assert!(matches!(empty_decl, Declaration::Axiom { .. }));
-        let rec_decl = env
-            .get(&Name::str("Empty.rec"))
-            .expect("rec_decl should be present");
-        assert!(matches!(rec_decl, Declaration::Axiom { .. }));
+        // Empty is a Prop inductive with no constructors; its derived
+        // recursor large-eliminates (ex falso).
+        assert!(env.is_inductive(&Name::str("Empty")));
+        let rec = env
+            .get_recursor_val(&Name::str("Empty.rec"))
+            .expect("Empty.rec should be present");
+        assert_eq!(rec.num_minors, 0);
+        assert_eq!(rec.common.level_params.len(), 1);
     }
     #[test]
     fn test_decidable_eq() {
@@ -1156,19 +856,16 @@ pub fn builtin_is_prop(name: &Name) -> bool {
 pub fn all_builtin_names() -> Vec<&'static str> {
     vec![
         "Bool",
-        "Bool.ind",
         "Bool.true",
         "Bool.false",
         "Bool.rec",
         "true",
         "false",
         "Unit",
-        "Unit.ind",
         "Unit.unit",
         "Unit.rec",
         "unit",
         "Empty",
-        "Empty.ind",
         "Empty.rec",
         "Nat",
         "Nat.zero",
@@ -1190,9 +887,23 @@ pub fn all_builtin_names() -> Vec<&'static str> {
         "Nat.shiftLeft",
         "Nat.shiftRight",
         "String",
+        "String.mk",
+        "String.rec",
         "String.length",
         "String.append",
         "String.beq",
+        "Char",
+        "Char.ofNat",
+        "Eq",
+        "Eq.refl",
+        "Eq.rec",
+        "Prod",
+        "Prod.mk",
+        "Prod.rec",
+        "List",
+        "List.nil",
+        "List.cons",
+        "List.rec",
         "propext",
         "Quot",
         "Classical.choice",
@@ -1537,7 +1248,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

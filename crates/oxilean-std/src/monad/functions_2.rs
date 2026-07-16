@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::functions::*;
@@ -14,17 +15,17 @@ fn mnd_ext_free_monad_type(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(type1.clone()),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
         )),
     );
     env.add(Declaration::Axiom {
@@ -41,21 +42,21 @@ fn mnd_ext_free_monad_return(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("f"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("a"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::Sort(Level::succ(Level::zero()))),
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::Sort(Level::succ(Level::zero()))),
             )),
         )),
     );
@@ -73,13 +74,13 @@ fn mnd_ext_free_monad_interpreter(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("m"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+        Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
     );
     env.add(Declaration::Axiom {
         name: Name::str("FreeM.interpret"),
@@ -96,17 +97,17 @@ fn mnd_ext_codensity_type(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(type1.clone()),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
         )),
     );
     env.add(Declaration::Axiom {
@@ -123,13 +124,13 @@ fn mnd_ext_codensity_improvement(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::Sort(Level::zero())),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Codensity.improvement"),
@@ -156,27 +157,27 @@ fn mnd_ext_indexed_monad(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("i"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(type1.clone()),
-                        Box::new(type1.clone()),
+                        Node::new(type1.clone()),
+                        Node::new(type1.clone()),
                     )),
                 )),
             )),
-            Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+            Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
         )),
     );
     env.add(Declaration::Axiom {
@@ -193,8 +194,8 @@ fn mnd_ext_indexed_monad_bind(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("i"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+        Node::new(type1.clone()),
+        Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
     );
     env.add(Declaration::Axiom {
         name: Name::str("IxMonad.ibind"),
@@ -221,18 +222,18 @@ fn mnd_ext_arrow_type(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("arr"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(type1.clone()),
-                Box::new(type1.clone()),
+                Node::new(type1.clone()),
+                Node::new(type1.clone()),
             )),
         )),
-        Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+        Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Arrow"),
@@ -248,21 +249,21 @@ fn mnd_ext_arrow_arr(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("b"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("c"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Sort(Level::succ(Level::zero()))),
+                Node::new(Expr::Sort(Level::succ(Level::zero()))),
             )),
         )),
     );
@@ -280,8 +281,8 @@ fn mnd_ext_arrow_compose(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("b"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+        Node::new(type1.clone()),
+        Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Arrow.compose"),
@@ -297,13 +298,13 @@ fn mnd_ext_do_notation(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::Sort(Level::zero())),
     );
     env.add(Declaration::Axiom {
         name: Name::str("MonadComprehension"),
@@ -319,17 +320,17 @@ fn mnd_ext_list_t(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(type1.clone()),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
         )),
     );
     env.add(Declaration::Axiom {
@@ -346,17 +347,17 @@ fn mnd_ext_maybe_t(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(type1.clone()),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
         )),
     );
     env.add(Declaration::Axiom {
@@ -373,21 +374,21 @@ fn mnd_ext_except_t(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("e"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(type1.clone()),
-                Box::new(type1.clone()),
+                Node::new(type1.clone()),
+                Node::new(type1.clone()),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Sort(Level::succ(Level::zero()))),
+                Node::new(type1.clone()),
+                Node::new(Expr::Sort(Level::succ(Level::zero()))),
             )),
         )),
     );
@@ -405,13 +406,13 @@ fn mnd_ext_maybe_t_lift(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("m"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::Sort(Level::zero())),
     );
     env.add(Declaration::Axiom {
         name: Name::str("MaybeT.lift"),
@@ -427,25 +428,25 @@ fn mnd_ext_except_t_throw(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("e"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("m"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(type1.clone()),
-                Box::new(type1.clone()),
+                Node::new(type1.clone()),
+                Node::new(type1.clone()),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("a"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("err"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::Sort(Level::succ(Level::zero()))),
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::Sort(Level::succ(Level::zero()))),
                 )),
             )),
         )),
@@ -464,17 +465,17 @@ fn mnd_ext_except_t_catch(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("e"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("m"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(type1.clone()),
-                Box::new(type1.clone()),
+                Node::new(type1.clone()),
+                Node::new(type1.clone()),
             )),
-            Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+            Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
         )),
     );
     env.add(Declaration::Axiom {
@@ -491,17 +492,17 @@ fn mnd_ext_operational_monad(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("instr"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(type1.clone()),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
         )),
     );
     env.add(Declaration::Axiom {

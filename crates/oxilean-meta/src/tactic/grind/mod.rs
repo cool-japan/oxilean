@@ -1,6 +1,7 @@
 //! Auto-generated module structure
 
 pub mod casesplitter_traits;
+pub mod cc_proof;
 pub mod congruenceclosure_traits;
 pub mod eclassid_traits;
 pub mod ematchcompiler_traits;

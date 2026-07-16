@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::env_builder::{app, bvar, pi, pi_implicit, pi_named, prop, sort, var, EnvBuilder};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -874,7 +875,7 @@ mod eq_extended_tests {
     }
 }
 pub fn eq_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn eq_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
     eq_ext_app(eq_ext_app(f, a), b)
@@ -901,8 +902,8 @@ pub fn eq_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::Anonymous,
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 /// Build the type of the Eq-class reflexivity law:

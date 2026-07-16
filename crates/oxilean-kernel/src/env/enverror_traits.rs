@@ -18,6 +18,7 @@ impl std::fmt::Display for EnvError {
                 write!(f, "duplicate declaration: {}", name)
             }
             EnvError::NotFound(name) => write!(f, "declaration not found: {}", name),
+            EnvError::InvalidQuotient(msg) => write!(f, "invalid quotient: {}", msg),
         }
     }
 }

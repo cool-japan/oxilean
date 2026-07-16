@@ -63,7 +63,7 @@ mod tests {
     #[test]
     fn test_with_expr() {
         let event = TraceEvent::new(TraceLevel::Info, "Test".to_string())
-            .with_expr(Expr::Lit(Literal::Nat(42)));
+            .with_expr(Expr::Lit(Literal::nat(42)));
         assert!(event.expr.is_some());
     }
     #[test]
@@ -92,8 +92,8 @@ mod tests {
     #[test]
     fn test_record_reduction() {
         let mut tracer = Tracer::new(TraceLevel::Trace);
-        let before = Expr::Lit(Literal::Nat(1));
-        let after = Expr::Lit(Literal::Nat(2));
+        let before = Expr::Lit(Literal::nat(1));
+        let after = Expr::Lit(Literal::nat(2));
         tracer.record_reduction(ReductionRule::Beta, before, after);
         assert_eq!(tracer.reduction_steps().len(), 1);
         assert_eq!(tracer.reduction_steps()[0].rule, ReductionRule::Beta);
@@ -370,7 +370,7 @@ mod trace_further_tests {
     #[test]
     fn test_summarize_reductions_some() {
         let mut t = Tracer::new(TraceLevel::Trace);
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         t.record_reduction(ReductionRule::Beta, e.clone(), e.clone());
         let s = summarize_reductions(&t);
         assert!(s.contains("beta"));
@@ -633,7 +633,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

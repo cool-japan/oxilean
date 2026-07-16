@@ -107,7 +107,7 @@ mod tests {
     use crate::{BinderInfo, Level, Literal, Name};
 
     fn nat(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
 
     fn const_name(s: &str) -> Expr {

@@ -2,11 +2,12 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -17,11 +18,11 @@ pub fn app3(f: Expr, a: Expr, b: Expr, c: Expr) -> Expr {
     app(app2(f, a, b), c)
 }
 pub(super) fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 #[allow(dead_code)]
 pub fn lam(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Lam(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Lam(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn cst(s: &str) -> Expr {
     Expr::Const(Name::str(s), vec![])
@@ -887,7 +888,7 @@ pub fn build_order_env(env: &mut Environment) -> Result<(), String> {
 }
 #[allow(dead_code)]
 pub(super) fn ord2_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub(super) fn ord2_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -922,13 +923,13 @@ pub(super) fn ord2_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 #[allow(dead_code)]
 pub(super) fn ord2_ext_pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 /// `{α : Type} → \[Class α\] → α → α → Prop`
 #[allow(dead_code)]

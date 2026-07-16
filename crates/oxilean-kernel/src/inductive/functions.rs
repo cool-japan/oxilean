@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, KernelError, Level, Name};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, FocusStack, InductiveEnv, InductiveError, InductiveFamily, InductiveType,
@@ -15,60 +17,6 @@ pub(super) fn count_pi_args(ty: &Expr) -> u32 {
     match ty {
         Expr::Pi(_, _, _, body) => 1 + count_pi_args(body),
         _ => 0,
-    }
-}
-/// Peel all Pi binders from a type, returning a list of domain types and the final body.
-pub(super) fn peel_pi_binders(ty: &Expr) -> (Vec<Expr>, &Expr) {
-    let mut domains = Vec::new();
-    let mut current = ty;
-    while let Expr::Pi(_, _, dom, body) = current {
-        domains.push(dom.as_ref().clone());
-        current = body;
-    }
-    (domains, current)
-}
-/// Lift all free BVars in an expression by `amount` (used to adjust de Bruijn indices
-/// when inserting new binders outside the expression).
-pub(super) fn lift_expr_bvars(expr: &Expr, amount: u32) -> Expr {
-    lift_expr_bvars_at(expr, amount, 0)
-}
-fn lift_expr_bvars_at(expr: &Expr, amount: u32, cutoff: u32) -> Expr {
-    match expr {
-        Expr::BVar(i) => {
-            if *i >= cutoff {
-                Expr::BVar(i + amount)
-            } else {
-                expr.clone()
-            }
-        }
-        Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
-        Expr::App(f, a) => Expr::App(
-            Box::new(lift_expr_bvars_at(f, amount, cutoff)),
-            Box::new(lift_expr_bvars_at(a, amount, cutoff)),
-        ),
-        Expr::Pi(bi, n, ty, body) => Expr::Pi(
-            *bi,
-            n.clone(),
-            Box::new(lift_expr_bvars_at(ty, amount, cutoff)),
-            Box::new(lift_expr_bvars_at(body, amount, cutoff + 1)),
-        ),
-        Expr::Lam(bi, n, ty, body) => Expr::Lam(
-            *bi,
-            n.clone(),
-            Box::new(lift_expr_bvars_at(ty, amount, cutoff)),
-            Box::new(lift_expr_bvars_at(body, amount, cutoff + 1)),
-        ),
-        Expr::Let(n, ty, val, body) => Expr::Let(
-            n.clone(),
-            Box::new(lift_expr_bvars_at(ty, amount, cutoff)),
-            Box::new(lift_expr_bvars_at(val, amount, cutoff)),
-            Box::new(lift_expr_bvars_at(body, amount, cutoff + 1)),
-        ),
-        Expr::Proj(n, idx, e) => Expr::Proj(
-            n.clone(),
-            *idx,
-            Box::new(lift_expr_bvars_at(e, amount, cutoff)),
-        ),
     }
 }
 /// Check an inductive type declaration for validity.
@@ -201,20 +149,20 @@ mod tests {
         let pos_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Bool"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Bool"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         assert!(check_positivity(&Name::str("Nat"), &pos_ty).is_ok());
         let neg_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("f"),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Bool"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Bool"), vec![])),
+            Node::new(Expr::Const(Name::str("Bool"), vec![])),
         );
         assert!(check_positivity(&Name::str("Nat"), &neg_ty).is_err());
     }
@@ -237,8 +185,8 @@ mod tests {
                     ty: Expr::Pi(
                         BinderInfo::Default,
                         Name::str("n"),
-                        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                        Node::new(Expr::Const(Name::str("Nat"), vec![])),
                     ),
                 },
             ],
@@ -263,13 +211,15 @@ mod tests {
                     ty: Expr::Pi(
                         BinderInfo::Default,
                         Name::str("n"),
-                        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                        Node::new(Expr::Const(Name::str("Nat"), vec![])),
                     ),
                 },
             ],
         );
-        let (ind_ci, ctor_cis, rec_ci) = nat_ind.to_constant_infos();
+        let (ind_ci, ctor_cis, rec_ci) = nat_ind
+            .to_constant_infos()
+            .expect("derivation should succeed");
         assert!(ind_ci.is_inductive());
         let iv = ind_ci.to_inductive_val().expect("iv should be present");
         assert_eq!(iv.ctors.len(), 2);
@@ -348,8 +298,8 @@ pub fn mk_nat_inductive() -> InductiveType {
             Expr::Pi(
                 crate::BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             ),
         )
         .build()
@@ -548,8 +498,8 @@ mod extra_tests {
         let succ_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         assert!(check_positivity(&Name::str("Nat"), &succ_ty).is_ok());
     }
@@ -574,8 +524,8 @@ mod inductive_extra_tests {
                     ty: Expr::Pi(
                         crate::BinderInfo::Default,
                         Name::str("n"),
-                        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                        Node::new(Expr::Const(Name::str("Nat"), vec![])),
                     ),
                 },
             ],
@@ -694,64 +644,99 @@ mod inductive_extra_tests {
             ],
         )
     }
+    /// Strip all leading lambdas, returning (count, body).
+    fn strip_lams(mut e: &Expr) -> (usize, &Expr) {
+        let mut n = 0;
+        while let Expr::Lam(_, _, _, body) = e {
+            e = body;
+            n += 1;
+        }
+        (n, e)
+    }
     #[test]
     fn test_recursor_rhs_bool_false() {
+        // RHS convention (Lean): closed lambda over motives ++ minors ++
+        // fields. mk_bool_type declares [false, true], so the false rule
+        // selects the first minor: λ motive m_f m_t, m_f = ...BVar(1).
         let bool_ind = mk_bool_type();
-        let (_, _, rec_ci) = bool_ind.to_constant_infos();
+        let (_, _, rec_ci) = bool_ind
+            .to_constant_infos()
+            .expect("derivation should succeed");
         let rec_val = rec_ci.to_recursor_val().expect("rec_val should be present");
         let rule_false = rec_val
             .get_rule(&Name::str("Bool.false"))
             .expect("rule_false should be present");
         assert_eq!(rule_false.nfields, 0);
-        assert_eq!(rule_false.rhs, Expr::BVar(1));
+        let (n, body) = strip_lams(&rule_false.rhs);
+        assert_eq!(n, 3, "motive + two minors");
+        assert_eq!(*body, Expr::BVar(1));
     }
     #[test]
     fn test_recursor_rhs_bool_true() {
         let bool_ind = mk_bool_type();
-        let (_, _, rec_ci) = bool_ind.to_constant_infos();
+        let (_, _, rec_ci) = bool_ind
+            .to_constant_infos()
+            .expect("derivation should succeed");
         let rec_val = rec_ci.to_recursor_val().expect("rec_val should be present");
         let rule_true = rec_val
             .get_rule(&Name::str("Bool.true"))
             .expect("rule_true should be present");
         assert_eq!(rule_true.nfields, 0);
-        assert_eq!(rule_true.rhs, Expr::BVar(0));
+        let (n, body) = strip_lams(&rule_true.rhs);
+        assert_eq!(n, 3);
+        assert_eq!(*body, Expr::BVar(0));
     }
     #[test]
     fn test_recursor_rhs_nat_zero() {
         let nat_ind = mk_nat_type();
-        let (_, _, rec_ci) = nat_ind.to_constant_infos();
+        let (_, _, rec_ci) = nat_ind
+            .to_constant_infos()
+            .expect("derivation should succeed");
         let rec_val = rec_ci.to_recursor_val().expect("rec_val should be present");
         let rule_zero = rec_val
             .get_rule(&Name::str("Nat.zero"))
             .expect("rule_zero should be present");
         assert_eq!(rule_zero.nfields, 0);
-        assert_eq!(rule_zero.rhs, Expr::BVar(1));
+        let (n, body) = strip_lams(&rule_zero.rhs);
+        assert_eq!(n, 3, "motive + zero minor + succ minor");
+        assert_eq!(*body, Expr::BVar(1));
     }
     #[test]
     fn test_recursor_rhs_nat_succ() {
+        // λ motive m_z m_s n, m_s n (Nat.rec.{u} motive m_z m_s n)
         let nat_ind = mk_nat_type();
-        let (_, _, rec_ci) = nat_ind.to_constant_infos();
+        let (_, _, rec_ci) = nat_ind
+            .to_constant_infos()
+            .expect("derivation should succeed");
         let rec_val = rec_ci.to_recursor_val().expect("rec_val should be present");
         let rule_succ = rec_val
             .get_rule(&Name::str("Nat.succ"))
             .expect("rule_succ should be present");
         assert_eq!(rule_succ.nfields, 1);
-        let nat_rec = Expr::Const(Name::str("Nat").append_str("rec"), vec![]);
+        let (n, body) = strip_lams(&rule_succ.rhs);
+        assert_eq!(n, 4, "motive + two minors + one field");
+        let nat_rec = Expr::Const(
+            Name::str("Nat").append_str("rec"),
+            vec![crate::Level::param(Name::str("u"))],
+        );
         let ih = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(Box::new(nat_rec), Box::new(Expr::BVar(3)))),
-                    Box::new(Expr::BVar(2)),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(Node::new(nat_rec), Node::new(Expr::BVar(3)))),
+                    Node::new(Expr::BVar(2)),
                 )),
-                Box::new(Expr::BVar(1)),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
         let expected = Expr::App(
-            Box::new(Expr::App(Box::new(Expr::BVar(1)), Box::new(Expr::BVar(0)))),
-            Box::new(ih),
+            Node::new(Expr::App(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::BVar(0)),
+            )),
+            Node::new(ih),
         );
-        assert_eq!(rule_succ.rhs, expected);
+        assert_eq!(*body, expected);
     }
     #[test]
     fn test_recursor_iota_bool() {
@@ -769,21 +754,21 @@ mod inductive_extra_tests {
         let motive = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(bool_const.clone()),
-            Box::new(bool_const.clone()),
+            Node::new(bool_const.clone()),
+            Node::new(bool_const.clone()),
         );
         let rec_app = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Bool").append_str("rec"), vec![])),
-                        Box::new(motive),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Bool").append_str("rec"), vec![])),
+                        Node::new(motive),
                     )),
-                    Box::new(false_const.clone()),
+                    Node::new(false_const.clone()),
                 )),
-                Box::new(true_const.clone()),
+                Node::new(true_const.clone()),
             )),
-            Box::new(false_const.clone()),
+            Node::new(false_const.clone()),
         );
         let mut reducer = Reducer::new();
         let result = reducer.whnf_env(&rec_app, &env);
@@ -807,36 +792,36 @@ mod inductive_extra_tests {
         let motive = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(nat_const.clone()),
-            Box::new(nat_const.clone()),
+            Node::new(nat_const.clone()),
+            Node::new(nat_const.clone()),
         );
         let zero_val = zero_const.clone();
         let succ_fn = Expr::Lam(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_const.clone()),
-            Box::new(Expr::Lam(
+            Node::new(nat_const.clone()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("ih"),
-                Box::new(nat_const.clone()),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(nat_const.clone()),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         );
         let rec_app = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Nat").append_str("rec"), vec![])),
-                        Box::new(motive),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Nat").append_str("rec"), vec![])),
+                        Node::new(motive),
                     )),
-                    Box::new(zero_val.clone()),
+                    Node::new(zero_val.clone()),
                 )),
-                Box::new(succ_fn),
+                Node::new(succ_fn),
             )),
-            Box::new(zero_const.clone()),
+            Node::new(zero_const.clone()),
         );
         let mut reducer = Reducer::new();
         let result = reducer.whnf_env(&rec_app, &env);

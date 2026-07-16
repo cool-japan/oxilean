@@ -58,7 +58,9 @@ impl ExprToIr {
                     body: Box::new(compiled_body),
                 })
             }
-            Expr::Lit(Literal::Nat(n)) => Ok(IrExpr::Lit(IrLit::Nat(*n))),
+            Expr::Lit(Literal::Nat(n)) => {
+                Ok(IrExpr::Lit(IrLit::Nat(n.to_u64().unwrap_or(u64::MAX))))
+            }
             Expr::Lit(Literal::Str(s)) => Ok(IrExpr::Lit(IrLit::String(s.clone()))),
             Expr::Sort(_) | Expr::Pi(_, _, _, _) => Ok(IrExpr::Var("Type".to_string())),
             Expr::Proj(_name, idx, inner) => {

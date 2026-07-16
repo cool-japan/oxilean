@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::context::ElabContext;
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     instantiate, instantiate_level_params, ConstantInfo, Expr, Level, Name, Reducer,
 };
@@ -623,29 +624,29 @@ impl ConstraintSimplifier {
                 }
             }
             Expr::App(f, a) => Expr::App(
-                Box::new(self.apply_assignments(f)),
-                Box::new(self.apply_assignments(a)),
+                Node::new(self.apply_assignments(f)),
+                Node::new(self.apply_assignments(a)),
             ),
             Expr::Lam(bi, name, ty, body) => Expr::Lam(
                 *bi,
                 name.clone(),
-                Box::new(self.apply_assignments(ty)),
-                Box::new(self.apply_assignments(body)),
+                Node::new(self.apply_assignments(ty)),
+                Node::new(self.apply_assignments(body)),
             ),
             Expr::Pi(bi, name, ty, body) => Expr::Pi(
                 *bi,
                 name.clone(),
-                Box::new(self.apply_assignments(ty)),
-                Box::new(self.apply_assignments(body)),
+                Node::new(self.apply_assignments(ty)),
+                Node::new(self.apply_assignments(body)),
             ),
             Expr::Let(name, ty, val, body) => Expr::Let(
                 name.clone(),
-                Box::new(self.apply_assignments(ty)),
-                Box::new(self.apply_assignments(val)),
-                Box::new(self.apply_assignments(body)),
+                Node::new(self.apply_assignments(ty)),
+                Node::new(self.apply_assignments(val)),
+                Node::new(self.apply_assignments(body)),
             ),
             Expr::Proj(name, idx, inner) => {
-                Expr::Proj(name.clone(), *idx, Box::new(self.apply_assignments(inner)))
+                Expr::Proj(name.clone(), *idx, Node::new(self.apply_assignments(inner)))
             }
             _ => expr.clone(),
         }
@@ -1032,8 +1033,8 @@ impl<'env> TypeInferencer<'env> {
                 Ok(Expr::Pi(
                     *info,
                     name.clone(),
-                    Box::new(ty.as_ref().clone()),
-                    Box::new(body_ty),
+                    Node::new(ty.as_ref().clone()),
+                    Node::new(body_ty),
                 ))
             }
             Expr::Pi(_, _, ty, body) => {
@@ -1170,7 +1171,7 @@ impl<'env> TypeInferencer<'env> {
             match cur_ty {
                 Expr::Pi(_, _, _, body) => {
                     let field_val =
-                        Expr::Proj(ind_val.common.name.clone(), j, Box::new(inner.clone()));
+                        Expr::Proj(ind_val.common.name.clone(), j, Node::new(inner.clone()));
                     cur_ty = instantiate(&body, &field_val);
                 }
                 _ => {
@@ -1182,7 +1183,7 @@ impl<'env> TypeInferencer<'env> {
             }
         }
         match cur_ty {
-            Expr::Pi(_, _, dom, _) => Ok(*dom),
+            Expr::Pi(_, _, dom, _) => Ok((*dom).clone()),
             _ => Err(format!(
                 "Expected Pi type for field {} of {}",
                 idx, struct_name

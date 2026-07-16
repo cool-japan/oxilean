@@ -3,6 +3,8 @@
 
 use std::collections::HashMap;
 
+use oxilean_parse::{Decl, Located};
+
 #[cfg(feature = "wasm")]
 use serde::Serialize;
 
@@ -47,6 +49,13 @@ pub struct IncrementalCache {
     pub entries: HashMap<String, IncrementalEntry>,
     /// Monotonically increasing version counter; bumped on every check pass
     pub version: u64,
+    /// Parsed declaration sequence from the previous check pass.
+    ///
+    /// Stored so that the next call to `incremental_check` can call
+    /// `diff_modules(prev_decls, new_decls)` instead of using the line-based
+    /// heuristic.  Not serialised because `Located<Decl>` is not `Serialize`.
+    #[cfg_attr(feature = "wasm", serde(skip))]
+    pub prev_decls: Vec<Located<Decl>>,
 }
 
 impl IncrementalCache {
@@ -55,6 +64,7 @@ impl IncrementalCache {
         IncrementalCache {
             entries: HashMap::new(),
             version: 0,
+            prev_decls: Vec::new(),
         }
     }
 }

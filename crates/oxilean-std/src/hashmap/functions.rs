@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 #![allow(clippy::items_after_test_module)]
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 use oxilean_kernel::{
     BinderInfo as HmBI, Declaration as HmDecl, Expr as HmExpr, Level as HmLevel, Name as HmName,
@@ -19,12 +20,12 @@ pub fn build_hashmap_env(env: &mut Environment) -> Result<(), String> {
     let hashmap_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("K"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("V"),
-            Box::new(type1.clone()),
-            Box::new(type2.clone()),
+            Node::new(type1.clone()),
+            Node::new(type2.clone()),
         )),
     );
     env.add(Declaration::Axiom {
@@ -36,17 +37,17 @@ pub fn build_hashmap_env(env: &mut Environment) -> Result<(), String> {
     let empty_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("K"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("V"),
-            Box::new(type1.clone()),
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("HashMap"), vec![])),
-                    Box::new(Expr::BVar(1)),
+            Node::new(type1.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("HashMap"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
             )),
         )),
     );
@@ -59,35 +60,35 @@ pub fn build_hashmap_env(env: &mut Environment) -> Result<(), String> {
     let insert_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("K"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("V"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("k"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("v"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("m"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("HashMap"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("HashMap"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("HashMap"), vec![])),
-                                Box::new(Expr::BVar(4)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("HashMap"), vec![])),
+                                Node::new(Expr::BVar(4)),
                             )),
-                            Box::new(Expr::BVar(3)),
+                            Node::new(Expr::BVar(3)),
                         )),
                     )),
                 )),
@@ -103,28 +104,28 @@ pub fn build_hashmap_env(env: &mut Environment) -> Result<(), String> {
     let lookup_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("K"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("V"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("k"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("m"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("HashMap"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("HashMap"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Option"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Option"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -156,31 +157,31 @@ pub fn build_hashmap_delete(env: &mut Environment) -> Result<(), String> {
     let delete_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("K"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("V"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("k"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("m"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("HashMap"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("HashMap"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("HashMap"), vec![])),
-                            Box::new(Expr::BVar(3)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("HashMap"), vec![])),
+                            Node::new(Expr::BVar(3)),
                         )),
-                        Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -199,22 +200,22 @@ pub fn build_hashmap_size(env: &mut Environment) -> Result<(), String> {
     let size_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("K"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("V"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("m"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("HashMap"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("HashMap"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             )),
         )),
     );
@@ -257,8 +258,8 @@ mod tests {
         let option_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(type2),
+            Node::new(type1.clone()),
+            Node::new(type2),
         );
         env.add(Declaration::Axiom {
             name: Name::str("Option"),
@@ -563,7 +564,7 @@ pub fn hm_bvar(n: u32) -> HmExpr {
 /// Application `f a`.
 #[allow(dead_code)]
 pub fn hm_app(f: HmExpr, a: HmExpr) -> HmExpr {
-    HmExpr::App(Box::new(f), Box::new(a))
+    HmExpr::App(Node::new(f), Node::new(a))
 }
 /// Application `f a b`.
 #[allow(dead_code)]
@@ -578,7 +579,7 @@ pub fn hm_app3(f: HmExpr, a: HmExpr, b: HmExpr, c: HmExpr) -> HmExpr {
 /// Pi binder.
 #[allow(dead_code)]
 pub fn hm_pi(bi: HmBI, name: &str, dom: HmExpr, body: HmExpr) -> HmExpr {
-    HmExpr::Pi(bi, HmName::str(name), Box::new(dom), Box::new(body))
+    HmExpr::Pi(bi, HmName::str(name), Node::new(dom), Node::new(body))
 }
 /// Non-dependent arrow `A → B`.
 #[allow(dead_code)]

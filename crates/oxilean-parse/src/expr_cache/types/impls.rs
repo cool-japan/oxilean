@@ -269,13 +269,16 @@ impl<K: std::hash::Hash + Eq, V> PolicyCache<K, V> {
     pub fn insert(&mut self, key: K, value: V) {
         self.clock += 1;
         if self.entries.len() >= self.capacity {
-            let first_key: Option<K> = self.entries.keys().next().map(|k| {
-                let raw = k as *const K;
-                unsafe { std::ptr::read(raw) }
+            // Remove one arbitrary entry to make room (safe: no unsafe ptr::read needed).
+            let mut removed = false;
+            self.entries.retain(|_, _| {
+                if removed {
+                    true
+                } else {
+                    removed = true;
+                    false
+                }
             });
-            if let Some(fk) = first_key {
-                self.entries.remove(&fk);
-            }
         }
         self.entries.insert(key, (value, 0, self.clock));
     }

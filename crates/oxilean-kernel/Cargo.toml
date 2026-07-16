@@ -24,6 +24,8 @@ path = "src/lib.rs"
 # Test-only dependencies are allowed
 criterion = { version = "0.8", features = ["html_reports"] }
 proptest.workspace = true
+# Differential-testing reference for the hand-written BigNat (never ships).
+num-bigint.workspace = true
 
 [features]
 default = []

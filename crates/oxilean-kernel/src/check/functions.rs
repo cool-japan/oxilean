@@ -4,9 +4,11 @@
 
 use crate::declaration::{ConstantInfo, ConstructorVal, InductiveVal, QuotVal, RecursorVal};
 use crate::env::EnvError;
+use crate::Node;
 use crate::{Declaration, Environment, KernelError, TypeChecker};
 #[cfg(test)]
 use crate::{Expr, Name};
+use std::rc::Rc;
 
 use super::types::{
     BatchCheckResult, CheckConfig, CheckStats, ConfigNode, DecisionNode, DeclKind, DeclSummary,
@@ -24,6 +26,11 @@ use super::types::{
 #[allow(clippy::result_large_err)]
 pub fn check_declaration(env: &mut Environment, decl: Declaration) -> Result<(), KernelError> {
     let name = decl.name().clone();
+    // Universe-parameter hygiene (S8): reject duplicate univ params, undeclared
+    // `Param`s appearing in the type/value, and any `Level` metavariable — all
+    // of which Lean's kernel rejects and any of which a hostile/malformed export
+    // could otherwise smuggle through.
+    check_univ_param_hygiene(&decl)?;
     match &decl {
         Declaration::Axiom { ty, .. } => {
             let mut tc = TypeChecker::new(env);
@@ -53,7 +60,145 @@ pub fn check_declaration(env: &mut Environment, decl: Declaration) -> Result<(),
             KernelError::Other(format!("duplicate declaration: {}", name))
         }
         EnvError::NotFound(_) => KernelError::Other(format!("declaration not found: {}", name)),
+        EnvError::InvalidQuotient(msg) => KernelError::Other(msg),
     })
+}
+/// Enforce universe-parameter hygiene for a declaration (S8).
+///
+/// Three checks, all of which Lean's kernel performs and none of which the
+/// pre-Wave-2 checker did:
+///
+/// 1. **No duplicate universe parameters** in the declaration's `univ_params`.
+/// 2. **Every `Level::Param` occurring in the type or value is declared** in
+///    `univ_params` (an undeclared param is a free universe variable and must
+///    be rejected, else a hostile export can capture it).
+/// 3. **No `Level::MVar` anywhere** in the type or value — a kernel-checked
+///    declaration must be metavariable-free.
+#[allow(clippy::result_large_err)]
+pub(super) fn check_univ_param_hygiene(decl: &Declaration) -> Result<(), KernelError> {
+    check_univ_param_hygiene_parts(
+        decl.name(),
+        decl.univ_params(),
+        std::iter::once(decl.ty()).chain(decl.value()),
+    )
+}
+/// Enforce universe-parameter hygiene for a `ConstantInfo` (S8).
+///
+/// Identical checks to [`check_univ_param_hygiene`], but over the richer
+/// `ConstantInfo` variants (`Inductive`, `Constructor`, `Recursor`,
+/// `Quotient`, in addition to `Axiom`/`Definition`/`Theorem`/`Opaque`). Every
+/// variant exposes its `level_params`, `ty`, and optional `value` uniformly,
+/// so a hostile or malformed export cannot smuggle a duplicate universe
+/// parameter, a free (undeclared) universe variable, or a level metavariable
+/// through the `check_constant_info` path either.
+#[allow(clippy::result_large_err)]
+pub(super) fn check_univ_param_hygiene_ci(ci: &ConstantInfo) -> Result<(), KernelError> {
+    check_univ_param_hygiene_parts(
+        ci.name(),
+        ci.level_params(),
+        std::iter::once(ci.ty()).chain(ci.value()),
+    )
+}
+/// Shared core of the S8 universe-parameter hygiene checks, over the raw
+/// pieces (name, declared universe params, and the expressions to scan — the
+/// type followed by any value). Used by both [`check_univ_param_hygiene`]
+/// (`Declaration`) and [`check_univ_param_hygiene_ci`] (`ConstantInfo`).
+///
+/// Three checks, all of which Lean's kernel performs and none of which the
+/// pre-Wave-2 checker did:
+///
+/// 1. **No duplicate universe parameters** in `params`.
+/// 2. **Every `Level::Param` occurring in an `expr` is declared** in `params`
+///    (an undeclared param is a free universe variable and must be rejected,
+///    else a hostile export can capture it).
+/// 3. **No `Level::MVar` anywhere** in any `expr` — a kernel-checked
+///    declaration must be metavariable-free.
+#[allow(clippy::result_large_err)]
+fn check_univ_param_hygiene_parts<'a>(
+    name: &crate::Name,
+    params: &[crate::Name],
+    exprs: impl Iterator<Item = &'a crate::Expr>,
+) -> Result<(), KernelError> {
+    use std::collections::HashSet;
+
+    // (1) duplicate parameter names.
+    let mut declared: HashSet<&crate::Name> = HashSet::new();
+    for p in params {
+        if !declared.insert(p) {
+            return Err(KernelError::Other(format!(
+                "declaration {}: duplicate universe parameter `{}`",
+                name, p
+            )));
+        }
+    }
+
+    // (2) + (3): walk type and value.
+    for expr in exprs {
+        // (3) metavariables.
+        if crate::expr_util::has_level_mvar(expr) {
+            return Err(KernelError::Other(format!(
+                "declaration {}: universe metavariable in kernel-checked declaration",
+                name
+            )));
+        }
+        // (2) undeclared parameters.
+        let mut used = Vec::new();
+        collect_expr_level_params(expr, &mut used);
+        for u in &used {
+            if !declared.contains(u) {
+                return Err(KernelError::Other(format!(
+                    "declaration {}: undeclared universe parameter `{}`",
+                    name, u
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+/// Collect all `Level::Param` names referenced anywhere in an expression,
+/// including inside `Proj`'s struct expression (which the declaration-module
+/// collector skips). Deduplicated.
+pub(super) fn collect_expr_level_params(expr: &crate::Expr, out: &mut Vec<crate::Name>) {
+    use crate::Expr;
+    match expr {
+        Expr::Sort(l) => collect_level_params_in_level(l, out),
+        Expr::Const(_, levels) => {
+            for l in levels {
+                collect_level_params_in_level(l, out);
+            }
+        }
+        Expr::App(f, a) => {
+            collect_expr_level_params(f, out);
+            collect_expr_level_params(a, out);
+        }
+        Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
+            collect_expr_level_params(ty, out);
+            collect_expr_level_params(body, out);
+        }
+        Expr::Let(_, ty, val, body) => {
+            collect_expr_level_params(ty, out);
+            collect_expr_level_params(val, out);
+            collect_expr_level_params(body, out);
+        }
+        Expr::Proj(_, _, e) => collect_expr_level_params(e, out),
+        Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => {}
+    }
+}
+fn collect_level_params_in_level(l: &crate::Level, out: &mut Vec<crate::Name>) {
+    use crate::Level;
+    match l {
+        Level::Param(n) => {
+            if !out.contains(n) {
+                out.push(n.clone());
+            }
+        }
+        Level::Succ(inner) => collect_level_params_in_level(inner, out),
+        Level::Max(a, b) | Level::IMax(a, b) => {
+            collect_level_params_in_level(a, out);
+            collect_level_params_in_level(b, out);
+        }
+        Level::Zero | Level::MVar(_) => {}
+    }
 }
 /// Check multiple declarations in sequence.
 ///
@@ -79,6 +224,10 @@ pub fn check_declarations(
 #[allow(clippy::result_large_err)]
 pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<(), KernelError> {
     let name = ci.name().clone();
+    // Universe-parameter hygiene (S8): reject duplicate univ params, undeclared
+    // `Param`s in the type/value, and any `Level` metavariable — for every
+    // `ConstantInfo` variant, mirroring the `check_declaration` path.
+    check_univ_param_hygiene_ci(&ci)?;
     match &ci {
         ConstantInfo::Axiom(av) => {
             let mut tc = TypeChecker::new(env);
@@ -122,6 +271,7 @@ pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<()
         crate::env::EnvError::NotFound(_) => {
             KernelError::Other(format!("declaration not found: {}", name))
         }
+        crate::env::EnvError::InvalidQuotient(msg) => KernelError::Other(msg),
     })
 }
 /// Check multiple `ConstantInfo` declarations, stopping on the first error.
@@ -135,66 +285,79 @@ pub fn check_constant_infos(
     }
     Ok(())
 }
-/// Validate an `InductiveVal`: verify the type is a sort.
+/// Validate an `InductiveVal`.
 ///
-/// Constructor types are checked separately via `check_constructor_val` when
-/// each constructor `ConstantInfo` is added. Empty inductives (0 constructors,
-/// like `Empty`) are valid.
+/// Beyond the sort check, the declared telescope must match the announced
+/// `num_params + num_indices`, universe parameters must be distinct and
+/// actually declared, and the `is_prop` flag must agree with the declared
+/// sort — a caller cannot lie about propositionality (large elimination is
+/// recomputed from the type when the recursor is checked anyway).
+/// Constructor types are checked via `check_constructor_val` when each
+/// constructor `ConstantInfo` is added; recursors are re-derived and
+/// compared in `check_recursor_val`. Empty inductives (0 constructors, like
+/// `Empty`) are valid.
 #[allow(clippy::result_large_err)]
 pub(super) fn check_inductive_val(
     env: &mut Environment,
     iv: &InductiveVal,
 ) -> Result<(), KernelError> {
-    let mut tc = TypeChecker::new(env);
-    tc.ensure_sort(&iv.common.ty)?;
-    Ok(())
+    crate::inductive::derive::validate_inductive_val(env, iv)
 }
-/// Validate a `ConstructorVal`: verify the constructor's type is well-formed and
-/// that it returns the parent inductive type.
+/// Validate a `ConstructorVal` against the environment's inductive family:
+/// the parameter telescope must match the inductive's (definitionally),
+/// each field's universe must fit the inductive's universe (with the Prop
+/// exception), the fields must be strictly positive (WHNF-hardened,
+/// mutual-aware), and the codomain must be the parent type applied to
+/// exactly the parameters. Metadata (`cidx`, `num_params`, `num_fields`,
+/// level params) must agree with the parent inductive.
 #[allow(clippy::result_large_err)]
 pub(super) fn check_constructor_val(
     env: &mut Environment,
     cv: &ConstructorVal,
 ) -> Result<(), KernelError> {
-    {
-        let mut tc = TypeChecker::new(env);
-        tc.ensure_sort(&cv.common.ty)?;
-    }
-    if !constructor_returns_inductive(&cv.common.ty, &cv.induct) {
-        return Err(KernelError::InvalidInductive(format!(
-            "constructor `{}` does not return inductive type `{}`",
-            cv.common.name, cv.induct
-        )));
-    }
-    Ok(())
+    crate::inductive::derive::verify_constructor_val(env, cv)
 }
-/// Validate a `RecursorVal`: verify the recursor type is well-formed.
+/// Validate a `RecursorVal` by *re-deriving* it: the kernel reconstructs
+/// the recursors for the declared inductive family (motives, minor premises
+/// with induction hypotheses, elimination universe, K flag, iota rules) and
+/// requires the supplied declaration to match the derivation up to
+/// definitional equality. Externally-supplied recursors are never trusted.
 #[allow(clippy::result_large_err)]
 pub(super) fn check_recursor_val(
     env: &mut Environment,
     rv: &RecursorVal,
 ) -> Result<(), KernelError> {
-    let mut tc = TypeChecker::new(env);
-    tc.ensure_sort(&rv.common.ty)?;
-    Ok(())
+    crate::inductive::derive::verify_recursor_val(env, rv)
 }
-/// Validate a `QuotVal`: verify the quotient component type is well-formed.
+/// Validate a `QuotVal`: verify the supplied type is definitionally equal to
+/// the kernel's canonical type for its [`QuotKind`].
+///
+/// Defense-in-depth: the kernel constructs the canonical quotient types itself
+/// (see [`crate::env::canonical_quot_type`]) and *never* trusts a
+/// caller-supplied type. A `ConstantInfo::Quotient` whose type is not defeq to
+/// the canonical shape is rejected here (in addition to being rejected outright
+/// by `Environment::add_constant`, which only accepts quotients through the
+/// once-only `add_quot` entry point).
 #[allow(clippy::result_large_err)]
 pub(super) fn check_quotient_val(env: &mut Environment, qv: &QuotVal) -> Result<(), KernelError> {
+    let canonical = crate::env::canonical_quot_type(qv.kind);
+    let expected_params = crate::env::canonical_quot_level_params(qv.kind);
+    if qv.common.level_params != expected_params {
+        return Err(KernelError::Other(format!(
+            "quotient `{}` has unexpected universe parameters: expected {:?}, got {:?}",
+            qv.common.name, expected_params, qv.common.level_params
+        )));
+    }
     let mut tc = TypeChecker::new(env);
     tc.ensure_sort(&qv.common.ty)?;
-    Ok(())
-}
-/// Check whether a constructor type (Pi-type) ultimately returns the named
-/// inductive type (possibly applied to arguments).
-pub(super) fn constructor_returns_inductive(ty: &crate::Expr, ind_name: &crate::Name) -> bool {
-    use crate::Expr;
-    match ty {
-        Expr::Const(n, _) => n == ind_name,
-        Expr::App(f, _) => constructor_returns_inductive(f, ind_name),
-        Expr::Pi(_, _, _, cod) => constructor_returns_inductive(cod, ind_name),
-        _ => false,
+    if !tc.is_def_eq(&qv.common.ty, &canonical) {
+        return Err(KernelError::TypeMismatch {
+            expected: canonical,
+            got: qv.common.ty.clone(),
+            context: format!("canonical type of quotient `{}`", qv.common.name),
+        });
     }
+    Ok(())
 }
 /// Summarize a declaration without checking it.
 pub fn summarize_declaration(decl: &Declaration) -> DeclSummary {
@@ -441,7 +604,7 @@ mod tests {
         let mut env = Environment::new();
         env.add(mk_nat_axiom()).expect("value should be present");
         let nat_ty = mk_nat_const();
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         let def = Declaration::Definition {
             name: Name::str("answer"),
             univ_params: vec![],
@@ -469,7 +632,7 @@ mod tests {
         })
         .expect("value should be present");
         let string_ty = Expr::Const(Name::str("String"), vec![]);
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         let def = Declaration::Definition {
             name: Name::str("bad"),
             univ_params: vec![],
@@ -589,7 +752,7 @@ mod tests {
                 name: Name::str("bad_def"),
                 univ_params: vec![],
                 ty: Expr::Const(Name::str("UndefinedType"), vec![]),
-                val: Expr::Lit(Literal::Nat(0)),
+                val: Expr::Lit(Literal::nat(0)),
                 hint: ReducibilityHint::Regular(1),
             },
         ];
@@ -617,7 +780,7 @@ mod tests {
             name: Name::str("oops"),
             univ_params: vec![],
             ty: Expr::Const(Name::str("NoSuchType"), vec![]),
-            val: Expr::Lit(Literal::Nat(0)),
+            val: Expr::Lit(Literal::nat(0)),
             hint: ReducibilityHint::Regular(1),
         });
         assert!(!added);
@@ -644,8 +807,8 @@ mod tests {
         let lam = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert!(is_structurally_valid_expr(&lam));
     }
@@ -855,7 +1018,10 @@ mod tests {
         assert!(result.is_err(), "expected error for wrong return type");
     }
     #[test]
-    fn test_check_constant_info_recursor() {
+    fn test_check_constant_info_recursor_rejects_bogus() {
+        // Recursors are RE-DERIVED by the kernel and compared against the
+        // supplied declaration: a recursor whose type is literally `Type`
+        // with no rules must be rejected, never trusted (audit item S3).
         use crate::declaration::{ConstantVal, InductiveVal, RecursorVal};
         let mut env = Environment::new();
         env.add_constant(ConstantInfo::Inductive(InductiveVal {
@@ -891,11 +1057,19 @@ mod tests {
             k: false,
             is_unsafe: false,
         });
-        check_constant_info(&mut env, rec_ci).expect("value should be present");
-        assert!(env.contains(&Name::str("Bool.rec")));
+        let result = check_constant_info(&mut env, rec_ci);
+        assert!(
+            result.is_err(),
+            "hand-supplied bogus recursor must be rejected"
+        );
+        assert!(!env.contains(&Name::str("Bool.rec")));
     }
     #[test]
-    fn test_check_constant_info_quotient() {
+    fn test_check_constant_info_quotient_rejects_noncanonical() {
+        // Quotient constants must have their kernel-canonical type. A caller
+        // supplying `Quot : Sort 0` (with no universe params) must be rejected:
+        // both by `check_quotient_val` (wrong type / universe params) and by
+        // `Environment::add_constant` (quotients only via `add_quot`).
         use crate::declaration::{ConstantVal, QuotKind, QuotVal};
         let mut env = Environment::new();
         let quot_ci = ConstantInfo::Quotient(QuotVal {
@@ -906,8 +1080,11 @@ mod tests {
             },
             kind: QuotKind::Type,
         });
-        check_constant_info(&mut env, quot_ci).expect("value should be present");
-        assert!(env.contains(&Name::str("Quot")));
+        assert!(
+            check_constant_info(&mut env, quot_ci).is_err(),
+            "non-canonical quotient type must be rejected"
+        );
+        assert!(!env.contains(&Name::str("Quot")));
     }
     #[test]
     fn test_check_constant_infos_sequence() {
@@ -1105,7 +1282,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

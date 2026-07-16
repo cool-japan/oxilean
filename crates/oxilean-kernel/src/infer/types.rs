@@ -9,7 +9,9 @@ use crate::expr_util::{get_app_args, get_app_fn, has_any_fvar, mk_app};
 use crate::instantiate::instantiate_type_lparams;
 use crate::reduce::{Reducer, TransparencyMode};
 use crate::subst::{abstract_expr, instantiate};
+use crate::Node;
 use crate::{BinderInfo, Environment, Expr, FVarId, Level, Literal, Name};
+use std::rc::Rc;
 
 use std::collections::HashMap;
 
@@ -452,7 +454,7 @@ impl RewriteRuleSet {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -460,7 +462,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }
@@ -618,7 +620,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -628,7 +630,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -642,7 +644,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;
@@ -784,6 +786,32 @@ impl<'env> TypeChecker<'env> {
             check_mode: false,
         }
     }
+    /// Create a type checker whose local context is pre-seeded with the
+    /// given free-variable types (id → type), e.g. the context a [`Reducer`]
+    /// mirrors so K-like iota reduction can type majors that mention local
+    /// FVars. Ids are installed in ascending order (later locals may depend
+    /// on earlier ones) and the fresh-id counter starts past the largest
+    /// seeded id, so newly opened locals never collide.
+    pub fn with_fvar_types(
+        env: &'env Environment,
+        locals: &std::collections::HashMap<u64, Expr>,
+    ) -> Self {
+        let mut tc = Self::new(env);
+        let mut ids: Vec<u64> = locals.keys().copied().collect();
+        ids.sort_unstable();
+        for id in ids {
+            if let Some(ty) = locals.get(&id) {
+                tc.push_local(LocalDecl {
+                    fvar: FVarId(id),
+                    name: Name::Anonymous,
+                    ty: ty.clone(),
+                    val: None,
+                });
+            }
+        }
+        tc.next_fvar = locals.keys().copied().max().map_or(0, |m| m + 1);
+        tc
+    }
     /// Set the transparency mode.
     pub fn set_transparency(&mut self, mode: TransparencyMode) {
         self.reducer.set_transparency(mode);
@@ -797,6 +825,13 @@ impl<'env> TypeChecker<'env> {
     pub fn fresh_fvar(&mut self, name: Name, ty: Expr) -> FVarId {
         let fvar = FVarId(self.next_fvar);
         self.next_fvar += 1;
+        // Mirror the local context into the def-eq checker (whose
+        // type-dependent rules — one-sided eta expansion, structure eta,
+        // proof irrelevance — must type this free variable) and into the
+        // reducer (whose K-like iota reduction must type recursor majors
+        // that mention it).
+        self.def_eq_checker.record_fvar_type(fvar, ty.clone());
+        self.reducer.record_fvar_type(fvar, ty.clone());
         self.local_ctx.push(LocalDecl {
             fvar,
             name,
@@ -809,6 +844,8 @@ impl<'env> TypeChecker<'env> {
     pub fn fresh_fvar_let(&mut self, name: Name, ty: Expr, val: Expr) -> FVarId {
         let fvar = FVarId(self.next_fvar);
         self.next_fvar += 1;
+        self.def_eq_checker.record_fvar_type(fvar, ty.clone());
+        self.reducer.record_fvar_type(fvar, ty.clone());
         self.local_ctx.push(LocalDecl {
             fvar,
             name,
@@ -819,6 +856,9 @@ impl<'env> TypeChecker<'env> {
     }
     /// Push a local declaration onto the context.
     pub fn push_local(&mut self, decl: LocalDecl) {
+        self.def_eq_checker
+            .record_fvar_type(decl.fvar, decl.ty.clone());
+        self.reducer.record_fvar_type(decl.fvar, decl.ty.clone());
         self.local_ctx.push(decl);
     }
     /// Pop a local declaration from the context.
@@ -889,6 +929,20 @@ impl<'env> TypeChecker<'env> {
     /// Infer the type of an expression.
     #[allow(clippy::result_large_err)]
     pub fn infer_type(&mut self, expr: &Expr) -> Result<Expr, KernelError> {
+        // C16b: inference is the third loop (besides `whnf` and `is_def_eq`)
+        // that must observe the per-declaration fuel latch. A `let`-tower or
+        // dependent application chain grows its instantiated bodies
+        // geometrically *between* whnf/def-eq steps, so without this check a
+        // single `infer_type` call tree can allocate unboundedly while the
+        // budget is long exhausted (Init decl #3864,
+        // `Array.extract_append_extract._proof_1_1`, reached >12 GiB). The
+        // error is a typed abort, mapped by callers to the NAMED resource
+        // limit — never a rejection, and never a truncated term.
+        if crate::fuel::is_exhausted() {
+            return Err(KernelError::Other(
+                "per-declaration resource budget exhausted".to_string(),
+            ));
+        }
         match expr {
             Expr::Sort(l) => Ok(Expr::Sort(Level::succ(l.clone()))),
             Expr::BVar(idx) => Err(KernelError::UnboundVariable(*idx)),
@@ -911,7 +965,7 @@ impl<'env> TypeChecker<'env> {
                     *bi,
                     name.clone(),
                     ty.clone(),
-                    Box::new(body_ty_closed),
+                    Node::new(body_ty_closed),
                 ))
             }
             Expr::Pi(_, _, dom, cod) => {
@@ -920,7 +974,13 @@ impl<'env> TypeChecker<'env> {
                 let cod_open = instantiate(cod, &Expr::FVar(fvar));
                 let cod_sort = self.ensure_sort(&cod_open)?;
                 self.pop_local();
-                Ok(Expr::Sort(Level::imax(dom_sort, cod_sort)))
+                // Build the Pi's sort with the SMART imax constructor, matching
+                // Lean's kernel `mk_imax`. This simplifies `imax(u, u) -> u`,
+                // `imax(_, 0) -> 0`, `imax(0, v) -> v`, etc. so the re-inferred
+                // sort lands in the same canonical shape the elaborator stored in
+                // the export; without it, e.g. `Sort u -> Sort u` re-infers to
+                // `Sort (imax u u)` and (before the def-eq fix) mass-fails.
+                Ok(Expr::Sort(crate::level::mk_imax(dom_sort, cod_sort)))
             }
             Expr::Let(_, ty, val, body) => {
                 if self.check_mode {
@@ -939,28 +999,47 @@ impl<'env> TypeChecker<'env> {
         }
     }
     /// Infer the type of a constant reference.
+    ///
+    /// The provided universe-level list must have EXACTLY the constant's
+    /// universe-parameter arity (S7). Lean's kernel requires this; the previous
+    /// code returned the uninstantiated type when either list was empty, which
+    /// let a polymorphic constant's `Param(u)` leak into a context that declares
+    /// its own `u` (a capture / soundness hole). We now instantiate only on an
+    /// exact-arity match and hard-error otherwise.
     #[allow(clippy::result_large_err)]
     fn infer_const(&self, name: &Name, levels: &[Level]) -> Result<Expr, KernelError> {
         if let Some(ci) = self.env.find(name) {
-            let params = ci.level_params();
-            if !params.is_empty() && !levels.is_empty() && params.len() != levels.len() {
-                return Err(KernelError::Other(format!(
-                    "universe parameter count mismatch for {}: expected {}, got {}",
-                    name,
-                    params.len(),
-                    levels.len()
-                )));
-            }
-            if params.is_empty() || levels.is_empty() {
-                return Ok(ci.ty().clone());
-            }
-            return Ok(instantiate_type_lparams(ci.ty(), params, levels));
+            return Self::instantiate_const_type(name, ci.level_params(), ci.ty(), levels);
         }
         let decl = self
             .env
             .get(name)
             .ok_or_else(|| KernelError::UnknownConstant(name.clone()))?;
-        Ok(decl.ty().clone())
+        Self::instantiate_const_type(name, decl.univ_params(), decl.ty(), levels)
+    }
+    /// Shared arity check + universe-parameter instantiation for a constant
+    /// reference, used by both the `ConstantInfo` and legacy `Declaration`
+    /// lookup paths.
+    #[allow(clippy::result_large_err)]
+    fn instantiate_const_type(
+        name: &Name,
+        params: &[Name],
+        ty: &Expr,
+        levels: &[Level],
+    ) -> Result<Expr, KernelError> {
+        if params.len() != levels.len() {
+            return Err(KernelError::Other(format!(
+                "universe parameter count mismatch for {}: expected {}, got {}",
+                name,
+                params.len(),
+                levels.len()
+            )));
+        }
+        if params.is_empty() {
+            // No universe polymorphism: no substitution needed.
+            return Ok(ty.clone());
+        }
+        Ok(instantiate_type_lparams(ty, params, levels))
     }
     /// Infer the type of a function application.
     #[allow(clippy::result_large_err)]
@@ -991,11 +1070,15 @@ impl<'env> TypeChecker<'env> {
             .get_inductive_val(struct_name)
             .ok_or_else(|| KernelError::Other(format!("not a structure type: {}", struct_name)))?
             .clone();
-        if ind_val.ctors.len() != 1 {
+        if !self.env.is_structure_like(struct_name) {
             return Err(KernelError::Other(format!(
-                "{} is not a structure (has {} constructors)",
+                "invalid projection: {} is not structure-like \
+                 (requires exactly one constructor, no indices, and no recursion; \
+                 has {} constructors, {} indices, is_rec = {})",
                 struct_name,
-                ind_val.ctors.len()
+                ind_val.ctors.len(),
+                ind_val.num_indices,
+                ind_val.is_rec
             )));
         }
         let ctor_name = &ind_val.ctors[0];
@@ -1011,7 +1094,7 @@ impl<'env> TypeChecker<'env> {
             )));
         }
         let struct_ty = self.infer_type(struct_expr)?;
-        Ok(self.infer_proj_field_type(&ind_val, &ctor_val, idx, struct_expr, &struct_ty))
+        self.infer_proj_field_type(&ind_val, &ctor_val, idx, struct_expr, &struct_ty)
     }
     /// Compute the type of a projection field.
     ///
@@ -1020,7 +1103,11 @@ impl<'env> TypeChecker<'env> {
     /// 2. Inductive parameters from the struct type's applied arguments
     /// 3. Preceding fields with `Proj(S, j, struct_expr)` for `j < idx`
     ///
-    /// Returns the domain of the `idx`-th Pi binder.
+    /// Returns the domain of the `idx`-th Pi binder. Any mismatch — the
+    /// operand's type not being the structure type, a parameter-count
+    /// mismatch, or the constructor telescope running short — is a typed
+    /// error rather than a fabricated type.
+    #[allow(clippy::result_large_err)]
     fn infer_proj_field_type(
         &mut self,
         ind_val: &InductiveVal,
@@ -1028,23 +1115,46 @@ impl<'env> TypeChecker<'env> {
         idx: u32,
         struct_expr: &Expr,
         struct_ty: &Expr,
-    ) -> Expr {
+    ) -> Result<Expr, KernelError> {
         let ctor_ty = ctor_val.common.ty.clone();
         let struct_ty_whnf = self.whnf(struct_ty);
         let levels: Vec<Level> = match get_app_fn(&struct_ty_whnf) {
-            Expr::Const(_, lvls) => lvls.clone(),
-            _ => vec![],
+            Expr::Const(name, lvls) if *name == ind_val.common.name => lvls.clone(),
+            _ => {
+                return Err(KernelError::Other(format!(
+                    "invalid projection: expected an element of {}, but the operand has type {}",
+                    ind_val.common.name, struct_ty_whnf
+                )))
+            }
         };
         let level_params = &ind_val.common.level_params;
-        let mut cur_ty = instantiate_type_lparams(&ctor_ty, level_params, &levels);
+        let mut cur_ty = if level_params.is_empty() || levels.is_empty() {
+            ctor_ty
+        } else {
+            instantiate_type_lparams(&ctor_ty, level_params, &levels)
+        };
         let struct_args: Vec<Expr> = get_app_args(&struct_ty_whnf).into_iter().cloned().collect();
-        for i in 0..ind_val.num_params as usize {
+        if struct_args.len() != ind_val.num_params as usize {
+            return Err(KernelError::Other(format!(
+                "invalid projection: {} expects {} parameters, but the operand type {} supplies {}",
+                ind_val.common.name,
+                ind_val.num_params,
+                struct_ty_whnf,
+                struct_args.len()
+            )));
+        }
+        for param in &struct_args {
             match cur_ty {
                 Expr::Pi(_, _, _, body) => {
-                    let param = struct_args.get(i).cloned().unwrap_or(Expr::BVar(0));
-                    cur_ty = instantiate(&body, &param);
+                    cur_ty = instantiate(&body, param);
                 }
-                _ => return struct_ty.clone(),
+                _ => {
+                    return Err(KernelError::Other(format!(
+                        "invalid projection: constructor {} telescope ended while \
+                         instantiating the parameters of {}",
+                        ctor_val.common.name, ind_val.common.name
+                    )))
+                }
             }
         }
         for j in 0..idx {
@@ -1053,16 +1163,25 @@ impl<'env> TypeChecker<'env> {
                     let field_val = Expr::Proj(
                         ind_val.common.name.clone(),
                         j,
-                        Box::new(struct_expr.clone()),
+                        Node::new(struct_expr.clone()),
                     );
                     cur_ty = instantiate(&body, &field_val);
                 }
-                _ => return struct_ty.clone(),
+                _ => {
+                    return Err(KernelError::Other(format!(
+                        "invalid projection: constructor {} telescope ended at field {} \
+                         while computing field {} of {}",
+                        ctor_val.common.name, j, idx, ind_val.common.name
+                    )))
+                }
             }
         }
         match cur_ty {
-            Expr::Pi(_, _, dom, _) => *dom,
-            _ => struct_ty.clone(),
+            Expr::Pi(_, _, dom, _) => Ok((*dom).clone()),
+            _ => Err(KernelError::Other(format!(
+                "invalid projection: constructor {} telescope has no field {} for {}",
+                ctor_val.common.name, idx, ind_val.common.name
+            ))),
         }
     }
     /// Check if an expression is a proposition (has type Prop).
@@ -1140,7 +1259,7 @@ impl<'env> TypeChecker<'env> {
                         let arg_ty = self.infer_type(arg)?;
                         if !self.is_def_eq(&arg_ty, &dom) {
                             return Err(crate::error::KernelError::TypeMismatch {
-                                expected: *dom,
+                                expected: (*dom).clone(),
                                 got: arg_ty,
                                 context: "application argument".to_string(),
                             });
@@ -1161,11 +1280,11 @@ impl<'env> TypeChecker<'env> {
             let whnf = self.whnf(&current);
             match whnf {
                 Expr::Pi(bi, name, dom, cod) => {
-                    let fvar_id = self.fresh_fvar(name.clone(), *dom.clone());
+                    let fvar_id = self.fresh_fvar(name.clone(), (*dom).clone());
                     let decl = LocalDecl {
                         fvar: fvar_id,
                         name,
-                        ty: *dom,
+                        ty: (*dom).clone(),
                         val: None,
                     };
                     let body = instantiate(&cod, &Expr::FVar(fvar_id));
@@ -1186,8 +1305,8 @@ impl<'env> TypeChecker<'env> {
             result = Expr::Pi(
                 crate::BinderInfo::Default,
                 decl.name.clone(),
-                Box::new(decl.ty.clone()),
-                Box::new(result),
+                Node::new(decl.ty.clone()),
+                Node::new(result),
             );
         }
         result
@@ -1200,8 +1319,8 @@ impl<'env> TypeChecker<'env> {
             result = Expr::Lam(
                 crate::BinderInfo::Default,
                 decl.name.clone(),
-                Box::new(decl.ty.clone()),
-                Box::new(result),
+                Node::new(decl.ty.clone()),
+                Node::new(result),
             );
         }
         result
@@ -1236,7 +1355,7 @@ impl<'env> TypeChecker<'env> {
             let whnf = self.whnf(&current);
             if let Expr::Pi(_, _, _, cod) = whnf {
                 count += 1;
-                current = *cod;
+                current = (*cod).clone();
             } else {
                 break;
             }
@@ -1271,17 +1390,17 @@ impl<'env> TypeChecker<'env> {
             Expr::App(f, a) => {
                 let f_norm = self.normalize(f);
                 let a_norm = self.normalize(a);
-                Expr::App(Box::new(f_norm), Box::new(a_norm))
+                Expr::App(Node::new(f_norm), Node::new(a_norm))
             }
             Expr::Lam(bi, name, ty, body) => {
                 let ty_norm = self.normalize(ty);
                 let body_norm = self.normalize(body);
-                Expr::Lam(*bi, name.clone(), Box::new(ty_norm), Box::new(body_norm))
+                Expr::Lam(*bi, name.clone(), Node::new(ty_norm), Node::new(body_norm))
             }
             Expr::Pi(bi, name, ty, body) => {
                 let ty_norm = self.normalize(ty);
                 let body_norm = self.normalize(body);
-                Expr::Pi(*bi, name.clone(), Box::new(ty_norm), Box::new(body_norm))
+                Expr::Pi(*bi, name.clone(), Node::new(ty_norm), Node::new(body_norm))
             }
             Expr::Let(name, ty, val, body) => {
                 let ty_norm = self.normalize(ty);
@@ -1289,14 +1408,14 @@ impl<'env> TypeChecker<'env> {
                 let body_norm = self.normalize(body);
                 Expr::Let(
                     name.clone(),
-                    Box::new(ty_norm),
-                    Box::new(val_norm),
-                    Box::new(body_norm),
+                    Node::new(ty_norm),
+                    Node::new(val_norm),
+                    Node::new(body_norm),
                 )
             }
             Expr::Proj(sname, idx, inner) => {
                 let inner_norm = self.normalize(inner);
-                Expr::Proj(sname.clone(), *idx, Box::new(inner_norm))
+                Expr::Proj(sname.clone(), *idx, Node::new(inner_norm))
             }
             _ => whnf,
         }
@@ -1311,8 +1430,13 @@ impl<'env> TypeChecker<'env> {
         Some(self.count_pi_binders(&ty))
     }
     /// Check if two universe levels are definitionally equal.
+    ///
+    /// Delegates to the complete `level::is_equivalent` decision procedure
+    /// (previously this was an essentially-syntactic stub that only recognised
+    /// literally-equal or both-zero levels — a trap for callers expecting real
+    /// universe defeq).
     pub fn is_level_eq(&self, l1: &Level, l2: &Level) -> bool {
-        l1 == l2 || (l1.is_zero() && l2.is_zero())
+        crate::level::is_equivalent(l1, l2)
     }
 }
 /// A simple key-value store backed by a sorted Vec for small maps.

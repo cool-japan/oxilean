@@ -15,6 +15,7 @@ use crate::basic::{MetaContext, MetavarKind};
 use crate::tactic::simp::main::simp;
 use crate::tactic::simp::types::{SimpConfig, SimpLemma, SimpResult, SimpTheorems};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 
 // ---------------------------------------------------------------------------
@@ -61,9 +62,9 @@ pub fn apply_rw_rules(rules: &[RwRule], expr: &Expr) -> Option<Expr> {
             let new_f = apply_rw_rules(rules, f);
             let new_a = apply_rw_rules(rules, a);
             if new_f.is_some() || new_a.is_some() {
-                let f_out = new_f.unwrap_or_else(|| *f.clone());
-                let a_out = new_a.unwrap_or_else(|| *a.clone());
-                Some(Expr::App(Box::new(f_out), Box::new(a_out)))
+                let f_out = new_f.unwrap_or_else(|| (**f).clone());
+                let a_out = new_a.unwrap_or_else(|| (**a).clone());
+                Some(Expr::App(Node::new(f_out), Node::new(a_out)))
             } else {
                 None
             }
@@ -75,8 +76,8 @@ pub fn apply_rw_rules(rules: &[RwRule], expr: &Expr) -> Option<Expr> {
                 Some(Expr::Lam(
                     *bi,
                     name.clone(),
-                    Box::new(new_ty.unwrap_or_else(|| *ty.clone())),
-                    Box::new(new_body.unwrap_or_else(|| *body.clone())),
+                    Node::new(new_ty.unwrap_or_else(|| (**ty).clone())),
+                    Node::new(new_body.unwrap_or_else(|| (**body).clone())),
                 ))
             } else {
                 None
@@ -89,8 +90,8 @@ pub fn apply_rw_rules(rules: &[RwRule], expr: &Expr) -> Option<Expr> {
                 Some(Expr::Pi(
                     *bi,
                     name.clone(),
-                    Box::new(new_ty.unwrap_or_else(|| *ty.clone())),
-                    Box::new(new_body.unwrap_or_else(|| *body.clone())),
+                    Node::new(new_ty.unwrap_or_else(|| (**ty).clone())),
+                    Node::new(new_body.unwrap_or_else(|| (**body).clone())),
                 ))
             } else {
                 None
@@ -103,9 +104,9 @@ pub fn apply_rw_rules(rules: &[RwRule], expr: &Expr) -> Option<Expr> {
             if new_ty.is_some() || new_val.is_some() || new_body.is_some() {
                 Some(Expr::Let(
                     name.clone(),
-                    Box::new(new_ty.unwrap_or_else(|| *ty.clone())),
-                    Box::new(new_val.unwrap_or_else(|| *val.clone())),
-                    Box::new(new_body.unwrap_or_else(|| *body.clone())),
+                    Node::new(new_ty.unwrap_or_else(|| (**ty).clone())),
+                    Node::new(new_val.unwrap_or_else(|| (**val).clone())),
+                    Node::new(new_body.unwrap_or_else(|| (**body).clone())),
                 ))
             } else {
                 None
@@ -256,7 +257,7 @@ mod tests {
     }
 
     fn app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
 
     #[test]

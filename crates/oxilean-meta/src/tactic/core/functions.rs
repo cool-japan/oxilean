@@ -13,6 +13,7 @@ use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::def_eq::{MetaDefEq, UnificationResult};
 use crate::infer_type::MetaInferType;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 
 /// `intro name` — introduce a hypothesis from a Pi/forall goal.
@@ -34,7 +35,7 @@ pub fn tac_intro(
         Expr::Pi(_bi, binder_name, domain, body) => {
             let intro_name = name.unwrap_or_else(|| binder_name.clone());
             let fvar_id =
-                ctx.mk_local_decl(intro_name.clone(), *domain.clone(), BinderInfo::Default);
+                ctx.mk_local_decl(intro_name.clone(), (**domain).clone(), BinderInfo::Default);
             let new_target = substitute_bvar(body, 0, &Expr::FVar(fvar_id));
             let (new_goal_id, new_goal_expr) =
                 ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
@@ -42,7 +43,7 @@ pub fn tac_intro(
                 BinderInfo::Default,
                 intro_name,
                 domain.clone(),
-                Box::new(new_goal_expr),
+                Node::new(new_goal_expr),
             );
             ctx.assign_mvar(goal, proof);
             state.replace_goal(vec![new_goal_id]);
@@ -153,7 +154,7 @@ pub(super) fn peel_pi_and_build_app(expr: Expr, ctx: &mut MetaContext) -> (Expr,
     let mut mvar_exprs: Vec<Expr> = Vec::new();
     let mut walk = expr.clone();
     while let Expr::Pi(_bi, _name, domain, body) = walk {
-        let (mvar_id, mvar_expr) = ctx.mk_fresh_expr_mvar(*domain, MetavarKind::Natural);
+        let (mvar_id, mvar_expr) = ctx.mk_fresh_expr_mvar((*domain).clone(), MetavarKind::Natural);
         mvar_ids.push(mvar_id);
         mvar_exprs.push(mvar_expr.clone());
         walk = substitute_bvar(&body, 0, &mvar_expr);
@@ -163,7 +164,7 @@ pub(super) fn peel_pi_and_build_app(expr: Expr, ctx: &mut MetaContext) -> (Expr,
     }
     let mut applied = expr;
     for mvar_expr in &mvar_exprs {
-        applied = Expr::App(Box::new(applied), Box::new(mvar_expr.clone()));
+        applied = Expr::App(Node::new(applied), Node::new(mvar_expr.clone()));
     }
     (applied, mvar_ids)
 }
@@ -228,27 +229,32 @@ pub(super) fn substitute_bvar(expr: &Expr, idx: u32, replacement: &Expr) -> Expr
         Expr::App(f, a) => {
             let f2 = substitute_bvar(f, idx, replacement);
             let a2 = substitute_bvar(a, idx, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Lam(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Pi(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(name, ty, val, body) => {
             let ty2 = substitute_bvar(ty, idx, replacement);
             let val2 = substitute_bvar(val, idx, replacement);
             let body2 = substitute_bvar(body, idx + 1, replacement);
-            Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                name.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(name, i, e) => {
             let e2 = substitute_bvar(e, idx, replacement);
-            Expr::Proj(name.clone(), *i, Box::new(e2))
+            Expr::Proj(name.clone(), *i, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -339,8 +345,8 @@ mod tests {
         let goal_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(nat_ty),
+            Node::new(nat_ty.clone()),
+            Node::new(nat_ty),
         );
         let (mvar_id, _mvar_expr) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -433,12 +439,12 @@ mod tests {
         let f_type = Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(nat_ty.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(nat_ty.clone()),
-                Box::new(goal_ty.clone()),
+                Node::new(nat_ty.clone()),
+                Node::new(goal_ty.clone()),
             )),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
@@ -454,8 +460,8 @@ mod tests {
         let f_type = Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(nat_ty.clone()),
-            Box::new(goal_ty.clone()),
+            Node::new(nat_ty.clone()),
+            Node::new(goal_ty.clone()),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -528,11 +534,11 @@ pub fn tac_constructor(
         let (id1, m1) = ctx.mk_fresh_expr_mvar(lhs, MetavarKind::Natural);
         let (id2, m2) = ctx.mk_fresh_expr_mvar(rhs, MetavarKind::Natural);
         let proof = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And.intro"), vec![])),
-                Box::new(m1),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And.intro"), vec![])),
+                Node::new(m1),
             )),
-            Box::new(m2),
+            Node::new(m2),
         );
         ctx.assign_mvar(goal, proof);
         state.replace_goal(vec![id1, id2]);
@@ -554,8 +560,8 @@ pub fn tac_left(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<
     if let Some((lhs, _rhs)) = as_or(&target) {
         let (new_id, mvar) = ctx.mk_fresh_expr_mvar(lhs, MetavarKind::Natural);
         let proof = Expr::App(
-            Box::new(Expr::Const(Name::str("Or.inl"), vec![])),
-            Box::new(mvar),
+            Node::new(Expr::Const(Name::str("Or.inl"), vec![])),
+            Node::new(mvar),
         );
         ctx.assign_mvar(goal, proof);
         state.replace_goal(vec![new_id]);
@@ -578,8 +584,8 @@ pub fn tac_right(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult
     if let Some((_lhs, rhs)) = as_or(&target) {
         let (new_id, mvar) = ctx.mk_fresh_expr_mvar(rhs, MetavarKind::Natural);
         let proof = Expr::App(
-            Box::new(Expr::Const(Name::str("Or.inr"), vec![])),
-            Box::new(mvar),
+            Node::new(Expr::Const(Name::str("Or.inr"), vec![])),
+            Node::new(mvar),
         );
         ctx.assign_mvar(goal, proof);
         state.replace_goal(vec![new_id]);
@@ -627,8 +633,8 @@ pub fn tac_revert(
     let new_target = Expr::Pi(
         BinderInfo::Default,
         name.clone(),
-        Box::new(hyp_ty),
-        Box::new(target),
+        Node::new(hyp_ty),
+        Node::new(target),
     );
     let (new_goal_id, _) = ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
     state.replace_goal(vec![new_goal_id]);
@@ -641,7 +647,7 @@ pub(super) fn as_and(ty: &Expr) -> Option<(Expr, Expr)> {
             if matches!(
                 and_const.as_ref(), Expr::Const(name, _) if * name == Name::str("And")
             ) {
-                return Some((*a.clone(), *b.clone()));
+                return Some(((**a).clone(), (**b).clone()));
             }
         }
     }
@@ -654,7 +660,7 @@ pub(super) fn as_or(ty: &Expr) -> Option<(Expr, Expr)> {
             if matches!(
                 or_const.as_ref(), Expr::Const(name, _) if * name == Name::str("Or")
             ) {
-                return Some((*a.clone(), *b.clone()));
+                return Some(((**a).clone(), (**b).clone()));
             }
         }
     }
@@ -694,11 +700,11 @@ mod extended_core_tests {
         let a = Expr::Const(Name::str("A"), vec![]);
         let b = Expr::Const(Name::str("B"), vec![]);
         let and_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(a),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(a),
             )),
-            Box::new(b),
+            Node::new(b),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(and_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -720,11 +726,11 @@ mod extended_core_tests {
         let a = Expr::Const(Name::str("A"), vec![]);
         let b = Expr::Const(Name::str("B"), vec![]);
         let or_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(a),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(a),
             )),
-            Box::new(b),
+            Node::new(b),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(or_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -738,11 +744,11 @@ mod extended_core_tests {
         let a = Expr::Const(Name::str("A"), vec![]);
         let b = Expr::Const(Name::str("B"), vec![]);
         let or_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(a),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(a),
             )),
-            Box::new(b),
+            Node::new(b),
         );
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(or_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -773,13 +779,13 @@ mod extended_core_tests {
     fn test_norm_num_refl() {
         let mut ctx = mk_ctx();
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let five = Expr::Lit(oxilean_kernel::Literal::Nat(5));
+        let five = Expr::Lit(oxilean_kernel::Literal::nat(5));
         let eq_nat = Expr::App(
-            Box::new(Expr::Const(Name::str("Eq"), vec![])),
-            Box::new(nat),
+            Node::new(Expr::Const(Name::str("Eq"), vec![])),
+            Node::new(nat),
         );
-        let eq_5 = Expr::App(Box::new(eq_nat), Box::new(five.clone()));
-        let goal_ty = Expr::App(Box::new(eq_5), Box::new(five));
+        let eq_5 = Expr::App(Node::new(eq_nat), Node::new(five.clone()));
+        let goal_ty = Expr::App(Node::new(eq_5), Node::new(five));
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         tac_norm_num(&mut state, &mut ctx).expect("value should be present");
@@ -798,11 +804,11 @@ mod extended_core_tests {
         let a = Expr::Const(Name::str("A"), vec![]);
         let b = Expr::Const(Name::str("B"), vec![]);
         let and_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("And"), vec![])),
-                Box::new(a.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("And"), vec![])),
+                Node::new(a.clone()),
             )),
-            Box::new(b.clone()),
+            Node::new(b.clone()),
         );
         let result = as_and(&and_ty);
         assert!(result.is_some());
@@ -815,11 +821,11 @@ mod extended_core_tests {
         let a = Expr::Const(Name::str("A"), vec![]);
         let b = Expr::Const(Name::str("B"), vec![]);
         let or_ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(a.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(a.clone()),
             )),
-            Box::new(b.clone()),
+            Node::new(b.clone()),
         );
         let result = as_or(&or_ty);
         assert!(result.is_some());
@@ -1008,14 +1014,14 @@ mod extra_core_tests {
     #[test]
     fn test_contains_sorry_in_app() {
         let sorry = Expr::Const(Name::str("sorry"), vec![]);
-        let app = Expr::App(Box::new(sorry), Box::new(Expr::BVar(0)));
+        let app = Expr::App(Node::new(sorry), Node::new(Expr::BVar(0)));
         assert!(contains_sorry(&app));
     }
     #[test]
     fn test_contains_sorry_false() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("And.intro"), vec![])),
-            Box::new(Expr::Const(Name::str("True.intro"), vec![])),
+            Node::new(Expr::Const(Name::str("And.intro"), vec![])),
+            Node::new(Expr::Const(Name::str("True.intro"), vec![])),
         );
         assert!(!contains_sorry(&e));
     }

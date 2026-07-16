@@ -10,7 +10,11 @@ use super::types::{
     TacticSimpMainPipeline, TacticSimpMainResult,
 };
 use crate::basic::MetaContext;
-use crate::tactic::simp::types::{SimpConfig, SimpLemma, SimpResult, SimpTheorems};
+use crate::tactic::simp::types::{
+    default_simp_lemmas, SimpConfig, SimpLemma, SimpResult, SimpTheorems,
+};
+use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{beta_normalize, Expr, Name};
 
 /// Apply the simp algorithm to an expression.
@@ -85,15 +89,15 @@ pub(super) fn simp_subexprs(
             let a_result = simp(a, theorems, config, ctx);
             let new_f = match &f_result {
                 SimpResult::Simplified { new_expr, .. } => new_expr.clone(),
-                _ => *f.clone(),
+                _ => (**f).clone(),
             };
             let new_a = match &a_result {
                 SimpResult::Simplified { new_expr, .. } => new_expr.clone(),
-                _ => *a.clone(),
+                _ => (**a).clone(),
             };
             if f_result.is_simplified() || a_result.is_simplified() {
                 SimpResult::Simplified {
-                    new_expr: Expr::App(Box::new(new_f), Box::new(new_a)),
+                    new_expr: Expr::App(Node::new(new_f), Node::new(new_a)),
                     proof: None,
                 }
             } else {
@@ -105,15 +109,15 @@ pub(super) fn simp_subexprs(
             let body_result = simp(body, theorems, config, ctx);
             let new_ty = match &ty_result {
                 SimpResult::Simplified { new_expr, .. } => new_expr.clone(),
-                _ => *ty.clone(),
+                _ => (**ty).clone(),
             };
             let new_body = match &body_result {
                 SimpResult::Simplified { new_expr, .. } => new_expr.clone(),
-                _ => *body.clone(),
+                _ => (**body).clone(),
             };
             if ty_result.is_simplified() || body_result.is_simplified() {
                 SimpResult::Simplified {
-                    new_expr: Expr::Lam(*bi, name.clone(), Box::new(new_ty), Box::new(new_body)),
+                    new_expr: Expr::Lam(*bi, name.clone(), Node::new(new_ty), Node::new(new_body)),
                     proof: None,
                 }
             } else {
@@ -223,26 +227,26 @@ pub(super) fn subst_captures(rhs: &Expr, captures: &[Option<Expr>], depth: u32) 
             rhs.clone()
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_captures(f, captures, depth)),
-            Box::new(subst_captures(a, captures, depth)),
+            Node::new(subst_captures(f, captures, depth)),
+            Node::new(subst_captures(a, captures, depth)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(subst_captures(ty, captures, depth)),
-            Box::new(subst_captures(body, captures, depth + 1)),
+            Node::new(subst_captures(ty, captures, depth)),
+            Node::new(subst_captures(body, captures, depth + 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(subst_captures(ty, captures, depth)),
-            Box::new(subst_captures(body, captures, depth + 1)),
+            Node::new(subst_captures(ty, captures, depth)),
+            Node::new(subst_captures(body, captures, depth + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(subst_captures(ty, captures, depth)),
-            Box::new(subst_captures(val, captures, depth)),
-            Box::new(subst_captures(body, captures, depth + 1)),
+            Node::new(subst_captures(ty, captures, depth)),
+            Node::new(subst_captures(val, captures, depth)),
+            Node::new(subst_captures(body, captures, depth + 1)),
         ),
         _ => rhs.clone(),
     }
@@ -309,26 +313,26 @@ pub(super) fn shift_bvars(expr: &Expr, delta: i32, cutoff: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_bvars(f, delta, cutoff)),
-            Box::new(shift_bvars(a, delta, cutoff)),
+            Node::new(shift_bvars(f, delta, cutoff)),
+            Node::new(shift_bvars(a, delta, cutoff)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, delta, cutoff)),
-            Box::new(shift_bvars(body, delta, cutoff + 1)),
+            Node::new(shift_bvars(ty, delta, cutoff)),
+            Node::new(shift_bvars(body, delta, cutoff + 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, delta, cutoff)),
-            Box::new(shift_bvars(body, delta, cutoff + 1)),
+            Node::new(shift_bvars(ty, delta, cutoff)),
+            Node::new(shift_bvars(body, delta, cutoff + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(shift_bvars(ty, delta, cutoff)),
-            Box::new(shift_bvars(val, delta, cutoff)),
-            Box::new(shift_bvars(body, delta, cutoff + 1)),
+            Node::new(shift_bvars(ty, delta, cutoff)),
+            Node::new(shift_bvars(val, delta, cutoff)),
+            Node::new(shift_bvars(body, delta, cutoff + 1)),
         ),
         _ => expr.clone(),
     }
@@ -336,6 +340,35 @@ pub(super) fn shift_bvars(expr: &Expr, delta: i32, cutoff: u32) -> Expr {
 /// Check if an expression is `True`.
 pub(super) fn is_true_expr(expr: &Expr) -> bool {
     matches!(expr, Expr::Const(name, _) if * name == Name::str("True"))
+}
+/// Close the current goal by simplification using the default simp lemma set.
+///
+/// Tries the real simp engine first; succeeds only if the goal is directly proved
+/// (i.e., reduced to `True` by the simp set). If simp makes progress but does not
+/// close the goal, this tactic fails so the caller can fall back to a simpler strategy.
+pub fn tac_simp(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    let goal_view = state.goal_view(ctx)?;
+    let theorems = default_simp_lemmas();
+    let config = SimpConfig::default();
+    let result = simp(&goal_view.target, &theorems, &config, ctx);
+    match result {
+        SimpResult::Proved(proof) => {
+            state.close_goal(proof, ctx)?;
+            Ok(())
+        }
+        SimpResult::Simplified { new_expr, .. } => {
+            if is_true_expr(&new_expr) {
+                let proof = Expr::Const(Name::str("True.intro"), vec![]);
+                state.close_goal(proof, ctx)?;
+                Ok(())
+            } else {
+                Err(TacticError::Failed(
+                    "simp: simplified but did not close goal".into(),
+                ))
+            }
+        }
+        SimpResult::Unchanged => Err(TacticError::Failed("simp: no progress".into())),
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -398,8 +431,8 @@ mod tests {
         let b = Expr::Const(Name::str("b"), vec![]);
         theorems.add_lemma(mk_lemma("ab", a.clone(), b.clone()));
         let f = Expr::Const(Name::str("f"), vec![]);
-        let fa = Expr::App(Box::new(f.clone()), Box::new(a));
-        let _fb = Expr::App(Box::new(f), Box::new(b));
+        let fa = Expr::App(Node::new(f.clone()), Node::new(a));
+        let _fb = Expr::App(Node::new(f), Node::new(b));
         let result = simp(&fa, &theorems, &config, &mut ctx);
         assert!(result.is_simplified());
     }
@@ -429,10 +462,10 @@ mod tests {
         let id_fn = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id_fn), Box::new(a.clone()));
+        let app = Expr::App(Node::new(id_fn), Node::new(a.clone()));
         let result = simp(&app, &theorems, &config, &mut ctx);
         assert!(result.is_simplified());
         assert_eq!(*result.new_expr().expect("new_expr should succeed"), a);
@@ -446,8 +479,8 @@ mod tests {
         let eta_f = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(Expr::BVar(0)))),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(Expr::BVar(0)))),
         );
         let result = simp(&eta_f, &theorems, &config, &mut ctx);
         assert!(result.is_simplified());
@@ -466,9 +499,9 @@ mod tests {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let pattern = Expr::App(Box::new(f.clone()), Box::new(Expr::BVar(0)));
-        let expr1 = Expr::App(Box::new(f.clone()), Box::new(a));
-        let expr2 = Expr::App(Box::new(f), Box::new(b));
+        let pattern = Expr::App(Node::new(f.clone()), Node::new(Expr::BVar(0)));
+        let expr1 = Expr::App(Node::new(f.clone()), Node::new(a));
+        let expr2 = Expr::App(Node::new(f), Node::new(b));
         assert!(syntactic_match(&expr1, &pattern));
         assert!(syntactic_match(&expr2, &pattern));
     }
@@ -512,11 +545,11 @@ mod tests {
         let config = SimpConfig::default();
         let theorems = default_simp_lemmas();
         let n = Expr::Const(Name::str("myN"), vec![]);
-        let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+        let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
         let add = Expr::Const(Name::str("Nat.add"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(add), Box::new(n.clone()))),
-            Box::new(zero),
+            Node::new(Expr::App(Node::new(add), Node::new(n.clone()))),
+            Node::new(zero),
         );
         let result = simp(&expr, &theorems, &config, &mut ctx);
         assert!(result.is_simplified(), "n + 0 should simplify to n");
@@ -684,7 +717,7 @@ mod extended_tests {
     fn test_expr_head_name_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::BVar(0);
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(expr_head_name(&app), Some(Name::str("f")));
     }
     #[test]

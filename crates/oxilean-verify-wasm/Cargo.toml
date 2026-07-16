@@ -1,0 +1,46 @@
+[package]
+name = "oxilean-verify-wasm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/oxilean-verify-wasm"
+description = "Kernel in a Tab: WebAssembly bindings for the independent oxilean-verify Lean 4 proof checker"
+readme = "README.md"
+keywords = ["lean", "wasm", "proof-checker", "kernel", "verify"]
+categories = ["wasm", "development-tools", "mathematics"]
+
+# cdylib is the only artifact this crate exists to produce: the browser demo
+# loads it via wasm-pack --target web. No rlib — nothing in the workspace links
+# against it, and keeping it cdylib-only makes the DCE regression class (0.1.2)
+# structurally impossible: there is no non-wasm consumer that could strip the
+# #[wasm_bindgen] exports.
+[lib]
+crate-type = ["cdylib"]
+
+# Dependency closure is EXACTLY the TCB plus the JS glue (brief §8.3):
+#   oxilean-kernel  — the proof-checking TCB (zero external deps)
+#   oxilean-export  — the lean4export NDJSON reader + replay
+#   oxilean-verify  — the reusable streaming engine (drives the two above)
+#   wasm-bindgen    — JS glue codegen (NON-optional: this crate is wasm-only)
+#   js-sys          — Function.call for the per-decl streaming callback
+# wasm-bindgen is NOT feature-gated: there is no build of this crate without it,
+# so dead-code elimination can never take the exports.
+[dependencies]
+oxilean-kernel = { workspace = true }
+oxilean-export = { workspace = true }
+oxilean-verify = { workspace = true }
+wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
+
+# Size-tuned release profile for THIS crate's wasm output. opt-level = "z"
+# (optimize aggressively for size) and thin LTO shrink the module; the workspace
+# root profile owns panic = "abort" and strip (see root Cargo.toml
+# [profile.release]) so the .wasm carries no unwinding tables or debug info.
+[package.metadata.wasm-pack.profile.release]
+# Run wasm-opt -Oz when the wasm-opt binary is available (wasm-pack fetches it,
+# or falls back gracefully). Strips DWARF, folds constants, size-optimizes.
+wasm-opt = ["-Oz", "--strip-debug"]

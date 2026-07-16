@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, FVarId, Name};
+use std::rc::Rc;
 
 use super::types::{
     AlphaCache, ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, LabelSet,
@@ -109,16 +111,16 @@ pub(super) fn canonicalize_impl(expr: &Expr, depth: u32) -> Expr {
         Expr::Sort(l) => Expr::Sort(l.clone()),
         Expr::Const(n, ls) => Expr::Const(n.clone(), ls.clone()),
         Expr::App(f, a) => Expr::App(
-            Box::new(canonicalize_impl(f, depth)),
-            Box::new(canonicalize_impl(a, depth)),
+            Node::new(canonicalize_impl(f, depth)),
+            Node::new(canonicalize_impl(a, depth)),
         ),
         Expr::Lam(bi, _n, ty, body) => {
             let canonical_name = Name::str(format!("x{}", depth));
             Expr::Lam(
                 *bi,
                 canonical_name,
-                Box::new(canonicalize_impl(ty, depth)),
-                Box::new(canonicalize_impl(body, depth + 1)),
+                Node::new(canonicalize_impl(ty, depth)),
+                Node::new(canonicalize_impl(body, depth + 1)),
             )
         }
         Expr::Pi(bi, _n, ty, body) => {
@@ -126,20 +128,20 @@ pub(super) fn canonicalize_impl(expr: &Expr, depth: u32) -> Expr {
             Expr::Pi(
                 *bi,
                 canonical_name,
-                Box::new(canonicalize_impl(ty, depth)),
-                Box::new(canonicalize_impl(body, depth + 1)),
+                Node::new(canonicalize_impl(ty, depth)),
+                Node::new(canonicalize_impl(body, depth + 1)),
             )
         }
         Expr::Let(_n, ty, val, body) => {
             let canonical_name = Name::str(format!("x{}", depth));
             Expr::Let(
                 canonical_name,
-                Box::new(canonicalize_impl(ty, depth)),
-                Box::new(canonicalize_impl(val, depth)),
-                Box::new(canonicalize_impl(body, depth + 1)),
+                Node::new(canonicalize_impl(ty, depth)),
+                Node::new(canonicalize_impl(val, depth)),
+                Node::new(canonicalize_impl(body, depth + 1)),
             )
         }
-        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Box::new(canonicalize_impl(s, depth))),
+        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Node::new(canonicalize_impl(s, depth))),
         Expr::Lit(l) => Expr::Lit(l.clone()),
     }
 }
@@ -172,9 +174,9 @@ mod tests {
     #[test]
     fn test_alpha_equiv_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(42));
-        let e1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let e2 = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(42));
+        let e1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let e2 = Expr::App(Node::new(f), Node::new(a));
         assert!(alpha_equiv(&e1, &e2));
     }
     #[test]
@@ -183,14 +185,14 @@ mod tests {
         let e1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat.clone()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat.clone()),
+            Node::new(Expr::BVar(0)),
         );
         let e2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(nat),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat),
+            Node::new(Expr::BVar(0)),
         );
         assert!(alpha_equiv(&e1, &e2));
     }
@@ -200,14 +202,14 @@ mod tests {
         let e1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("different_name"),
-            Box::new(nat.clone()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat.clone()),
+            Node::new(Expr::BVar(0)),
         );
         let e2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("another_name"),
-            Box::new(nat),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat),
+            Node::new(Expr::BVar(0)),
         );
         let c1 = canonicalize(&e1);
         let c2 = canonicalize(&e2);
@@ -439,14 +441,14 @@ mod alpha_extended_tests {
         let lam1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         let lam2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         assert!(find_non_equiv_pair(&[lam1, lam2]).is_none());
     }
@@ -461,14 +463,14 @@ mod alpha_extended_tests {
         let lam1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         let lam2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(alpha_hash(&lam1), alpha_hash(&lam2));
     }
@@ -507,8 +509,8 @@ mod alpha_extended_tests {
         let e = Expr::Lam(
             BinderInfo::Default,
             Name::str("uniqueName"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         let rep = alpha_class_rep(&e);
         if let Expr::Lam(_, name, _, _) = &rep {
@@ -517,9 +519,9 @@ mod alpha_extended_tests {
     }
     #[test]
     fn test_alpha_hash_lit() {
-        let h1 = alpha_hash(&Expr::Lit(Literal::Nat(42)));
-        let h2 = alpha_hash(&Expr::Lit(Literal::Nat(42)));
-        let h3 = alpha_hash(&Expr::Lit(Literal::Nat(43)));
+        let h1 = alpha_hash(&Expr::Lit(Literal::nat(42)));
+        let h2 = alpha_hash(&Expr::Lit(Literal::nat(42)));
+        let h3 = alpha_hash(&Expr::Lit(Literal::nat(43)));
         assert_eq!(h1, h2);
         assert_ne!(h1, h3);
     }
@@ -541,31 +543,31 @@ pub(super) fn rename_bvar_impl(expr: &Expr, from: u32, to: u32, depth: u32) -> E
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(rename_bvar_impl(f, from, to, depth)),
-            Box::new(rename_bvar_impl(a, from, to, depth)),
+            Node::new(rename_bvar_impl(f, from, to, depth)),
+            Node::new(rename_bvar_impl(a, from, to, depth)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(rename_bvar_impl(ty, from, to, depth)),
-            Box::new(rename_bvar_impl(body, from, to, depth + 1)),
+            Node::new(rename_bvar_impl(ty, from, to, depth)),
+            Node::new(rename_bvar_impl(body, from, to, depth + 1)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(rename_bvar_impl(ty, from, to, depth)),
-            Box::new(rename_bvar_impl(body, from, to, depth + 1)),
+            Node::new(rename_bvar_impl(ty, from, to, depth)),
+            Node::new(rename_bvar_impl(body, from, to, depth + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(rename_bvar_impl(ty, from, to, depth)),
-            Box::new(rename_bvar_impl(val, from, to, depth)),
-            Box::new(rename_bvar_impl(body, from, to, depth + 1)),
+            Node::new(rename_bvar_impl(ty, from, to, depth)),
+            Node::new(rename_bvar_impl(val, from, to, depth)),
+            Node::new(rename_bvar_impl(body, from, to, depth + 1)),
         ),
         Expr::Proj(n, i, s) => Expr::Proj(
             n.clone(),
             *i,
-            Box::new(rename_bvar_impl(s, from, to, depth)),
+            Node::new(rename_bvar_impl(s, from, to, depth)),
         ),
         e => e.clone(),
     }
@@ -590,28 +592,30 @@ pub(super) fn swap_bvars_impl(expr: &Expr, i: u32, j: u32, depth: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(swap_bvars_impl(f, i, j, depth)),
-            Box::new(swap_bvars_impl(a, i, j, depth)),
+            Node::new(swap_bvars_impl(f, i, j, depth)),
+            Node::new(swap_bvars_impl(a, i, j, depth)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(swap_bvars_impl(ty, i, j, depth)),
-            Box::new(swap_bvars_impl(body, i, j, depth + 1)),
+            Node::new(swap_bvars_impl(ty, i, j, depth)),
+            Node::new(swap_bvars_impl(body, i, j, depth + 1)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(swap_bvars_impl(ty, i, j, depth)),
-            Box::new(swap_bvars_impl(body, i, j, depth + 1)),
+            Node::new(swap_bvars_impl(ty, i, j, depth)),
+            Node::new(swap_bvars_impl(body, i, j, depth + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(swap_bvars_impl(ty, i, j, depth)),
-            Box::new(swap_bvars_impl(val, i, j, depth)),
-            Box::new(swap_bvars_impl(body, i, j, depth + 1)),
+            Node::new(swap_bvars_impl(ty, i, j, depth)),
+            Node::new(swap_bvars_impl(val, i, j, depth)),
+            Node::new(swap_bvars_impl(body, i, j, depth + 1)),
         ),
-        Expr::Proj(n, k, s) => Expr::Proj(n.clone(), *k, Box::new(swap_bvars_impl(s, i, j, depth))),
+        Expr::Proj(n, k, s) => {
+            Expr::Proj(n.clone(), *k, Node::new(swap_bvars_impl(s, i, j, depth)))
+        }
         e => e.clone(),
     }
 }
@@ -636,7 +640,7 @@ mod rename_tests {
     }
     #[test]
     fn test_rename_bvar_in_app() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(0)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(0)));
         let result = rename_bvar(&e, 0, 5);
         if let Expr::App(f, a) = result {
             assert_eq!(*f, Expr::BVar(5));
@@ -645,7 +649,7 @@ mod rename_tests {
     }
     #[test]
     fn test_swap_bvars() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let result = swap_bvars(&e, 0, 1);
         if let Expr::App(f, a) = result {
             assert_eq!(*f, Expr::BVar(1));
@@ -680,28 +684,28 @@ pub(super) fn shift_impl(expr: &Expr, amount: i32, cutoff: u32) -> Expr {
         Expr::Sort(l) => Expr::Sort(l.clone()),
         Expr::Const(n, ls) => Expr::Const(n.clone(), ls.clone()),
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_impl(f, amount, cutoff)),
-            Box::new(shift_impl(a, amount, cutoff)),
+            Node::new(shift_impl(f, amount, cutoff)),
+            Node::new(shift_impl(a, amount, cutoff)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(shift_impl(ty, amount, cutoff)),
-            Box::new(shift_impl(body, amount, cutoff + 1)),
+            Node::new(shift_impl(ty, amount, cutoff)),
+            Node::new(shift_impl(body, amount, cutoff + 1)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(shift_impl(ty, amount, cutoff)),
-            Box::new(shift_impl(body, amount, cutoff + 1)),
+            Node::new(shift_impl(ty, amount, cutoff)),
+            Node::new(shift_impl(body, amount, cutoff + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(shift_impl(ty, amount, cutoff)),
-            Box::new(shift_impl(val, amount, cutoff)),
-            Box::new(shift_impl(body, amount, cutoff + 1)),
+            Node::new(shift_impl(ty, amount, cutoff)),
+            Node::new(shift_impl(val, amount, cutoff)),
+            Node::new(shift_impl(body, amount, cutoff + 1)),
         ),
-        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Box::new(shift_impl(s, amount, cutoff))),
+        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Node::new(shift_impl(s, amount, cutoff))),
         Expr::Lit(l) => Expr::Lit(l.clone()),
     }
 }
@@ -739,31 +743,31 @@ pub(super) fn alpha_subst_impl(body: &Expr, replacement: &Expr, depth: u32) -> E
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(alpha_subst_impl(f, replacement, depth)),
-            Box::new(alpha_subst_impl(a, replacement, depth)),
+            Node::new(alpha_subst_impl(f, replacement, depth)),
+            Node::new(alpha_subst_impl(a, replacement, depth)),
         ),
         Expr::Lam(bi, n, ty, b) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(alpha_subst_impl(ty, replacement, depth)),
-            Box::new(alpha_subst_impl(b, replacement, depth + 1)),
+            Node::new(alpha_subst_impl(ty, replacement, depth)),
+            Node::new(alpha_subst_impl(b, replacement, depth + 1)),
         ),
         Expr::Pi(bi, n, ty, b) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(alpha_subst_impl(ty, replacement, depth)),
-            Box::new(alpha_subst_impl(b, replacement, depth + 1)),
+            Node::new(alpha_subst_impl(ty, replacement, depth)),
+            Node::new(alpha_subst_impl(b, replacement, depth + 1)),
         ),
         Expr::Let(n, ty, val, b) => Expr::Let(
             n.clone(),
-            Box::new(alpha_subst_impl(ty, replacement, depth)),
-            Box::new(alpha_subst_impl(val, replacement, depth)),
-            Box::new(alpha_subst_impl(b, replacement, depth + 1)),
+            Node::new(alpha_subst_impl(ty, replacement, depth)),
+            Node::new(alpha_subst_impl(val, replacement, depth)),
+            Node::new(alpha_subst_impl(b, replacement, depth + 1)),
         ),
         Expr::Proj(n, i, s) => Expr::Proj(
             n.clone(),
             *i,
-            Box::new(alpha_subst_impl(s, replacement, depth)),
+            Node::new(alpha_subst_impl(s, replacement, depth)),
         ),
         e => e.clone(),
     }
@@ -855,28 +859,28 @@ pub fn apply_fvar_subst(expr: &Expr, subst: &std::collections::HashMap<FVarId, E
     match expr {
         Expr::FVar(id) => subst.get(id).cloned().unwrap_or_else(|| expr.clone()),
         Expr::App(f, a) => Expr::App(
-            Box::new(apply_fvar_subst(f, subst)),
-            Box::new(apply_fvar_subst(a, subst)),
+            Node::new(apply_fvar_subst(f, subst)),
+            Node::new(apply_fvar_subst(a, subst)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(apply_fvar_subst(ty, subst)),
-            Box::new(apply_fvar_subst(body, subst)),
+            Node::new(apply_fvar_subst(ty, subst)),
+            Node::new(apply_fvar_subst(body, subst)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(apply_fvar_subst(ty, subst)),
-            Box::new(apply_fvar_subst(body, subst)),
+            Node::new(apply_fvar_subst(ty, subst)),
+            Node::new(apply_fvar_subst(body, subst)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(apply_fvar_subst(ty, subst)),
-            Box::new(apply_fvar_subst(val, subst)),
-            Box::new(apply_fvar_subst(body, subst)),
+            Node::new(apply_fvar_subst(ty, subst)),
+            Node::new(apply_fvar_subst(val, subst)),
+            Node::new(apply_fvar_subst(body, subst)),
         ),
-        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Box::new(apply_fvar_subst(s, subst))),
+        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Node::new(apply_fvar_subst(s, subst))),
         e => e.clone(),
     }
 }
@@ -936,8 +940,8 @@ mod shift_subst_tests {
     #[test]
     fn test_free_fvars_collects_all() {
         let e = Expr::App(
-            Box::new(Expr::FVar(FVarId(1))),
-            Box::new(Expr::FVar(FVarId(2))),
+            Node::new(Expr::FVar(FVarId(1))),
+            Node::new(Expr::FVar(FVarId(2))),
         );
         let fvars = free_fvars(&e);
         assert!(fvars.contains(&FVarId(1)));
@@ -956,7 +960,7 @@ mod shift_subst_tests {
     }
     #[test]
     fn test_count_bvar0_in_app() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(0)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(0)));
         assert_eq!(count_bvar0_occurrences(&e), 2);
     }
     #[test]
@@ -991,14 +995,14 @@ mod shift_subst_tests {
         let lam1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         let lam2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         assert!(structurally_equal(&lam1, &lam2));
     }
@@ -1012,8 +1016,8 @@ mod shift_subst_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(1)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(1)),
         );
         let shifted = shift(&lam, 1, 0);
         if let Expr::Lam(_, _, _, body) = &shifted {
@@ -1174,7 +1178,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

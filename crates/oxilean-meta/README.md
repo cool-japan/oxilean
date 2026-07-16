@@ -9,7 +9,7 @@
 
 This crate is **untrusted** with respect to soundness: metavariable assignment and unification code cannot corrupt the kernel environment. All proofs produced by the tactic system are ultimately re-verified by the kernel before being accepted.
 
-152,716 SLOC -- comprehensive meta layer implementation (648 source files, 5,479 tests passing).
+152,716 SLOC -- comprehensive meta layer implementation (648 source files, 5,410 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -93,7 +93,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-meta = "0.1.2"
+oxilean-meta = "0.1.3"
 ```
 
 ### Creating a Meta Context

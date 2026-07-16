@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -17,46 +18,46 @@ pub fn strm_ext_zip_with_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("γ"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_"),
-                            Box::new(Expr::BVar(2)),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("s1"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                            Box::new(Expr::BVar(3)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                            Node::new(Expr::BVar(3)),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("s2"),
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
                         )),
                     )),
@@ -72,33 +73,33 @@ pub fn strm_ext_ap_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("sf"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                    Box::new(Expr::Pi(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(1)),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
+                        Node::new(Expr::BVar(1)),
                     )),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("sa"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
             )),
@@ -113,22 +114,22 @@ pub fn strm_ext_coinductive_eq_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("s"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("t"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(prop),
+                Node::new(prop),
             )),
         )),
     )
@@ -141,28 +142,28 @@ pub fn strm_ext_map_head_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("s"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(prop),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -181,19 +182,19 @@ pub fn strm_ext_nth_tail_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("s"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(prop),
+                Node::new(prop),
             )),
         )),
     )
@@ -211,26 +212,26 @@ pub fn strm_ext_zip_head_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("s"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("t"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(prop),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -244,37 +245,37 @@ pub fn strm_ext_scan_head_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
                     )),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("s"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                            Box::new(Expr::BVar(3)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                            Node::new(Expr::BVar(3)),
                         )),
-                        Box::new(prop),
+                        Node::new(prop),
                     )),
                 )),
             )),
@@ -289,22 +290,22 @@ pub fn strm_ext_interleave_head_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("s"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("t"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(prop),
+                Node::new(prop),
             )),
         )),
     )
@@ -317,21 +318,21 @@ pub fn strm_ext_iterate_head_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Pi(
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(prop),
+                Node::new(prop),
             )),
         )),
     )
@@ -344,12 +345,12 @@ pub fn strm_ext_const_head_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::BVar(0)),
-            Box::new(prop),
+            Node::new(Expr::BVar(0)),
+            Node::new(prop),
         )),
     )
 }
@@ -361,23 +362,23 @@ pub fn strm_ext_drop_add_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("m"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("s"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(prop),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -391,12 +392,12 @@ pub fn strm_ext_corec_unique_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("σ"),
-            Box::new(type1),
-            Box::new(prop),
+            Node::new(type1),
+            Node::new(prop),
         )),
     )
 }
@@ -408,8 +409,8 @@ pub fn strm_ext_final_coalgebra_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(prop),
+        Node::new(type1),
+        Node::new(prop),
     )
 }
 /// `Stream.bisim_is_eq`: bisimilarity implies equality.
@@ -420,32 +421,32 @@ pub fn strm_ext_bisim_is_eq_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("s"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("t"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Stream"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Stream"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("bisim_pf"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Stream.Bisim"), vec![])),
-                            Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Stream.Bisim"), vec![])),
+                            Node::new(Expr::BVar(1)),
                         )),
-                        Box::new(Expr::BVar(0)),
+                        Node::new(Expr::BVar(0)),
                     )),
-                    Box::new(prop),
+                    Node::new(prop),
                 )),
             )),
         )),
@@ -459,16 +460,16 @@ pub fn strm_ext_map_corec_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("σ"),
-                Box::new(type1),
-                Box::new(prop),
+                Node::new(type1),
+                Node::new(prop),
             )),
         )),
     )
@@ -550,8 +551,8 @@ mod stream_extended_tests {
             let ty = Expr::Pi(
                 BinderInfo::Default,
                 Name::str("α"),
-                Box::new(type1.clone()),
-                Box::new(type2.clone()),
+                Node::new(type1.clone()),
+                Node::new(type2.clone()),
             );
             let _ = arity;
             env.add(Declaration::Axiom {
@@ -567,12 +568,12 @@ mod stream_extended_tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("α"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("β"),
-                    Box::new(type1.clone()),
-                    Box::new(type2.clone()),
+                    Node::new(type1.clone()),
+                    Node::new(type2.clone()),
                 )),
             ),
         })

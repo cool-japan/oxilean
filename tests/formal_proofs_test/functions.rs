@@ -9,6 +9,7 @@
 //! as well as the kernel builtins (`Nat`, `Bool`, `Eq`, etc.).
 
 use oxilean_elab::elaborate_decl;
+use oxilean_kernel::Node;
 use oxilean_kernel::{init_builtin_env, BinderInfo, Declaration, Environment, Expr, Level, Name};
 use oxilean_parse::{Lexer, Parser, TokenKind};
 
@@ -33,8 +34,8 @@ fn mk_pi(name: &str, dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 
@@ -43,8 +44,8 @@ fn mk_ipi(name: &str, dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 
@@ -142,8 +143,8 @@ pub fn build_proof_env() -> Environment {
                     "hq",
                     bv1(),
                     Expr::App(
-                        Box::new(Expr::App(Box::new(and_p.clone()), Box::new(bv3()))),
-                        Box::new(bv2()),
+                        Node::new(Expr::App(Node::new(and_p.clone()), Node::new(bv3()))),
+                        Node::new(bv2()),
                     ),
                 ),
             ),
@@ -164,8 +165,8 @@ pub fn build_proof_env() -> Environment {
             mk_pi(
                 "h",
                 Expr::App(
-                    Box::new(Expr::App(Box::new(and_p.clone()), Box::new(bv1()))),
-                    Box::new(bv0()),
+                    Node::new(Expr::App(Node::new(and_p.clone()), Node::new(bv1()))),
+                    Node::new(bv0()),
                 ),
                 bv2(),
             ),
@@ -186,8 +187,8 @@ pub fn build_proof_env() -> Environment {
             mk_pi(
                 "h",
                 Expr::App(
-                    Box::new(Expr::App(Box::new(and_p.clone()), Box::new(bv1()))),
-                    Box::new(bv0()),
+                    Node::new(Expr::App(Node::new(and_p.clone()), Node::new(bv1()))),
+                    Node::new(bv0()),
                 ),
                 bv1(),
             ),
@@ -218,8 +219,8 @@ pub fn build_proof_env() -> Environment {
                 "h",
                 bv1(),
                 Expr::App(
-                    Box::new(Expr::App(Box::new(or_c.clone()), Box::new(bv2()))),
-                    Box::new(bv1()),
+                    Node::new(Expr::App(Node::new(or_c.clone()), Node::new(bv2()))),
+                    Node::new(bv1()),
                 ),
             ),
         ),
@@ -240,8 +241,8 @@ pub fn build_proof_env() -> Environment {
                 "h",
                 bv0(),
                 Expr::App(
-                    Box::new(Expr::App(Box::new(or_c.clone()), Box::new(bv2()))),
-                    Box::new(bv1()),
+                    Node::new(Expr::App(Node::new(or_c.clone()), Node::new(bv2()))),
+                    Node::new(bv1()),
                 ),
             ),
         ),
@@ -264,8 +265,8 @@ pub fn build_proof_env() -> Environment {
                 mk_pi(
                     "h",
                     Expr::App(
-                        Box::new(Expr::App(Box::new(or_c.clone()), Box::new(bv2()))),
-                        Box::new(bv1()),
+                        Node::new(Expr::App(Node::new(or_c.clone()), Node::new(bv2()))),
+                        Node::new(bv1()),
                     ),
                     mk_pi(
                         "hl",
@@ -310,8 +311,8 @@ pub fn build_proof_env() -> Environment {
         "p",
         prop(),
         Expr::App(
-            Box::new(Expr::App(Box::new(or_c2), Box::new(bv0()))),
-            Box::new(Expr::App(Box::new(not_c), Box::new(bv0()))),
+            Node::new(Expr::App(Node::new(or_c2), Node::new(bv0()))),
+            Node::new(Expr::App(Node::new(not_c), Node::new(bv0()))),
         ),
     );
     let _ = env.add(Declaration::Axiom {

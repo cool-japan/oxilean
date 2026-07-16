@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 #![allow(clippy::items_after_test_module)]
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{ContextFreeGrammar, PegExpr};
@@ -78,14 +79,14 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Function application `f a`.
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Function application `f a b`.
 #[allow(dead_code)]
@@ -108,8 +109,8 @@ pub fn implicit_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// A default (explicit) Pi binder.
@@ -118,8 +119,8 @@ pub fn default_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// An instance-implicit Pi binder.
@@ -128,8 +129,8 @@ pub fn inst_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::InstImplicit,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Build `Eq @{} ty a b`.

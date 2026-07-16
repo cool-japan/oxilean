@@ -4,6 +4,7 @@
 
 use crate::context::ElabContext;
 use crate::elaborate::ElabError;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, FVarId, Level, Name};
 use oxilean_parse::{Binder, BinderKind, Located, SurfaceExpr};
 
@@ -121,14 +122,14 @@ pub fn auto_bind_implicits(ctx: &mut ElabContext, expr: Expr, ty: Expr) -> (Expr
         new_expr = Expr::Lam(
             BinderInfo::Implicit,
             name.clone(),
-            Box::new(var_ty.clone()),
-            Box::new(new_expr),
+            Node::new(var_ty.clone()),
+            Node::new(new_expr),
         );
         new_ty = Expr::Pi(
             BinderInfo::Implicit,
             name,
-            Box::new(var_ty),
-            Box::new(new_ty),
+            Node::new(var_ty),
+            Node::new(new_ty),
         );
     }
     (new_expr, new_ty)
@@ -231,8 +232,8 @@ pub fn abstract_binders(binders: &[BinderElabResult], body: Expr) -> Expr {
         Expr::Lam(
             binder.info,
             binder.name.clone(),
-            Box::new(binder.ty.clone()),
-            Box::new(acc),
+            Node::new(binder.ty.clone()),
+            Node::new(acc),
         )
     })
 }
@@ -245,8 +246,8 @@ pub fn pi_binders(binders: &[BinderElabResult], body: Expr) -> Expr {
         Expr::Pi(
             binder.info,
             binder.name.clone(),
-            Box::new(binder.ty.clone()),
-            Box::new(acc),
+            Node::new(binder.ty.clone()),
+            Node::new(acc),
         )
     })
 }
@@ -270,9 +271,9 @@ pub fn let_binders(binders: &[BinderElabResult], vals: &[Expr], body: Expr) -> E
         .fold(body, |acc, (binder, val)| {
             Expr::Let(
                 binder.name.clone(),
-                Box::new(binder.ty.clone()),
-                Box::new(val.clone()),
-                Box::new(acc),
+                Node::new(binder.ty.clone()),
+                Node::new(val.clone()),
+                Node::new(acc),
             )
         })
 }
@@ -283,14 +284,14 @@ pub fn let_binders(binders: &[BinderElabResult], vals: &[Expr], body: Expr) -> E
 #[allow(dead_code)]
 pub fn abstract_binders_tuple(binders: &[(Name, Expr, BinderInfo)], body: Expr) -> Expr {
     binders.iter().rev().fold(body, |acc, (name, ty, info)| {
-        Expr::Lam(*info, name.clone(), Box::new(ty.clone()), Box::new(acc))
+        Expr::Lam(*info, name.clone(), Node::new(ty.clone()), Node::new(acc))
     })
 }
 /// Create nested Pi types from tuples.
 #[allow(dead_code)]
 pub fn pi_binders_tuple(binders: &[(Name, Expr, BinderInfo)], body: Expr) -> Expr {
     binders.iter().rev().fold(body, |acc, (name, ty, info)| {
-        Expr::Pi(*info, name.clone(), Box::new(ty.clone()), Box::new(acc))
+        Expr::Pi(*info, name.clone(), Node::new(ty.clone()), Node::new(acc))
     })
 }
 /// Collect all free variable IDs referenced in an expression.
@@ -521,9 +522,9 @@ pub fn infer_binder_type_from_context(
             match ty.clone() {
                 Expr::Pi(_, _, dom, cod) => {
                     if i == binder_index {
-                        return (Some(*dom), BinderTypeInference::FromExpected);
+                        return (Some((*dom).clone()), BinderTypeInference::FromExpected);
                     }
-                    ty = *cod;
+                    ty = (*cod).clone();
                 }
                 _ => break,
             }
@@ -814,8 +815,8 @@ pub fn abstract_over_telescope(binders: &[BinderElabResult], body: Expr) -> Expr
         result = Expr::Lam(
             binder.info,
             binder.name.clone(),
-            Box::new(binder.ty.clone()),
-            Box::new(result),
+            Node::new(binder.ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -826,31 +827,31 @@ fn replace_fvar_with_bvar(expr: Expr, fvar: FVarId, bvar_idx: u32) -> Expr {
     match expr {
         Expr::FVar(id) if id == fvar => Expr::BVar(bvar_idx),
         Expr::App(f, a) => Expr::App(
-            Box::new(replace_fvar_with_bvar(*f, fvar, bvar_idx)),
-            Box::new(replace_fvar_with_bvar(*a, fvar, bvar_idx)),
+            Node::new(replace_fvar_with_bvar((*f).clone(), fvar, bvar_idx)),
+            Node::new(replace_fvar_with_bvar((*a).clone(), fvar, bvar_idx)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             bi,
             n,
-            Box::new(replace_fvar_with_bvar(*ty, fvar, bvar_idx + 1)),
-            Box::new(replace_fvar_with_bvar(*body, fvar, bvar_idx + 1)),
+            Node::new(replace_fvar_with_bvar((*ty).clone(), fvar, bvar_idx + 1)),
+            Node::new(replace_fvar_with_bvar((*body).clone(), fvar, bvar_idx + 1)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             bi,
             n,
-            Box::new(replace_fvar_with_bvar(*ty, fvar, bvar_idx + 1)),
-            Box::new(replace_fvar_with_bvar(*body, fvar, bvar_idx + 1)),
+            Node::new(replace_fvar_with_bvar((*ty).clone(), fvar, bvar_idx + 1)),
+            Node::new(replace_fvar_with_bvar((*body).clone(), fvar, bvar_idx + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n,
-            Box::new(replace_fvar_with_bvar(*ty, fvar, bvar_idx + 1)),
-            Box::new(replace_fvar_with_bvar(*val, fvar, bvar_idx + 1)),
-            Box::new(replace_fvar_with_bvar(*body, fvar, bvar_idx + 1)),
+            Node::new(replace_fvar_with_bvar((*ty).clone(), fvar, bvar_idx + 1)),
+            Node::new(replace_fvar_with_bvar((*val).clone(), fvar, bvar_idx + 1)),
+            Node::new(replace_fvar_with_bvar((*body).clone(), fvar, bvar_idx + 1)),
         ),
         Expr::Proj(name, idx, e) => Expr::Proj(
             name,
             idx,
-            Box::new(replace_fvar_with_bvar(*e, fvar, bvar_idx)),
+            Node::new(replace_fvar_with_bvar((*e).clone(), fvar, bvar_idx)),
         ),
         _ => expr,
     }

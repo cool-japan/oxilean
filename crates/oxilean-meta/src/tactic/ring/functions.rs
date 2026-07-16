@@ -9,6 +9,7 @@ use super::types::{
 };
 use crate::basic::MetaContext;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, FVarId, Literal, Name};
 
 /// Tokenize a ring expression string.
@@ -89,13 +90,10 @@ pub fn expr_to_polynomial(expr: &Expr, ctx: &MetaContext) -> TacticResult<Polyno
 /// Inner polynomial conversion (no ctx needed, pure).
 pub(super) fn expr_to_polynomial_inner(expr: &Expr) -> TacticResult<Polynomial> {
     match expr {
-        Expr::Lit(Literal::Nat(n)) => {
-            if *n > i64::MAX as u64 {
-                Err(TacticError::Failed("literal too large for ring".into()))
-            } else {
-                Ok(Polynomial::constant(*n as i64, 1))
-            }
-        }
+        Expr::Lit(Literal::Nat(n)) => match n.to_u64() {
+            Some(v) if v <= i64::MAX as u64 => Ok(Polynomial::constant(v as i64, 1)),
+            _ => Err(TacticError::Failed("literal too large for ring".into())),
+        },
         Expr::Const(name, _levels) => match name.to_string().as_str() {
             "zero" | "Nat.zero" | "Int.zero" => Ok(Polynomial::zero()),
             "one" | "Nat.one" | "Int.one" => Ok(Polynomial::one()),
@@ -130,13 +128,10 @@ pub(super) fn eval_poly_app(func: &Expr, arg: &Expr) -> TacticResult<Polynomial>
                 "Nat.sub" | "Int.sub" | "HSub.hSub" | "Sub.sub" => Ok(lhs.sub(&rhs)),
                 "Nat.mul" | "Int.mul" | "HMul.hMul" | "Mul.mul" => Ok(lhs.multiply(&rhs)),
                 "HPow.hPow" | "Pow.pow" | "Nat.pow" | "Int.pow" => match arg {
-                    Expr::Lit(Literal::Nat(n)) => {
-                        if *n > 20 {
-                            Err(TacticError::Failed("exponent too large for ring".into()))
-                        } else {
-                            Ok(lhs.power(*n as u32))
-                        }
-                    }
+                    Expr::Lit(Literal::Nat(n)) => match n.to_u64() {
+                        Some(v) if v <= 20 => Ok(lhs.power(v as u32)),
+                        _ => Err(TacticError::Failed("exponent too large for ring".into())),
+                    },
                     _ => Err(TacticError::Failed(
                         "ring: exponent must be a literal Nat".into(),
                     )),
@@ -360,11 +355,11 @@ pub(super) fn extract_eq_sides(expr: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(func2, lhs) = func.as_ref() {
             if let Expr::App(eq_expr, _ty) = func2.as_ref() {
                 if is_eq_const(eq_expr) {
-                    return Some((*lhs.clone(), *rhs.clone()));
+                    return Some(((**lhs).clone(), (**rhs).clone()));
                 }
             }
             if is_eq_const(func2) {
-                return Some((*lhs.clone(), *rhs.clone()));
+                return Some(((**lhs).clone(), (**rhs).clone()));
             }
         }
     }
@@ -926,7 +921,7 @@ mod ring_extended_tests {
     fn test_expr_to_poly_nat_literal() {
         use oxilean_kernel::{Environment, Expr, Literal};
         let ctx = MetaContext::new(Environment::new());
-        let expr = Expr::Lit(Literal::Nat(5));
+        let expr = Expr::Lit(Literal::nat(5));
         let poly = expr_to_polynomial(&expr, &ctx).expect("poly should be present");
         assert!(poly.is_constant());
         assert!(!poly.is_zero());
@@ -934,7 +929,7 @@ mod ring_extended_tests {
     #[test]
     fn test_expr_to_poly_zero_lit() {
         let ctx = MetaContext::new(Environment::new());
-        let expr = Expr::Lit(Literal::Nat(0));
+        let expr = Expr::Lit(Literal::nat(0));
         let poly = expr_to_polynomial(&expr, &ctx).expect("poly should be present");
         assert!(poly.is_zero());
     }
@@ -957,12 +952,12 @@ mod ring_extended_tests {
     fn test_expr_to_poly_add() {
         use oxilean_kernel::{Environment, Expr, Literal, Name};
         let ctx = MetaContext::new(Environment::new());
-        let three = Expr::Lit(Literal::Nat(3));
-        let four = Expr::Lit(Literal::Nat(4));
+        let three = Expr::Lit(Literal::nat(3));
+        let four = Expr::Lit(Literal::nat(4));
         let add = Expr::Const(Name::str("Nat.add"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(add), Box::new(three))),
-            Box::new(four),
+            Node::new(Expr::App(Node::new(add), Node::new(three))),
+            Node::new(four),
         );
         let poly = expr_to_polynomial(&expr, &ctx).expect("poly should be present");
         let expected = Polynomial::constant(7, 1);
@@ -971,12 +966,12 @@ mod ring_extended_tests {
     #[test]
     fn test_expr_to_poly_mul() {
         let ctx = MetaContext::new(Environment::new());
-        let three = Expr::Lit(Literal::Nat(3));
-        let four = Expr::Lit(Literal::Nat(4));
+        let three = Expr::Lit(Literal::nat(3));
+        let four = Expr::Lit(Literal::nat(4));
         let mul = Expr::Const(Name::str("Nat.mul"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(mul), Box::new(three))),
-            Box::new(four),
+            Node::new(Expr::App(Node::new(mul), Node::new(three))),
+            Node::new(four),
         );
         let poly = expr_to_polynomial(&expr, &ctx).expect("poly should be present");
         let expected = Polynomial::constant(12, 1);
@@ -994,9 +989,9 @@ mod ring_extended_tests {
     #[test]
     fn test_expr_to_poly_succ() {
         let ctx = MetaContext::new(Environment::new());
-        let four = Expr::Lit(Literal::Nat(4));
+        let four = Expr::Lit(Literal::nat(4));
         let succ = Expr::Const(Name::str("Nat.succ"), vec![]);
-        let expr = Expr::App(Box::new(succ), Box::new(four));
+        let expr = Expr::App(Node::new(succ), Node::new(four));
         let poly = expr_to_polynomial(&expr, &ctx).expect("poly should be present");
         let expected = Polynomial::constant(5, 1);
         assert!(polynomials_equal(&poly, &expected));
@@ -1008,14 +1003,14 @@ mod ring_extended_tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let eq_goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
-                    Box::new(nat_ty),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
+                    Node::new(nat_ty),
                 )),
-                Box::new(a.clone()),
+                Node::new(a.clone()),
             )),
-            Box::new(b.clone()),
+            Node::new(b.clone()),
         );
         let (lhs, rhs) = extract_eq_sides(&eq_goal).expect("value should be present");
         assert_eq!(lhs, a);

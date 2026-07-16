@@ -4,6 +4,7 @@ pub mod commandconfig_traits;
 pub mod commandregistry_traits;
 pub mod formatcommandoptions_traits;
 pub mod functions;
+pub mod playground;
 pub mod types;
 
 // Re-export all types

@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::context::ElabContext;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 use oxilean_parse::{Lexer, Located, Parser, SortKind, StringPart, SurfaceExpr};
 
@@ -86,7 +87,7 @@ mod tests {
         let mut ctx = ElabContext::new(&env);
         let lit = mk_nat(42);
         let result = elaborate_expr(&mut ctx, &lit).expect("elaboration should succeed");
-        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::nat(42)));
     }
     #[test]
     fn test_elaborate_lit_string() {
@@ -117,7 +118,7 @@ mod tests {
         #[allow(clippy::approx_constant)]
         let lit = mk_located(SurfaceExpr::Lit(oxilean_parse::Literal::Float(3.14)));
         let result = elaborate_expr(&mut ctx, &lit).expect("elaboration should succeed");
-        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::Nat(0)));
+        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::nat(0)));
     }
     #[test]
     fn test_elaborate_hole() {
@@ -173,8 +174,8 @@ mod tests {
         let expected = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let lam_expr = mk_located(SurfaceExpr::Lam(
             vec![mk_binder("x", None, BinderKind::Default)],
@@ -276,7 +277,7 @@ mod tests {
             Box::new(mk_located(SurfaceExpr::Sort(SortKind::Type))),
         ));
         let result = elaborate_expr(&mut ctx, &ann).expect("elaboration should succeed");
-        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::nat(42)));
     }
     #[test]
     fn test_elaborate_proj() {
@@ -334,7 +335,7 @@ mod tests {
             Box::new(mk_nat(42)),
         ));
         let result = elaborate_expr(&mut ctx, &show_expr).expect("elaboration should succeed");
-        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::nat(42)));
     }
     #[test]
     fn test_elaborate_list_empty() {
@@ -374,7 +375,7 @@ mod tests {
         let mut ctx = ElabContext::new(&env);
         let tuple = mk_located(SurfaceExpr::Tuple(vec![mk_nat(42)]));
         let result = elaborate_expr(&mut ctx, &tuple).expect("elaboration should succeed");
-        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::nat(42)));
     }
     #[test]
     fn test_elaborate_tuple_pair() {
@@ -408,7 +409,7 @@ mod tests {
         let result = elaborate_expr(&mut ctx, &ret).expect("elaboration should succeed");
         if let Expr::App(f, a) = &result {
             assert_eq!(**f, Expr::Const(Name::str("Pure.pure"), vec![]));
-            assert_eq!(**a, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+            assert_eq!(**a, Expr::Lit(oxilean_kernel::Literal::nat(42)));
         } else {
             panic!("Expected App, got {:?}", result);
         }
@@ -507,7 +508,7 @@ mod tests {
             mk_nat(42),
         )]));
         let result = elaborate_expr(&mut ctx, &do_expr).expect("elaboration should succeed");
-        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::nat(42)));
     }
     #[test]
     fn test_elaborate_do_return() {

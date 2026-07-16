@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, FVarId, Level, Literal, Name};
 
 use super::types::{
@@ -60,12 +61,12 @@ pub(super) fn derive_beq(info: &TypeInfoAdv) -> Result<AdvDeriveResult, AdvDeriv
     let beq_lam = Expr::Lam(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(ty_expr.clone()),
-        Box::new(Expr::Lam(
+        Node::new(ty_expr.clone()),
+        Node::new(Expr::Lam(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(ty_expr.clone()),
-            Box::new(body),
+            Node::new(ty_expr.clone()),
+            Node::new(body),
         )),
     );
     let instance_name = Name::str(format!("instBEq{}", info.name));
@@ -123,12 +124,12 @@ pub(super) fn derive_decidable_eq(info: &TypeInfoAdv) -> Result<AdvDeriveResult,
     let dec_eq_lam = Expr::Lam(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(ty_expr.clone()),
-        Box::new(Expr::Lam(
+        Node::new(ty_expr.clone()),
+        Node::new(Expr::Lam(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(ty_expr.clone()),
-            Box::new(body),
+            Node::new(ty_expr.clone()),
+            Node::new(body),
         )),
     );
     let instance_name = Name::str(format!("instDecidableEq{}", info.name));
@@ -161,7 +162,7 @@ pub(super) fn derive_hashable(info: &TypeInfoAdv) -> Result<AdvDeriveResult, Adv
     for (tag, ctor) in info.constructors.iter().enumerate() {
         let tag_hash = mk_app2(
             Expr::Const(Name::str("hash"), vec![]),
-            Expr::Lit(Literal::Nat(tag as u64)),
+            Expr::Lit(Literal::nat(tag as u64)),
         );
         let field_hashes: Vec<Expr> = ctor
             .fields
@@ -177,8 +178,8 @@ pub(super) fn derive_hashable(info: &TypeInfoAdv) -> Result<AdvDeriveResult, Adv
     let hash_lam = Expr::Lam(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(ty_expr.clone()),
-        Box::new(body),
+        Node::new(ty_expr.clone()),
+        Node::new(body),
     );
     let instance_name = Name::str(format!("instHashable{}", info.name));
     let instance_type = mk_class_app("Hashable", &ty_expr);
@@ -239,12 +240,12 @@ pub(super) fn derive_ord(info: &TypeInfoAdv) -> Result<AdvDeriveResult, AdvDeriv
     let compare_lam = Expr::Lam(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(ty_expr.clone()),
-        Box::new(Expr::Lam(
+        Node::new(ty_expr.clone()),
+        Node::new(Expr::Lam(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(ty_expr.clone()),
-            Box::new(body),
+            Node::new(ty_expr.clone()),
+            Node::new(body),
         )),
     );
     let compare_aux_name = Name::str(format!("{}.compare", info.name));
@@ -252,12 +253,12 @@ pub(super) fn derive_ord(info: &TypeInfoAdv) -> Result<AdvDeriveResult, AdvDeriv
     let compare_type = Expr::Pi(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(ty_expr.clone()),
-        Box::new(Expr::Pi(
+        Node::new(ty_expr.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("b"),
-            Box::new(ty_expr.clone()),
-            Box::new(ordering_ty),
+            Node::new(ty_expr.clone()),
+            Node::new(ordering_ty),
         )),
     );
     let instance_name = Name::str(format!("instOrd{}", info.name));
@@ -294,8 +295,8 @@ pub(super) fn derive_repr(info: &TypeInfoAdv) -> Result<AdvDeriveResult, AdvDeri
     let repr_lam = Expr::Lam(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(ty_expr.clone()),
-        Box::new(body),
+        Node::new(ty_expr.clone()),
+        Node::new(body),
     );
     let instance_name = Name::str(format!("instRepr{}", info.name));
     let instance_type = mk_class_app("Repr", &ty_expr);
@@ -361,8 +362,8 @@ pub(super) fn derive_to_string(info: &TypeInfoAdv) -> Result<AdvDeriveResult, Ad
     let body = Expr::Lam(
         BinderInfo::Default,
         Name::str("a"),
-        Box::new(ty_expr.clone()),
-        Box::new(mk_app2(
+        Node::new(ty_expr.clone()),
+        Node::new(mk_app2(
             Expr::Const(Name::str("reprStr"), vec![]),
             Expr::BVar(0),
         )),
@@ -402,7 +403,7 @@ pub(super) fn mk_rhs_var(i: usize) -> Expr {
 }
 /// Binary application: `f a`.
 pub(super) fn mk_app2(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Build `BEq.beq ty lhs rhs`.
 pub(super) fn mk_beq_call(field_ty: &Expr, lhs: &Expr, rhs: &Expr) -> Expr {
@@ -473,7 +474,7 @@ pub(super) fn mk_hash_combine(exprs: &[Expr]) -> Expr {
     if exprs.is_empty() {
         return mk_app2(
             Expr::Const(Name::str("hash"), vec![]),
-            Expr::Lit(Literal::Nat(0)),
+            Expr::Lit(Literal::nat(0)),
         );
     }
     if exprs.len() == 1 {
@@ -740,14 +741,14 @@ pub fn build_parametric_instance_type(class: &AdvDerivableClass, info: &TypeInfo
         result = Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str(format!("inst_{}", pname)),
-            Box::new(constraint_type),
-            Box::new(result),
+            Node::new(constraint_type),
+            Node::new(result),
         );
         result = Expr::Pi(
             BinderInfo::Implicit,
             pname.clone(),
-            Box::new(pty.clone()),
-            Box::new(result),
+            Node::new(pty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -767,14 +768,14 @@ pub fn build_parametric_instance_body(
         result = Expr::Lam(
             BinderInfo::InstImplicit,
             Name::str(format!("inst_{}", pname)),
-            Box::new(constraint_type),
-            Box::new(result),
+            Node::new(constraint_type),
+            Node::new(result),
         );
         result = Expr::Lam(
             BinderInfo::Implicit,
             pname.clone(),
-            Box::new(pty.clone()),
-            Box::new(result),
+            Node::new(pty.clone()),
+            Node::new(result),
         );
     }
     result

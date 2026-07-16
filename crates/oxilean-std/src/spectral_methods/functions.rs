@@ -3,13 +3,14 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 #![allow(clippy::items_after_test_module)]
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 use std::f64::consts::PI;
 
 use super::types::{Complex, ExponentialConvergence};
 
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
     app(app(f, a), b)
@@ -27,7 +28,7 @@ pub fn type0() -> Expr {
     Expr::Sort(Level::succ(Level::zero()))
 }
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     pi(BinderInfo::Default, "_", a, b)
@@ -875,8 +876,8 @@ pub fn spec2_ext_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 pub fn spec2_ext_nat_ty() -> Expr {
@@ -886,18 +887,18 @@ pub fn spec2_ext_real_ty() -> Expr {
     spec2_ext_cst("Real")
 }
 pub fn spec2_ext_list_ty(a: Expr) -> Expr {
-    Expr::App(Box::new(spec2_ext_cst("List")), Box::new(a))
+    Expr::App(Node::new(spec2_ext_cst("List")), Node::new(a))
 }
 pub fn spec2_ext_impl_pi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn spec2_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn spec2_ext_bvar(n: u32) -> Expr {
     Expr::BVar(n)

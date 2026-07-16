@@ -9,14 +9,18 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MetaState};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{instantiate_level_params, ConstantInfo, Expr, Name};
 
 /// A tactic closure that transforms a goal.
 ///
 /// The closure receives a mutable reference to the tactic state and the
 /// meta context and either succeeds (returning `Ok(())`) or fails.
-pub type RuleTacticFn =
-    Box<dyn Fn(&mut TacticState, &mut MetaContext) -> TacticResult<()> + Send + Sync>;
+// No `Send + Sync`: aesop's search is single-threaded, and the kernel `Expr`
+// these closures capture is `Rc`-based (single-threaded structural sharing,
+// wave5), so it is intentionally not `Send`/`Sync`. Adding the bound back would
+// force the kernel to `Arc` for no benefit.
+pub type RuleTacticFn = Box<dyn Fn(&mut TacticState, &mut MetaContext) -> TacticResult<()>>;
 /// Run normalization rules on the current goal.
 ///
 /// This applies safe, deterministic transformations such as:
@@ -802,20 +806,20 @@ mod tests {
         Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty()),
-            Box::new(nat_ty()),
+            Node::new(nat_ty()),
+            Node::new(nat_ty()),
         )
     }
     fn eq_refl_goal() -> Expr {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(nat_ty()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(nat_ty()),
                 )),
-                Box::new(Expr::Const(Name::str("Nat.zero"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat.zero"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Nat.zero"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat.zero"), vec![])),
         )
     }
     #[test]
@@ -1259,14 +1263,14 @@ mod tests {
     #[test]
     fn test_try_reflexivity_not_refl() {
         let goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(nat_ty()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(nat_ty()),
                 )),
-                Box::new(Expr::Const(Name::str("Nat.zero"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat.zero"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
         );
         assert!(try_reflexivity(&goal).is_none());
     }
@@ -1277,8 +1281,8 @@ mod tests {
     #[test]
     fn test_head_const_name_app() {
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(nat_ty()),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(nat_ty()),
         );
         assert_eq!(get_head_const_name(&app), Some("List".into()));
     }
@@ -1310,8 +1314,8 @@ mod tests {
         let goal_ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty()),
-            Box::new(true_ty()),
+            Node::new(nat_ty()),
+            Node::new(true_ty()),
         );
         let (goal_id, _) = mk_goal(&mut ctx, goal_ty);
         let mut state = TacticState::single(goal_id);
@@ -1465,12 +1469,12 @@ mod tests {
         let goal_ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("a"),
-            Box::new(nat_ty()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty()),
+            Node::new(Expr::Pi(
                 oxilean_kernel::BinderInfo::Default,
                 Name::str("b"),
-                Box::new(nat_ty()),
-                Box::new(true_ty()),
+                Node::new(nat_ty()),
+                Node::new(true_ty()),
             )),
         );
         let (goal_id, _) = mk_goal(&mut ctx, goal_ty);

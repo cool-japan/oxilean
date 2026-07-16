@@ -8,6 +8,7 @@ use super::types::{
     MatchInfo, MultiDiscrTree, NameIndex, PriorityDiscrTree, ScoredResult, SimpLemmaEntry,
     SimpLemmaIndex, StringTrie, TopKConfig, TrackedDiscrTree,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Literal, Name};
 
 /// Encode an expression as a sequence of discrimination tree keys.
@@ -118,8 +119,8 @@ mod tests {
     fn test_insert_and_find_app() {
         let mut tree: DiscrTree<String> = DiscrTree::new();
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         tree.insert(&app, "List Nat".to_string());
         let results = tree.find(&app);
@@ -157,11 +158,11 @@ mod tests {
     #[test]
     fn test_lit_matching() {
         let mut tree: DiscrTree<String> = DiscrTree::new();
-        let lit42 = Expr::Lit(Literal::Nat(42));
+        let lit42 = Expr::Lit(Literal::nat(42));
         tree.insert(&lit42, "forty-two".to_string());
         let results = tree.find(&lit42);
         assert_eq!(results.len(), 1);
-        let lit43 = Expr::Lit(Literal::Nat(43));
+        let lit43 = Expr::Lit(Literal::nat(43));
         let results2 = tree.find(&lit43);
         assert!(results2.is_empty());
     }
@@ -184,8 +185,8 @@ mod tests {
     #[test]
     fn test_encode_app() {
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let keys = encode_expr(&app);
         assert_eq!(keys.len(), 2);
@@ -197,8 +198,8 @@ mod tests {
         let pi = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let keys = encode_expr(&pi);
         assert_eq!(keys.len(), 3);
@@ -226,7 +227,7 @@ mod tests {
         let proj = Expr::Proj(
             Name::str("Prod"),
             0,
-            Box::new(Expr::Const(Name::str("x"), vec![])),
+            Node::new(Expr::Const(Name::str("x"), vec![])),
         );
         let keys = encode_expr(&proj);
         assert_eq!(keys.len(), 2);
@@ -815,14 +816,14 @@ mod section3_tests {
     }
     #[test]
     fn test_expr_depth_leaf() {
-        let e = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+        let e = Expr::Lit(oxilean_kernel::Literal::nat(0));
         assert_eq!(expr_depth(&e), 1);
     }
     #[test]
     fn test_expr_depth_app() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(oxilean_kernel::Literal::nat(0))),
         );
         assert_eq!(expr_depth(&e), 2);
     }
@@ -834,8 +835,8 @@ mod section3_tests {
     #[test]
     fn test_expr_size_app() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         assert_eq!(expr_size(&e), 3);
     }
@@ -847,8 +848,8 @@ mod section3_tests {
     #[test]
     fn test_is_head_applied_const() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(oxilean_kernel::Literal::nat(0))),
         );
         assert!(is_head_applied(&e));
     }
@@ -857,16 +858,16 @@ mod section3_tests {
         let lam = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert!(!is_head_applied(&lam));
     }
     #[test]
     fn test_head_const_name() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("foo"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("foo"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(head_const_name(&e), Some(&Name::str("foo")));
     }
@@ -875,7 +876,10 @@ mod section3_tests {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::BVar(0);
         let b = Expr::BVar(1);
-        let e = Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b));
+        let e = Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        );
         assert_eq!(head_applied_arity(&e), 2);
     }
     #[test]
@@ -1082,10 +1086,10 @@ mod section17_20_tests {
     fn test_simp_lemma_index_basic() {
         let mut idx = SimpLemmaIndex::new();
         let lhs = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
         );
-        let rhs = Expr::Lit(Literal::Nat(0));
+        let rhs = Expr::Lit(Literal::nat(0));
         let entry = SimpLemmaEntry::unconditional(Name::str("Nat.add_zero"), lhs.clone(), rhs);
         idx.add(entry);
         assert_eq!(idx.num_lemmas(), 1);
@@ -1106,8 +1110,8 @@ mod section17_20_tests {
     fn test_instance_index_basic() {
         let mut idx = InstanceIndex::new();
         let ty = Expr::App(
-            Box::new(Expr::Const(Name::str("Add"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Add"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let entry = InstanceEntry::new(Name::str("Nat.instAdd"), Name::str("Add"), 100, ty.clone());
         idx.register(entry, &ty);

@@ -108,8 +108,12 @@ pub fn check_literal_exhaustive(type_name: &Name, literals: &[Literal]) -> bool 
     let name_str = format!("{}", type_name);
     match name_str.as_str() {
         "Bool" => {
-            let has_true = literals.iter().any(|l| matches!(l, Literal::Nat(1)));
-            let has_false = literals.iter().any(|l| matches!(l, Literal::Nat(0)));
+            let has_true = literals
+                .iter()
+                .any(|l| matches!(l, Literal::Nat(n) if *n == 1u64));
+            let has_false = literals
+                .iter()
+                .any(|l| matches!(l, Literal::Nat(n) if *n == 0u64));
             has_true && has_false
         }
         _ => false,
@@ -371,7 +375,7 @@ mod tests {
         let w = MetaPattern::Wildcard;
         let v = MetaPattern::Var(Name::str("x"));
         let c = MetaPattern::Constructor(Name::str("Nat.zero"), vec![]);
-        let l = MetaPattern::Literal(Literal::Nat(42));
+        let l = MetaPattern::Literal(Literal::nat(42));
         assert!(pattern_subsumes(&w, &v));
         assert!(pattern_subsumes(&w, &c));
         assert!(pattern_subsumes(&w, &l));
@@ -393,20 +397,20 @@ mod tests {
     }
     #[test]
     fn test_literal_subsumes() {
-        let l1 = MetaPattern::Literal(Literal::Nat(42));
-        let l2 = MetaPattern::Literal(Literal::Nat(42));
-        let l3 = MetaPattern::Literal(Literal::Nat(43));
+        let l1 = MetaPattern::Literal(Literal::nat(42));
+        let l2 = MetaPattern::Literal(Literal::nat(42));
+        let l3 = MetaPattern::Literal(Literal::nat(43));
         assert!(pattern_subsumes(&l1, &l2));
         assert!(!pattern_subsumes(&l1, &l3));
     }
     #[test]
     fn test_check_literal_exhaustive_bool() {
-        let lits = vec![Literal::Nat(0), Literal::Nat(1)];
+        let lits = vec![Literal::nat(0), Literal::nat(1)];
         assert!(check_literal_exhaustive(&Name::str("Bool"), &lits));
     }
     #[test]
     fn test_check_literal_not_exhaustive() {
-        let lits = vec![Literal::Nat(0)];
+        let lits = vec![Literal::nat(0)];
         assert!(!check_literal_exhaustive(&Name::str("Nat"), &lits));
     }
     #[test]
@@ -494,9 +498,9 @@ mod tests {
     #[test]
     fn test_find_duplicate_literals() {
         let patterns = vec![
-            vec![MetaPattern::Literal(Literal::Nat(1))],
-            vec![MetaPattern::Literal(Literal::Nat(2))],
-            vec![MetaPattern::Literal(Literal::Nat(1))],
+            vec![MetaPattern::Literal(Literal::nat(1))],
+            vec![MetaPattern::Literal(Literal::nat(2))],
+            vec![MetaPattern::Literal(Literal::nat(1))],
         ];
         let dups = find_duplicate_literals(&patterns, 0);
         assert_eq!(dups.len(), 1);
@@ -519,7 +523,7 @@ mod tests {
     fn test_check_no_spurious_inaccessible() {
         use oxilean_kernel::Expr;
         let patterns = vec![
-            vec![MetaPattern::Inaccessible(Expr::Lit(Literal::Nat(0)))],
+            vec![MetaPattern::Inaccessible(Expr::Lit(Literal::nat(0)))],
             vec![MetaPattern::Wildcard],
         ];
         let bad = check_no_spurious_inaccessible(&patterns);

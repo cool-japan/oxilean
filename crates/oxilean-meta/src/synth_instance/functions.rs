@@ -11,6 +11,7 @@ use super::types::{
     SynthInstancePipeline, SynthInstanceResult, SynthResult,
 };
 use crate::basic::{MVarId, MetaContext};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 
 /// Priority level for instances (0-65535, lower = higher priority).
@@ -102,8 +103,8 @@ mod tests {
         let entry = InstanceEntry {
             name: Name::str("Add.instNat"),
             ty: Expr::App(
-                Box::new(Expr::Const(Name::str("Add"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Add"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             ),
             priority: DEFAULT_PRIORITY,
             is_local: false,
@@ -123,8 +124,8 @@ mod tests {
     #[test]
     fn test_extract_class_name() {
         let ty = Expr::App(
-            Box::new(Expr::Const(Name::str("Add"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Add"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         assert_eq!(extract_class_name(&ty), Name::str("Add"));
         let simple = Expr::Const(Name::str("Inhabited"), vec![]);
@@ -135,8 +136,8 @@ mod tests {
         let mut synth = InstanceSynthesizer::new();
         let mut ctx = mk_ctx();
         let goal = Expr::App(
-            Box::new(Expr::Const(Name::str("Add"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Add"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let result = synth.synthesize(&goal, &mut ctx);
         assert!(!result.is_success());
@@ -146,8 +147,8 @@ mod tests {
         let mut synth = InstanceSynthesizer::new();
         let mut ctx = mk_ctx();
         let add_nat_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("Add"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Add"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         synth.add_instance(InstanceEntry {
             name: Name::str("instAddNat"),
@@ -266,8 +267,8 @@ mod tests {
         let mut synth = InstanceSynthesizer::new();
         let mut ctx = mk_ctx();
         let goal = Expr::App(
-            Box::new(Expr::Const(Name::str("Add"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Add"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         synth.add_instance(InstanceEntry {
             name: Name::str("inst1"),
@@ -408,12 +409,12 @@ mod tests {
     #[test]
     fn test_goals_structurally_similar_apps() {
         let goal1 = Expr::App(
-            Box::new(Expr::Const(Name::str("Add"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Add"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let goal2 = Expr::App(
-            Box::new(Expr::Const(Name::str("Add"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Add"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         assert!(goals_structurally_similar(&goal1, &goal2));
     }
@@ -813,41 +814,41 @@ mod tests {
     #[test]
     fn test_extract_complex_class_name() {
         let ty = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Functor"), vec![])),
-                Box::new(Expr::Const(Name::str("m"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Functor"), vec![])),
+                Node::new(Expr::Const(Name::str("m"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("n"), vec![])),
+            Node::new(Expr::Const(Name::str("n"), vec![])),
         );
         assert_eq!(extract_class_name(&ty), Name::str("Functor"));
     }
     #[test]
     fn test_goals_structurally_similar_nested() {
         let g1 = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("A"), vec![])),
-                Box::new(Expr::Const(Name::str("B"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("A"), vec![])),
+                Node::new(Expr::Const(Name::str("B"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("C"), vec![])),
+            Node::new(Expr::Const(Name::str("C"), vec![])),
         );
         let g2 = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("A"), vec![])),
-                Box::new(Expr::Const(Name::str("B"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("A"), vec![])),
+                Node::new(Expr::Const(Name::str("B"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("C"), vec![])),
+            Node::new(Expr::Const(Name::str("C"), vec![])),
         );
         assert!(goals_structurally_similar(&g1, &g2));
     }
     #[test]
     fn test_goals_structurally_dissimilar_nested() {
         let g1 = Expr::App(
-            Box::new(Expr::Const(Name::str("A"), vec![])),
-            Box::new(Expr::Const(Name::str("B"), vec![])),
+            Node::new(Expr::Const(Name::str("A"), vec![])),
+            Node::new(Expr::Const(Name::str("B"), vec![])),
         );
         let g2 = Expr::App(
-            Box::new(Expr::Const(Name::str("A"), vec![])),
-            Box::new(Expr::Const(Name::str("C"), vec![])),
+            Node::new(Expr::Const(Name::str("A"), vec![])),
+            Node::new(Expr::Const(Name::str("C"), vec![])),
         );
         assert!(!goals_structurally_similar(&g1, &g2));
     }

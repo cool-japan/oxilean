@@ -11,6 +11,7 @@ use super::types::{
 };
 use crate::basic::MetaContext;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Literal, Name};
 use std::collections::HashMap;
 
@@ -31,7 +32,10 @@ pub fn expr_to_numeric(expr: &Expr, ctx: &MetaContext) -> TacticResult<NumericVa
 /// Inner implementation of numeric evaluation (pure, no ctx needed).
 pub(super) fn expr_to_numeric_inner(expr: &Expr) -> TacticResult<NumericValue> {
     match expr {
-        Expr::Lit(Literal::Nat(n)) => Ok(NumericValue::Nat(*n)),
+        Expr::Lit(Literal::Nat(n)) => n
+            .to_u64()
+            .map(NumericValue::Nat)
+            .ok_or_else(|| TacticError::Failed("norm_num: nat literal too large for u64".into())),
         Expr::Const(name, _levels) => match name.to_string().as_str() {
             "zero" | "Nat.zero" | "Int.zero" => Ok(NumericValue::Nat(0)),
             "one" | "Nat.one" | "Int.one" => Ok(NumericValue::Nat(1)),
@@ -747,14 +751,14 @@ mod tests {
     fn test_expr_to_numeric_nat_literal() {
         use oxilean_kernel::{Environment, Expr, Literal};
         let ctx = MetaContext::new(Environment::new());
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let result = expr_to_numeric(&expr, &ctx).expect("result should be present");
         assert_eq!(result, NumericValue::Nat(42));
     }
     #[test]
     fn test_expr_to_numeric_zero_lit() {
         let ctx = MetaContext::new(Environment::new());
-        let expr = Expr::Lit(Literal::Nat(0));
+        let expr = Expr::Lit(Literal::nat(0));
         let result = expr_to_numeric(&expr, &ctx).expect("result should be present");
         assert_eq!(result, NumericValue::Nat(0));
     }
@@ -770,12 +774,12 @@ mod tests {
     fn test_expr_to_numeric_nat_add() {
         use oxilean_kernel::{Environment, Expr, Literal, Name};
         let ctx = MetaContext::new(Environment::new());
-        let three = Expr::Lit(Literal::Nat(3));
-        let four = Expr::Lit(Literal::Nat(4));
+        let three = Expr::Lit(Literal::nat(3));
+        let four = Expr::Lit(Literal::nat(4));
         let add = Expr::Const(Name::str("Nat.add"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(add), Box::new(three))),
-            Box::new(four),
+            Node::new(Expr::App(Node::new(add), Node::new(three))),
+            Node::new(four),
         );
         let result = expr_to_numeric(&expr, &ctx).expect("result should be present");
         assert_eq!(result, NumericValue::Nat(7));
@@ -783,12 +787,12 @@ mod tests {
     #[test]
     fn test_expr_to_numeric_nat_mul() {
         let ctx = MetaContext::new(Environment::new());
-        let six = Expr::Lit(Literal::Nat(6));
-        let seven = Expr::Lit(Literal::Nat(7));
+        let six = Expr::Lit(Literal::nat(6));
+        let seven = Expr::Lit(Literal::nat(7));
         let mul = Expr::Const(Name::str("Nat.mul"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(mul), Box::new(six))),
-            Box::new(seven),
+            Node::new(Expr::App(Node::new(mul), Node::new(six))),
+            Node::new(seven),
         );
         let result = expr_to_numeric(&expr, &ctx).expect("result should be present");
         assert_eq!(result, NumericValue::Nat(42));
@@ -796,12 +800,12 @@ mod tests {
     #[test]
     fn test_expr_to_numeric_nat_pow() {
         let ctx = MetaContext::new(Environment::new());
-        let two = Expr::Lit(Literal::Nat(2));
-        let ten = Expr::Lit(Literal::Nat(10));
+        let two = Expr::Lit(Literal::nat(2));
+        let ten = Expr::Lit(Literal::nat(10));
         let pow = Expr::Const(Name::str("Nat.pow"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(pow), Box::new(two))),
-            Box::new(ten),
+            Node::new(Expr::App(Node::new(pow), Node::new(two))),
+            Node::new(ten),
         );
         let result = expr_to_numeric(&expr, &ctx).expect("result should be present");
         assert_eq!(result, NumericValue::Nat(1024));
@@ -809,12 +813,12 @@ mod tests {
     #[test]
     fn test_expr_to_numeric_nat_gcd() {
         let ctx = MetaContext::new(Environment::new());
-        let twelve = Expr::Lit(Literal::Nat(12));
-        let eight = Expr::Lit(Literal::Nat(8));
+        let twelve = Expr::Lit(Literal::nat(12));
+        let eight = Expr::Lit(Literal::nat(8));
         let gcd_fn = Expr::Const(Name::str("Nat.gcd"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(gcd_fn), Box::new(twelve))),
-            Box::new(eight),
+            Node::new(Expr::App(Node::new(gcd_fn), Node::new(twelve))),
+            Node::new(eight),
         );
         let result = expr_to_numeric(&expr, &ctx).expect("result should be present");
         assert_eq!(result, NumericValue::Nat(4));
@@ -822,12 +826,12 @@ mod tests {
     #[test]
     fn test_expr_to_numeric_min_max() {
         let ctx = MetaContext::new(Environment::new());
-        let three = Expr::Lit(Literal::Nat(3));
-        let seven = Expr::Lit(Literal::Nat(7));
+        let three = Expr::Lit(Literal::nat(3));
+        let seven = Expr::Lit(Literal::nat(7));
         let min_fn = Expr::Const(Name::str("Nat.min"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(min_fn), Box::new(three))),
-            Box::new(seven),
+            Node::new(Expr::App(Node::new(min_fn), Node::new(three))),
+            Node::new(seven),
         );
         let result = expr_to_numeric(&expr, &ctx).expect("result should be present");
         assert_eq!(result, NumericValue::Nat(3));
@@ -835,18 +839,18 @@ mod tests {
     #[test]
     fn test_is_numeric_lit() {
         let ctx = MetaContext::new(Environment::new());
-        let expr = Expr::Lit(Literal::Nat(5));
+        let expr = Expr::Lit(Literal::nat(5));
         assert!(is_numeric(&expr, &ctx));
     }
     #[test]
     fn test_is_numeric_add() {
         let ctx = MetaContext::new(Environment::new());
-        let three = Expr::Lit(Literal::Nat(3));
-        let four = Expr::Lit(Literal::Nat(4));
+        let three = Expr::Lit(Literal::nat(3));
+        let four = Expr::Lit(Literal::nat(4));
         let add = Expr::Const(Name::str("Nat.add"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(add), Box::new(three))),
-            Box::new(four),
+            Node::new(Expr::App(Node::new(add), Node::new(three))),
+            Node::new(four),
         );
         assert!(is_numeric(&expr, &ctx));
     }

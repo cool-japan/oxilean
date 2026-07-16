@@ -22,7 +22,7 @@ pub(super) fn compute_layout(ctor_name: &str, ctor_tag: u32, arg_types: &[LcnfTy
             LcnfType::Object | LcnfType::Ctor(_, _) | LcnfType::LcnfString => {
                 obj_fields += 1;
             }
-            LcnfType::Nat | LcnfType::Unit | LcnfType::Var(_) => {
+            LcnfType::Nat | LcnfType::Int | LcnfType::Unit | LcnfType::Var(_) => {
                 scalar_fields += 1;
             }
             LcnfType::Erased | LcnfType::Irrelevant => {}

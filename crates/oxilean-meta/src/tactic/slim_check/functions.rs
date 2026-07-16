@@ -80,7 +80,7 @@ pub fn extract_forall_vars(expr: &Expr) -> Vec<ForallVar> {
     while let Expr::Pi(_bi, name, ty, body) = cur {
         vars.push(ForallVar {
             name: name.clone(),
-            ty: *ty.clone(),
+            ty: (**ty).clone(),
         });
         cur = body;
     }
@@ -299,6 +299,8 @@ pub fn tac_slim_check_with_config(
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+use oxilean_kernel::Node;
+#[cfg(test)]
 mod tests {
     use super::*;
     use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
@@ -324,8 +326,8 @@ mod tests {
         Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_type()),
-            Box::new(body),
+            Node::new(nat_type()),
+            Node::new(body),
         )
     }
 

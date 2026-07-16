@@ -10,6 +10,7 @@ use super::types::{
     MetaConvenienceCounterMap, MetaConvenienceExtMap, MetaConvenienceExtUtil,
     MetaConvenienceStateMachine, MetaConvenienceWindow, MetaConvenienceWorkQueue,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 
 /// Construct a `Const` (global name reference)
@@ -18,7 +19,7 @@ pub fn mk_const(name: &str) -> Expr {
 }
 /// Construct an `App(f, a)`
 pub fn mk_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Apply a function to multiple arguments: `f a0 a1 a2 ...`
 pub fn mk_app_n(f: Expr, args: Vec<Expr>) -> Expr {
@@ -29,8 +30,8 @@ pub fn mk_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Construct an implicit `Pi {name : ty} -> body`
@@ -38,8 +39,8 @@ pub fn mk_pi_implicit(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Construct a `Lam(name, ty, body)` — explicit binder
@@ -47,8 +48,8 @@ pub fn mk_lam(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Construct an implicit `Lam {name : ty} => body`
@@ -56,8 +57,8 @@ pub fn mk_lam_implicit(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// `A → B` (non-dependent Pi with anonymous binder)
@@ -74,7 +75,7 @@ pub fn mk_type0() -> Expr {
 }
 /// Construct a natural number literal
 pub fn mk_nat_lit(n: u64) -> Expr {
-    Expr::Lit(Literal::Nat(n))
+    Expr::Lit(Literal::nat(n))
 }
 /// Construct a string literal
 pub fn mk_str_lit(s: &str) -> Expr {
@@ -310,7 +311,12 @@ mod tests {
 /// Construct a `Let(name, ty, val, body)` binding
 #[allow(dead_code)]
 pub fn mk_let(name: &str, ty: Expr, val: Expr, body: Expr) -> Expr {
-    Expr::Let(Name::str(name), Box::new(ty), Box::new(val), Box::new(body))
+    Expr::Let(
+        Name::str(name),
+        Node::new(ty),
+        Node::new(val),
+        Node::new(body),
+    )
 }
 /// `Iff A B` — propositional iff
 #[allow(dead_code)]
@@ -593,7 +599,7 @@ pub fn as_exists(e: &Expr) -> Option<(&Expr, &Expr)> {
 #[allow(dead_code)]
 pub fn as_nat_lit(e: &Expr) -> Option<u64> {
     match e {
-        Expr::Lit(Literal::Nat(n)) => Some(*n),
+        Expr::Lit(Literal::Nat(n)) => n.to_u64(),
         _ => None,
     }
 }
@@ -774,30 +780,32 @@ pub fn replace_const(e: Expr, name: &str, replacement: &Expr) -> Expr {
     match e {
         Expr::Const(ref n, _) if n.to_string() == name => replacement.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(replace_const(*f, name, replacement)),
-            Box::new(replace_const(*a, name, replacement)),
+            Node::new(replace_const((*f).clone(), name, replacement)),
+            Node::new(replace_const((*a).clone(), name, replacement)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             bi,
             n,
-            Box::new(replace_const(*ty, name, replacement)),
-            Box::new(replace_const(*body, name, replacement)),
+            Node::new(replace_const((*ty).clone(), name, replacement)),
+            Node::new(replace_const((*body).clone(), name, replacement)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             bi,
             n,
-            Box::new(replace_const(*ty, name, replacement)),
-            Box::new(replace_const(*body, name, replacement)),
+            Node::new(replace_const((*ty).clone(), name, replacement)),
+            Node::new(replace_const((*body).clone(), name, replacement)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n,
-            Box::new(replace_const(*ty, name, replacement)),
-            Box::new(replace_const(*val, name, replacement)),
-            Box::new(replace_const(*body, name, replacement)),
+            Node::new(replace_const((*ty).clone(), name, replacement)),
+            Node::new(replace_const((*val).clone(), name, replacement)),
+            Node::new(replace_const((*body).clone(), name, replacement)),
         ),
-        Expr::Proj(n, idx, inner) => {
-            Expr::Proj(n, idx, Box::new(replace_const(*inner, name, replacement)))
-        }
+        Expr::Proj(n, idx, inner) => Expr::Proj(
+            n,
+            idx,
+            Node::new(replace_const((*inner).clone(), name, replacement)),
+        ),
         other => other,
     }
 }
@@ -824,31 +832,31 @@ pub fn subst_bvar(e: &Expr, target: u32, replacement: &Expr) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_bvar(f, target, replacement)),
-            Box::new(subst_bvar(a, target, replacement)),
+            Node::new(subst_bvar(f, target, replacement)),
+            Node::new(subst_bvar(a, target, replacement)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(subst_bvar(ty, target, replacement)),
-            Box::new(subst_bvar(body, target + 1, replacement)),
+            Node::new(subst_bvar(ty, target, replacement)),
+            Node::new(subst_bvar(body, target + 1, replacement)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(subst_bvar(ty, target, replacement)),
-            Box::new(subst_bvar(body, target + 1, replacement)),
+            Node::new(subst_bvar(ty, target, replacement)),
+            Node::new(subst_bvar(body, target + 1, replacement)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(subst_bvar(ty, target, replacement)),
-            Box::new(subst_bvar(val, target, replacement)),
-            Box::new(subst_bvar(body, target + 1, replacement)),
+            Node::new(subst_bvar(ty, target, replacement)),
+            Node::new(subst_bvar(val, target, replacement)),
+            Node::new(subst_bvar(body, target + 1, replacement)),
         ),
         Expr::Proj(n, idx, inner) => Expr::Proj(
             n.clone(),
             *idx,
-            Box::new(subst_bvar(inner, target, replacement)),
+            Node::new(subst_bvar(inner, target, replacement)),
         ),
         other => other.clone(),
     }
@@ -878,30 +886,32 @@ pub fn shift_bvars(e: &Expr, cutoff: u32, delta: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_bvars(f, cutoff, delta)),
-            Box::new(shift_bvars(a, cutoff, delta)),
+            Node::new(shift_bvars(f, cutoff, delta)),
+            Node::new(shift_bvars(a, cutoff, delta)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(shift_bvars(ty, cutoff, delta)),
-            Box::new(shift_bvars(body, cutoff + 1, delta)),
+            Node::new(shift_bvars(ty, cutoff, delta)),
+            Node::new(shift_bvars(body, cutoff + 1, delta)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(shift_bvars(ty, cutoff, delta)),
-            Box::new(shift_bvars(body, cutoff + 1, delta)),
+            Node::new(shift_bvars(ty, cutoff, delta)),
+            Node::new(shift_bvars(body, cutoff + 1, delta)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(shift_bvars(ty, cutoff, delta)),
-            Box::new(shift_bvars(val, cutoff, delta)),
-            Box::new(shift_bvars(body, cutoff + 1, delta)),
+            Node::new(shift_bvars(ty, cutoff, delta)),
+            Node::new(shift_bvars(val, cutoff, delta)),
+            Node::new(shift_bvars(body, cutoff + 1, delta)),
         ),
-        Expr::Proj(n, idx, inner) => {
-            Expr::Proj(n.clone(), *idx, Box::new(shift_bvars(inner, cutoff, delta)))
-        }
+        Expr::Proj(n, idx, inner) => Expr::Proj(
+            n.clone(),
+            *idx,
+            Node::new(shift_bvars(inner, cutoff, delta)),
+        ),
         other => other.clone(),
     }
 }

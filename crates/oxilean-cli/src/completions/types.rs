@@ -784,13 +784,17 @@ pub struct CompletionHistoryEntry {
 /// A registry for dynamic (runtime) completion providers.
 #[allow(dead_code)]
 pub struct DynamicCompletionRegistry {
-    providers: Vec<Box<dyn DynamicCompletionProvider>>,
+    pub(super) providers: Vec<Box<dyn DynamicCompletionProvider>>,
+    pub(super) project_symbols: Vec<CompletionCandidate>,
 }
 impl DynamicCompletionRegistry {
     /// Create a new empty registry.
     #[allow(dead_code)]
     pub fn new() -> Self {
-        Self { providers: vec![] }
+        Self {
+            providers: vec![],
+            project_symbols: vec![],
+        }
     }
     /// Register a completion provider.
     #[allow(dead_code)]
@@ -808,6 +812,16 @@ impl DynamicCompletionRegistry {
             .collect();
         results.sort_by_key(|c| c.priority);
         results
+    }
+    /// Add project symbol candidates to the registry.
+    #[allow(dead_code)]
+    pub fn add_project_symbols(&mut self, candidates: Vec<CompletionCandidate>) {
+        self.project_symbols.extend(candidates);
+    }
+    /// Return all currently registered project symbols.
+    #[allow(dead_code)]
+    pub fn project_symbols(&self) -> &[CompletionCandidate] {
+        &self.project_symbols
     }
 }
 /// A rich specification for a subcommand.

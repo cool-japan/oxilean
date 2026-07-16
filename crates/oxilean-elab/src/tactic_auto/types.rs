@@ -617,7 +617,7 @@ impl AutoTactic {
     fn try_intro(&self, goal: &Goal) -> Option<Goal> {
         if let Expr::Pi(_bi, binder_name, domain, _body) = &goal.target {
             let mut new_goal = goal.clone();
-            new_goal.add_hypothesis(binder_name.clone(), *domain.clone());
+            new_goal.add_hypothesis(binder_name.clone(), (**domain).clone());
             Some(new_goal)
         } else {
             None

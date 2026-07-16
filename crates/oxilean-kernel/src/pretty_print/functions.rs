@@ -61,7 +61,7 @@ mod tests {
     };
 
     fn lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
 
     fn const_expr(s: &str) -> Expr {

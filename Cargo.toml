@@ -1,22 +1,27 @@
 [workspace]
 members = [
+    "crates/oxilake",
     "crates/oxilean",
+    "crates/oxilean-build",
+    "crates/oxilean-cli",
+    "crates/oxilean-codegen",
+    "crates/oxilean-doc",
+    "crates/oxilean-elab",
+    "crates/oxilean-export",
     "crates/oxilean-kernel",
+    "crates/oxilean-lint",
     "crates/oxilean-meta",
     "crates/oxilean-parse",
-    "crates/oxilean-elab",
-    "crates/oxilean-cli",
-    "crates/oxilean-std",
-    "crates/oxilean-codegen",
     "crates/oxilean-runtime",
-    "crates/oxilean-build",
-    "crates/oxilean-lint",
+    "crates/oxilean-std",
+    "crates/oxilean-verify",
+    "crates/oxilean-verify-wasm",
     "crates/oxilean-wasm",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 authors = ["COOLJAPAN OU (Team Kitasan)"]
 license = "Apache-2.0"
@@ -29,29 +34,58 @@ rust-version = "1.70"
 # Testing
 proptest = "1.11.0"
 
+# TOML parsing (used by oxilean-build workspace integration, oxilake)
+toml = "0.8"
+
 # Cryptography
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 
 # SMT Solver (OxiZ - COOLJAPAN Pure Rust SMT solver, replaces Z3)
-oxiz-solver = "0.2.1"
+oxiz-solver = "0.2.3"
+oxiz-math = "0.2.3"
+num-bigint = { version = "0.4", default-features = false }
+num-rational = { version = "0.4", default-features = false, features = ["num-bigint"] }
+
+# Compression (OxiARC - COOLJAPAN Pure Rust compression, replaces flate2/zip/zstd)
+oxiarc-deflate = "0.3.6"
 
 # Internal dependencies
-oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.2" }
-oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.2" }
-oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.2" }
-oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.2" }
-oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.2" }
-oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.2" }
-oxilean-std = { path = "crates/oxilean-std", version = "0.1.2" }
-oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.2" }
-oxilean-build = { path = "crates/oxilean-build", version = "0.1.2" }
-oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.2" }
+oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.3" }
+oxilean-export = { path = "crates/oxilean-export", version = "0.1.3" }
+oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.3" }
+oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.3" }
+oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.3" }
+oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.3" }
+oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.3" }
+oxilean-std = { path = "crates/oxilean-std", version = "0.1.3" }
+oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.3" }
+oxilean-build = { path = "crates/oxilean-build", version = "0.1.3" }
+oxilean-verify = { path = "crates/oxilean-verify", version = "0.1.3" }
+oxilean-verify-wasm = { path = "crates/oxilean-verify-wasm", version = "0.1.3" }
+oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.3" }
+
+# WASM glue for the oxilean-verify-wasm "Kernel in a Tab" shim. Non-optional
+# there (that crate exists only for wasm); listed here for a single version pin.
+wasm-bindgen = "0.2.100"
+js-sys = "0.3.77"
+
+# Serialization (OxiCode - COOLJAPAN Pure Rust serialization, replaces bincode)
+oxicode = { version = "0.2.4" }
 
 [profile.release]
 lto = true
 codegen-units = 1
 opt-level = 3
 strip = true
+
+# Size-first override for the "Kernel in a Tab" wasm cdylib. opt-level = "z"
+# minimises the .wasm; the rest of the workspace keeps opt-level = 3 for native
+# speed. (On wasm32 there is no stack unwinding, so panic already aborts without
+# unwinding tables; wasm-pack + wasm-opt -Oz do the remaining size work.) Only
+# this leaf crate's own codegen is affected — the kernel/export/verify code it
+# pulls in still monomorphizes here, but the size pass runs over the whole module.
+[profile.release.package.oxilean-verify-wasm]
+opt-level = "z"
 
 # Root package for workspace-level tests
 [package]
@@ -81,6 +115,14 @@ path = "tests/std_library_test/mod.rs"
 [[test]]
 name = "formal_proofs_test"
 path = "tests/formal_proofs_test/mod.rs"
+
+[[test]]
+name = "cli_test"
+path = "tests/cli_test.rs"
+
+[[test]]
+name = "perf_test"
+path = "tests/perf_test.rs"
 
 [dev-dependencies]
 oxilean-kernel = { path = "crates/oxilean-kernel" }

@@ -10,6 +10,7 @@ use super::types::{
     WhnfMetaWindow, WhnfMetaWorkQueue, WhnfPipeline, WhnfResult, WhnfStats,
 };
 use crate::basic::{MVarId, MetaContext};
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     reduce::TransparencyMode, ConstantInfo, Environment, Expr, Level, Name, Reducer,
 };
@@ -29,7 +30,7 @@ pub(super) fn collect_app(expr: &Expr) -> (&Expr, Vec<Expr>) {
 pub(super) fn rebuild_app(head: &Expr, args: &[Expr]) -> Expr {
     let mut result = head.clone();
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg.clone()));
+        result = Expr::App(Node::new(result), Node::new(arg.clone()));
     }
     result
 }
@@ -54,7 +55,7 @@ mod tests {
     fn test_whnf_lit() {
         let mut whnf = MetaWhnf::new();
         let ctx = MetaContext::new(mk_env());
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let result = whnf.whnf(&expr, &ctx);
         assert_eq!(result.expr(), &expr);
     }
@@ -65,11 +66,11 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let arg = Expr::Lit(Literal::Nat(42));
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let arg = Expr::Lit(Literal::nat(42));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let result = whnf.whnf(&app, &ctx);
         assert_eq!(result.expr(), &arg);
     }
@@ -88,7 +89,7 @@ mod tests {
         let mut ctx = MetaContext::new(mk_env());
         let ty = Expr::Sort(Level::zero());
         let (id, placeholder) = ctx.mk_fresh_expr_mvar(ty, crate::MetavarKind::Natural);
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         ctx.assign_mvar(id, val.clone());
         let result = whnf.whnf(&placeholder, &ctx);
         assert!(!result.is_stuck());
@@ -100,12 +101,12 @@ mod tests {
         let ctx = MetaContext::new(mk_env());
         let expr = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Lit(Literal::Nat(42))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Lit(Literal::nat(42))),
+            Node::new(Expr::BVar(0)),
         );
         let result = whnf.whnf(&expr, &ctx);
-        assert_eq!(result.expr(), &Expr::Lit(Literal::Nat(42)));
+        assert_eq!(result.expr(), &Expr::Lit(Literal::nat(42)));
     }
     #[test]
     fn test_whnf_transparency() {
@@ -115,11 +116,11 @@ mod tests {
     #[test]
     fn test_collect_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = collect_app(&app);
         assert_eq!(head, &f);
@@ -130,10 +131,13 @@ mod tests {
     #[test]
     fn test_rebuild_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let rebuilt = rebuild_app(&f, &[a.clone(), b.clone()]);
-        let expected = Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b));
+        let expected = Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        );
         assert_eq!(rebuilt, expected);
     }
     #[test]
@@ -149,7 +153,7 @@ mod tests {
     fn test_whnf_cache_clear() {
         let mut whnf = MetaWhnf::new();
         let ctx = MetaContext::new(mk_env());
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let _ = whnf.whnf(&expr, &ctx);
         assert!(!whnf.cache.is_empty());
         whnf.clear_cache();
@@ -311,8 +315,8 @@ mod whnf_extra_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert_eq!(classify_head_form(&lam), HeadForm::Lam);
     }
@@ -321,27 +325,27 @@ mod whnf_extra_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         assert_eq!(classify_head_form(&pi), HeadForm::Pi);
     }
     #[test]
     fn test_classify_head_form_app_const() {
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
         );
         assert_eq!(classify_head_form(&app), HeadForm::App(Name::str("f")));
     }
     #[test]
     fn test_decompose_whnf() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = decompose_whnf(&app);
         assert_eq!(head, &f);
@@ -351,8 +355,8 @@ mod whnf_extra_tests {
     fn test_is_whnf_app_of() {
         let name = Name::str("Nat.succ");
         let app = Expr::App(
-            Box::new(Expr::Const(name.clone(), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(name.clone(), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
         );
         assert!(is_whnf_app_of(&app, &name));
         assert!(!is_whnf_app_of(&app, &Name::str("other")));
@@ -360,11 +364,11 @@ mod whnf_extra_tests {
     #[test]
     fn test_whnf_app_arity() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(0));
-        let b = Expr::Lit(Literal::Nat(1));
+        let a = Expr::Lit(Literal::nat(0));
+        let b = Expr::Lit(Literal::nat(1));
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a))),
-            Box::new(b),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a))),
+            Node::new(b),
         );
         assert_eq!(whnf_app_arity(&app), 2);
         assert_eq!(whnf_app_arity(&f), 0);
@@ -373,7 +377,7 @@ mod whnf_extra_tests {
     fn test_batch_whnf() {
         let mut whnf = MetaWhnf::new();
         let ctx = crate::basic::MetaContext::new(mk_env());
-        let exprs = vec![Expr::Sort(Level::zero()), Expr::Lit(Literal::Nat(1))];
+        let exprs = vec![Expr::Sort(Level::zero()), Expr::Lit(Literal::nat(1))];
         let results = batch_whnf(&mut whnf, &exprs, &ctx);
         assert_eq!(results.len(), 2);
         assert!(!any_stuck(&results));
@@ -381,8 +385,8 @@ mod whnf_extra_tests {
     #[test]
     fn test_any_stuck_false() {
         let results = vec![
-            WhnfResult::Reduced(Expr::Lit(Literal::Nat(0))),
-            WhnfResult::Reduced(Expr::Lit(Literal::Nat(1))),
+            WhnfResult::Reduced(Expr::Lit(Literal::nat(0))),
+            WhnfResult::Reduced(Expr::Lit(Literal::nat(1))),
         ];
         assert!(!any_stuck(&results));
     }
@@ -390,8 +394,8 @@ mod whnf_extra_tests {
     fn test_any_stuck_true() {
         let id = MVarId::new(1);
         let results = vec![
-            WhnfResult::Reduced(Expr::Lit(Literal::Nat(0))),
-            WhnfResult::Stuck(Expr::Lit(Literal::Nat(1)), id),
+            WhnfResult::Reduced(Expr::Lit(Literal::nat(0))),
+            WhnfResult::Stuck(Expr::Lit(Literal::nat(1)), id),
         ];
         assert!(any_stuck(&results));
     }
@@ -400,9 +404,9 @@ mod whnf_extra_tests {
         let id1 = MVarId::new(1);
         let id2 = MVarId::new(2);
         let results = vec![
-            WhnfResult::Stuck(Expr::Lit(Literal::Nat(0)), id1),
-            WhnfResult::Reduced(Expr::Lit(Literal::Nat(1))),
-            WhnfResult::Stuck(Expr::Lit(Literal::Nat(2)), id2),
+            WhnfResult::Stuck(Expr::Lit(Literal::nat(0)), id1),
+            WhnfResult::Reduced(Expr::Lit(Literal::nat(1))),
+            WhnfResult::Stuck(Expr::Lit(Literal::nat(2)), id2),
         ];
         let mvars = stuck_mvars(&results);
         assert_eq!(mvars, vec![id1, id2]);
@@ -430,7 +434,7 @@ mod whnf_extra_tests {
     fn test_whnf_eq_same() {
         let mut whnf = MetaWhnf::new();
         let ctx = crate::basic::MetaContext::new(mk_env());
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(whnf_eq(&mut whnf, &e, &e, &ctx));
     }
     #[test]
@@ -440,18 +444,18 @@ mod whnf_extra_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let arg = Expr::Lit(Literal::Nat(42));
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let arg = Expr::Lit(Literal::nat(42));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         assert!(whnf_eq(&mut whnf, &app, &arg, &ctx));
     }
     #[test]
     fn test_iterate_whnf_already_normal() {
         let mut whnf = MetaWhnf::new();
         let ctx = crate::basic::MetaContext::new(mk_env());
-        let e = Expr::Lit(Literal::Nat(0));
+        let e = Expr::Lit(Literal::nat(0));
         let (result, steps) = iterate_whnf(&mut whnf, &e, &ctx, 10);
         assert!(!result.is_stuck());
         assert_eq!(steps, 1);
@@ -537,13 +541,13 @@ mod whnf_extended_tests {
     }
     #[test]
     fn test_is_whnf_lit() {
-        assert!(is_whnf(&Expr::Lit(Literal::Nat(42))));
+        assert!(is_whnf(&Expr::Lit(Literal::nat(42))));
     }
     #[test]
     fn test_is_whnf_app_of_const() {
         let e = Expr::App(
-            Box::new(Expr::Const(oxilean_kernel::Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(oxilean_kernel::Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert!(is_whnf(&e));
     }
@@ -552,10 +556,10 @@ mod whnf_extended_tests {
         let lam = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             oxilean_kernel::Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(lam), Box::new(Expr::BVar(0)));
+        let app = Expr::App(Node::new(lam), Node::new(Expr::BVar(0)));
         assert!(!is_whnf(&app));
     }
 }

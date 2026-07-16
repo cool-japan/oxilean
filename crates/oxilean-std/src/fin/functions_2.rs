@@ -10,6 +10,8 @@ use super::functions::*;
 use super::types::*;
 
 #[cfg(test)]
+use oxilean_kernel::Node;
+#[cfg(test)]
 mod fin_extended_tests {
     use super::*;
     fn setup_env_for_extended() -> (Environment, InductiveEnv) {
@@ -28,8 +30,8 @@ mod fin_extended_tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             ),
         })
         .expect("operation should succeed");

@@ -4,7 +4,7 @@
 
 use super::functions::*;
 use crate::context::ElabContext;
-use oxilean_kernel::{Environment, Expr, FVarId, Level, Name};
+use oxilean_kernel::{Environment, Expr, FVarId, Level, Literal, Name};
 use oxilean_parse::{Located, MatchArm, Pattern, SurfaceExpr};
 use std::collections::HashMap;
 
@@ -580,9 +580,11 @@ impl LiteralSet {
     /// Add a literal to the set.
     pub fn add_literal(&mut self, lit: &oxilean_kernel::Literal) {
         match lit {
-            oxilean_kernel::Literal::Nat(n) => {
-                if !self.nats.contains(n) {
-                    self.nats.push(*n);
+            Literal::Nat(n) => {
+                if let Some(v) = n.to_u64() {
+                    if !self.nats.contains(&v) {
+                        self.nats.push(v);
+                    }
                 }
             }
             oxilean_kernel::Literal::Str(s) => {
@@ -737,7 +739,7 @@ impl PatternPrinter {
             ElabPattern::Wild => "_".to_string(),
             ElabPattern::Var(_, name, _) => format!("{}", name),
             ElabPattern::Lit(lit) => match lit {
-                oxilean_kernel::Literal::Nat(n) => format!("{}", n),
+                Literal::Nat(n) => format!("{}", n),
                 oxilean_kernel::Literal::Str(s) => format!("\"{}\"", s),
             },
             ElabPattern::Ctor(name, sub, _) => {

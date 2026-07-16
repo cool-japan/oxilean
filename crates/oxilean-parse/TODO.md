@@ -178,3 +178,27 @@
 ## 📝 Note
 
 The original stub files (`token.rs`, `lexer.rs`, `ast.rs`, `parser.rs`, `error.rs`) remain as empty compatibility shims. All real implementations are in the `_impl` suffixed files and additional modules (`tactic_parser.rs`, `command_parser.rs`, `pattern_compiler.rs`, `macro_parser.rs`, `notation.rs`, `module.rs`, `pretty_printer.rs`, `source_map.rs`, `repl_parser.rs`).
+
+## v0.1.3 LSP Incremental Improvements
+
+> Last updated: 2026-05-29
+
+### Ring 0
+
+- [x] Add `parse_incremental_change` API for LSP didChange events
+  - **Goal:** The LSP server currently does full re-parse on every `textDocument/didChange`; expose an incremental API that takes a document edit range and returns only the affected AST nodes
+  - **Design:** Add `pub fn parse_incremental_change(prev: &Module, source: &str, change: TextEdit) -> IncrementalResult` to the existing `incremental` module (which already exists under `src/incremental/`); `TextEdit = { range: (usize, usize), new_text: String }`; reuse the existing `IncrementalParser` / `IncrementalResult` types if present
+  - **Files:** `src/incremental/api.rs` (new), `src/incremental/mod.rs`
+  - **Prerequisites:** None — incremental module already exists
+  - **Tests:** Full-parse vs incremental-parse produce identical AST for a single-token edit
+  - **Implemented:** `parse_incremental_change` + `IncrementalChangeResult` in `src/incremental/api.rs`; 9 tests; 0 warnings
+
+### Ring 1
+
+- [x] Range-based incremental re-lex (not just re-parse) for large files
+- [x] Syntax tree diffing (Myers diff over AST nodes) for smarter invalidation (planned 2026-05-29)
+  - **Goal:** Decl-granular structural diffing in `src/incremental/`: compare two `Vec<LocatedDecl>` by a stable per-decl signature/fingerprint and emit an edit script for smarter incremental invalidation.
+  - **Design:** Stable per-decl fingerprint (name + kind + structural hash of the body, span-independent); classic Myers O(ND) LCS diff over the signature sequence → `Vec<DeclEdit { Unchanged | Inserted | Deleted | Modified, old_idx, new_idx, span }>`; map edits back to source spans. Expose `diff_modules(old, new) -> Vec<DeclEdit>`.
+  - **Files:** `crates/oxilean-parse/src/incremental/` (new ast_diff module + mod.rs re-export).
+  - **Tests:** identical → all Unchanged; single insert/delete/modify → exactly that edit; reorder handled; property test: applying the edit script transforms old decl-seq into new.
+  - **Risk:** fingerprint must NOT hash spans (span-independent). Full recursive Expr-subtree diff stays deferred.

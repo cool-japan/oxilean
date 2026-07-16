@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Declaration, Expr, Name, ReducibilityHint};
 use oxilean_parse::AttributeKind;
 use std::collections::{HashMap, HashSet};
@@ -19,13 +20,13 @@ mod tests {
     use crate::mutual::*;
     use oxilean_kernel::{Level, Literal};
     fn nat_lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn mk_const(name: &str) -> Expr {
         Expr::Const(Name::str(name), vec![])
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     #[test]
     fn test_mutual_block_create() {
@@ -168,7 +169,7 @@ mod tests {
         let mut block = MutualBlock::new();
         let body = mk_app(
             mk_const("f"),
-            Expr::Proj(Name::str("x"), 0, Box::new(Expr::BVar(0))),
+            Expr::Proj(Name::str("x"), 0, Node::new(Expr::BVar(0))),
         );
         block.add(Name::str("f"), nat_lit(0), body);
         let kind = MutualChecker::check_termination(&block).expect("test operation should succeed");
@@ -272,7 +273,7 @@ mod tests {
         let mut block = MutualBlock::new();
         let body = mk_app(
             mk_const("f"),
-            Expr::Proj(Name::str("x"), 0, Box::new(Expr::BVar(0))),
+            Expr::Proj(Name::str("x"), 0, Node::new(Expr::BVar(0))),
         );
         block.add(Name::str("f"), nat_lit(0), body);
         let cg = CallGraph::build_from_block(&block);
@@ -283,7 +284,7 @@ mod tests {
         let mut block = MutualBlock::new();
         let body = mk_app(
             mk_const("f"),
-            Expr::Proj(Name::str("x"), 0, Box::new(Expr::BVar(0))),
+            Expr::Proj(Name::str("x"), 0, Node::new(Expr::BVar(0))),
         );
         block.add(Name::str("f"), nat_lit(0), body);
         let cg = CallGraph::build_from_block(&block);
@@ -323,7 +324,7 @@ mod tests {
         let mut block = MutualBlock::new();
         let body = mk_app(
             mk_const("f"),
-            Expr::Proj(Name::str("x"), 0, Box::new(Expr::BVar(0))),
+            Expr::Proj(Name::str("x"), 0, Node::new(Expr::BVar(0))),
         );
         block.add(Name::str("f"), nat_lit(0), body);
         let mut sr = StructuralRecursion::new(block);
@@ -335,7 +336,7 @@ mod tests {
         let mut block = MutualBlock::new();
         let body = mk_app(
             mk_const("f"),
-            Expr::Proj(Name::str("x"), 0, Box::new(Expr::BVar(0))),
+            Expr::Proj(Name::str("x"), 0, Node::new(Expr::BVar(0))),
         );
         block.add(Name::str("f"), nat_lit(0), body);
         let mut sr = StructuralRecursion::new(block);
@@ -469,14 +470,14 @@ mod tests {
         let types = vec![Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         )];
         let bodies = vec![Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         )];
         let block = MutualChecker::elaborate_mutual_defs(&names, &types, &bodies)
             .expect("elaboration should succeed");
@@ -490,7 +491,7 @@ mod tests {
         let mut block = MutualBlock::new();
         let body = mk_app(
             mk_const("f"),
-            Expr::Proj(Name::str("n"), 0, Box::new(Expr::BVar(0))),
+            Expr::Proj(Name::str("n"), 0, Node::new(Expr::BVar(0))),
         );
         block.add(Name::str("f"), nat_lit(0), body);
         let kind = MutualChecker::check_termination(&block).expect("test operation should succeed");

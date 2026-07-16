@@ -121,6 +121,9 @@ impl MetaBridge {
         // Copy already-solved goals from the original state.
         result.solved = original.solved.clone();
 
+        // Thread the proof certificate from meta layer to elab layer.
+        result.certificate = self.meta_ctx.last_certificate.clone();
+
         // Rebuild the goal list, routing each goal to either "remaining" or "solved".
         let original_goals = original.goals();
         for (i, (goal_name, mvar_id)) in self.goal_map.iter().enumerate() {

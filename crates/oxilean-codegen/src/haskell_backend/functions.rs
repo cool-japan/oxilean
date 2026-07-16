@@ -44,6 +44,7 @@ pub(super) fn paren_pattern(pat: &HaskellPattern) -> String {
 pub fn lcnf_type_to_haskell(ty: &LcnfType) -> HaskellType {
     match ty {
         LcnfType::Nat => HaskellType::Integer,
+        LcnfType::Int => HaskellType::Integer,
         LcnfType::LcnfString => HaskellType::HsString,
         LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => HaskellType::Unit,
         LcnfType::Object => HaskellType::Polymorphic("a".to_string()),

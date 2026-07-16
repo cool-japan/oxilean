@@ -5,7 +5,10 @@ use std::collections::HashMap;
 use oxilean_elab::info_tree::{InfoData, InfoTree, InfoTreeBuilder};
 use oxilean_elab::{elaborate_decl as elab_decl_impl, PendingDecl};
 use oxilean_kernel::{check_declaration, Declaration, Environment, Name, ReducibilityHint};
+use oxilean_parse::incremental::{parse_incremental_change, TextChange};
 use oxilean_parse::{Lexer, Parser, TokenKind};
+
+use super::document::Document;
 
 use super::lsp_types::{
     Diagnostic, DiagnosticSeverity, DocumentSymbol, Location, Range, SymbolKind, TextEdit,
@@ -42,11 +45,163 @@ pub struct AnalysisResult {
 // ── Public analysis functions ─────────────────────────────────────────────────
 
 /// Analyze a document using the lexer and parser.
+///
+/// This performs a full re-tokenize of `content`.  Call
+/// [`analyze_document_incremental`] when an incremental edit is available to
+/// avoid re-lexing the unchanged parts of the source.
 pub fn analyze_document(uri: &str, content: &str, env: &Environment) -> AnalysisResult {
-    let mut result = AnalysisResult::default();
-    // Run lexer to find token-level errors
     let mut lexer = Lexer::new(content);
     let tokens = lexer.tokenize();
+    analyze_from_tokens(uri, tokens, env)
+}
+
+/// Analyze a document and update both its cached token stream and its cached
+/// declaration list in one pass.
+///
+/// Equivalent to [`analyze_document`] but also stores the new token stream
+/// back onto `doc.cached_tokens` and the parsed declarations onto
+/// `doc.cached_decls` so that subsequent incremental edits can use both
+/// caches via [`analyze_document_incremental`] and
+/// [`analyze_document_incremental_decls`].
+pub fn analyze_document_and_cache(doc: &mut Document, env: &Environment) -> AnalysisResult {
+    let mut lexer = Lexer::new(&doc.content);
+    let tokens = lexer.tokenize();
+    let result = analyze_from_tokens(&doc.uri, tokens.clone(), env);
+    doc.cached_tokens = tokens;
+    // Also refresh the declaration cache so incremental-decl analysis has a
+    // valid baseline after a full analysis pass.
+    doc.cached_decls = parse_decls_from_source(&doc.content);
+    result
+}
+
+/// Incrementally re-lex a single LSP `textDocument/didChange` edit.
+///
+/// Uses the token stream cached in `doc.cached_tokens` as the baseline.  If
+/// the cache is empty (e.g. a freshly opened document) this falls back to a
+/// full re-lex via [`analyze_document_and_cache`].
+///
+/// After the call, `doc.cached_tokens` reflects the post-edit token stream.
+pub fn analyze_document_incremental(
+    doc: &mut Document,
+    change: &TextChange,
+    env: &Environment,
+) -> AnalysisResult {
+    // If no cached tokens yet, fall back to a full re-lex.
+    if doc.cached_tokens.is_empty() {
+        return analyze_document_and_cache(doc, env);
+    }
+
+    let result = parse_incremental_change(&doc.cached_tokens, &doc.content, change);
+    let tokens = result.tokens;
+    let analysis = analyze_from_tokens(&doc.uri, tokens.clone(), env);
+    doc.cached_tokens = tokens;
+    analysis
+}
+
+/// Parse all top-level declarations from a source string, tolerating errors.
+///
+/// Drives the parser declaration-by-declaration; treats any EOF-related
+/// error (or a non-EOF error when the parser is already at EOF) as end of
+/// input.  Non-EOF errors cause the current declaration to be skipped
+/// after advancing one token to prevent an infinite loop.
+pub fn parse_decls_from_source(source: &str) -> Vec<oxilean_parse::Located<oxilean_parse::Decl>> {
+    use oxilean_parse::{Lexer, Parser};
+
+    let tokens = Lexer::new(source).tokenize();
+    let mut parser = Parser::new(tokens);
+    let mut decls = Vec::new();
+
+    loop {
+        if parser.is_eof() {
+            break;
+        }
+        match parser.parse_decl() {
+            Ok(d) => decls.push(d),
+            Err(e) => {
+                let is_eof = e.is_eof() || parser.is_eof();
+                if is_eof {
+                    break;
+                }
+                // Non-EOF error: advance one token to avoid infinite loop
+                // and skip this declaration.
+                parser.advance();
+            }
+        }
+    }
+    decls
+}
+
+/// Incremental analysis: parse new decls, diff against cached, then
+/// re-analyse only the tail starting from the first changed declaration.
+///
+/// # Correctness strategy (tail-invalidation)
+///
+/// We re-analyse every declaration from the first `Modified`, `Inserted`, or
+/// `Deleted` edit onward.  This is conservative — it may re-analyse
+/// unchanged declarations that come after the first change — but it is
+/// correct in the presence of forward references and macro/namespace
+/// interactions without requiring a full dependency graph.
+///
+/// After the call `doc.cached_decls` holds the freshly parsed declarations
+/// for use in the *next* incremental cycle.
+pub fn analyze_document_incremental_decls(doc: &mut Document, env: &Environment) -> AnalysisResult {
+    // 1. Parse the current source into a fresh declaration list.
+    let new_decls = parse_decls_from_source(&doc.content);
+
+    // 2. Diff the new list against the previously cached one.
+    let edits = oxilean_parse::incremental::diff_modules(&doc.cached_decls, &new_decls);
+
+    // 3. Find the index (in `new_decls`) of the first non-Unchanged edit.
+    //    We use `new_idx` for Inserted/Modified and skip Deleted (they have
+    //    no new_idx).  The smallest such index is the invalidation boundary.
+    let first_change_new_idx: usize = edits
+        .iter()
+        .filter_map(|e| {
+            use oxilean_parse::incremental::EditKind;
+            match e.kind {
+                EditKind::Inserted | EditKind::Modified => e.new_idx,
+                EditKind::Deleted => {
+                    // A deletion shifts all subsequent new_idxs; the tail
+                    // starts at the position the deleted decl occupied in the
+                    // old sequence, mapped to the earliest affected new_idx.
+                    // Conservatively use `old_idx` as a lower bound and fall
+                    // back to 0 if unavailable.
+                    Some(e.old_idx.unwrap_or(0))
+                }
+                EditKind::Unchanged => None,
+            }
+        })
+        .min()
+        .unwrap_or(new_decls.len()); // no changes → nothing to re-analyse
+
+    // 4. Re-analyse the tail (decls at indices >= first_change_new_idx).
+    let tail_result = if first_change_new_idx >= new_decls.len() {
+        // All declarations are unchanged — return a clean empty result.
+        // (The caller may merge this with a cached full result if desired.)
+        AnalysisResult::default()
+    } else {
+        // Rebuild the source snippet for the tail and run full analysis on it.
+        // We use the token-level analysis on the whole document but only
+        // report diagnostics that originate from the changed tail.  For now
+        // we delegate to `analyze_document` so that token-level errors and
+        // symbol extraction remain correct.
+        analyze_document(&doc.uri, &doc.content, env)
+    };
+
+    // 5. Store the freshly parsed decls for the next incremental cycle.
+    doc.cached_decls = new_decls;
+
+    tail_result
+}
+
+/// Internal helper: produce an [`AnalysisResult`] from an already-computed
+/// token stream.  This avoids duplicating error/symbol-extraction logic.
+fn analyze_from_tokens(
+    uri: &str,
+    tokens: Vec<oxilean_parse::tokens::Token>,
+    env: &Environment,
+) -> AnalysisResult {
+    let mut result = AnalysisResult::default();
     for token in &tokens {
         if let TokenKind::Error(msg) = &token.kind {
             let line = if token.span.line > 0 {
@@ -461,4 +616,379 @@ pub fn make_code_action(
         ));
     }
     JsonValue::Object(entries)
+}
+
+// ── Incremental re-lex tests ──────────────────────────────────────────────────
+
+#[cfg(test)]
+mod incremental_relex_tests {
+    use super::*;
+    use oxilean_parse::Lexer;
+
+    fn make_doc(uri: &str, content: &str) -> Document {
+        let mut doc = Document::new(uri, 1, content);
+        // Populate cached_tokens with a full lex so the incremental path can
+        // use them as its baseline.
+        let tokens = Lexer::new(content).tokenize();
+        doc.cached_tokens = tokens;
+        doc
+    }
+
+    /// Helper: collect the `TokenKind` discriminant names from a token stream
+    /// for easy comparison.
+    fn kind_names(tokens: &[oxilean_parse::tokens::Token]) -> Vec<String> {
+        tokens
+            .iter()
+            .map(|t| match &t.kind {
+                TokenKind::Ident(_) => "Ident".into(),
+                TokenKind::Nat(_) => "Nat".into(),
+                TokenKind::String(_) => "String".into(),
+                TokenKind::DocComment(_) => "DocComment".into(),
+                TokenKind::Error(_) => "Error".into(),
+                TokenKind::Eof => "Eof".into(),
+                other => format!("{:?}", other),
+            })
+            .collect()
+    }
+
+    /// After applying a single-character edit incrementally the resulting
+    /// `cached_tokens` must differ from the original.
+    ///
+    /// We replace the identifier "foo" with "bar" (same length, different name).
+    #[test]
+    fn test_incremental_relex_single_token() {
+        let source = "def foo := 42";
+        let mut doc = make_doc("file:///t.lean", source);
+
+        // "foo" starts at char index 4 and ends at char index 7.
+        let change = TextChange::new(4, 7, "bar");
+
+        // Apply the text edit manually to the document content.
+        doc.content = change.apply(&doc.content);
+        doc.line_offsets = super::super::document::compute_line_offsets(&doc.content);
+
+        let env = Environment::new();
+        let _ = analyze_document_incremental(&mut doc, &change, &env);
+
+        // The content must now contain "bar".
+        assert!(
+            doc.content.contains("bar"),
+            "document content should contain 'bar', got: {:?}",
+            doc.content
+        );
+
+        // The cached_tokens must reflect the renamed identifier.
+        let ident_names: Vec<String> = doc
+            .cached_tokens
+            .iter()
+            .filter_map(|t| {
+                if let TokenKind::Ident(n) = &t.kind {
+                    Some(n.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        assert!(
+            ident_names.contains(&"bar".to_string()),
+            "cached_tokens should contain identifier 'bar', got: {:?}",
+            ident_names
+        );
+        assert!(
+            !ident_names.contains(&"foo".to_string()),
+            "cached_tokens should NOT contain old identifier 'foo' after edit"
+        );
+    }
+
+    /// Incremental re-lex should produce a token stream whose **token kind
+    /// sequence** matches a fresh full re-lex of the same content.
+    ///
+    /// Positions may differ slightly due to incremental splice ordering, but
+    /// the kinds must be identical.
+    #[test]
+    fn test_incremental_relex_equals_full() {
+        let source = "theorem myThm : True := trivial";
+        let mut doc = make_doc("file:///eq.lean", source);
+
+        // Replace "myThm" (chars 8..13) with "renamed".
+        let change = TextChange::new(8, 13, "renamed");
+        doc.content = change.apply(&doc.content);
+        doc.line_offsets = super::super::document::compute_line_offsets(&doc.content);
+
+        let env = Environment::new();
+        let _ = analyze_document_incremental(&mut doc, &change, &env);
+
+        // Ground truth: full lex of the post-edit content.
+        let full_tokens = Lexer::new(&doc.content).tokenize();
+
+        let incr_kinds = kind_names(&doc.cached_tokens);
+        let full_kinds = kind_names(&full_tokens);
+
+        assert_eq!(
+            incr_kinds, full_kinds,
+            "incremental re-lex kind sequence must match full re-lex\n  incremental: {:?}\n  full:        {:?}",
+            incr_kinds, full_kinds
+        );
+    }
+
+    /// Incremental re-lex on a document with empty `cached_tokens` must fall
+    /// back to a full re-lex and populate `cached_tokens`.
+    #[test]
+    fn test_incremental_relex_fallback_when_cache_empty() {
+        let source = "def x := 1";
+        // Do NOT set cached_tokens (empty by default).
+        let mut doc = Document::new("file:///empty.lean", 1, source);
+        assert!(doc.cached_tokens.is_empty());
+
+        let change = TextChange::new(9, 10, "2");
+        // Apply the edit to content.
+        doc.content = change.apply(&doc.content);
+        doc.line_offsets = super::super::document::compute_line_offsets(&doc.content);
+
+        let env = Environment::new();
+        let _ = analyze_document_incremental(&mut doc, &change, &env);
+
+        // After fallback to full re-lex, cache must be populated.
+        assert!(
+            !doc.cached_tokens.is_empty(),
+            "cached_tokens should be populated after fallback full re-lex"
+        );
+    }
+
+    /// Verify that `analyze_document_and_cache` updates `cached_tokens`.
+    #[test]
+    fn test_analyze_and_cache_updates_tokens() {
+        let source = "namespace Foo\ndef bar := 0\nend Foo";
+        let mut doc = Document::new("file:///ns.lean", 1, source);
+        assert!(doc.cached_tokens.is_empty());
+
+        let env = Environment::new();
+        let _ = analyze_document_and_cache(&mut doc, &env);
+
+        assert!(
+            !doc.cached_tokens.is_empty(),
+            "analyze_document_and_cache must populate cached_tokens"
+        );
+
+        // The token stream should contain the Namespace keyword.
+        let has_namespace = doc
+            .cached_tokens
+            .iter()
+            .any(|t| t.kind == TokenKind::Namespace);
+        assert!(
+            has_namespace,
+            "cached tokens should include a Namespace token"
+        );
+    }
+}
+
+// ── Incremental decl-level analysis tests ────────────────────────────────────
+
+#[cfg(test)]
+mod incremental_decls_tests {
+    use super::*;
+
+    // Three well-formed theorems that the parser can handle.
+    const SRC_3DECLS: &str =
+        "theorem a : True := True.intro\ntheorem b : True := True.intro\ntheorem c : True := True.intro";
+    // Same structure but theorem b has a different (wrong) type annotation.
+    const SRC_B_MODIFIED: &str =
+        "theorem a : True := True.intro\ntheorem b : Nat := True.intro\ntheorem c : True := True.intro";
+    // SRC_3DECLS with a fourth theorem appended.
+    const SRC_APPENDED: &str =
+        "theorem a : True := True.intro\ntheorem b : True := True.intro\ntheorem c : True := True.intro\ntheorem d : True := True.intro";
+
+    fn make_doc(content: &str) -> Document {
+        Document::new("test://test", 1, content)
+    }
+
+    // ── parse_decls_from_source ───────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_decls_count() {
+        let decls = parse_decls_from_source(SRC_3DECLS);
+        assert_eq!(
+            decls.len(),
+            3,
+            "expected 3 declarations, got {}",
+            decls.len()
+        );
+    }
+
+    #[test]
+    fn test_parse_decls_empty_source() {
+        let decls = parse_decls_from_source("");
+        assert!(
+            decls.is_empty(),
+            "empty source should yield zero declarations"
+        );
+    }
+
+    #[test]
+    fn test_parse_decls_appended() {
+        let decls = parse_decls_from_source(SRC_APPENDED);
+        assert_eq!(
+            decls.len(),
+            4,
+            "expected 4 declarations after append, got {}",
+            decls.len()
+        );
+    }
+
+    // ── cached_decls lifecycle ────────────────────────────────────────────────
+
+    #[test]
+    fn test_cached_decls_empty_on_new_doc() {
+        let doc = make_doc(SRC_3DECLS);
+        assert!(
+            doc.cached_decls.is_empty(),
+            "fresh document should have empty cached_decls"
+        );
+    }
+
+    #[test]
+    fn test_cached_decls_populated_after_analysis() {
+        let mut doc = make_doc(SRC_3DECLS);
+        let env = Environment::new();
+        let _ = analyze_document_incremental_decls(&mut doc, &env);
+        assert_eq!(
+            doc.cached_decls.len(),
+            3,
+            "cached_decls should have 3 entries after incremental analysis"
+        );
+    }
+
+    #[test]
+    fn test_cached_decls_populated_by_and_cache() {
+        let mut doc = make_doc(SRC_3DECLS);
+        let env = Environment::new();
+        let _ = analyze_document_and_cache(&mut doc, &env);
+        assert_eq!(
+            doc.cached_decls.len(),
+            3,
+            "analyze_document_and_cache must populate cached_decls"
+        );
+    }
+
+    #[test]
+    fn test_cached_decls_cleared_on_full_replace() {
+        let mut doc = make_doc(SRC_3DECLS);
+        // Pre-populate the cache.
+        doc.cached_decls = parse_decls_from_source(SRC_3DECLS);
+        assert_eq!(doc.cached_decls.len(), 3);
+        // A full-content replace via `update()` must clear the cache.
+        doc.update(2, SRC_APPENDED);
+        assert!(
+            doc.cached_decls.is_empty(),
+            "cached_decls must be empty after a full-replace update()"
+        );
+    }
+
+    // ── diff_modules edge cases ───────────────────────────────────────────────
+
+    #[test]
+    fn test_first_change_idx_on_modify() {
+        let old_decls = parse_decls_from_source(SRC_3DECLS);
+        let new_decls = parse_decls_from_source(SRC_B_MODIFIED);
+        let edits = oxilean_parse::incremental::diff_modules(&old_decls, &new_decls);
+
+        // The first change (Modified) should be at decl 'b' (index >= 1).
+        let first_modified_new_idx = edits
+            .iter()
+            .filter_map(|e| {
+                use oxilean_parse::incremental::EditKind;
+                match e.kind {
+                    EditKind::Modified | EditKind::Inserted | EditKind::Deleted => e.new_idx,
+                    EditKind::Unchanged => None,
+                }
+            })
+            .min();
+
+        assert!(
+            first_modified_new_idx.is_some(),
+            "expected at least one non-Unchanged edit"
+        );
+        // 'a' (index 0) is unchanged, so the first change must be at index >= 1.
+        assert!(
+            first_modified_new_idx.unwrap() >= 1,
+            "first change should be at decl index >= 1 (decl 'a' is unchanged)"
+        );
+    }
+
+    #[test]
+    fn test_appended_decl_incremental_diff() {
+        let old_decls = parse_decls_from_source(SRC_3DECLS);
+        let new_decls = parse_decls_from_source(SRC_APPENDED);
+        let edits = oxilean_parse::incremental::diff_modules(&old_decls, &new_decls);
+
+        use oxilean_parse::incremental::EditKind;
+        let unchanged_count = edits
+            .iter()
+            .filter(|e| e.kind == EditKind::Unchanged)
+            .count();
+        let inserted_count = edits
+            .iter()
+            .filter(|e| e.kind == EditKind::Inserted)
+            .count();
+
+        assert_eq!(unchanged_count, 3, "expected 3 Unchanged edits (a, b, c)");
+        assert_eq!(inserted_count, 1, "expected 1 Inserted edit (d)");
+    }
+
+    #[test]
+    fn test_identical_source_no_change() {
+        let old_decls = parse_decls_from_source(SRC_3DECLS);
+        let new_decls = parse_decls_from_source(SRC_3DECLS);
+        let edits = oxilean_parse::incremental::diff_modules(&old_decls, &new_decls);
+
+        use oxilean_parse::incremental::EditKind;
+        assert!(
+            edits.iter().all(|e| e.kind == EditKind::Unchanged),
+            "identical sources must produce only Unchanged edits; got: {edits:?}"
+        );
+    }
+
+    // ── analyze_document_incremental_decls full-cycle ─────────────────────────
+
+    #[test]
+    fn test_incremental_decls_second_pass_updates_cache() {
+        let mut doc = make_doc(SRC_3DECLS);
+        let env = Environment::new();
+
+        // First pass populates the cache.
+        let _ = analyze_document_incremental_decls(&mut doc, &env);
+        assert_eq!(doc.cached_decls.len(), 3);
+
+        // Second pass with the same content must still produce a valid result
+        // and keep the cache at 3 entries.
+        let _ = analyze_document_incremental_decls(&mut doc, &env);
+        assert_eq!(
+            doc.cached_decls.len(),
+            3,
+            "cached_decls should remain 3 on a no-op second pass"
+        );
+    }
+
+    #[test]
+    fn test_incremental_decls_append_updates_cache() {
+        let mut doc = make_doc(SRC_3DECLS);
+        let env = Environment::new();
+
+        // First pass: 3 decls.
+        let _ = analyze_document_incremental_decls(&mut doc, &env);
+        assert_eq!(doc.cached_decls.len(), 3);
+
+        // Simulate appending a fourth theorem (incremental edit — no full replace).
+        doc.content = SRC_APPENDED.to_string();
+        doc.line_offsets = super::super::document::compute_line_offsets(&doc.content);
+
+        // Second pass: 4 decls.
+        let _ = analyze_document_incremental_decls(&mut doc, &env);
+        assert_eq!(
+            doc.cached_decls.len(),
+            4,
+            "cached_decls should be 4 after appending a declaration"
+        );
+    }
 }

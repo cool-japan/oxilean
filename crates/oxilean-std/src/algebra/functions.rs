@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -11,7 +12,7 @@ use super::types::{
 
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -22,11 +23,11 @@ pub fn app3(f: Expr, a: Expr, b: Expr, c: Expr) -> Expr {
     app(app2(f, a, b), c)
 }
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 #[allow(dead_code)]
 pub fn lam(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Lam(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Lam(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn cst(s: &str) -> Expr {
     Expr::Const(Name::str(s), vec![])
@@ -1521,7 +1522,7 @@ mod tests {
     fn test_mk_binop_method_structure() {
         let m = mk_binop_method("Add");
         if let Expr::Pi(BinderInfo::Implicit, _, _, body) = m {
-            if let Expr::Pi(BinderInfo::InstImplicit, _, _, body2) = *body {
+            if let Expr::Pi(BinderInfo::InstImplicit, _, _, body2) = (*body).clone() {
                 assert!(matches!(*body2, Expr::Pi(BinderInfo::Default, _, _, _)));
             } else {
                 panic!("Expected InstImplicit");
@@ -1534,7 +1535,7 @@ mod tests {
     fn test_mk_unop_method_structure() {
         let m = mk_unop_method("Neg");
         if let Expr::Pi(BinderInfo::Implicit, _, _, body) = m {
-            if let Expr::Pi(BinderInfo::InstImplicit, _, _, body2) = *body {
+            if let Expr::Pi(BinderInfo::InstImplicit, _, _, body2) = (*body).clone() {
                 assert!(matches!(*body2, Expr::Pi(BinderInfo::Default, _, _, _)));
             } else {
                 panic!("Expected InstImplicit");

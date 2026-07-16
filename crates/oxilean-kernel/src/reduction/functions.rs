@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Reducer};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, HeadForm, LabelSet,
@@ -42,17 +44,17 @@ pub(super) fn reduce_to_nf(expr: &Expr, reducer: &mut Reducer, fuel: u32) -> Exp
         Expr::Lam(bi, name, ty, body) => {
             let ty_nf = reduce_to_nf(&ty, reducer, fuel - 1);
             let body_nf = reduce_to_nf(&body, reducer, fuel - 1);
-            Expr::Lam(bi, name, Box::new(ty_nf), Box::new(body_nf))
+            Expr::Lam(bi, name, Node::new(ty_nf), Node::new(body_nf))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_nf = reduce_to_nf(&ty, reducer, fuel - 1);
             let body_nf = reduce_to_nf(&body, reducer, fuel - 1);
-            Expr::Pi(bi, name, Box::new(ty_nf), Box::new(body_nf))
+            Expr::Pi(bi, name, Node::new(ty_nf), Node::new(body_nf))
         }
         Expr::App(f, a) => {
             let f_nf = reduce_to_nf(&f, reducer, fuel - 1);
             let a_nf = reduce_to_nf(&a, reducer, fuel - 1);
-            let rebuilt = Expr::App(Box::new(f_nf), Box::new(a_nf));
+            let rebuilt = Expr::App(Node::new(f_nf), Node::new(a_nf));
             let whnf2 = reducer.whnf(&rebuilt);
             if whnf2 == rebuilt {
                 rebuilt
@@ -66,7 +68,7 @@ pub(super) fn reduce_to_nf(expr: &Expr, reducer: &mut Reducer, fuel: u32) -> Exp
         }
         Expr::Proj(struct_name, idx, e) => {
             let e_nf = reduce_to_nf(&e, reducer, fuel - 1);
-            Expr::Proj(struct_name, idx, Box::new(e_nf))
+            Expr::Proj(struct_name, idx, Node::new(e_nf))
         }
     }
 }
@@ -82,10 +84,10 @@ pub(super) fn one_step_reduce(expr: &Expr) -> Option<Expr> {
                 return Some(reduced);
             }
             if let Some(f_reduced) = one_step_reduce(f) {
-                return Some(Expr::App(Box::new(f_reduced), a.clone()));
+                return Some(Expr::App(Node::new(f_reduced), a.clone()));
             }
             if let Some(a_reduced) = one_step_reduce(a) {
-                return Some(Expr::App(f.clone(), Box::new(a_reduced)));
+                return Some(Expr::App(f.clone(), Node::new(a_reduced)));
             }
             None
         }
@@ -95,25 +97,25 @@ pub(super) fn one_step_reduce(expr: &Expr) -> Option<Expr> {
         }
         Expr::Lam(bi, name, ty, body) => {
             if let Some(ty_r) = one_step_reduce(ty) {
-                return Some(Expr::Lam(*bi, name.clone(), Box::new(ty_r), body.clone()));
+                return Some(Expr::Lam(*bi, name.clone(), Node::new(ty_r), body.clone()));
             }
             if let Some(body_r) = one_step_reduce(body) {
-                return Some(Expr::Lam(*bi, name.clone(), ty.clone(), Box::new(body_r)));
+                return Some(Expr::Lam(*bi, name.clone(), ty.clone(), Node::new(body_r)));
             }
             None
         }
         Expr::Pi(bi, name, ty, body) => {
             if let Some(ty_r) = one_step_reduce(ty) {
-                return Some(Expr::Pi(*bi, name.clone(), Box::new(ty_r), body.clone()));
+                return Some(Expr::Pi(*bi, name.clone(), Node::new(ty_r), body.clone()));
             }
             if let Some(body_r) = one_step_reduce(body) {
-                return Some(Expr::Pi(*bi, name.clone(), ty.clone(), Box::new(body_r)));
+                return Some(Expr::Pi(*bi, name.clone(), ty.clone(), Node::new(body_r)));
             }
             None
         }
         Expr::Proj(struct_name, idx, e) => {
             if let Some(e_r) = one_step_reduce(e) {
-                return Some(Expr::Proj(struct_name.clone(), *idx, Box::new(e_r)));
+                return Some(Expr::Proj(struct_name.clone(), *idx, Node::new(e_r)));
             }
             None
         }
@@ -141,7 +143,7 @@ pub(super) fn reduce_cbv_impl(expr: &Expr, reducer: &mut Reducer, fuel: u32) -> 
                     let reduced = crate::subst::instantiate(&body, &a_val);
                     reduce_cbv_impl(&reduced, reducer, fuel - 1)
                 }
-                _ => Expr::App(Box::new(f_val), Box::new(a_val)),
+                _ => Expr::App(Node::new(f_val), Node::new(a_val)),
             }
         }
         Expr::Let(_, _, val, body) => {
@@ -174,7 +176,7 @@ pub(super) fn reduce_cbn_impl(expr: &Expr, reducer: &mut Reducer, fuel: u32) -> 
                     let reduced = crate::subst::instantiate(&body, a);
                     reduce_cbn_impl(&reduced, reducer, fuel - 1)
                 }
-                _ => Expr::App(Box::new(f_val), a.clone()),
+                _ => Expr::App(Node::new(f_val), a.clone()),
             }
         }
         Expr::Let(_, _, val, body) => {
@@ -423,25 +425,25 @@ mod tests {
     use super::*;
     use crate::{BinderInfo, Level, Literal, Name};
     fn mk_nat_lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn mk_lam(body: Expr) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(body),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(body),
         )
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     fn mk_let(val: Expr, body: Expr) -> Expr {
         Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(val),
-            Box::new(body),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(val),
+            Node::new(body),
         )
     }
     #[test]
@@ -457,7 +459,7 @@ mod tests {
     }
     #[test]
     fn test_is_normal_form_lit() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         assert!(is_normal_form(&expr));
     }
     #[test]
@@ -684,7 +686,7 @@ mod extra_reduction_tests {
     use super::*;
     use crate::{Level, Literal, Name};
     fn mk_nat_lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn mk_sort() -> Expr {
         Expr::Sort(Level::zero())
@@ -735,8 +737,8 @@ mod extra_reduction_tests {
     fn test_alpha_equiv_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = mk_nat_lit(1);
-        let e1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let e2 = Expr::App(Box::new(f), Box::new(a));
+        let e1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let e2 = Expr::App(Node::new(f), Node::new(a));
         assert!(alpha_equiv(&e1, &e2));
     }
     #[test]
@@ -930,7 +932,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

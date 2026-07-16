@@ -6,6 +6,7 @@ pub mod identitymetastep_traits;
 pub mod macroengine_traits;
 pub mod metaprogrammingerror_traits;
 pub mod metavalue_traits;
+pub mod omega_engine;
 pub mod omegametatactic_traits;
 pub mod ringmetatactic_traits;
 pub mod simpmetatactic_traits;

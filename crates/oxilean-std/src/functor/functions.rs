@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -15,13 +16,13 @@ pub fn build_functor_env(env: &mut Environment) -> Result<(), String> {
     let functor_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("f"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(type2.clone()),
+        Node::new(type2.clone()),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Functor"),
@@ -32,41 +33,47 @@ pub fn build_functor_env(env: &mut Environment) -> Result<(), String> {
     let map_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("f"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Functor"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Functor"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("a"),
-                Box::new(type1.clone()),
-                Box::new(Expr::Pi(
+                Node::new(type1.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Implicit,
                     Name::str("b"),
-                    Box::new(type1.clone()),
-                    Box::new(Expr::Pi(
+                    Node::new(type1.clone()),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("fn"),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_"),
-                            Box::new(Expr::BVar(1)),
-                            Box::new(Expr::BVar(1)),
+                            Node::new(Expr::BVar(1)),
+                            Node::new(Expr::BVar(1)),
                         )),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("fa"),
-                            Box::new(Expr::App(Box::new(Expr::BVar(4)), Box::new(Expr::BVar(2)))),
-                            Box::new(Expr::App(Box::new(Expr::BVar(5)), Box::new(Expr::BVar(2)))),
+                            Node::new(Expr::App(
+                                Node::new(Expr::BVar(4)),
+                                Node::new(Expr::BVar(2)),
+                            )),
+                            Node::new(Expr::App(
+                                Node::new(Expr::BVar(5)),
+                                Node::new(Expr::BVar(2)),
+                            )),
                         )),
                     )),
                 )),
@@ -87,8 +94,8 @@ pub fn build_functor_map_const(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Functor.mapConst"),
@@ -125,27 +132,27 @@ pub fn fmap_result<A, B, E, F: Fn(A) -> B>(r: Result<A, E>, f: F) -> Result<B, E
 /// Build a fmap application expression.
 pub fn make_fmap_expr(f_ty: Expr, map_fn: Expr, fa: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Functor.map"), vec![])),
-                Box::new(f_ty),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Functor.map"), vec![])),
+                Node::new(f_ty),
             )),
-            Box::new(map_fn),
+            Node::new(map_fn),
         )),
-        Box::new(fa),
+        Node::new(fa),
     )
 }
 /// Build a mapConst application expression.
 pub fn make_map_const_expr(f_ty: Expr, a: Expr, fb: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Functor.mapConst"), vec![])),
-                Box::new(f_ty),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Functor.mapConst"), vec![])),
+                Node::new(f_ty),
             )),
-            Box::new(a),
+            Node::new(a),
         )),
-        Box::new(fb),
+        Node::new(fb),
     )
 }
 /// Check the identity law for Option.
@@ -1024,8 +1031,8 @@ pub fn ftr_ext_identity_law_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("f_alpha"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_composition_law_ty() -> Expr {
@@ -1033,8 +1040,8 @@ pub fn ftr_ext_composition_law_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("f_alpha"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_naturality_ty() -> Expr {
@@ -1042,8 +1049,8 @@ pub fn ftr_ext_naturality_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("nat_ty"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_list_identity_ty() -> Expr {
@@ -1051,13 +1058,13 @@ pub fn ftr_ext_list_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("list_a"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(type1.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(type1),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(type1),
         )),
     )
 }
@@ -1066,8 +1073,8 @@ pub fn ftr_ext_list_composition_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("list_compose"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_option_identity_ty() -> Expr {
@@ -1075,13 +1082,13 @@ pub fn ftr_ext_option_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("opt_id"),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Option"), vec![])),
-            Box::new(type1.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Option"), vec![])),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Option"), vec![])),
-            Box::new(type1),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Option"), vec![])),
+            Node::new(type1),
         )),
     )
 }
@@ -1090,8 +1097,8 @@ pub fn ftr_ext_option_composition_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("opt_comp"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_result_identity_ty() -> Expr {
@@ -1099,8 +1106,8 @@ pub fn ftr_ext_result_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("res_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_pair_fmap_ty() -> Expr {
@@ -1108,8 +1115,8 @@ pub fn ftr_ext_pair_fmap_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("pair_fmap"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_bifunctor_identity_ty() -> Expr {
@@ -1117,8 +1124,8 @@ pub fn ftr_ext_bifunctor_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("bimap_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_bifunctor_composition_ty() -> Expr {
@@ -1126,8 +1133,8 @@ pub fn ftr_ext_bifunctor_composition_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("bimap_comp"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_contramap_identity_ty() -> Expr {
@@ -1135,8 +1142,8 @@ pub fn ftr_ext_contramap_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("cmap_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_contramap_composition_ty() -> Expr {
@@ -1144,8 +1151,8 @@ pub fn ftr_ext_contramap_composition_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("cmap_comp"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_profunctor_identity_ty() -> Expr {
@@ -1153,8 +1160,8 @@ pub fn ftr_ext_profunctor_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("dimap_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_profunctor_composition_ty() -> Expr {
@@ -1162,8 +1169,8 @@ pub fn ftr_ext_profunctor_composition_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("dimap_comp"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_ap_identity_ty() -> Expr {
@@ -1171,8 +1178,8 @@ pub fn ftr_ext_ap_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("ap_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_ap_homomorphism_ty() -> Expr {
@@ -1180,8 +1187,8 @@ pub fn ftr_ext_ap_homomorphism_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("ap_hom"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_ap_interchange_ty() -> Expr {
@@ -1189,8 +1196,8 @@ pub fn ftr_ext_ap_interchange_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("ap_interchange"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_ap_composition_ty() -> Expr {
@@ -1198,8 +1205,8 @@ pub fn ftr_ext_ap_composition_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("ap_comp"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_monoidal_unit_ty() -> Expr {
@@ -1207,8 +1214,8 @@ pub fn ftr_ext_monoidal_unit_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("mono_unit"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_monoidal_zip_ty() -> Expr {
@@ -1216,8 +1223,8 @@ pub fn ftr_ext_monoidal_zip_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("mono_zip"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_strong_first_ty() -> Expr {
@@ -1225,8 +1232,8 @@ pub fn ftr_ext_strong_first_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("strong_first"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_strong_second_ty() -> Expr {
@@ -1234,8 +1241,8 @@ pub fn ftr_ext_strong_second_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("strong_second"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_cartesian_copy_ty() -> Expr {
@@ -1243,8 +1250,8 @@ pub fn ftr_ext_cartesian_copy_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("cartesian_copy"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_cartesian_delete_ty() -> Expr {
@@ -1252,8 +1259,8 @@ pub fn ftr_ext_cartesian_delete_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("cartesian_delete"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_closed_apply_ty() -> Expr {
@@ -1261,8 +1268,8 @@ pub fn ftr_ext_closed_apply_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("closed_apply"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_closed_curry_ty() -> Expr {
@@ -1270,8 +1277,8 @@ pub fn ftr_ext_closed_curry_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("closed_curry"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_traverse_identity_ty() -> Expr {
@@ -1279,8 +1286,8 @@ pub fn ftr_ext_traverse_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("trav_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_traverse_composition_ty() -> Expr {
@@ -1288,8 +1295,8 @@ pub fn ftr_ext_traverse_composition_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("trav_comp"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_fold_consistent_ty() -> Expr {
@@ -1297,8 +1304,8 @@ pub fn ftr_ext_fold_consistent_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fold_consist"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_foldmap_morphism_ty() -> Expr {
@@ -1306,8 +1313,8 @@ pub fn ftr_ext_foldmap_morphism_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("foldmap_morph"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_representable_tabulate_ty() -> Expr {
@@ -1315,8 +1322,8 @@ pub fn ftr_ext_representable_tabulate_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("rep_tab"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_representable_index_ty() -> Expr {
@@ -1324,8 +1331,8 @@ pub fn ftr_ext_representable_index_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("rep_idx"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_kan_left_ty() -> Expr {
@@ -1334,8 +1341,8 @@ pub fn ftr_ext_kan_left_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("lan_k"),
-        Box::new(type2),
-        Box::new(type1),
+        Node::new(type2),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_kan_right_ty() -> Expr {
@@ -1344,8 +1351,8 @@ pub fn ftr_ext_kan_right_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("ran_k"),
-        Box::new(type2),
-        Box::new(type1),
+        Node::new(type2),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_day_conv_unit_ty() -> Expr {
@@ -1353,8 +1360,8 @@ pub fn ftr_ext_day_conv_unit_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("day_unit"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_day_conv_assoc_ty() -> Expr {
@@ -1362,8 +1369,8 @@ pub fn ftr_ext_day_conv_assoc_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("day_assoc"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_compose_identity_ty() -> Expr {
@@ -1371,8 +1378,8 @@ pub fn ftr_ext_compose_identity_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fcomp_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_compose_assoc_ty() -> Expr {
@@ -1380,8 +1387,8 @@ pub fn ftr_ext_compose_assoc_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fcomp_assoc"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_nat_trans_id_ty() -> Expr {
@@ -1389,8 +1396,8 @@ pub fn ftr_ext_nat_trans_id_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("nat_trans_id"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_nat_trans_comp_ty() -> Expr {
@@ -1398,8 +1405,8 @@ pub fn ftr_ext_nat_trans_comp_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("nat_trans_comp"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_adjunction_unit_ty() -> Expr {
@@ -1407,8 +1414,8 @@ pub fn ftr_ext_adjunction_unit_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("adj_unit"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_adjunction_counit_ty() -> Expr {
@@ -1416,8 +1423,8 @@ pub fn ftr_ext_adjunction_counit_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("adj_counit"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_adjunction_triangle_ty() -> Expr {
@@ -1425,8 +1432,8 @@ pub fn ftr_ext_adjunction_triangle_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("adj_triangle"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_functor_cat_obj_ty() -> Expr {
@@ -1434,8 +1441,8 @@ pub fn ftr_ext_functor_cat_obj_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fcat_obj"),
-        Box::new(type2.clone()),
-        Box::new(type2),
+        Node::new(type2.clone()),
+        Node::new(type2),
     )
 }
 pub fn ftr_ext_functor_cat_mor_ty() -> Expr {
@@ -1443,8 +1450,8 @@ pub fn ftr_ext_functor_cat_mor_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fcat_mor"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_presheaf_ty() -> Expr {
@@ -1453,8 +1460,8 @@ pub fn ftr_ext_presheaf_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("presheaf"),
-        Box::new(type2),
-        Box::new(type1),
+        Node::new(type2),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_yoneda_lemma_ty() -> Expr {
@@ -1462,8 +1469,8 @@ pub fn ftr_ext_yoneda_lemma_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("yoneda"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_yoneda_embedding_ty() -> Expr {
@@ -1472,8 +1479,8 @@ pub fn ftr_ext_yoneda_embedding_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("yoneda_embed"),
-        Box::new(type1),
-        Box::new(type2),
+        Node::new(type1),
+        Node::new(type2),
     )
 }
 pub fn ftr_ext_sheaf_gluing_ty() -> Expr {
@@ -1481,8 +1488,8 @@ pub fn ftr_ext_sheaf_gluing_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("sheaf_glue"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_sheaf_locality_ty() -> Expr {
@@ -1490,8 +1497,8 @@ pub fn ftr_ext_sheaf_locality_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("sheaf_local"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_fmap_preserves_eq_ty() -> Expr {
@@ -1499,8 +1506,8 @@ pub fn ftr_ext_fmap_preserves_eq_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("fmap_eq"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_free_functor_ty() -> Expr {
@@ -1508,8 +1515,8 @@ pub fn ftr_ext_free_functor_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("free_functor"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_cofree_functor_ty() -> Expr {
@@ -1517,8 +1524,8 @@ pub fn ftr_ext_cofree_functor_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("cofree_functor"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 pub fn ftr_ext_exponential_functor_ty() -> Expr {
@@ -1526,8 +1533,8 @@ pub fn ftr_ext_exponential_functor_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("exp_functor"),
-        Box::new(type1.clone()),
-        Box::new(type1),
+        Node::new(type1.clone()),
+        Node::new(type1),
     )
 }
 /// Register all extended functor axioms in the environment.

@@ -18,6 +18,7 @@ use super::types::{
 pub(super) fn lcnf_type_to_fortran(ty: &LcnfType) -> FortranType {
     match ty {
         LcnfType::Nat => FortranType::FtIntegerK(8),
+        LcnfType::Int => FortranType::FtIntegerK(8),
         LcnfType::LcnfString => FortranType::FtCharacterStar,
         LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => FortranType::FtLogical,
         LcnfType::Object => FortranType::FtClassStar,

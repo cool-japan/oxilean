@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Level, Name};
+use std::rc::Rc;
 
 use super::types::{
     BinderInfo, ConfigNode, DecisionNode, Either2, Expr, FVarId, FVarIdGen, Fixture,
@@ -50,8 +52,8 @@ mod tests {
         let prop = Expr::Sort(Level::zero());
         let nat_const = Expr::Const(Name::str("Nat"), vec![]);
         let app = Expr::App(
-            Box::new(nat_const.clone()),
-            Box::new(Expr::Lit(Literal::Nat(42))),
+            Node::new(nat_const.clone()),
+            Node::new(Expr::Lit(Literal::nat(42))),
         );
         assert_eq!(prop.to_string(), "Prop");
         assert_eq!(nat_const.to_string(), "Nat");
@@ -169,8 +171,8 @@ pub fn mk_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Build a chain of non-dependent arrow types.
@@ -218,7 +220,7 @@ mod extended_expr_tests {
     }
     #[test]
     fn test_literal_predicates() {
-        let n = Literal::Nat(42);
+        let n = Literal::nat(42);
         let s = Literal::Str("hello".to_string());
         assert!(n.is_nat());
         assert!(!n.is_str());
@@ -234,8 +236,8 @@ mod extended_expr_tests {
         assert!(Expr::BVar(0).is_atom());
         assert!(Expr::Const(Name::str("Nat"), vec![]).is_atom());
         assert!(!Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0))
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0))
         )
         .is_atom());
     }
@@ -256,8 +258,8 @@ mod extended_expr_tests {
         let a = Expr::BVar(0);
         let b = Expr::BVar(1);
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = app.app_head_args();
         assert_eq!(head, &f);
@@ -266,8 +268,8 @@ mod extended_expr_tests {
     #[test]
     fn test_expr_app_arity() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let app1 = Expr::App(Box::new(f.clone()), Box::new(Expr::BVar(0)));
-        let app2 = Expr::App(Box::new(app1), Box::new(Expr::BVar(1)));
+        let app1 = Expr::App(Node::new(f.clone()), Node::new(Expr::BVar(0)));
+        let app2 = Expr::App(Node::new(app1), Node::new(Expr::BVar(1)));
         assert_eq!(app2.app_arity(), 2);
         assert_eq!(f.app_arity(), 0);
     }
@@ -277,14 +279,14 @@ mod extended_expr_tests {
         let pi1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat.clone()),
-            Box::new(nat.clone()),
+            Node::new(nat.clone()),
+            Node::new(nat.clone()),
         );
         let pi2 = Expr::Pi(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(nat.clone()),
-            Box::new(pi1),
+            Node::new(nat.clone()),
+            Node::new(pi1),
         );
         assert_eq!(pi2.pi_arity(), 2);
     }
@@ -292,14 +294,14 @@ mod extended_expr_tests {
     fn test_expr_size() {
         let e = Expr::BVar(0);
         assert_eq!(e.size(), 1);
-        let app = Expr::App(Box::new(e.clone()), Box::new(e.clone()));
+        let app = Expr::App(Node::new(e.clone()), Node::new(e.clone()));
         assert_eq!(app.size(), 3);
     }
     #[test]
     fn test_expr_ast_depth() {
         let e = Expr::BVar(0);
         assert_eq!(e.ast_depth(), 0);
-        let app = Expr::App(Box::new(e.clone()), Box::new(e.clone()));
+        let app = Expr::App(Node::new(e.clone()), Node::new(e.clone()));
         assert_eq!(app.ast_depth(), 1);
     }
     #[test]
@@ -312,7 +314,7 @@ mod extended_expr_tests {
     }
     #[test]
     fn test_count_bvar_occurrences() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(0)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(0)));
         assert_eq!(e.count_bvar_occurrences(0), 2);
         assert_eq!(e.count_bvar_occurrences(1), 0);
     }
@@ -333,7 +335,7 @@ mod extended_expr_tests {
     fn test_constants_collection() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
         let int = Expr::Const(Name::str("Int"), vec![]);
-        let app = Expr::App(Box::new(nat), Box::new(int));
+        let app = Expr::App(Node::new(nat), Node::new(int));
         let consts = app.constants();
         assert_eq!(consts.len(), 2);
     }
@@ -365,8 +367,8 @@ pub fn mk_lam_many(binders: &[(Name, Expr)], body: Expr) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             name.clone(),
-            Box::new(ty.clone()),
-            Box::new(acc),
+            Node::new(ty.clone()),
+            Node::new(acc),
         )
     })
 }
@@ -378,8 +380,8 @@ pub fn mk_pi_many(binders: &[(Name, Expr)], body: Expr) -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             name.clone(),
-            Box::new(ty.clone()),
-            Box::new(acc),
+            Node::new(ty.clone()),
+            Node::new(acc),
         )
     })
 }
@@ -387,35 +389,35 @@ pub fn mk_pi_many(binders: &[(Name, Expr)], body: Expr) -> Expr {
 pub fn mk_eq(alpha: Expr, a: Expr, b: Expr) -> Expr {
     let eq_const = Expr::Const(Name::str("Eq"), vec![]);
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(Box::new(eq_const), Box::new(alpha))),
-            Box::new(a),
+        Node::new(Expr::App(
+            Node::new(Expr::App(Node::new(eq_const), Node::new(alpha))),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Build `Eq.refl α a`.
 pub fn mk_refl(alpha: Expr, a: Expr) -> Expr {
     let refl = Expr::Const(Name::str("Eq.refl"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(refl), Box::new(alpha))),
-        Box::new(a),
+        Node::new(Expr::App(Node::new(refl), Node::new(alpha))),
+        Node::new(a),
     )
 }
 /// Build `And a b`: logical conjunction.
 pub fn mk_and(a: Expr, b: Expr) -> Expr {
     let and_const = Expr::Const(Name::str("And"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(and_const), Box::new(a))),
-        Box::new(b),
+        Node::new(Expr::App(Node::new(and_const), Node::new(a))),
+        Node::new(b),
     )
 }
 /// Build `Or a b`: logical disjunction.
 pub fn mk_or(a: Expr, b: Expr) -> Expr {
     let or_const = Expr::Const(Name::str("Or"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(or_const), Box::new(a))),
-        Box::new(b),
+        Node::new(Expr::App(Node::new(or_const), Node::new(a))),
+        Node::new(b),
     )
 }
 /// Build `Not p = p → False`.
@@ -425,7 +427,7 @@ pub fn mk_not(p: Expr) -> Expr {
 }
 /// Build a let-binding `let x : ty := val in body`.
 pub fn mk_let(name: Name, ty: Expr, val: Expr, body: Expr) -> Expr {
-    Expr::Let(name, Box::new(ty), Box::new(val), Box::new(body))
+    Expr::Let(name, Node::new(ty), Node::new(val), Node::new(body))
 }
 /// Check if two expressions share the same head constant.
 pub fn same_head(e1: &Expr, e2: &Expr) -> bool {
@@ -466,28 +468,28 @@ pub fn subst_expr(expr: &Expr, old: &Expr, new_expr: &Expr) -> Expr {
     }
     match expr {
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_expr(f, old, new_expr)),
-            Box::new(subst_expr(a, old, new_expr)),
+            Node::new(subst_expr(f, old, new_expr)),
+            Node::new(subst_expr(a, old, new_expr)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(subst_expr(ty, old, new_expr)),
-            Box::new(subst_expr(body, old, new_expr)),
+            Node::new(subst_expr(ty, old, new_expr)),
+            Node::new(subst_expr(body, old, new_expr)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(subst_expr(ty, old, new_expr)),
-            Box::new(subst_expr(body, old, new_expr)),
+            Node::new(subst_expr(ty, old, new_expr)),
+            Node::new(subst_expr(body, old, new_expr)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(subst_expr(ty, old, new_expr)),
-            Box::new(subst_expr(val, old, new_expr)),
-            Box::new(subst_expr(body, old, new_expr)),
+            Node::new(subst_expr(ty, old, new_expr)),
+            Node::new(subst_expr(val, old, new_expr)),
+            Node::new(subst_expr(body, old, new_expr)),
         ),
-        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Box::new(subst_expr(e, old, new_expr))),
+        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Node::new(subst_expr(e, old, new_expr))),
         other => other.clone(),
     }
 }
@@ -567,7 +569,7 @@ mod expr_new_tests {
     #[test]
     fn test_mk_let() {
         let nat = mk_const("Nat");
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         let body = Expr::BVar(0);
         let let_expr = mk_let(Name::str("x"), nat, val, body);
         assert!(let_expr.is_let());
@@ -578,8 +580,8 @@ mod expr_new_tests {
         let a = Expr::BVar(0);
         let b = Expr::BVar(1);
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a))),
-            Box::new(b),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a))),
+            Node::new(b),
         );
         assert_eq!(app_head(&app), &f);
     }
@@ -589,8 +591,8 @@ mod expr_new_tests {
         let a = Expr::BVar(0);
         let b = Expr::BVar(1);
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let args = app_args(&app);
         assert_eq!(args.len(), 2);
@@ -598,23 +600,23 @@ mod expr_new_tests {
     #[test]
     fn test_same_head_true() {
         let f = mk_const("f");
-        let e1 = Expr::App(Box::new(f.clone()), Box::new(Expr::BVar(0)));
-        let e2 = Expr::App(Box::new(f.clone()), Box::new(Expr::BVar(1)));
+        let e1 = Expr::App(Node::new(f.clone()), Node::new(Expr::BVar(0)));
+        let e2 = Expr::App(Node::new(f.clone()), Node::new(Expr::BVar(1)));
         assert!(same_head(&e1, &e2));
     }
     #[test]
     fn test_same_head_false() {
         let f = mk_const("f");
         let g = mk_const("g");
-        let e1 = Expr::App(Box::new(f), Box::new(Expr::BVar(0)));
-        let e2 = Expr::App(Box::new(g), Box::new(Expr::BVar(0)));
+        let e1 = Expr::App(Node::new(f), Node::new(Expr::BVar(0)));
+        let e2 = Expr::App(Node::new(g), Node::new(Expr::BVar(0)));
         assert!(!same_head(&e1, &e2));
     }
     #[test]
     fn test_subst_expr() {
-        let target = Expr::Lit(Literal::Nat(1));
-        let replacement = Expr::Lit(Literal::Nat(99));
-        let expr = Expr::App(Box::new(target.clone()), Box::new(target.clone()));
+        let target = Expr::Lit(Literal::nat(1));
+        let replacement = Expr::Lit(Literal::nat(99));
+        let expr = Expr::App(Node::new(target.clone()), Node::new(target.clone()));
         let result = subst_expr(&expr, &target, &replacement);
         if let Expr::App(f, a) = &result {
             assert_eq!(f.as_ref(), &replacement);
@@ -625,20 +627,20 @@ mod expr_new_tests {
     }
     #[test]
     fn test_count_occurrences() {
-        let target = Expr::Lit(Literal::Nat(42));
+        let target = Expr::Lit(Literal::nat(42));
         let expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(target.clone()),
-                Box::new(target.clone()),
+            Node::new(Expr::App(
+                Node::new(target.clone()),
+                Node::new(target.clone()),
             )),
-            Box::new(target.clone()),
+            Node::new(target.clone()),
         );
         assert_eq!(count_occurrences(&expr, &target), 3);
     }
     #[test]
     fn test_count_occurrences_not_found() {
-        let target = Expr::Lit(Literal::Nat(0));
-        let expr = Expr::Lit(Literal::Nat(1));
+        let target = Expr::Lit(Literal::nat(0));
+        let expr = Expr::Lit(Literal::nat(1));
         assert_eq!(count_occurrences(&expr, &target), 0);
     }
 }
@@ -793,7 +795,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

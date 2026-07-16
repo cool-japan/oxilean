@@ -5,6 +5,7 @@
 use crate::{Level, Name};
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::functions::{
     collect_consts, collect_fvars, count_bvar_occ, has_loose_bvar, max_loose_bvar_impl,
@@ -710,7 +711,7 @@ impl RewriteRuleSet {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -718,7 +719,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }
@@ -829,14 +830,28 @@ impl StatSummary {
     }
 }
 /// Literal values supported natively.
+///
+/// Exactly the two literal kinds of the Lean 4 kernel: arbitrary-precision
+/// natural numbers (`natVal`) and UTF-8 strings (`strVal`). There is
+/// deliberately **no** integer literal — Lean encodes integers as
+/// `Int.ofNat` / `Int.negSucc` over Nat literals, and a signed fixed-width
+/// literal inside the TCB previously carried wrapping arithmetic.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Literal {
-    /// Natural number literal.
-    Nat(u64),
+    /// Natural number literal (arbitrary precision).
+    Nat(crate::bignat::BigNat),
     /// String literal.
     Str(String),
 }
 impl Literal {
+    /// Build a Nat literal from a small value (ergonomic constructor).
+    pub fn nat(n: u64) -> Self {
+        Literal::Nat(crate::bignat::BigNat::from(n))
+    }
+    /// Build a String literal.
+    pub fn string(s: impl Into<String>) -> Self {
+        Literal::Str(s.into())
+    }
     /// Return true if this is a natural number literal.
     pub fn is_nat(&self) -> bool {
         matches!(self, Literal::Nat(_))
@@ -845,10 +860,20 @@ impl Literal {
     pub fn is_str(&self) -> bool {
         matches!(self, Literal::Str(_))
     }
-    /// Extract the natural number value, or `None`.
+    /// Extract the natural number value if it fits in `u64` (best effort;
+    /// returns `None` for larger values — use [`Literal::as_bignat`] for the
+    /// exact value).
     pub fn as_nat(&self) -> Option<u64> {
         if let Literal::Nat(n) = self {
-            Some(*n)
+            n.to_u64()
+        } else {
+            None
+        }
+    }
+    /// Extract the exact natural number value, or `None`.
+    pub fn as_bignat(&self) -> Option<&crate::bignat::BigNat> {
+        if let Literal::Nat(n) = self {
+            Some(n)
         } else {
             None
         }
@@ -867,6 +892,16 @@ impl Literal {
             Literal::Nat(_) => "Nat",
             Literal::Str(_) => "String",
         }
+    }
+}
+impl From<crate::bignat::BigNat> for Literal {
+    fn from(n: crate::bignat::BigNat) -> Self {
+        Literal::Nat(n)
+    }
+}
+impl From<u64> for Literal {
+    fn from(n: u64) -> Self {
+        Literal::nat(n)
     }
 }
 /// A window iterator that yields overlapping windows of size `n`.
@@ -977,9 +1012,128 @@ impl StringPool {
 /// This is the heart of the kernel. All terms in the type theory are
 /// represented as `Expr` values.
 ///
-/// We use `Box` for sub-expressions for simplicity in Phase 0.
-/// In later phases, these will be `Idx<Expr>` pointing into an arena.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+/// Sub-expressions are held behind `Rc<Expr>` (structural sharing, wave5): an
+/// export DAG id referenced by many parents materializes to a single shared
+/// node, and `clone` is an O(1) refcount bump rather than a deep copy. The
+/// kernel is single-threaded (the verify pipeline runs on one spawned thread
+/// and the wasm target is single-threaded), so `Rc` — not `Arc` — is correct.
+///
+/// `Clone` is implemented by hand (not derived) so each clone charges one unit
+/// of the deterministic per-declaration resource fuel — see [`crate::fuel`].
+/// Under `Rc` a clone shares children (the sub-`clone`s are refcount bumps), so
+/// this now meters clone *calls* rather than deep-copied nodes; the load-bearing
+/// metering of newly-constructed term material lives in the substitution/lift
+/// builders (see `fuel.rs`).
+/// A child edge in an [`Expr`]: a reference-counted subterm together with its
+/// cached `looseBVarRange` (structural sharing, wave5 Stage E).
+///
+/// `range` is `1 + the largest loose de Bruijn index in the subterm` (0 =
+/// closed). Caching it on the edge lets a substitution or lift decide in O(1)
+/// whether a subtree is affected — `range <= depth` means "no loose bvar can be
+/// touched, share it unchanged" — without ever traversing the subtree. The
+/// range is computed once, bottom-up, in [`Node::new`] from the child's own
+/// immediate children (also `Node`s), so construction stays O(nodes).
+///
+/// `Node` is a transparent wrapper: it `Deref`s to the inner [`Expr`], and its
+/// `PartialEq`/`Eq`/`Hash` delegate to the `Rc<Expr>` (so the derived instances
+/// on `Expr` keep exactly their structural meaning, with `Rc`'s free pointer
+/// short-circuit). The cached `range` is a function of the subterm and so never
+/// participates in equality or hashing.
+#[derive(Clone)]
+pub struct Node {
+    range: u32,
+    /// Cached fuel a no-skip substitution/lift would charge to rebuild this
+    /// subterm (saturating `u32`). Co-located with `range` so it fills the
+    /// struct's existing padding — `Node` stays 16 bytes. When a
+    /// substitution/lift SKIPS an untouched subtree it charges exactly this much
+    /// (see the skip in `subst::instantiate_at`), keeping fuel — and therefore
+    /// every verdict — identical to the non-sharing baseline while still saving
+    /// the allocation. It counts one unit per node the no-skip recursion would
+    /// visit PLUS one per leaf (which the baseline additionally charges through
+    /// `Expr::clone`): `cost(leaf) = 2`, `cost(internal) = 1 + Σ cost(children)`.
+    cost: u32,
+    rc: Rc<Expr>,
+}
+
+impl Node {
+    /// Wrap an [`Expr`] as a child edge, caching its `looseBVarRange` and the
+    /// no-skip rebuild fuel cost.
+    #[inline]
+    pub fn new(e: Expr) -> Node {
+        Node {
+            range: e.range(),
+            cost: e.rebuild_cost(),
+            rc: Rc::new(e),
+        }
+    }
+
+    /// The cached `looseBVarRange` of this subterm (O(1)).
+    #[inline]
+    #[must_use]
+    pub fn range(&self) -> u32 {
+        self.range
+    }
+
+    /// The cached no-skip rebuild fuel cost of this subterm (O(1)).
+    #[inline]
+    #[must_use]
+    pub fn rebuild_cost(&self) -> u32 {
+        self.cost
+    }
+
+    /// The shared inner `Rc<Expr>`.
+    #[inline]
+    #[must_use]
+    pub fn rc(&self) -> &Rc<Expr> {
+        &self.rc
+    }
+}
+
+impl std::ops::Deref for Node {
+    type Target = Expr;
+    #[inline]
+    fn deref(&self) -> &Expr {
+        &self.rc
+    }
+}
+
+impl PartialEq for Node {
+    #[inline]
+    fn eq(&self, other: &Node) -> bool {
+        self.rc == other.rc
+    }
+}
+impl Eq for Node {}
+impl std::hash::Hash for Node {
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.rc.hash(state);
+    }
+}
+impl std::fmt::Debug for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&*self.rc, f)
+    }
+}
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&*self.rc, f)
+    }
+}
+impl AsRef<Expr> for Node {
+    #[inline]
+    fn as_ref(&self) -> &Expr {
+        &self.rc
+    }
+}
+impl std::borrow::Borrow<Expr> for Node {
+    #[inline]
+    fn borrow(&self) -> &Expr {
+        &self.rc
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub enum Expr {
     /// Sort u — universe.
     ///
@@ -1003,20 +1157,92 @@ pub enum Expr {
     /// Function application: `f a`.
     ///
     /// Application is always binary. `f a b` is `App(App(f, a), b)`.
-    App(Box<Expr>, Box<Expr>),
+    App(Node, Node),
     /// Lambda abstraction: `λ (x : type), body`.
-    Lam(BinderInfo, Name, Box<Expr>, Box<Expr>),
+    Lam(BinderInfo, Name, Node, Node),
     /// Dependent function type: `Π (x : type), body`.
     ///
     /// Non-dependent arrows `A → B` are represented as
     /// `Pi(Default, _, A, B)` where the body doesn't use `BVar(0)`.
-    Pi(BinderInfo, Name, Box<Expr>, Box<Expr>),
+    Pi(BinderInfo, Name, Node, Node),
     /// Let binding: `let x : type := val in body`.
-    Let(Name, Box<Expr>, Box<Expr>, Box<Expr>),
+    Let(Name, Node, Node, Node),
     /// Literal value (Nat or String).
     Lit(Literal),
     /// Structure projection: `projName.idx struct`.
-    Proj(Name, u32, Box<Expr>),
+    Proj(Name, u32, Node),
+}
+
+impl Expr {
+    /// This node's `looseBVarRange` — `1 + the largest loose de Bruijn index`,
+    /// or 0 if closed. O(1): it reads the immediate children's cached ranges
+    /// (see [`Node`]) and combines them, accounting for the binders each child
+    /// sits under.
+    #[inline]
+    #[must_use]
+    pub fn range(&self) -> u32 {
+        match self {
+            Expr::BVar(n) => n.saturating_add(1),
+            Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => 0,
+            Expr::App(f, a) => f.range().max(a.range()),
+            Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
+                ty.range().max(body.range().saturating_sub(1))
+            }
+            Expr::Let(_, ty, val, body) => ty
+                .range()
+                .max(val.range())
+                .max(body.range().saturating_sub(1)),
+            Expr::Proj(_, _, inner) => inner.range(),
+        }
+    }
+
+    /// The fuel a no-skip substitution/lift would charge to rebuild this subterm
+    /// (saturating `u32`), O(1) from the children's cached costs. The baseline
+    /// charges one unit per node visited (`fuel::charge(1)` at each recursion)
+    /// AND one more per leaf (the `expr.clone()` a leaf returns goes through
+    /// `Expr::clone`, which also charges 1). So `cost(leaf) = 2` and
+    /// `cost(internal) = 1 + Σ cost(children)`. Charging this on a skip keeps the
+    /// per-declaration fuel — and hence every verdict — identical to the
+    /// non-sharing baseline.
+    #[inline]
+    #[must_use]
+    pub fn rebuild_cost(&self) -> u32 {
+        match self {
+            Expr::Sort(_) | Expr::BVar(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => 2,
+            Expr::App(f, a) => 1u32
+                .saturating_add(f.rebuild_cost())
+                .saturating_add(a.rebuild_cost()),
+            Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => 1u32
+                .saturating_add(ty.rebuild_cost())
+                .saturating_add(body.rebuild_cost()),
+            Expr::Let(_, ty, val, body) => 1u32
+                .saturating_add(ty.rebuild_cost())
+                .saturating_add(val.rebuild_cost())
+                .saturating_add(body.rebuild_cost()),
+            Expr::Proj(_, _, inner) => 1u32.saturating_add(inner.rebuild_cost()),
+        }
+    }
+}
+impl Clone for Expr {
+    fn clone(&self) -> Self {
+        // One unit of resource fuel per node cloned (the sub-clones recurse
+        // through this impl, so a deep copy charges its full node count).
+        crate::fuel::charge(1);
+        match self {
+            Expr::Sort(l) => Expr::Sort(l.clone()),
+            Expr::BVar(n) => Expr::BVar(*n),
+            Expr::FVar(id) => Expr::FVar(*id),
+            Expr::Const(name, levels) => Expr::Const(name.clone(), levels.clone()),
+            Expr::App(f, a) => Expr::App(f.clone(), a.clone()),
+            Expr::Lam(bi, name, ty, body) => Expr::Lam(*bi, name.clone(), ty.clone(), body.clone()),
+            Expr::Pi(bi, name, ty, body) => Expr::Pi(*bi, name.clone(), ty.clone(), body.clone()),
+            Expr::Let(name, ty, val, body) => {
+                Expr::Let(name.clone(), ty.clone(), val.clone(), body.clone())
+            }
+            Expr::Lit(l) => Expr::Lit(l.clone()),
+            Expr::Proj(name, idx, inner) => Expr::Proj(name.clone(), *idx, inner.clone()),
+        }
+    }
 }
 impl Expr {
     /// Check if this is a Sort.
@@ -1176,8 +1402,9 @@ impl Expr {
     ///
     /// `e.mk_app_many(&[a, b, c])` returns `((e a) b) c`.
     pub fn mk_app_many(self, args: &[Expr]) -> Expr {
-        args.iter()
-            .fold(self, |acc, a| Expr::App(Box::new(acc), Box::new(a.clone())))
+        args.iter().fold(self, |acc, a| {
+            Expr::App(Node::new(acc), Node::new(a.clone()))
+        })
     }
     /// Check if this expression has any loose bound variables at depth `d`.
     pub fn has_loose_bvar_at(&self, d: u32) -> bool {
@@ -1361,7 +1588,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -1371,7 +1598,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -1385,7 +1612,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;

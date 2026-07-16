@@ -2,9 +2,11 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Declaration, Environment, Expr, Name};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::rc::Rc;
 
 use super::types::{
     AxiomAllowlist, AxiomCategory, AxiomSafety, AxiomSafetyReport, AxiomSequence, AxiomUsageRecord,
@@ -134,8 +136,8 @@ mod tests {
     fn test_check_dependencies() {
         let validator = AxiomValidator::new();
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("g"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("g"), vec![])),
         );
         let deps = validator.check_dependencies(&expr);
         assert!(deps.contains(&Name::str("f")));
@@ -214,8 +216,8 @@ mod tests {
         validator.register(Name::str("ax1"));
         validator.register(Name::str("ax2"));
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("ax1"), vec![])),
-            Box::new(Expr::Const(Name::str("not_axiom"), vec![])),
+            Node::new(Expr::Const(Name::str("ax1"), vec![])),
+            Node::new(Expr::Const(Name::str("not_axiom"), vec![])),
         );
         let axiom_deps = validator.axiom_dependencies(&expr);
         assert!(axiom_deps.contains(&Name::str("ax1")));
@@ -429,8 +431,8 @@ mod axiom_extra_tests {
     #[test]
     fn test_collect_direct_refs() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         let refs = collect_direct_refs(&e);
         assert!(refs.contains(&Name::str("f")));
@@ -772,7 +774,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

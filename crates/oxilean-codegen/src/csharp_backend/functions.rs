@@ -15,6 +15,7 @@ use super::types::{
 pub(super) fn lcnf_type_to_csharp(ty: &LcnfType) -> CSharpType {
     match ty {
         LcnfType::Nat => CSharpType::Long,
+        LcnfType::Int => CSharpType::Long,
         LcnfType::LcnfString => CSharpType::String,
         LcnfType::Unit => CSharpType::Void,
         LcnfType::Erased | LcnfType::Irrelevant => CSharpType::Object,

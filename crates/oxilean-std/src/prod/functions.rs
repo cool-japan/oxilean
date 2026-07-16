@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::env_builder::{app, prop, sort, var, EnvBuilder};
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Level};
 use oxilean_kernel::{Expr, Name};
 
@@ -709,7 +710,7 @@ pub fn prod_ext_cst(name: &str) -> Expr {
     Expr::Const(Name::str(name), vec![])
 }
 pub fn prod_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn prod_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
     prod_ext_app(prod_ext_app(f, a), b)
@@ -721,16 +722,16 @@ pub fn prod_ext_pi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn prod_ext_pi_imp(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn prod_ext_arrow(a: Expr, b: Expr) -> Expr {

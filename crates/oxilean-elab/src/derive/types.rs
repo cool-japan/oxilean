@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 use std::collections::HashMap;
 
@@ -159,18 +160,18 @@ impl Deriver {
         let beq_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty_expr.clone()),
-            Box::new(Expr::Lam(
+            Node::new(ty_expr.clone()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(ty_expr.clone()),
-                Box::new(body),
+                Node::new(ty_expr.clone()),
+                Node::new(body),
             )),
         );
         let instance_name = Name::str(format!("inst_BEq_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("BEq"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("BEq"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -193,8 +194,8 @@ impl Deriver {
                 .enumerate()
                 .map(|(i, _)| {
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("repr"), vec![])),
-                        Box::new(mk_lhs_field_var(i)),
+                        Node::new(Expr::Const(Name::str("repr"), vec![])),
+                        Node::new(mk_lhs_field_var(i)),
                     )
                 })
                 .collect();
@@ -204,13 +205,13 @@ impl Deriver {
         let repr_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty_expr.clone()),
-            Box::new(body),
+            Node::new(ty_expr.clone()),
+            Node::new(body),
         );
         let instance_name = Name::str(format!("inst_Repr_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("Repr"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("Repr"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -234,8 +235,8 @@ impl Deriver {
         let mut match_arms: Vec<Expr> = Vec::new();
         for (tag, ctor) in type_info.constructors.iter().enumerate() {
             let tag_hash = Expr::App(
-                Box::new(Expr::Const(Name::str("hash"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(tag as u64))),
+                Node::new(Expr::Const(Name::str("hash"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(tag as u64))),
             );
             let field_hashes: Vec<Expr> = ctor
                 .fields
@@ -243,8 +244,8 @@ impl Deriver {
                 .enumerate()
                 .map(|(i, _)| {
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("hash"), vec![])),
-                        Box::new(mk_lhs_field_var(i)),
+                        Node::new(Expr::Const(Name::str("hash"), vec![])),
+                        Node::new(mk_lhs_field_var(i)),
                     )
                 })
                 .collect();
@@ -256,13 +257,13 @@ impl Deriver {
         let hash_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty_expr.clone()),
-            Box::new(body),
+            Node::new(ty_expr.clone()),
+            Node::new(body),
         );
         let instance_name = Name::str(format!("inst_Hashable_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("Hashable"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("Hashable"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -287,15 +288,15 @@ impl Deriver {
         let mut body: Expr = Expr::Const(ctor.name.clone(), vec![]);
         for (_, field_ty) in &ctor.fields {
             let default_val = Expr::App(
-                Box::new(Expr::Const(Name::str("default"), vec![])),
-                Box::new(field_ty.clone()),
+                Node::new(Expr::Const(Name::str("default"), vec![])),
+                Node::new(field_ty.clone()),
             );
-            body = Expr::App(Box::new(body), Box::new(default_val));
+            body = Expr::App(Node::new(body), Node::new(default_val));
         }
         let instance_name = Name::str(format!("inst_Inhabited_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("Inhabited"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("Inhabited"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -323,8 +324,8 @@ impl Deriver {
         for ctor in &type_info.constructors {
             if ctor.fields.is_empty() {
                 match_arms.push(Expr::App(
-                    Box::new(Expr::Const(Name::str("Decidable.isTrue"), vec![])),
-                    Box::new(Expr::Const(Name::str("rfl"), vec![])),
+                    Node::new(Expr::Const(Name::str("Decidable.isTrue"), vec![])),
+                    Node::new(Expr::Const(Name::str("rfl"), vec![])),
                 ));
             } else {
                 let comparisons: Vec<Expr> = ctor
@@ -333,13 +334,13 @@ impl Deriver {
                     .enumerate()
                     .map(|(i, (_, field_ty))| {
                         Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("decEq"), vec![])),
-                                Box::new(field_ty.clone()),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("decEq"), vec![])),
+                                Node::new(field_ty.clone()),
                             )),
-                            Box::new(Expr::App(
-                                Box::new(mk_lhs_field_var(i)),
-                                Box::new(mk_rhs_field_var(i)),
+                            Node::new(Expr::App(
+                                Node::new(mk_lhs_field_var(i)),
+                                Node::new(mk_rhs_field_var(i)),
                             )),
                         )
                     })
@@ -349,26 +350,26 @@ impl Deriver {
         }
         if type_info.constructors.len() > 1 {
             match_arms.push(Expr::App(
-                Box::new(Expr::Const(Name::str("Decidable.isFalse"), vec![])),
-                Box::new(Expr::Const(Name::str("noConfusion"), vec![])),
+                Node::new(Expr::Const(Name::str("Decidable.isFalse"), vec![])),
+                Node::new(Expr::Const(Name::str("noConfusion"), vec![])),
             ));
         }
         let body = build_match_body(&match_arms);
         let dec_eq_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty_expr.clone()),
-            Box::new(Expr::Lam(
+            Node::new(ty_expr.clone()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(ty_expr.clone()),
-                Box::new(body),
+                Node::new(ty_expr.clone()),
+                Node::new(body),
             )),
         );
         let instance_name = Name::str(format!("inst_DecidableEq_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("DecidableEq"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("DecidableEq"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -393,19 +394,19 @@ impl Deriver {
         let mut witness: Expr = Expr::Const(ctor.name.clone(), vec![]);
         for (_, field_ty) in &ctor.fields {
             let default_val = Expr::App(
-                Box::new(Expr::Const(Name::str("default"), vec![])),
-                Box::new(field_ty.clone()),
+                Node::new(Expr::Const(Name::str("default"), vec![])),
+                Node::new(field_ty.clone()),
             );
-            witness = Expr::App(Box::new(witness), Box::new(default_val));
+            witness = Expr::App(Node::new(witness), Node::new(default_val));
         }
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("Nonempty.intro"), vec![])),
-            Box::new(witness),
+            Node::new(Expr::Const(Name::str("Nonempty.intro"), vec![])),
+            Node::new(witness),
         );
         let instance_name = Name::str(format!("inst_Nonempty_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("Nonempty"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("Nonempty"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -423,16 +424,16 @@ impl Deriver {
         let body = Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty_expr.clone()),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("reprStr"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(ty_expr.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("reprStr"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
         );
         let instance_name = Name::str(format!("inst_ToString_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("ToString"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("ToString"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -496,18 +497,18 @@ impl Deriver {
         let compare_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty_expr.clone()),
-            Box::new(Expr::Lam(
+            Node::new(ty_expr.clone()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(ty_expr.clone()),
-                Box::new(body),
+                Node::new(ty_expr.clone()),
+                Node::new(body),
             )),
         );
         let instance_name = Name::str(format!("inst_Ord_{}", type_info.name));
         let instance_type = Expr::App(
-            Box::new(Expr::Const(Name::str("Ord"), vec![])),
-            Box::new(ty_expr),
+            Node::new(Expr::Const(Name::str("Ord"), vec![])),
+            Node::new(ty_expr),
         );
         Ok(DeriveResult {
             instance_name,
@@ -853,27 +854,27 @@ impl StructuralEqDeriver {
         }
         let ty_expr = Expr::Const(type_info.name.clone(), vec![]);
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("BEq.beq"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("BEq.beq"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
         Ok(Expr::Lam(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty_expr.clone()),
-            Box::new(Expr::Lam(
+            Node::new(ty_expr.clone()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(ty_expr),
-                Box::new(body),
+                Node::new(ty_expr),
+                Node::new(body),
             )),
         ))
     }
     /// Derive the number of constructors as a constant expression.
     pub fn ctor_count_expr(&self, type_info: &TypeInfo) -> Expr {
-        Expr::Lit(Literal::Nat(type_info.constructors.len() as u64))
+        Expr::Lit(Literal::nat(type_info.constructors.len() as u64))
     }
 }
 /// Derives multiple classes for multiple types in one pass.

@@ -3,6 +3,11 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use oxilean_parse::{
+    incremental::{diff_modules, DeclFingerprint, EditKind},
+    Decl, Located,
+};
+
 use super::types::{
     CheckStatus, DeclHash, DiagnosticInfo, EditDelta, IncrementalCache, IncrementalCheckResult,
     IncrementalEntry,
@@ -254,12 +259,53 @@ fn extract_deps_from_body(body: &str, known_names: &HashSet<String>) -> Vec<Stri
 // Main incremental check entry point
 // ---------------------------------------------------------------------------
 
+/// Parse `source` into a sequence of located declarations using the real parser.
+///
+/// On parse error the loop stops early (best-effort); partial results are
+/// returned rather than propagating the error, which mirrors the tolerance
+/// required for an incremental editor checker.
+fn parse_source_decls(source: &str) -> Vec<Located<Decl>> {
+    use oxilean_parse::{Lexer, Parser};
+
+    let tokens = Lexer::new(source).tokenize();
+    let mut parser = Parser::new(tokens);
+    let mut decls = Vec::new();
+    loop {
+        if parser.is_eof() {
+            break;
+        }
+        match parser.parse_decl() {
+            Ok(d) => decls.push(d),
+            Err(e) => {
+                if e.is_eof() {
+                    break;
+                }
+                // Non-EOF parse error: advance one token and continue so that
+                // the rest of the file is still processed.
+                parser.advance();
+            }
+        }
+    }
+    decls
+}
+
+/// Derive a `DeclHash` from a `DeclFingerprint` body hash so that the entry
+/// hash stored in `IncrementalCache` stays consistent with diff-based checks.
+fn fingerprint_to_decl_hash(fp: &DeclFingerprint) -> DeclHash {
+    DeclHash(fp.body_hash)
+}
+
 /// Perform an incremental type-check of `source`.
 ///
 /// If `old_cache` is `None` a fresh cache is created and all declarations are
-/// checked.  Otherwise only declarations that are new, modified, or
-/// transitively invalidated by their dependencies are re-checked; the rest are
-/// served from the cache.
+/// checked.  Otherwise `diff_modules` is used to compare the previously parsed
+/// AST with the freshly-parsed AST: only declarations that are `Inserted`,
+/// `Modified`, or transitively invalidated through the dependency graph are
+/// re-checked; `Unchanged` declarations are served from the cache.
+///
+/// The first changed declaration index and all subsequent declarations are
+/// re-checked (tail-invalidation), matching the semantics of a sequential
+/// proof assistant where later declarations may depend on earlier ones.
 pub fn incremental_check(
     source: &str,
     old_cache: Option<IncrementalCache>,
@@ -267,62 +313,107 @@ pub fn incremental_check(
     let mut cache = old_cache.unwrap_or_default();
     cache.version = cache.version.saturating_add(1);
 
-    let new_decls = extract_declarations(source);
+    // ── 1. Parse new source ──────────────────────────────────────────────────
+    let new_decls = parse_source_decls(source);
 
-    // Compute what changed at the declaration level
-    let delta = compute_edit_delta(&cache, &new_decls);
+    // ── 2. Diff against the previous parse ──────────────────────────────────
+    let edits = diff_modules(&cache.prev_decls, &new_decls);
 
-    // Remove deleted declarations from the cache
-    for removed_name in &delta.removed {
-        cache.entries.remove(removed_name);
-    }
-
-    // Collect names that need re-checking: added + modified
+    // ── 3. Determine which declarations need re-checking ────────────────────
+    // Tail-invalidation: once the first changed declaration is encountered,
+    // all subsequent declarations must also be re-checked (they may depend on
+    // earlier declarations that just changed).
+    let mut tail_invalidate = false;
     let mut need_recheck: HashSet<String> = HashSet::new();
-    for name in delta.added.iter().chain(delta.modified.iter()) {
-        need_recheck.insert(name.clone());
+    let mut deleted_names: Vec<String> = Vec::new();
+
+    for edit in &edits {
+        match edit.kind {
+            EditKind::Deleted => {
+                deleted_names.push(edit.fingerprint.name.clone());
+                tail_invalidate = true;
+            }
+            EditKind::Inserted | EditKind::Modified => {
+                need_recheck.insert(edit.fingerprint.name.clone());
+                tail_invalidate = true;
+            }
+            EditKind::Unchanged => {
+                if tail_invalidate {
+                    // All declarations after the first change must be re-checked.
+                    need_recheck.insert(edit.fingerprint.name.clone());
+                }
+            }
+        }
     }
 
-    // Transitively invalidate dependents of modified/removed declarations
-    let changed_for_invalidation: Vec<String> = delta
-        .modified
+    // ── 4. Remove deleted declarations from the cache ────────────────────────
+    for name in &deleted_names {
+        cache.entries.remove(name.as_str());
+    }
+
+    // ── 5. Transitively invalidate dependents of changed/removed decls ───────
+    let changed_for_invalidation: Vec<String> = need_recheck
         .iter()
-        .chain(delta.removed.iter())
         .cloned()
+        .chain(deleted_names.iter().cloned())
         .collect();
 
     if !changed_for_invalidation.is_empty() {
         invalidate_dependents(&mut cache, &changed_for_invalidation);
     }
 
-    // Any entry still marked Pending also needs a recheck
+    // Any entry still marked Pending also needs a recheck.
     for (name, entry) in &cache.entries {
         if matches!(entry.status, CheckStatus::Pending) {
             need_recheck.insert(name.clone());
         }
     }
 
-    // Build the known-name set for dependency extraction
-    let known_names: HashSet<String> = new_decls.iter().map(|(n, _)| n.clone()).collect();
+    // ── 6. Build known-name set for dependency extraction ────────────────────
+    let known_names: HashSet<String> = new_decls
+        .iter()
+        .filter_map(|d| d.value.name().map(str::to_string))
+        .collect();
 
+    // ── 7. Build a fingerprint lookup for the new decls ──────────────────────
+    let new_fps: HashMap<String, DeclFingerprint> = new_decls
+        .iter()
+        .filter_map(|d| {
+            d.value
+                .name()
+                .map(|n| (n.to_string(), DeclFingerprint::of(d)))
+        })
+        .collect();
+
+    // ── 8. Loop over new declarations: cache hit or re-check ─────────────────
     let mut diagnostics: Vec<DiagnosticInfo> = Vec::new();
     let mut recheck_count = 0usize;
     let mut cache_hit_count = 0usize;
 
-    for (name, body) in &new_decls {
-        let new_hash = hash_declaration(body);
+    for located_decl in &new_decls {
+        let name = match located_decl.value.name() {
+            Some(n) => n.to_string(),
+            None => continue, // anonymous / unnamed decls are skipped
+        };
+
+        let fp = match new_fps.get(&name) {
+            Some(f) => f,
+            None => continue,
+        };
+        let new_hash = fingerprint_to_decl_hash(fp);
+
+        // Obtain a body string for simulate_check (fall back to empty string)
+        let body = extract_body_text(source, located_decl);
 
         if need_recheck.contains(name.as_str()) {
-            // Re-check this declaration
             recheck_count += 1;
 
-            let deps = extract_deps_from_body(body, &known_names)
+            let deps = extract_deps_from_body(&body, &known_names)
                 .into_iter()
-                .filter(|d| d != name)
+                .filter(|d| *d != name)
                 .collect::<Vec<_>>();
 
-            let (status, maybe_diag) = simulate_check(name, body);
-
+            let (status, maybe_diag) = simulate_check(&name, &body);
             if let Some(diag) = maybe_diag {
                 diagnostics.push(diag);
             }
@@ -338,21 +429,38 @@ pub fn incremental_check(
                 },
             );
         } else {
-            // Cache hit — declaration unchanged and all deps still valid
+            // Cache hit — declaration is Unchanged and no deps were invalidated.
             cache_hit_count += 1;
-            // Refresh the hash in case we are building from a cold start
-            // (this is a no-op when the hash is already correct)
             if let Some(entry) = cache.entries.get_mut(name.as_str()) {
                 entry.hash = new_hash;
             }
         }
     }
 
+    // ── 9. Persist the parsed declaration sequence for the next call ─────────
+    cache.prev_decls = new_decls;
+
     IncrementalCheckResult {
         cache,
         diagnostics,
         recheck_count,
         cache_hit_count,
+    }
+}
+
+/// Extract a best-effort body string for a located declaration.
+///
+/// When the span is available and valid within the source, we slice it
+/// directly.  Otherwise we fall back to an empty string so that
+/// `simulate_check` can still run.
+fn extract_body_text(source: &str, located: &Located<Decl>) -> String {
+    let span = located.span.clone();
+    let start = span.start;
+    let end = span.end;
+    if start <= end && end <= source.len() {
+        source[start..end].to_string()
+    } else {
+        String::new()
     }
 }
 
@@ -728,9 +836,11 @@ mod tests {
         let src2 = "theorem foo : True := by trivial\ndef bar := 42";
         let first = incremental_check(src1, None);
         let second = incremental_check(src2, Some(first.cache));
-        // Only `foo` changed
-        assert_eq!(second.recheck_count, 1);
-        assert_eq!(second.cache_hit_count, 1);
+        // `foo` is modified (first change); tail-invalidation also forces `bar`
+        // to be re-checked because it follows the first changed declaration.
+        // Total: 2 re-checks, 0 cache hits.
+        assert_eq!(second.recheck_count, 2);
+        assert_eq!(second.cache_hit_count, 0);
     }
 
     #[test]
@@ -847,5 +957,97 @@ mod tests {
         let stats = cache_stats(&result.cache);
         assert!(stats.contains("ok"));
         assert!(stats.contains('2'));
+    }
+
+    // --- diff_modules-based incremental_check tests -------------------------
+
+    /// Running the same 3-decl source twice: the second pass should get
+    /// 3 cache hits and 0 rechecks because `diff_modules` reports all as
+    /// `Unchanged`.
+    #[test]
+    fn test_incremental_check_full_equals_incremental() {
+        let src = "theorem a : True := True.intro\n\
+                   theorem b : True := True.intro\n\
+                   theorem c : True := True.intro";
+
+        // First pass: cold cache → all 3 declarations checked
+        let r1 = incremental_check(src, None);
+        assert_eq!(r1.recheck_count, 3, "first pass should check all 3 decls");
+        assert_eq!(r1.cache_hit_count, 0);
+
+        // Second pass: same source → all 3 should be cache hits
+        let r2 = incremental_check(src, Some(r1.cache));
+        assert_eq!(
+            r2.cache_hit_count, 3,
+            "second pass with identical source must hit cache for all 3 decls"
+        );
+        assert_eq!(r2.recheck_count, 0);
+    }
+
+    /// Modifying the middle declaration (`b`) should cause `b` to be
+    /// re-checked; tail-invalidation also forces `c` to be re-checked.
+    /// Only `a` (unchanged, before the first change) is a cache hit.
+    #[test]
+    fn test_incremental_edit_middle_decl() {
+        let src1 = "theorem a : True := True.intro\n\
+                    theorem b : True := True.intro\n\
+                    theorem c : True := True.intro";
+        // Change `b` to use `by exact True.intro`
+        let src2 = "theorem a : True := True.intro\n\
+                    theorem b : True := by exact True.intro\n\
+                    theorem c : True := True.intro";
+
+        let r1 = incremental_check(src1, None);
+        let r2 = incremental_check(src2, Some(r1.cache));
+
+        // `a` is unchanged → cache hit
+        assert_eq!(r2.cache_hit_count, 1, "only `a` should be a cache hit");
+        // `b` is modified, `c` is tail-invalidated → both re-checked
+        assert_eq!(r2.recheck_count, 2, "`b` and `c` should both be re-checked");
+    }
+
+    /// Appending a third declaration: the first two are cache hits, the
+    /// third is a recheck (Inserted).
+    #[test]
+    fn test_incremental_append_decl() {
+        let src1 = "theorem a : True := True.intro\n\
+                    theorem b : True := True.intro";
+        let src2 = "theorem a : True := True.intro\n\
+                    theorem b : True := True.intro\n\
+                    theorem c : True := True.intro";
+
+        let r1 = incremental_check(src1, None);
+        let r2 = incremental_check(src2, Some(r1.cache));
+
+        assert_eq!(r2.cache_hit_count, 2, "`a` and `b` should be cache hits");
+        assert_eq!(r2.recheck_count, 1, "only `c` should be re-checked");
+        assert!(r2.cache.entries.contains_key("c"));
+    }
+
+    /// Deleting the middle declaration: the cache should not contain the
+    /// removed declaration, and the remaining two are present (though `c`
+    /// may be re-checked due to tail-invalidation caused by the deletion).
+    #[test]
+    fn test_incremental_delete_decl() {
+        let src1 = "theorem a : True := True.intro\n\
+                    theorem b : True := True.intro\n\
+                    theorem c : True := True.intro";
+        // Remove `b`
+        let src2 = "theorem a : True := True.intro\n\
+                    theorem c : True := True.intro";
+
+        let r1 = incremental_check(src1, None);
+        let r2 = incremental_check(src2, Some(r1.cache));
+
+        // `b` must be gone from the cache
+        assert!(
+            !r2.cache.entries.contains_key("b"),
+            "`b` should have been removed from the cache"
+        );
+        // `a` and `c` must still be present
+        assert!(r2.cache.entries.contains_key("a"));
+        assert!(r2.cache.entries.contains_key("c"));
+        // No orphaned entries
+        assert_eq!(r2.cache.entries.len(), 2);
     }
 }

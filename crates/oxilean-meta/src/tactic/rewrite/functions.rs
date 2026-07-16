@@ -9,6 +9,7 @@ use super::types::{
 };
 use crate::basic::{MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 /// `rewrite [name]` — rewrite using a named hypothesis or constant.
@@ -75,27 +76,32 @@ pub(super) fn replace_subexpr(expr: &Expr, from: &Expr, to: &Expr) -> Expr {
         Expr::App(f, a) => {
             let f2 = replace_subexpr(f, from, to);
             let a2 = replace_subexpr(a, from, to);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty2 = replace_subexpr(ty, from, to);
             let body2 = replace_subexpr(body, from, to);
-            Expr::Lam(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty2 = replace_subexpr(ty, from, to);
             let body2 = replace_subexpr(body, from, to);
-            Expr::Pi(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(name, ty, val, body) => {
             let ty2 = replace_subexpr(ty, from, to);
             let val2 = replace_subexpr(val, from, to);
             let body2 = replace_subexpr(body, from, to);
-            Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                name.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(name, i, e) => {
             let e2 = replace_subexpr(e, from, to);
-            Expr::Proj(name.clone(), *i, Box::new(e2))
+            Expr::Proj(name.clone(), *i, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -111,11 +117,11 @@ pub(super) fn build_rewrite_proof(
         RewriteDirection::Backward => Name::str("Eq.mp"),
     };
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(transport_fn, vec![Level::zero()])),
-            Box::new(eq_proof.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(transport_fn, vec![Level::zero()])),
+            Node::new(eq_proof.clone()),
         )),
-        Box::new(new_goal.clone()),
+        Node::new(new_goal.clone()),
     )
 }
 #[cfg(test)]
@@ -129,14 +135,14 @@ mod tests {
     fn mk_eq_type(lhs: Expr, rhs: Expr) -> Expr {
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
-                    Box::new(nat_ty),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
+                    Node::new(nat_ty),
                 )),
-                Box::new(lhs),
+                Node::new(lhs),
             )),
-            Box::new(rhs),
+            Node::new(rhs),
         )
     }
     #[test]
@@ -158,8 +164,8 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let f = Expr::Const(Name::str("f"), vec![]);
-        let fa = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let fb = Expr::App(Box::new(f), Box::new(b.clone()));
+        let fa = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let fb = Expr::App(Node::new(f), Node::new(b.clone()));
         let result = replace_subexpr(&fa, &a, &b);
         assert_eq!(result, fb);
     }
@@ -183,7 +189,7 @@ mod tests {
         let b = Expr::Const(Name::str("b"), vec![]);
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
         let p = Expr::Const(Name::str("P"), vec![]);
-        let goal_ty = Expr::App(Box::new(p), Box::new(a.clone()));
+        let goal_ty = Expr::App(Node::new(p), Node::new(a.clone()));
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let eq_info = EqualityInfo {
@@ -204,7 +210,7 @@ mod tests {
         let c = Expr::Const(Name::str("c"), vec![]);
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
         let p = Expr::Const(Name::str("P"), vec![]);
-        let goal_ty = Expr::App(Box::new(p), Box::new(c));
+        let goal_ty = Expr::App(Node::new(p), Node::new(c));
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let eq_info = EqualityInfo {
@@ -220,8 +226,8 @@ mod tests {
     fn test_rewrite_forward_lit() {
         let mut ctx = mk_ctx();
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-        let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
-        let one = Expr::Lit(oxilean_kernel::Literal::Nat(1));
+        let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
+        let one = Expr::Lit(oxilean_kernel::Literal::nat(1));
         let x = Expr::Const(Name::str("x"), vec![]);
         let goal_ty = mk_eq_type(x.clone(), one.clone());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
@@ -250,10 +256,10 @@ mod tests {
     fn test_rewrite_not_found_in_goal() {
         let mut ctx = mk_ctx();
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
-        let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
-        let one = Expr::Lit(oxilean_kernel::Literal::Nat(1));
-        let two = Expr::Lit(oxilean_kernel::Literal::Nat(2));
-        let three = Expr::Lit(oxilean_kernel::Literal::Nat(3));
+        let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
+        let one = Expr::Lit(oxilean_kernel::Literal::nat(1));
+        let two = Expr::Lit(oxilean_kernel::Literal::nat(2));
+        let three = Expr::Lit(oxilean_kernel::Literal::nat(3));
         let goal_ty = mk_eq_type(zero, one);
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
@@ -282,7 +288,7 @@ mod tests {
         let b = Expr::Const(Name::str("b"), vec![]);
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
         let p = Expr::Const(Name::str("P"), vec![]);
-        let goal_ty = Expr::App(Box::new(p), Box::new(b.clone()));
+        let goal_ty = Expr::App(Node::new(p), Node::new(b.clone()));
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let eq_info = EqualityInfo {
@@ -330,30 +336,33 @@ pub fn replace_first_occurrence(expr: &Expr, from: &Expr, to: &Expr) -> (Expr, b
         Expr::App(f, a) => {
             let (f2, found) = replace_first_occurrence(f, from, to);
             if found {
-                return (Expr::App(Box::new(f2), a.clone()), true);
+                return (Expr::App(Node::new(f2), a.clone()), true);
             }
             let (a2, found) = replace_first_occurrence(a, from, to);
-            (Expr::App(Box::new(f2), Box::new(a2)), found)
+            (Expr::App(Node::new(f2), Node::new(a2)), found)
         }
         Expr::Lam(bi, n, ty, body) => {
             let (ty2, found) = replace_first_occurrence(ty, from, to);
             if found {
-                return (Expr::Lam(*bi, n.clone(), Box::new(ty2), body.clone()), true);
+                return (
+                    Expr::Lam(*bi, n.clone(), Node::new(ty2), body.clone()),
+                    true,
+                );
             }
             let (body2, found) = replace_first_occurrence(body, from, to);
             (
-                Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2)),
                 found,
             )
         }
         Expr::Pi(bi, n, ty, body) => {
             let (ty2, found) = replace_first_occurrence(ty, from, to);
             if found {
-                return (Expr::Pi(*bi, n.clone(), Box::new(ty2), body.clone()), true);
+                return (Expr::Pi(*bi, n.clone(), Node::new(ty2), body.clone()), true);
             }
             let (body2, found) = replace_first_occurrence(body, from, to);
             (
-                Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2)),
                 found,
             )
         }
@@ -418,24 +427,24 @@ pub fn collect_equalities(hyps: &[(Name, Expr)]) -> Vec<(Name, EqualityInfo)> {
 /// Build an equality expression `@Eq α a b`.
 pub fn mk_eq_expr(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
-                Box::new(ty),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
+                Node::new(ty),
             )),
-            Box::new(lhs),
+            Node::new(lhs),
         )),
-        Box::new(rhs),
+        Node::new(rhs),
     )
 }
 /// Build `@Eq.refl α a`.
 pub fn mk_eq_refl_expr(ty: Expr, a: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Eq.refl"), vec![Level::zero()])),
-            Box::new(ty),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Eq.refl"), vec![Level::zero()])),
+            Node::new(ty),
         )),
-        Box::new(a),
+        Node::new(a),
     )
 }
 #[cfg(test)]
@@ -453,7 +462,7 @@ mod extended_rewrite_tests {
     #[test]
     fn test_count_occurrences() {
         let a = Expr::Const(Name::str("a"), vec![]);
-        let expr = Expr::App(Box::new(a.clone()), Box::new(a.clone()));
+        let expr = Expr::App(Node::new(a.clone()), Node::new(a.clone()));
         assert_eq!(count_occurrences(&expr, &a), 2);
     }
     #[test]
@@ -466,7 +475,7 @@ mod extended_rewrite_tests {
     fn test_replace_first() {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let expr = Expr::App(Box::new(a.clone()), Box::new(a.clone()));
+        let expr = Expr::App(Node::new(a.clone()), Node::new(a.clone()));
         let (result, found) = replace_first_occurrence(&expr, &a, &b);
         assert!(found);
         if let Expr::App(f, arg) = result {
@@ -577,12 +586,12 @@ mod extended_rewrite_tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let f = Expr::Const(Name::str("f"), vec![]);
-        let inner = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let outer = Expr::App(Box::new(f.clone()), Box::new(inner));
+        let inner = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let outer = Expr::App(Node::new(f.clone()), Node::new(inner));
         let result = replace_subexpr(&outer, &a, &b);
         let expected = Expr::App(
-            Box::new(f.clone()),
-            Box::new(Expr::App(Box::new(f), Box::new(b))),
+            Node::new(f.clone()),
+            Node::new(Expr::App(Node::new(f), Node::new(b))),
         );
         assert_eq!(result, expected);
     }
@@ -618,7 +627,7 @@ pub fn extract_eq_sides(expr: &Expr) -> Option<(Expr, Expr)> {
                 if matches!(
                     eq_const.as_ref(), Expr::Const(n, _) if n == & Name::str("Eq")
                 ) {
-                    return Some((*lhs.clone(), *rhs.clone()));
+                    return Some(((**lhs).clone(), (**rhs).clone()));
                 }
             }
         }
@@ -630,11 +639,11 @@ pub fn extract_eq_sides(expr: &Expr) -> Option<(Expr, Expr)> {
 pub fn mk_eq(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
     let eq_const = Expr::Const(Name::str("Eq"), vec![]);
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(Box::new(eq_const), Box::new(ty))),
-            Box::new(lhs),
+        Node::new(Expr::App(
+            Node::new(Expr::App(Node::new(eq_const), Node::new(ty))),
+            Node::new(lhs),
         )),
-        Box::new(rhs),
+        Node::new(rhs),
     )
 }
 /// Build an `Eq.refl T a` expression (proof that `a = a`).
@@ -642,8 +651,8 @@ pub fn mk_eq(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
 pub fn mk_eq_refl(ty: Expr, a: Expr) -> Expr {
     let refl_const = Expr::Const(Name::str("Eq.refl"), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(refl_const), Box::new(ty))),
-        Box::new(a),
+        Node::new(Expr::App(Node::new(refl_const), Node::new(ty))),
+        Node::new(a),
     )
 }
 /// Build an `Eq.symm` expression (flip `lhs = rhs` to `rhs = lhs`).
@@ -651,14 +660,14 @@ pub fn mk_eq_refl(ty: Expr, a: Expr) -> Expr {
 pub fn mk_eq_symm(ty: Expr, lhs: Expr, rhs: Expr, proof: Expr) -> Expr {
     let symm_const = Expr::Const(Name::str("Eq.symm"), vec![]);
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(symm_const), Box::new(ty))),
-                Box::new(lhs),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(symm_const), Node::new(ty))),
+                Node::new(lhs),
             )),
-            Box::new(rhs),
+            Node::new(rhs),
         )),
-        Box::new(proof),
+        Node::new(proof),
     )
 }
 /// Count the number of times `pattern` occurs in `expr` (syntactic equality).
@@ -690,22 +699,22 @@ pub fn replace_first_expr(expr: &Expr, old: &Expr, new: &Expr) -> (Expr, bool) {
         Expr::App(f, a) => {
             let (new_f, replaced) = replace_first_expr(f, old, new);
             if replaced {
-                return (Expr::App(Box::new(new_f), a.clone()), true);
+                return (Expr::App(Node::new(new_f), a.clone()), true);
             }
             let (new_a, replaced) = replace_first_expr(a, old, new);
-            (Expr::App(Box::new(new_f), Box::new(new_a)), replaced)
+            (Expr::App(Node::new(new_f), Node::new(new_a)), replaced)
         }
         Expr::Lam(bi, n, dom, body) => {
             let (new_dom, replaced) = replace_first_expr(dom, old, new);
             if replaced {
                 return (
-                    Expr::Lam(*bi, n.clone(), Box::new(new_dom), body.clone()),
+                    Expr::Lam(*bi, n.clone(), Node::new(new_dom), body.clone()),
                     true,
                 );
             }
             let (new_body, replaced) = replace_first_expr(body, old, new);
             (
-                Expr::Lam(*bi, n.clone(), Box::new(new_dom), Box::new(new_body)),
+                Expr::Lam(*bi, n.clone(), Node::new(new_dom), Node::new(new_body)),
                 replaced,
             )
         }
@@ -713,13 +722,13 @@ pub fn replace_first_expr(expr: &Expr, old: &Expr, new: &Expr) -> (Expr, bool) {
             let (new_dom, replaced) = replace_first_expr(dom, old, new);
             if replaced {
                 return (
-                    Expr::Pi(*bi, n.clone(), Box::new(new_dom), body.clone()),
+                    Expr::Pi(*bi, n.clone(), Node::new(new_dom), body.clone()),
                     true,
                 );
             }
             let (new_body, replaced) = replace_first_expr(body, old, new);
             (
-                Expr::Pi(*bi, n.clone(), Box::new(new_dom), Box::new(new_body)),
+                Expr::Pi(*bi, n.clone(), Node::new(new_dom), Node::new(new_body)),
                 replaced,
             )
         }
@@ -788,14 +797,14 @@ mod rewrite_extra_tests {
     #[test]
     fn test_count_occurrences_expr_app() {
         let a = Expr::Const(Name::str("a"), vec![]);
-        let e = Expr::App(Box::new(a.clone()), Box::new(a.clone()));
+        let e = Expr::App(Node::new(a.clone()), Node::new(a.clone()));
         assert_eq!(count_occurrences_expr(&e, &a), 2);
     }
     #[test]
     fn test_contains_subexpr_true() {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let e = Expr::App(Box::new(a.clone()), Box::new(b));
+        let e = Expr::App(Node::new(a.clone()), Node::new(b));
         assert!(contains_subexpr(&e, &a));
     }
     #[test]
@@ -803,7 +812,7 @@ mod rewrite_extra_tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let c = Expr::Const(Name::str("c"), vec![]);
-        let e = Expr::App(Box::new(a), Box::new(b));
+        let e = Expr::App(Node::new(a), Node::new(b));
         assert!(!contains_subexpr(&e, &c));
     }
     #[test]
@@ -896,30 +905,33 @@ pub(super) fn replace_nth_rec(
         Expr::App(f, a) => {
             let (f2, done) = replace_nth_rec(f, from, to, target, counter);
             if done {
-                return (Expr::App(Box::new(f2), a.clone()), true);
+                return (Expr::App(Node::new(f2), a.clone()), true);
             }
             let (a2, done) = replace_nth_rec(a, from, to, target, counter);
-            (Expr::App(Box::new(f2), Box::new(a2)), done)
+            (Expr::App(Node::new(f2), Node::new(a2)), done)
         }
         Expr::Lam(bi, n, ty, body) => {
             let (ty2, done) = replace_nth_rec(ty, from, to, target, counter);
             if done {
-                return (Expr::Lam(*bi, n.clone(), Box::new(ty2), body.clone()), true);
+                return (
+                    Expr::Lam(*bi, n.clone(), Node::new(ty2), body.clone()),
+                    true,
+                );
             }
             let (body2, done) = replace_nth_rec(body, from, to, target, counter);
             (
-                Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2)),
                 done,
             )
         }
         Expr::Pi(bi, n, ty, body) => {
             let (ty2, done) = replace_nth_rec(ty, from, to, target, counter);
             if done {
-                return (Expr::Pi(*bi, n.clone(), Box::new(ty2), body.clone()), true);
+                return (Expr::Pi(*bi, n.clone(), Node::new(ty2), body.clone()), true);
             }
             let (body2, done) = replace_nth_rec(body, from, to, target, counter);
             (
-                Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2)),
                 done,
             )
         }
@@ -989,27 +1001,27 @@ pub fn run_rewrite_loop(
 pub fn build_congr_proof(f: Expr, h: Expr) -> Expr {
     let congr_arg = Expr::Const(Name::str("congrArg"), vec![Level::zero()]);
     Expr::App(
-        Box::new(Expr::App(Box::new(congr_arg), Box::new(f))),
-        Box::new(h),
+        Node::new(Expr::App(Node::new(congr_arg), Node::new(f))),
+        Node::new(h),
     )
 }
 /// Build an `Eq.trans h1 h2` proof.
 #[allow(dead_code)]
 pub fn build_trans_proof(h1: Expr, h2: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Eq.trans"), vec![Level::zero()])),
-            Box::new(h1),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Eq.trans"), vec![Level::zero()])),
+            Node::new(h1),
         )),
-        Box::new(h2),
+        Node::new(h2),
     )
 }
 /// Build an `Eq.symm h` proof.
 #[allow(dead_code)]
 pub fn build_symm_proof(h: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Eq.symm"), vec![Level::zero()])),
-        Box::new(h),
+        Node::new(Expr::Const(Name::str("Eq.symm"), vec![Level::zero()])),
+        Node::new(h),
     )
 }
 /// Describe the effect of a rewrite on an expression.
@@ -1088,27 +1100,27 @@ pub fn subst_bvar(expr: &Expr, depth: u32, replacement: &Expr) -> Expr {
         Expr::App(f, a) => {
             let f2 = subst_bvar(f, depth, replacement);
             let a2 = subst_bvar(a, depth, replacement);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = subst_bvar(ty, depth, replacement);
             let body2 = subst_bvar(body, depth + 1, replacement);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = subst_bvar(ty, depth, replacement);
             let body2 = subst_bvar(body, depth + 1, replacement);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = subst_bvar(ty, depth, replacement);
             let val2 = subst_bvar(val, depth, replacement);
             let body2 = subst_bvar(body, depth + 1, replacement);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         Expr::Proj(name, i, e) => {
             let e2 = subst_bvar(e, depth, replacement);
-            Expr::Proj(name.clone(), *i, Box::new(e2))
+            Expr::Proj(name.clone(), *i, Node::new(e2))
         }
         _ => expr.clone(),
     }
@@ -1169,33 +1181,33 @@ pub fn replace_at_position(expr: &Expr, path: &[usize], replacement: &Expr) -> O
         Expr::App(f, a) => match head {
             0 => {
                 let new_f = replace_at_position(f, tail, replacement)?;
-                Some(Expr::App(Box::new(new_f), a.clone()))
+                Some(Expr::App(Node::new(new_f), a.clone()))
             }
             1 => {
                 let new_a = replace_at_position(a, tail, replacement)?;
-                Some(Expr::App(f.clone(), Box::new(new_a)))
+                Some(Expr::App(f.clone(), Node::new(new_a)))
             }
             _ => None,
         },
         Expr::Lam(bi, n, ty, body) => match head {
             2 => {
                 let new_body = replace_at_position(body, tail, replacement)?;
-                Some(Expr::Lam(*bi, n.clone(), ty.clone(), Box::new(new_body)))
+                Some(Expr::Lam(*bi, n.clone(), ty.clone(), Node::new(new_body)))
             }
             3 => {
                 let new_ty = replace_at_position(ty, tail, replacement)?;
-                Some(Expr::Lam(*bi, n.clone(), Box::new(new_ty), body.clone()))
+                Some(Expr::Lam(*bi, n.clone(), Node::new(new_ty), body.clone()))
             }
             _ => None,
         },
         Expr::Pi(bi, n, ty, body) => match head {
             2 => {
                 let new_body = replace_at_position(body, tail, replacement)?;
-                Some(Expr::Pi(*bi, n.clone(), ty.clone(), Box::new(new_body)))
+                Some(Expr::Pi(*bi, n.clone(), ty.clone(), Node::new(new_body)))
             }
             3 => {
                 let new_ty = replace_at_position(ty, tail, replacement)?;
-                Some(Expr::Pi(*bi, n.clone(), Box::new(new_ty), body.clone()))
+                Some(Expr::Pi(*bi, n.clone(), Node::new(new_ty), body.clone()))
             }
             _ => None,
         },
@@ -1288,7 +1300,7 @@ pub fn is_numeral(expr: &Expr) -> bool {
 #[allow(dead_code)]
 pub fn get_numeral(expr: &Expr) -> Option<u64> {
     match expr {
-        Expr::Lit(oxilean_kernel::Literal::Nat(n)) => Some(*n),
+        Expr::Lit(oxilean_kernel::Literal::Nat(n)) => n.to_u64(),
         _ => None,
     }
 }
@@ -1296,7 +1308,7 @@ pub fn get_numeral(expr: &Expr) -> Option<u64> {
 #[allow(dead_code)]
 pub fn is_nat_zero(expr: &Expr) -> bool {
     matches!(expr, Expr::Const(n, _) if * n == Name::str("Nat.zero"))
-        || matches!(expr, Expr::Lit(oxilean_kernel::Literal::Nat(0)))
+        || matches!(expr, Expr::Lit(oxilean_kernel::Literal::Nat(n)) if n.is_zero())
 }
 /// Check if an expression represents Nat.succ applied to something.
 #[allow(dead_code)]
@@ -1355,7 +1367,7 @@ mod rewrite_extended_tests {
     #[test]
     fn test_find_positions_app() {
         let a = Expr::Const(Name::str("a"), vec![]);
-        let app = Expr::App(Box::new(a.clone()), Box::new(a.clone()));
+        let app = Expr::App(Node::new(a.clone()), Node::new(a.clone()));
         let positions = find_positions(&app, &a);
         assert!(!positions.is_empty());
     }
@@ -1363,7 +1375,7 @@ mod rewrite_extended_tests {
     fn test_replace_nth_occurrence_first() {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let expr = Expr::App(Box::new(a.clone()), Box::new(a.clone()));
+        let expr = Expr::App(Node::new(a.clone()), Node::new(a.clone()));
         let (result, ok) = replace_nth_occurrence(&expr, &a, &b, 0);
         assert!(ok);
         if let Expr::App(f, arg) = result {
@@ -1378,11 +1390,11 @@ mod rewrite_extended_tests {
         let lam = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let a = Expr::Const(Name::str("a"), vec![]);
-        let app = Expr::App(Box::new(lam), Box::new(a.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(a.clone()));
         let result = beta_reduce_once(&app);
         assert_eq!(result, Some(a));
     }
@@ -1402,14 +1414,14 @@ mod rewrite_extended_tests {
     }
     #[test]
     fn test_is_numeral() {
-        let n = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let n = Expr::Lit(oxilean_kernel::Literal::nat(42));
         assert!(is_numeral(&n));
         let c = Expr::Const(Name::str("Nat"), vec![]);
         assert!(!is_numeral(&c));
     }
     #[test]
     fn test_is_nat_zero_lit() {
-        let z = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+        let z = Expr::Lit(oxilean_kernel::Literal::nat(0));
         assert!(is_nat_zero(&z));
     }
     #[test]
@@ -1421,7 +1433,7 @@ mod rewrite_extended_tests {
     fn test_is_nat_succ() {
         let succ = Expr::Const(Name::str("Nat.succ"), vec![]);
         let zero = Expr::Const(Name::str("Nat.zero"), vec![]);
-        let one = Expr::App(Box::new(succ), Box::new(zero));
+        let one = Expr::App(Node::new(succ), Node::new(zero));
         assert!(is_nat_succ(&one));
     }
     #[test]
@@ -1530,9 +1542,9 @@ mod rewrite_extended_tests {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let app = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
+        let app = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
         let result = replace_at_position(&app, &[1], &b);
-        assert_eq!(result, Some(Expr::App(Box::new(f), Box::new(b))));
+        assert_eq!(result, Some(Expr::App(Node::new(f), Node::new(b))));
     }
     #[test]
     fn test_run_rewrite_loop_empty_system() {
@@ -1588,7 +1600,7 @@ mod rewrite_extended_tests {
     }
     #[test]
     fn test_get_numeral() {
-        let n = Expr::Lit(oxilean_kernel::Literal::Nat(7));
+        let n = Expr::Lit(oxilean_kernel::Literal::nat(7));
         assert_eq!(get_numeral(&n), Some(7));
         let c = Expr::Const(Name::str("x"), vec![]);
         assert_eq!(get_numeral(&c), None);

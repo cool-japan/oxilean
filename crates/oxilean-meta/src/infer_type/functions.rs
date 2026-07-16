@@ -15,6 +15,8 @@ use crate::basic::{MVarId, MetaContext, MetavarKind};
 use oxilean_kernel::{BinderInfo, ConstantInfo, Expr, Level, Name};
 
 #[cfg(test)]
+use oxilean_kernel::Node;
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::infer_type::*;
@@ -36,7 +38,7 @@ mod tests {
     fn test_infer_lit_nat() {
         let mut infer = MetaInferType::new();
         let mut ctx = mk_ctx();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let ty = infer
             .infer_type(&expr, &mut ctx)
             .expect("ty should be present");
@@ -91,13 +93,13 @@ mod tests {
         let fn_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let fvar = ctx.mk_local_decl(Name::str("f"), fn_ty, BinderInfo::Default);
         let app = Expr::App(
-            Box::new(Expr::FVar(fvar)),
-            Box::new(Expr::Lit(Literal::Nat(42))),
+            Node::new(Expr::FVar(fvar)),
+            Node::new(Expr::Lit(Literal::nat(42))),
         );
         let ty = infer
             .infer_type(&app, &mut ctx)
@@ -111,8 +113,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         let ty = infer
             .infer_type(&lam, &mut ctx)
@@ -125,9 +127,9 @@ mod tests {
         let mut ctx = mk_ctx();
         let expr = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(42))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(42))),
+            Node::new(Expr::BVar(0)),
         );
         let ty = infer
             .infer_type(&expr, &mut ctx)
@@ -156,8 +158,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         let (domain, codomain) = infer
             .ensure_pi(&pi, &mut ctx)
@@ -169,7 +171,7 @@ mod tests {
     fn test_ensure_pi_not_pi() {
         let mut infer = MetaInferType::new();
         let mut ctx = mk_ctx();
-        let not_pi = Expr::Lit(Literal::Nat(42));
+        let not_pi = Expr::Lit(Literal::nat(42));
         let result = infer.ensure_pi(&not_pi, &mut ctx);
         assert!(result.is_err());
     }
@@ -254,7 +256,7 @@ mod extended_infer_tests {
     #[test]
     fn test_type_infer_cache_insert_get() {
         let mut cache = TypeInferCache::new();
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let ty = Expr::Const(Name::str("Nat"), vec![]);
         cache.insert(expr.clone(), ty.clone());
         let result = cache.get(&expr);
@@ -264,7 +266,7 @@ mod extended_infer_tests {
     #[test]
     fn test_type_infer_cache_miss() {
         let mut cache = TypeInferCache::new();
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         let result = cache.get(&expr);
         assert!(result.is_none());
         assert_eq!(cache.total_accesses(), 1);
@@ -272,7 +274,7 @@ mod extended_infer_tests {
     #[test]
     fn test_type_infer_cache_hit_rate() {
         let mut cache = TypeInferCache::new();
-        let expr = Expr::Lit(Literal::Nat(7));
+        let expr = Expr::Lit(Literal::nat(7));
         let ty = Expr::Const(Name::str("Nat"), vec![]);
         cache.insert(expr.clone(), ty);
         let _ = cache.get(&expr);
@@ -339,7 +341,7 @@ mod extended_infer_tests {
     }
     #[test]
     fn test_infer_literal_type_nat() {
-        let ty = infer_literal_type(&oxilean_kernel::Literal::Nat(0));
+        let ty = infer_literal_type(&oxilean_kernel::Literal::nat(0));
         assert_eq!(ty, Expr::Const(Name::str("Nat"), vec![]));
     }
     #[test]
@@ -498,15 +500,15 @@ mod typing_stack_tests {
     }
     #[test]
     fn test_collect_subexprs_leaf() {
-        let e = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+        let e = Expr::Lit(oxilean_kernel::Literal::nat(0));
         let subs = collect_subexprs(&e);
         assert_eq!(subs.len(), 1);
     }
     #[test]
     fn test_collect_subexprs_app() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         let subs = collect_subexprs(&e);
         assert!(subs.len() >= 3);

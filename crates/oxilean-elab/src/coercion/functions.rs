@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 
 use super::types::{
@@ -27,8 +28,8 @@ pub fn try_insert_coercion(
     }
     if let Some(coercion) = registry.find_coercion(actual_ty, expected_ty) {
         return Some(Expr::App(
-            Box::new(Expr::Const(coercion.coerce.clone(), vec![])),
-            Box::new(expr),
+            Node::new(Expr::Const(coercion.coerce.clone(), vec![])),
+            Node::new(expr),
         ));
     }
     if let Some(path) = registry.find_coercion_chain(actual_ty, expected_ty) {
@@ -57,8 +58,8 @@ pub fn coerce_to_sort(
     }
     registry.find_coercion(actual_ty, expected_ty).map(|c| {
         Expr::App(
-            Box::new(Expr::Const(c.coerce.clone(), vec![])),
-            Box::new(expr),
+            Node::new(Expr::Const(c.coerce.clone(), vec![])),
+            Node::new(expr),
         )
     })
 }
@@ -79,8 +80,8 @@ pub fn coerce_to_function(
     for c in registry.all_coercions() {
         if &c.from == actual_ty && c.to.is_pi() {
             return Some(Expr::App(
-                Box::new(Expr::Const(c.coerce.clone(), vec![])),
-                Box::new(expr),
+                Node::new(Expr::Const(c.coerce.clone(), vec![])),
+                Node::new(expr),
             ));
         }
     }
@@ -93,17 +94,17 @@ pub fn lift_sort(expr: Expr, from_level: &Level, to_level: &Level) -> Option<Exp
         return Some(expr);
     }
     Some(Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("sortLift"), vec![])),
-            Box::new(Expr::Sort(from_level.clone())),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("sortLift"), vec![])),
+            Node::new(Expr::Sort(from_level.clone())),
         )),
-        Box::new(expr),
+        Node::new(expr),
     ))
 }
 /// Create a coercion expression `fun_name arg`.
 #[allow(dead_code)]
 pub fn mk_coercion_app(fun_name: Name, arg: Expr) -> Expr {
-    Expr::App(Box::new(Expr::Const(fun_name, vec![])), Box::new(arg))
+    Expr::App(Node::new(Expr::Const(fun_name, vec![])), Node::new(arg))
 }
 /// Create a coercion that wraps in a function type.
 #[allow(dead_code)]
@@ -111,8 +112,8 @@ pub fn mk_fun_coercion(param_name: Name, param_ty: Expr, body: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         param_name,
-        Box::new(param_ty),
-        Box::new(body),
+        Node::new(param_ty),
+        Node::new(body),
     )
 }
 /// Check if two expressions represent the same type head (ignoring arguments).
@@ -201,7 +202,7 @@ mod tests {
     fn test_apply_coercion() {
         let mut registry = CoercionRegistry::new();
         registry.register(mk_test_coercion(nat_expr(), int_expr(), "Nat.toInt"));
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let result = registry.apply_coercion(expr.clone(), &nat_expr(), &int_expr());
         assert!(result.is_some());
         if let Some(Expr::App(f, a)) = result {
@@ -302,14 +303,14 @@ mod tests {
         let chain = registry
             .find_coercion_chain(&nat_expr(), &rat_expr())
             .expect("test operation should succeed");
-        let expr = Expr::Lit(Literal::Nat(5));
+        let expr = Expr::Lit(Literal::nat(5));
         let result = registry.apply_coercion_chain(expr, &chain);
         if let Expr::App(f, inner) = &result {
             assert!(matches!(f.as_ref(), Expr::Const(n, _) if * n == Name::str("Rat.ofInt")));
             if let Expr::App(f2, a2) = inner.as_ref() {
                 assert!(matches!(f2.as_ref(), Expr::Const(n, _) if * n ==
                     Name::str("Nat.toInt")));
-                assert_eq!(*a2.as_ref(), Expr::Lit(Literal::Nat(5)));
+                assert_eq!(*a2.as_ref(), Expr::Lit(Literal::nat(5)));
             } else {
                 panic!("Expected inner App");
             }
@@ -394,7 +395,7 @@ mod tests {
     #[test]
     fn test_try_insert_coercion_same_type() {
         let registry = CoercionRegistry::new();
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         let result = try_insert_coercion(&registry, expr.clone(), &nat_expr(), &nat_expr());
         assert_eq!(result, Some(expr));
     }
@@ -402,7 +403,7 @@ mod tests {
     fn test_try_insert_coercion_direct() {
         let mut registry = CoercionRegistry::new();
         registry.register(mk_test_coercion(nat_expr(), int_expr(), "Nat.toInt"));
-        let expr = Expr::Lit(Literal::Nat(7));
+        let expr = Expr::Lit(Literal::nat(7));
         let result = try_insert_coercion(&registry, expr, &nat_expr(), &int_expr());
         assert!(result.is_some());
     }
@@ -411,14 +412,14 @@ mod tests {
         let mut registry = CoercionRegistry::new();
         registry.register(mk_test_coercion(nat_expr(), int_expr(), "Nat.toInt"));
         registry.register(mk_test_coercion(int_expr(), rat_expr(), "Rat.ofInt"));
-        let expr = Expr::Lit(Literal::Nat(3));
+        let expr = Expr::Lit(Literal::nat(3));
         let result = try_insert_coercion(&registry, expr, &nat_expr(), &rat_expr());
         assert!(result.is_some());
     }
     #[test]
     fn test_try_insert_coercion_none() {
         let registry = CoercionRegistry::new();
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         let result = try_insert_coercion(&registry, expr, &nat_expr(), &string_expr());
         assert!(result.is_none());
     }
@@ -433,7 +434,7 @@ mod tests {
     #[test]
     fn test_coerce_to_sort_not_sort() {
         let registry = CoercionRegistry::new();
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         let result = coerce_to_sort(&registry, expr, &nat_expr(), &int_expr());
         assert!(result.is_none());
     }
@@ -443,8 +444,8 @@ mod tests {
         let pi_ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat_expr()),
-            Box::new(nat_expr()),
+            Node::new(nat_expr()),
+            Node::new(nat_expr()),
         );
         registry.register(Coercion {
             from: Expr::Const(Name::str("MyFunctor"), vec![]),
@@ -462,7 +463,7 @@ mod tests {
     #[test]
     fn test_coerce_to_function_not_pi() {
         let registry = CoercionRegistry::new();
-        let expr = Expr::Lit(Literal::Nat(1));
+        let expr = Expr::Lit(Literal::nat(1));
         let result = coerce_to_function(&registry, expr, &nat_expr(), &int_expr());
         assert!(result.is_none());
     }
@@ -475,21 +476,21 @@ mod tests {
     #[test]
     fn test_head_const_name() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(nat_expr()),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(nat_expr()),
         );
         assert_eq!(head_const_name(&e), Some(&Name::str("List")));
         assert_eq!(head_const_name(&nat_expr()), Some(&Name::str("Nat")));
-        assert_eq!(head_const_name(&Expr::Lit(Literal::Nat(0))), None);
+        assert_eq!(head_const_name(&Expr::Lit(Literal::nat(0))), None);
     }
     #[test]
     fn test_collect_app_args() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(Expr::Lit(Literal::nat(1))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(2))),
+            Node::new(Expr::Lit(Literal::nat(2))),
         );
         let (head, args) = collect_app_args(&e);
         assert!(matches!(head, Expr::Const(n, _) if * n == Name::str("f")));
@@ -497,7 +498,7 @@ mod tests {
     }
     #[test]
     fn test_mk_coercion_app() {
-        let result = mk_coercion_app(Name::str("f"), Expr::Lit(Literal::Nat(1)));
+        let result = mk_coercion_app(Name::str("f"), Expr::Lit(Literal::nat(1)));
         assert!(matches!(result, Expr::App(_, _)));
     }
     #[test]
@@ -609,12 +610,12 @@ mod coercion_extra_tests {
     #[test]
     fn test_same_coercion_head_app() {
         let fa = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(nat_expr()),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(nat_expr()),
         );
         let fb = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Bool"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Bool"), vec![])),
         );
         assert!(same_coercion_head(&fa, &fb));
     }
@@ -657,8 +658,8 @@ pub fn compose_coercion_path(path: &CoercionPath, arg: Expr) -> Expr {
     let mut result = arg;
     for step in &path.steps {
         result = Expr::App(
-            Box::new(Expr::Const(step.coerce.clone(), vec![])),
-            Box::new(result),
+            Node::new(Expr::Const(step.coerce.clone(), vec![])),
+            Node::new(result),
         );
     }
     result

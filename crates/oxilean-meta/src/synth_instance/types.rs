@@ -5,6 +5,7 @@
 use crate::basic::{MVarId, MetaContext};
 use crate::def_eq::{MetaDefEq, UnificationResult};
 use crate::discr_tree::DiscrTree;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 use std::collections::{HashMap, HashSet};
 
@@ -615,7 +616,7 @@ impl InstanceSynthesizer {
         {
             let (_, mvar) =
                 ctx.mk_fresh_expr_mvar((**domain).clone(), crate::basic::MetavarKind::Natural);
-            instance_expr = Expr::App(Box::new(instance_expr), Box::new(mvar.clone()));
+            instance_expr = Expr::App(Node::new(instance_expr), Node::new(mvar.clone()));
             cur_ty = oxilean_kernel::instantiate(body, &mvar);
         }
         (instance_expr, cur_ty)

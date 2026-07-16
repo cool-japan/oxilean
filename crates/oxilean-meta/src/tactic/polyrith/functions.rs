@@ -14,8 +14,10 @@ use super::types::{
 };
 #[allow(unused_imports)]
 use crate::basic::{MVarId, MetaContext};
+use crate::tactic::certificate::{PolyrithCert, PolyrithCertEntry, ProofCertificate};
+use crate::tactic::linear_combination::Rat;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
-use oxilean_kernel::{Expr, Name};
+use oxilean_kernel::{Expr, Literal, Name};
 
 #[cfg(test)]
 mod tests {
@@ -960,19 +962,283 @@ mod polyrith_ext_tests_301 {
     }
 }
 
-/// `polyrith` — prove polynomial arithmetic goals via Groebner basis membership.
+// ---------------------------------------------------------------------------
+// Expr → Polynomial parsing (mirrors omega's expr_to_linear pattern)
+// ---------------------------------------------------------------------------
+
+/// Map the head constant name of a (possibly partially-applied) expression.
+fn poly_get_app_head_name(expr: &Expr) -> Option<Name> {
+    match expr {
+        Expr::Const(name, _) => Some(name.clone()),
+        Expr::App(f, _) => poly_get_app_head_name(f),
+        _ => None,
+    }
+}
+
+/// Return a canonical binary-op tag ("add" | "sub" | "mul") for known arithmetic
+/// constants, mirroring the set in omega/functions.rs.
+fn poly_extract_binary_op(expr: &Expr) -> Option<&'static str> {
+    let head = poly_get_app_head_name(expr)?;
+    match head.to_string().as_str() {
+        "HAdd.hAdd" | "Nat.add" | "Int.add" | "Add.add" => Some("add"),
+        "HSub.hSub" | "Nat.sub" | "Int.sub" | "Sub.sub" => Some("sub"),
+        "HMul.hMul" | "Nat.mul" | "Int.mul" | "Mul.mul" => Some("mul"),
+        _ => None,
+    }
+}
+
+/// A map from `Expr` variable keys to canonical variable name strings.
 ///
-/// The current goal should be a polynomial identity (typically `lhs = rhs` or
-/// `lhs - rhs = 0`).  This tactic:
+/// Used so that `FVar(id)` and `Const(name)` consistently resolve to the
+/// same polynomial variable names within a single `tac_polyrith` call.
+type VarMap = std::collections::BTreeMap<String, String>;
+
+/// Parse an expression into a multivariate `Polynomial` with string variable
+/// names.
 ///
-/// 1. Collects the local hypotheses from `ctx` — each hypothesis type is
-///    converted to a string and parsed as an integer constant polynomial
-///    (a lightweight model for constant-coefficient arithmetic).
-/// 2. Extracts the goal polynomial from the target expression.
-/// 3. Runs [`PolyrithTactic::run`] to search for a linear combination of
-///    hypothesis polynomials equal to the goal.
-/// 4. If a witness is found, closes the goal with a synthetic proof constant
-///    embedding the coefficient vector; otherwise returns [`TacticError::Failed`].
+/// Recognises:
+/// - Integer / Nat literals   → constant polynomial
+/// - `Const(name)` / `FVar`  → degree-1 variable monomial
+/// - `Int.add` / `Int.sub`   → polynomial addition / subtraction
+/// - `Int.mul`               → full polynomial multiplication (non-linear ok)
+/// - `Int.neg` / `Neg.neg`  → polynomial negation
+/// - `Int.ofNat`              → strip the cast, recurse
+///
+/// Returns `None` for any unrecognised pattern.
+pub fn parse_expr_to_polynomial(expr: &Expr, _var_map: &mut VarMap) -> Option<Polynomial> {
+    match expr {
+        // Integer and natural number literals.
+        Expr::Lit(Literal::Nat(n)) => {
+            let v = n.to_u64()? as i64;
+            let mut p = Polynomial::new();
+            p.add_term(Monomial::new(v));
+            Some(p)
+        }
+        // A free variable reference.
+        Expr::FVar(id) => {
+            let var_name = format!("fvar_{}", id.0);
+            let mut m = Monomial::new(1);
+            m.add_var(&var_name, 1);
+            let mut p = Polynomial::new();
+            p.add_term(m);
+            Some(p)
+        }
+        // A bound variable reference.
+        Expr::BVar(i) => {
+            let var_name = format!("bvar_{i}");
+            let mut m = Monomial::new(1);
+            m.add_var(&var_name, 1);
+            let mut p = Polynomial::new();
+            p.add_term(m);
+            Some(p)
+        }
+        // A named constant treated as a polynomial variable.
+        Expr::Const(name, _) => {
+            let name_str = name.to_string();
+            // Reject clearly non-arithmetic constants.
+            if name_str.contains('.') && !name_str.starts_with("polyrith") {
+                // Could be a type former like `Int`, `Nat`; treat as unknown.
+                return None;
+            }
+            let mut m = Monomial::new(1);
+            m.add_var(&name_str, 1);
+            let mut p = Polynomial::new();
+            p.add_term(m);
+            Some(p)
+        }
+        // Application: could be a unary or binary operation.
+        Expr::App(func, arg) => {
+            // Unary: negation and casts.
+            if let Expr::Const(ref cname, _) = **func {
+                match cname.to_string().as_str() {
+                    "Neg.neg" | "Int.neg" => {
+                        let inner = parse_expr_to_polynomial(arg, _var_map)?;
+                        return Some(inner.negate());
+                    }
+                    "Int.ofNat" | "Nat.cast" | "Int.ofNatLit" => {
+                        return parse_expr_to_polynomial(arg, _var_map);
+                    }
+                    _ => {}
+                }
+            }
+            // Binary: App(App(op, lhs), rhs).
+            if let Expr::App(inner_func, lhs_expr) = func.as_ref() {
+                if let Some(op) = poly_extract_binary_op(inner_func) {
+                    let lhs = parse_expr_to_polynomial(lhs_expr, _var_map)?;
+                    let rhs = parse_expr_to_polynomial(arg, _var_map)?;
+                    return match op {
+                        "add" => Some(Polynomial::add(&lhs, &rhs)),
+                        "sub" => {
+                            let neg_rhs = rhs.negate();
+                            Some(Polynomial::add(&lhs, &neg_rhs))
+                        }
+                        "mul" => Some(Polynomial::mul(&lhs, &rhs)),
+                        _ => None,
+                    };
+                }
+                // Handle 4-arg typeclass form: App(App(App(App(op, inst), ty), lhs), rhs).
+                if let Expr::App(inner2, lhs2) = inner_func.as_ref() {
+                    if let Some(op) = poly_extract_binary_op(inner2) {
+                        let lhs = parse_expr_to_polynomial(lhs2, _var_map)?;
+                        let rhs = parse_expr_to_polynomial(arg, _var_map)?;
+                        return match op {
+                            "add" => Some(Polynomial::add(&lhs, &rhs)),
+                            "sub" => {
+                                let neg_rhs = rhs.negate();
+                                Some(Polynomial::add(&lhs, &neg_rhs))
+                            }
+                            "mul" => Some(Polynomial::mul(&lhs, &rhs)),
+                            _ => None,
+                        };
+                    }
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+/// Try to parse an `Expr` representing an equality `lhs = rhs` into a
+/// polynomial `lhs - rhs`.  Returns `None` if the expression is not an
+/// equality or cannot be parsed as a polynomial.
+pub fn parse_equality_to_poly(expr: &Expr, var_map: &mut VarMap) -> Option<Polynomial> {
+    // Equalities arrive as App(App(App(Eq, ty), lhs), rhs)
+    // or App(App(op, lhs), rhs) where op encodes `=`.
+    if let Expr::App(func, rhs_expr) = expr {
+        // Try the 3-arg Eq form.
+        if let Expr::App(func2, lhs_expr) = func.as_ref() {
+            // Check for App(App(Eq, _ty), lhs)
+            if let Expr::App(eq_head, _ty) = func2.as_ref() {
+                if let Some(head) = poly_get_app_head_name(eq_head) {
+                    if head.to_string() == "Eq" {
+                        let lhs = parse_expr_to_polynomial(lhs_expr, var_map)?;
+                        let rhs = parse_expr_to_polynomial(rhs_expr, var_map)?;
+                        let neg_rhs = rhs.negate();
+                        return Some(Polynomial::add(&lhs, &neg_rhs));
+                    }
+                }
+            }
+            // Try 2-arg form (e.g. some backends emit App(App(eq, lhs), rhs)).
+            if let Some(head) = poly_get_app_head_name(func2) {
+                if head.to_string() == "Eq" {
+                    let lhs = parse_expr_to_polynomial(lhs_expr, var_map)?;
+                    let rhs = parse_expr_to_polynomial(rhs_expr, var_map)?;
+                    let neg_rhs = rhs.negate();
+                    return Some(Polynomial::add(&lhs, &neg_rhs));
+                }
+            }
+        }
+    }
+    None
+}
+
+// ---------------------------------------------------------------------------
+// OxiZ-math bridge: polynomial conversion and independent Gröbner validation
+// ---------------------------------------------------------------------------
+
+/// Build a shared variable-index map from all string variable names in a set
+/// of in-house `Polynomial` values.  The in-house representation uses `String`
+/// variable names; `oxiz_math` polynomials use `u32` indices.
+fn build_var_map_for_oxiz(polys: &[&Polynomial]) -> std::collections::HashMap<String, u32> {
+    let mut map: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+    let mut next_id: u32 = 0;
+    for poly in polys {
+        for term in &poly.terms {
+            for (var_name, _exp) in &term.vars {
+                if !map.contains_key(var_name.as_str()) {
+                    map.insert(var_name.clone(), next_id);
+                    next_id += 1;
+                }
+            }
+        }
+    }
+    map
+}
+
+/// Convert an in-house `Polynomial` (integer coefficients, named string
+/// variables) into an `oxiz_math::polynomial::Polynomial` (BigRational
+/// coefficients, `u32` variable indices).
+///
+/// Returns `None` only if the variable map is missing a name that appears in
+/// the polynomial (which should never happen if `build_var_map_for_oxiz` was
+/// called on a collection that includes this polynomial).
+fn to_oxiz_poly(
+    p: &Polynomial,
+    var_map: &std::collections::HashMap<String, u32>,
+) -> Option<oxiz_math::polynomial::Polynomial> {
+    use num_bigint::BigInt;
+    use num_rational::BigRational;
+    use oxiz_math::polynomial::{Monomial as OxizMonomial, Term as OxizTerm};
+
+    let mut oxiz_terms: Vec<OxizTerm> = Vec::with_capacity(p.terms.len());
+
+    for monomial in &p.terms {
+        // Convert each (name, exponent) pair to (u32 index, exponent).
+        let mut powers: Vec<(u32, u32)> = Vec::with_capacity(monomial.vars.len());
+        for (var_name, exp) in &monomial.vars {
+            let idx = var_map.get(var_name.as_str())?;
+            powers.push((*idx, *exp));
+        }
+
+        let coeff = BigRational::from_integer(BigInt::from(monomial.coefficient));
+        let oxiz_mono = OxizMonomial::from_powers(powers);
+        oxiz_terms.push(OxizTerm::new(coeff, oxiz_mono));
+    }
+
+    Some(oxiz_math::polynomial::Polynomial::from_terms(
+        oxiz_terms,
+        oxiz_math::polynomial::MonomialOrder::default(),
+    ))
+}
+
+/// Use `oxiz_math`'s Buchberger implementation to independently verify that
+/// `goal` is in the polynomial ideal generated by `generators`.
+///
+/// Returns:
+/// - `Some(true)` if OxiZ-math's Buchberger confirms ideal membership,
+/// - `Some(false)` if it denies membership,
+/// - `None` if any conversion step fails (caller should fall back to the
+///   in-house check; returning `None` does NOT indicate an error that should
+///   prevent the tactic from succeeding).
+pub(crate) fn oxiz_validate_ideal_membership(
+    goal: &Polynomial,
+    generators: &[Polynomial],
+) -> Option<bool> {
+    // Gather all polynomials to build the variable index map in one pass.
+    let all_polys: Vec<&Polynomial> = std::iter::once(goal).chain(generators.iter()).collect();
+    let var_map = build_var_map_for_oxiz(&all_polys);
+
+    let goal_oxiz = to_oxiz_poly(goal, &var_map)?;
+
+    let gens_oxiz: Option<Vec<oxiz_math::polynomial::Polynomial>> = generators
+        .iter()
+        .map(|g| to_oxiz_poly(g, &var_map))
+        .collect();
+    let gens_oxiz = gens_oxiz?;
+
+    // `ideal_membership` internally calls `grobner_basis` then reduces `goal`
+    // with respect to the resulting basis.  Zero remainder ⟺ membership.
+    Some(oxiz_math::grobner::ideal_membership(&goal_oxiz, &gens_oxiz))
+}
+
+/// `polyrith` — prove polynomial arithmetic goals via Gröbner basis membership.
+///
+/// Algorithm:
+///
+/// 1. Parse the goal `lhs = rhs` into the polynomial `goal_poly = lhs - rhs`.
+/// 2. Parse each local hypothesis that is an equality `p = q` into
+///    `p - q`, collecting a list of *generator polynomials* for the ideal.
+///    Hypotheses that cannot be parsed are silently skipped.
+/// 3. Build a `GroebnerBasis` from the generators and call `contains(&goal_poly)`.
+///    This reduces `goal_poly` by the basis using the polynomial-division
+///    algorithm (Cox–Little–O'Shea §2.3): if the remainder is zero, the goal
+///    is in the ideal and is therefore provable.
+/// 4. If membership holds, close the goal with a placeholder proof constant
+///    (`polyrith.proved`).  Kernel-verified proof-term reconstruction is deferred
+///    to a future cycle.
+/// 5. If membership does not hold (or parsing fails for the goal), return
+///    `TacticError::Failed`.
 pub fn tac_polyrith(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
     let goal = state.current_goal()?;
     let target = ctx
@@ -980,32 +1246,389 @@ pub fn tac_polyrith(state: &mut TacticState, ctx: &mut MetaContext) -> TacticRes
         .cloned()
         .ok_or_else(|| TacticError::Internal("polyrith: goal has no type".into()))?;
     let target = ctx.instantiate_mvars(&target);
-    let target_str = target.to_string();
 
-    // Collect hypothesis polynomials from the local context.
-    // Each hypothesis whose type string parses as an integer is treated as a
-    // constant-coefficient polynomial; others are silently ignored.
+    let mut var_map: VarMap = VarMap::new();
+
+    // Parse the goal expression into a polynomial.
+    let goal_poly = parse_equality_to_poly(&target, &mut var_map).ok_or_else(|| {
+        TacticError::Failed(format!(
+            "polyrith: could not parse goal as a polynomial equality: `{}`",
+            target
+        ))
+    })?;
+
+    // Collect and parse hypothesis polynomials.  Each local hypothesis whose
+    // type is a parseable polynomial equality contributes one generator to the
+    // ideal.  Non-polynomial hypotheses (e.g. `n : Nat`, propositions, etc.)
+    // are silently skipped — they don't contribute generators.
     let hyps_raw = ctx.get_local_hyps();
-    let hyp_strs: Vec<String> = hyps_raw
-        .iter()
-        .map(|(_name, ty)| {
-            let ty_inst = ctx.instantiate_mvars(ty);
-            ty_inst.to_string()
-        })
-        .collect();
-    let hyp_refs: Vec<&str> = hyp_strs.iter().map(String::as_str).collect();
+    let mut generators: Vec<Polynomial> = Vec::new();
+    for (_name, ty) in &hyps_raw {
+        let ty_inst = ctx.instantiate_mvars(ty);
+        if let Some(p) = parse_equality_to_poly(&ty_inst, &mut var_map) {
+            generators.push(p);
+        }
+    }
 
-    // Run polyrith via the string interface.
-    let tac = PolyrithTactic::new();
-    if tac.run_with_strings(&hyp_refs, &target_str) {
-        // Build a proof constant whose name encodes the success for the elab layer.
+    // Build a Gröbner basis from the hypothesis generators and test membership.
+    let mut basis = GroebnerBasis::new();
+    for gen in generators {
+        basis.add_polynomial(gen);
+    }
+
+    if basis.contains(&goal_poly) {
+        // Build a PolyrithCert from the hypothesis generators that contributed.
+        // We generate one entry per parsed hypothesis (constraint_index = position in hyps_raw).
+        let entries: Vec<PolyrithCertEntry> = hyps_raw
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, (_name, ty))| {
+                let ty_inst = ctx.instantiate_mvars(ty);
+                let mut vm = VarMap::new();
+                parse_equality_to_poly(&ty_inst, &mut vm).map(|_| PolyrithCertEntry {
+                    constraint_index: idx,
+                    coeff: Rat { numer: 1, denom: 1 },
+                })
+            })
+            .collect();
+
+        // --- OxiZ-math independent validation ---
+        // Run Buchberger on the same generators and check ideal membership.
+        // Collect the generators again (they were moved into `basis` above).
+        let generators_for_oxiz: Vec<Polynomial> = hyps_raw
+            .iter()
+            .filter_map(|(_name, ty)| {
+                let ty_inst = ctx.instantiate_mvars(ty);
+                let mut vm = VarMap::new();
+                parse_equality_to_poly(&ty_inst, &mut vm)
+            })
+            .collect();
+
+        let oxiz_validated =
+            oxiz_validate_ideal_membership(&goal_poly, &generators_for_oxiz).unwrap_or(false);
+
+        let cert = PolyrithCert {
+            goal: format!("{}", target),
+            entries,
+            validated: oxiz_validated,
+        };
+
+        // Store the certificate for elab-side proof reconstruction.
+        ctx.last_polyrith_cert = Some(cert.clone());
+        ctx.last_certificate = Some(ProofCertificate::Polyrith(cert));
+
+        // Close the goal with a placeholder proof term.
+        // Kernel proof reconstruction is attempted by the elaborator.
         let proof = Expr::Const(Name::str("polyrith.proved"), vec![]);
         state.close_goal(proof, ctx)?;
         Ok(())
     } else {
         Err(TacticError::Failed(format!(
-            "polyrith: could not find a polynomial certificate for `{}`",
-            target_str
+            "polyrith: goal `{}` is not in the ideal generated by the hypotheses",
+            target
         )))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests for the real Gröbner-basis algorithm
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod groebner_real_algorithm_tests {
+    use super::*;
+    use crate::tactic::polyrith::*;
+
+    /// Build a polynomial with named variables for testing the real algorithm.
+    ///
+    /// `terms` is a list of `(coeff, &[(var_name, exponent)])` pairs.
+    fn make_poly(terms: &[(i64, &[(&str, u32)])]) -> Polynomial {
+        let mut p = Polynomial::new();
+        for &(coeff, vars) in terms {
+            let mut m = Monomial::new(coeff);
+            for &(v, e) in vars {
+                m.add_var(v, e);
+            }
+            p.add_term(m);
+        }
+        p
+    }
+
+    /// Test: x + y - 3 is in the ideal <x - 1, y - 2>.
+    ///
+    /// This is the primary real-world polyrith test case: the goal `x + y = 3`
+    /// with hypotheses `x = 1` and `y = 2`.  The parse step produces constant-
+    /// offset generators `{x-1, y-2}` and goal polynomial `x+y-3`.
+    ///
+    /// The real Gröbner reduction succeeds:
+    ///   1. Leading term of `x+y-3` is `x`; generator `x-1` divides it
+    ///      (quotient = const(1)); subtract `x-1`; remainder = `y-2`.
+    ///   2. Leading term of `y-2` is `y`; generator `y-2` divides it
+    ///      (quotient = const(1)); subtract `y-2`; remainder = 0.
+    ///
+    /// The old brute-force stub would attempt this only via `PolyrithTactic::run`
+    /// (constant-only coefficient search) and `run_with_strings` (parsing each
+    /// hypothesis as an i64 constant, losing variable structure entirely).
+    #[test]
+    fn test_polyrith_ideal_membership_simple() {
+        // h1: x - 1 = 0  (represents "x = 1")
+        let h1 = make_poly(&[(1, &[("x", 1)]), (-1, &[])]);
+        // h2: y - 2 = 0  (represents "y = 2")
+        let h2 = make_poly(&[(1, &[("y", 1)]), (-2, &[])]);
+        // goal: x + y - 3 = 0  (represents "x + y = 3")
+        let goal = make_poly(&[(1, &[("x", 1)]), (1, &[("y", 1)]), (-3, &[])]);
+
+        let mut basis = GroebnerBasis::new();
+        basis.add_polynomial(h1);
+        basis.add_polynomial(h2);
+
+        assert!(
+            basis.contains(&goal),
+            "x+y-3 should be in the ideal <x-1, y-2>"
+        );
+    }
+
+    /// Test: y - 1 is NOT in the ideal <x>.
+    ///
+    /// This models an unprovable goal `y = 1` given only the hypothesis `x = 0`.
+    /// No polynomial multiple of x can produce `y - 1`.
+    #[test]
+    fn test_polyrith_not_member() {
+        // Generator: x (represents hypothesis "x = 0")
+        let h1 = make_poly(&[(1, &[("x", 1)])]);
+        // Goal: y - 1 (represents "y = 1", unprovable from x=0)
+        let goal = make_poly(&[(1, &[("y", 1)]), (-1, &[])]);
+
+        let mut basis = GroebnerBasis::new();
+        basis.add_polynomial(h1);
+
+        assert!(!basis.contains(&goal), "y-1 should NOT be in the ideal <x>");
+    }
+
+    /// Test: x² - 1 is in the ideal <x² - 1>.
+    ///
+    /// This models the goal `(x-1)*(x+1) = 0` given the hypothesis `x^2 = 1`
+    /// (since `(x-1)*(x+1) = x²-1`).  The goal polynomial is degree-2 with a
+    /// constant offset — the old brute-force stub treated every polynomial as a
+    /// single i64 constant, losing ALL variable structure, so it could never
+    /// recognise this as a valid ideal membership certificate.
+    #[test]
+    fn test_polyrith_quadratic_identity() {
+        // h1: x² - 1 = 0  (represents "x² = 1")
+        let h1 = make_poly(&[(1, &[("x", 2)]), (-1, &[])]);
+        // goal: x² - 1 = 0  (same polynomial — trivially in the ideal)
+        let goal = make_poly(&[(1, &[("x", 2)]), (-1, &[])]);
+
+        let mut basis = GroebnerBasis::new();
+        basis.add_polynomial(h1);
+
+        assert!(basis.contains(&goal), "x²-1 should be in the ideal <x²-1>");
+    }
+
+    /// Test: 2x + 3y - 8 is in the ideal <x - 1, y - 2>.
+    ///
+    /// The witness is `2*(x-1) + 3*(y-2) = 2x+3y-8`.  Coefficient 3 is outside
+    /// the brute-force search range `{-2,-1,0,1,2}`, so the old stub would
+    /// FAIL to find the witness even if it could handle variable terms.
+    /// The real Gröbner reduction:
+    ///   1. Lead `2x`; divisor `x-1`, quotient `const(2)`;
+    ///      subtract `2*(x-1) = 2x-2`; rest = `3y-6`.
+    ///   2. Lead `3y`; divisor `y-2`, quotient `const(3)`;
+    ///      subtract `3*(y-2) = 3y-6`; rest = 0.
+    #[test]
+    fn test_polyrith_linear_combination_outside_brute_force_range() {
+        let h1 = make_poly(&[(1, &[("x", 1)]), (-1, &[])]);
+        let h2 = make_poly(&[(1, &[("y", 1)]), (-2, &[])]);
+        // 2x + 3y - 8
+        let goal = make_poly(&[(2, &[("x", 1)]), (3, &[("y", 1)]), (-8, &[])]);
+
+        let mut basis = GroebnerBasis::new();
+        basis.add_polynomial(h1);
+        basis.add_polynomial(h2);
+
+        assert!(
+            basis.contains(&goal),
+            "2x+3y-8 should be in the ideal <x-1, y-2>"
+        );
+    }
+
+    /// Test parse_expr_to_polynomial with a literal.
+    #[test]
+    fn test_parse_expr_literal() {
+        let expr = Expr::Lit(Literal::nat(5));
+        let mut var_map = VarMap::new();
+        let p = parse_expr_to_polynomial(&expr, &mut var_map);
+        assert!(p.is_some(), "literal 5 should parse");
+        let p = p.unwrap();
+        assert_eq!(p.terms.len(), 1);
+        assert_eq!(p.terms[0].coefficient, 5);
+        assert!(p.terms[0].vars.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // OxiZ-math bridge tests
+    // -----------------------------------------------------------------------
+
+    /// `to_oxiz_poly` should convert a simple polynomial 2*x + 3 without loss.
+    #[test]
+    fn test_to_oxiz_poly_conversion() {
+        // Build 2*x + 3 using the in-house Polynomial type.
+        let mut p = Polynomial::new();
+        let mut m_x = Monomial::new(2);
+        m_x.add_var("x", 1);
+        p.add_term(m_x);
+        p.add_term(Monomial::new(3));
+
+        let var_map = build_var_map_for_oxiz(&[&p]);
+        let oxiz_p = to_oxiz_poly(&p, &var_map).expect("conversion should succeed for 2*x + 3");
+
+        // The resulting polynomial must be non-zero.
+        assert!(
+            !oxiz_p.is_zero(),
+            "oxiz polynomial for 2*x+3 must not be zero"
+        );
+        // It should have exactly 2 terms (2*x and 3).
+        assert_eq!(
+            oxiz_p.num_terms(),
+            2,
+            "oxiz polynomial for 2*x+3 should have 2 terms"
+        );
+    }
+
+    /// A zero polynomial should convert to a zero polynomial.
+    #[test]
+    fn test_to_oxiz_poly_zero_conversion() {
+        let p = Polynomial::zero();
+        let var_map = build_var_map_for_oxiz(&[&p]);
+        let oxiz_p = to_oxiz_poly(&p, &var_map).expect("zero polynomial conversion should succeed");
+        assert!(oxiz_p.is_zero(), "zero polynomial should map to zero");
+    }
+
+    /// OxiZ must confirm that `x - 1` is in the ideal generated by `[x - 1]`.
+    #[test]
+    fn test_oxiz_validate_ideal_membership_true() {
+        // goal = x - 1
+        let mut poly_x_minus_1 = Polynomial::new();
+        let mut m_x = Monomial::new(1);
+        m_x.add_var("x", 1);
+        poly_x_minus_1.add_term(m_x);
+        poly_x_minus_1.add_term(Monomial::new(-1));
+
+        let result = oxiz_validate_ideal_membership(&poly_x_minus_1, &[poly_x_minus_1.clone()]);
+        assert_eq!(result, Some(true), "x-1 should be in the ideal <x-1>");
+    }
+
+    /// OxiZ must deny that `x² - 2` is in the ideal generated by `[x - 1]`.
+    #[test]
+    fn test_oxiz_validate_ideal_membership_false() {
+        // goal = x² - 2
+        let mut x_sq_minus_2 = Polynomial::new();
+        let mut m_x2 = Monomial::new(1);
+        m_x2.add_var("x", 2);
+        x_sq_minus_2.add_term(m_x2);
+        x_sq_minus_2.add_term(Monomial::new(-2));
+
+        // generator = x - 1
+        let mut x_minus_1 = Polynomial::new();
+        let mut m_x = Monomial::new(1);
+        m_x.add_var("x", 1);
+        x_minus_1.add_term(m_x);
+        x_minus_1.add_term(Monomial::new(-1));
+
+        let result = oxiz_validate_ideal_membership(&x_sq_minus_2, &[x_minus_1]);
+        assert_eq!(result, Some(false), "x²-2 should NOT be in the ideal <x-1>");
+    }
+
+    /// PolyrithCert::validated field should be accessible and default to false.
+    #[test]
+    fn test_polyrith_cert_has_validated_field() {
+        use crate::tactic::certificate::{PolyrithCert, PolyrithCertEntry};
+        use crate::tactic::linear_combination::Rat;
+        let cert = PolyrithCert {
+            goal: "test".to_string(),
+            entries: vec![],
+            validated: false,
+        };
+        assert!(!cert.validated, "validated should be false by default");
+
+        let cert_validated = PolyrithCert {
+            goal: "test".to_string(),
+            entries: vec![PolyrithCertEntry {
+                constraint_index: 0,
+                coeff: Rat { numer: 1, denom: 1 },
+            }],
+            validated: true,
+        };
+        assert!(
+            cert_validated.validated,
+            "validated should be true when set"
+        );
+    }
+
+    /// OxiZ must confirm that `2x + 3y` is in the ideal generated by `[x, y]`.
+    ///
+    /// The witness is: `2·x + 3·y = 2*(x) + 3*(y)`, a direct linear combination
+    /// of the generators.  Buchberger should recognise this immediately because
+    /// `x` and `y` reduce both leading terms to zero.
+    #[test]
+    fn test_oxiz_validates_linear_combination() {
+        // goal = 2*x + 3*y
+        let mut goal = Polynomial::new();
+        let mut m_2x = Monomial::new(2);
+        m_2x.add_var("x", 1);
+        goal.add_term(m_2x);
+        let mut m_3y = Monomial::new(3);
+        m_3y.add_var("y", 1);
+        goal.add_term(m_3y);
+
+        // generator 1: x
+        let mut gen_x = Polynomial::new();
+        let mut m_x = Monomial::new(1);
+        m_x.add_var("x", 1);
+        gen_x.add_term(m_x);
+
+        // generator 2: y
+        let mut gen_y = Polynomial::new();
+        let mut m_y = Monomial::new(1);
+        m_y.add_var("y", 1);
+        gen_y.add_term(m_y);
+
+        let result = oxiz_validate_ideal_membership(&goal, &[gen_x, gen_y]);
+        assert_eq!(result, Some(true), "2x+3y should be in the ideal <x, y>");
+    }
+
+    /// OxiZ must handle a multivariate quadratic: `x*y - 1` in `<x - 1, y - 1>`.
+    ///
+    /// Witness: `x*y - 1 = y*(x-1) + 1*(y-1)`.
+    #[test]
+    fn test_oxiz_validates_multivariate_quadratic() {
+        // goal = x*y - 1
+        let mut goal = Polynomial::new();
+        let mut m_xy = Monomial::new(1);
+        m_xy.add_var("x", 1);
+        m_xy.add_var("y", 1);
+        goal.add_term(m_xy);
+        goal.add_term(Monomial::new(-1));
+
+        // h1: x - 1
+        let mut h1 = Polynomial::new();
+        let mut m_x = Monomial::new(1);
+        m_x.add_var("x", 1);
+        h1.add_term(m_x);
+        h1.add_term(Monomial::new(-1));
+
+        // h2: y - 1
+        let mut h2 = Polynomial::new();
+        let mut m_y = Monomial::new(1);
+        m_y.add_var("y", 1);
+        h2.add_term(m_y);
+        h2.add_term(Monomial::new(-1));
+
+        let result = oxiz_validate_ideal_membership(&goal, &[h1, h2]);
+        assert_eq!(
+            result,
+            Some(true),
+            "x*y-1 should be in the ideal <x-1, y-1>"
+        );
     }
 }

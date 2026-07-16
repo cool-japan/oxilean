@@ -11,6 +11,7 @@ use super::types::{
 };
 use crate::basic::MetaContext;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::{HashMap, HashSet};
 
@@ -102,8 +103,8 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
     let mut args = Vec::new();
     let mut head = expr.clone();
     while let Expr::App(f, a) = head {
-        args.push(*a);
-        head = *f;
+        args.push((*a).clone());
+        head = (*f).clone();
     }
     args.reverse();
     (head, args)
@@ -112,7 +113,7 @@ pub(super) fn collect_app_args(expr: &Expr) -> (Expr, Vec<Expr>) {
 pub(super) fn mk_app(head: Expr, args: Vec<Expr>) -> Expr {
     let mut result = head;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg));
+        result = Expr::App(Node::new(result), Node::new(arg));
     }
     result
 }
@@ -412,8 +413,8 @@ pub(super) fn build_cast(from: &Name, to: &Name, inner: Expr) -> Expr {
     let cast_const = Expr::Const(cast_name, vec![]);
     let to_type = Expr::Const(to.clone(), vec![]);
     Expr::App(
-        Box::new(Expr::App(Box::new(cast_const), Box::new(to_type))),
-        Box::new(inner),
+        Node::new(Expr::App(Node::new(cast_const), Node::new(to_type))),
+        Node::new(inner),
     )
 }
 /// Push casts toward leaves.
@@ -616,7 +617,7 @@ pub fn tac_exact_mod_cast(
         proof_term.clone()
     } else {
         let cast_norm = combine_cast_proofs(&cast_proofs);
-        Expr::App(Box::new(cast_norm), Box::new(proof_term.clone()))
+        Expr::App(Node::new(cast_norm), Node::new(proof_term.clone()))
     };
     state.close_goal(final_proof, ctx)?;
     Ok(())
@@ -645,8 +646,8 @@ pub(super) fn combine_cast_proofs(proofs: &[Expr]) -> Expr {
     for proof in &proofs[1..] {
         let trans = Expr::Const(Name::str("Eq.trans"), vec![]);
         combined = Expr::App(
-            Box::new(Expr::App(Box::new(trans), Box::new(combined))),
-            Box::new(proof.clone()),
+            Node::new(Expr::App(Node::new(trans), Node::new(combined))),
+            Node::new(proof.clone()),
         );
     }
     combined
@@ -663,7 +664,10 @@ mod tests {
         Expr::Const(Name::str(name), vec![])
     }
     fn mk_app2(f: Expr, a: Expr, b: Expr) -> Expr {
-        Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b))
+        Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        )
     }
     #[test]
     fn test_cast_direction_display() {
@@ -960,7 +964,7 @@ mod tests {
     }
     #[test]
     fn test_get_type_name_app() {
-        let list_nat = Expr::App(Box::new(mk_const("List")), Box::new(mk_const("Nat")));
+        let list_nat = Expr::App(Node::new(mk_const("List")), Node::new(mk_const("Nat")));
         assert_eq!(get_type_name(&list_nat), Some(Name::str("List")));
     }
     #[test]

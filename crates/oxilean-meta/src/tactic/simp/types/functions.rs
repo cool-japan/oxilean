@@ -11,6 +11,7 @@ use super::types::{
     TacticSimpTypesResult, TypesExtConfig3200, TypesExtConfigVal3200, TypesExtDiag3200,
     TypesExtDiff3200, TypesExtPass3200, TypesExtPipeline3200, TypesExtResult3200,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 
 /// Build a default simp lemma set with basic Nat/Bool/Logic rewrites.
@@ -19,8 +20,8 @@ use oxilean_kernel::{Expr, Name};
 /// that are always safe to apply left-to-right.
 pub fn default_simp_lemmas() -> SimpTheorems {
     let mut db = SimpTheorems::new();
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
-    let one = Expr::Lit(oxilean_kernel::Literal::Nat(1));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
+    let one = Expr::Lit(oxilean_kernel::Literal::nat(1));
     let true_c = Expr::Const(Name::str("true"), vec![]);
     let false_c = Expr::Const(Name::str("false"), vec![]);
     let add = Expr::Const(Name::str("Nat.add"), vec![]);
@@ -29,7 +30,10 @@ pub fn default_simp_lemmas() -> SimpTheorems {
     let bor = Expr::Const(Name::str("Bool.or"), vec![]);
     let n = Expr::BVar(0);
     let mk_bin = |f: Expr, a: Expr, b: Expr| -> Expr {
-        Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b))
+        Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        )
     };
     db.add_lemma(SimpLemma {
         name: Name::str("Nat.add_zero"),
@@ -157,7 +161,7 @@ pub fn default_simp_lemmas() -> SimpTheorems {
         is_conditional: false,
         is_forward: true,
     });
-    let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+    let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
     let n = Expr::BVar(0);
     let list_nil = Expr::Const(Name::str("List.nil"), vec![]);
     let list_append = Expr::Const(Name::str("List.append"), vec![]);
@@ -272,7 +276,7 @@ pub fn default_simp_lemmas() -> SimpTheorems {
     let not_c = Expr::Const(Name::str("Not"), vec![]);
     db.add_lemma(SimpLemma {
         name: Name::str("not_false"),
-        lhs: Expr::App(Box::new(not_c.clone()), Box::new(false_c.clone())),
+        lhs: Expr::App(Node::new(not_c.clone()), Node::new(false_c.clone())),
         rhs: true_c.clone(),
         proof: Expr::Const(Name::str("not_false"), vec![]),
         priority: 1000,
@@ -281,7 +285,7 @@ pub fn default_simp_lemmas() -> SimpTheorems {
     });
     db.add_lemma(SimpLemma {
         name: Name::str("not_true"),
-        lhs: Expr::App(Box::new(not_c.clone()), Box::new(true_c.clone())),
+        lhs: Expr::App(Node::new(not_c.clone()), Node::new(true_c.clone())),
         rhs: false_c.clone(),
         proof: Expr::Const(Name::str("not_true"), vec![]),
         priority: 1000,

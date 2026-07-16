@@ -1,0 +1,29 @@
+[package]
+name = "oxilean-verify"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+rust-version.workspace = true
+description = "Independent Lean 4 proof checker — the oxilean-verify product CLI and streaming verify engine"
+
+[[bin]]
+name = "oxilean-verify"
+path = "src/main.rs"
+
+[lib]
+name = "oxilean_verify"
+path = "src/lib.rs"
+
+[dependencies]
+# The trusted computing base and nothing else. A reviewer audits this exact
+# dependency closure: kernel + export reader. No clap, no serde — arg parsing
+# and JSON output are hand-rolled in this crate.
+oxilean-kernel = { workspace = true }
+oxilean-export = { workspace = true }
+
+[lints.rust]
+unsafe_code = "forbid"

@@ -4,6 +4,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Name};
 use std::collections::HashMap;
 
@@ -28,6 +29,8 @@ impl MetaContext {
             config: MetaConfig::default(),
             depth: 0,
             env,
+            last_certificate: None,
+            last_polyrith_cert: None,
         }
     }
     /// Create a meta context with custom configuration.
@@ -75,27 +78,32 @@ impl MetaContext {
             Expr::App(f, a) => {
                 let f2 = self.instantiate_mvars_impl(f, depth + 1);
                 let a2 = self.instantiate_mvars_impl(a, depth + 1);
-                Expr::App(Box::new(f2), Box::new(a2))
+                Expr::App(Node::new(f2), Node::new(a2))
             }
             Expr::Lam(info, name, ty, body) => {
                 let ty2 = self.instantiate_mvars_impl(ty, depth + 1);
                 let body2 = self.instantiate_mvars_impl(body, depth + 1);
-                Expr::Lam(*info, name.clone(), Box::new(ty2), Box::new(body2))
+                Expr::Lam(*info, name.clone(), Node::new(ty2), Node::new(body2))
             }
             Expr::Pi(info, name, ty, body) => {
                 let ty2 = self.instantiate_mvars_impl(ty, depth + 1);
                 let body2 = self.instantiate_mvars_impl(body, depth + 1);
-                Expr::Pi(*info, name.clone(), Box::new(ty2), Box::new(body2))
+                Expr::Pi(*info, name.clone(), Node::new(ty2), Node::new(body2))
             }
             Expr::Let(name, ty, val, body) => {
                 let ty2 = self.instantiate_mvars_impl(ty, depth + 1);
                 let val2 = self.instantiate_mvars_impl(val, depth + 1);
                 let body2 = self.instantiate_mvars_impl(body, depth + 1);
-                Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+                Expr::Let(
+                    name.clone(),
+                    Node::new(ty2),
+                    Node::new(val2),
+                    Node::new(body2),
+                )
             }
             Expr::Proj(name, idx, e) => {
                 let e2 = self.instantiate_mvars_impl(e, depth + 1);
-                Expr::Proj(name.clone(), *idx, Box::new(e2))
+                Expr::Proj(name.clone(), *idx, Node::new(e2))
             }
         }
     }
@@ -145,8 +153,8 @@ impl MetaContext {
                 result = Expr::Lam(
                     decl.binder_info,
                     decl.user_name.clone(),
-                    Box::new(decl.ty.clone()),
-                    Box::new(result),
+                    Node::new(decl.ty.clone()),
+                    Node::new(result),
                 );
             }
         }
@@ -164,8 +172,8 @@ impl MetaContext {
                 result = Expr::Pi(
                     decl.binder_info,
                     decl.user_name.clone(),
-                    Box::new(decl.ty.clone()),
-                    Box::new(result),
+                    Node::new(decl.ty.clone()),
+                    Node::new(result),
                 );
             }
         }

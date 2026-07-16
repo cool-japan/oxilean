@@ -353,7 +353,7 @@ mod extra_ffi_tests {
     }
     #[test]
     fn test_ffi_value_try_from_expr_nat() {
-        let expr = Expr::Lit(crate::Literal::Nat(42));
+        let expr = Expr::Lit(crate::Literal::nat(42));
         let v = FfiValue::try_from_expr(&expr, &FfiType::UInt64);
         assert!(v.is_ok());
         assert_eq!(v.expect("v should be valid"), FfiValue::UInt(42));
@@ -522,7 +522,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

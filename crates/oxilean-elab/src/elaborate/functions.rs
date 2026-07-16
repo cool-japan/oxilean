@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::context::ElabContext;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 use oxilean_parse::{Lexer, Located, Parser, SortKind, StringPart, SurfaceExpr};
 
@@ -138,10 +139,13 @@ fn elaborate_app(
     let fun_expr = elaborate_expr(ctx, fun)?;
     let arg_expr = elaborate_expr(ctx, arg)?;
     if explicit {
-        return Ok(Expr::App(Box::new(fun_expr), Box::new(arg_expr)));
+        return Ok(Expr::App(Node::new(fun_expr), Node::new(arg_expr)));
     }
     let fun_with_implicits = insert_implicit_args(ctx, fun_expr)?;
-    Ok(Expr::App(Box::new(fun_with_implicits), Box::new(arg_expr)))
+    Ok(Expr::App(
+        Node::new(fun_with_implicits),
+        Node::new(arg_expr),
+    ))
 }
 /// Insert implicit arguments for a function expression.
 ///
@@ -166,12 +170,12 @@ fn insert_implicits_from_type(
             Expr::Pi(BinderInfo::Implicit, _name, dom, cod)
             | Expr::Pi(BinderInfo::StrictImplicit, _name, dom, cod) => {
                 let (_id, meta) = ctx.fresh_meta((**dom).clone());
-                fun = Expr::App(Box::new(fun), Box::new(meta.clone()));
+                fun = Expr::App(Node::new(fun), Node::new(meta.clone()));
                 ty = oxilean_kernel::instantiate(cod, &meta);
             }
             Expr::Pi(BinderInfo::InstImplicit, _name, dom, cod) => {
                 let inst = try_synthesize_or_meta(ctx, dom);
-                fun = Expr::App(Box::new(fun), Box::new(inst.clone()));
+                fun = Expr::App(Node::new(fun), Node::new(inst.clone()));
                 ty = oxilean_kernel::instantiate(cod, &inst);
             }
             _ => break,
@@ -237,29 +241,32 @@ fn elaborate_named_arg(
                 Expr::Pi(binder_info, ref param_name, ref dom, ref cod) => {
                     let pname_str = format!("{}", param_name);
                     if pname_str == arg_name {
-                        return Ok(Expr::App(Box::new(cur_fun), Box::new(val_expr)));
+                        return Ok(Expr::App(Node::new(cur_fun), Node::new(val_expr)));
                     }
                     match binder_info {
                         BinderInfo::Default => {
                             let (_id, meta) = ctx.fresh_meta((**dom).clone());
-                            cur_fun = Expr::App(Box::new(cur_fun), Box::new(meta.clone()));
+                            cur_fun = Expr::App(Node::new(cur_fun), Node::new(meta.clone()));
                             cur_ty = oxilean_kernel::instantiate(cod, &meta);
                         }
                         _ => {
                             let (_id, meta) = ctx.fresh_meta((**dom).clone());
-                            cur_fun = Expr::App(Box::new(cur_fun), Box::new(meta.clone()));
+                            cur_fun = Expr::App(Node::new(cur_fun), Node::new(meta.clone()));
                             cur_ty = oxilean_kernel::instantiate(cod, &meta);
                         }
                     }
                 }
                 _ => {
-                    return Ok(Expr::App(Box::new(cur_fun), Box::new(val_expr)));
+                    return Ok(Expr::App(Node::new(cur_fun), Node::new(val_expr)));
                 }
             }
         }
     } else {
         let fun_with_implicits = insert_implicit_args(ctx, fun_expr)?;
-        Ok(Expr::App(Box::new(fun_with_implicits), Box::new(val_expr)))
+        Ok(Expr::App(
+            Node::new(fun_with_implicits),
+            Node::new(val_expr),
+        ))
     }
 }
 fn elaborate_lambda(
@@ -300,8 +307,8 @@ fn elaborate_lambda(
     Ok(Expr::Lam(
         convert_binder_kind(&binder.info),
         Name::str(&binder.name),
-        Box::new(ty),
-        Box::new(body_expr),
+        Node::new(ty),
+        Node::new(body_expr),
     ))
 }
 fn elaborate_pi(
@@ -330,8 +337,8 @@ fn elaborate_pi(
     Ok(Expr::Pi(
         convert_binder_kind(&binder.info),
         Name::str(&binder.name),
-        Box::new(ty),
-        Box::new(body_expr),
+        Node::new(ty),
+        Node::new(body_expr),
     ))
 }
 fn elaborate_let(
@@ -357,9 +364,9 @@ fn elaborate_let(
     ctx.pop_local();
     Ok(Expr::Let(
         Name::str(name),
-        Box::new(ty_expr),
-        Box::new(val_expr),
-        Box::new(body_expr),
+        Node::new(ty_expr),
+        Node::new(val_expr),
+        Node::new(body_expr),
     ))
 }
 fn elaborate_annotation(
@@ -385,7 +392,7 @@ fn elaborate_proj(
 ) -> Result<Expr, ElabError> {
     let expr_elab = elaborate_expr(ctx, inner)?;
     let idx = infer_projection_index(ctx, &expr_elab, field);
-    Ok(Expr::Proj(Name::str(field), idx, Box::new(expr_elab)))
+    Ok(Expr::Proj(Name::str(field), idx, Node::new(expr_elab)))
 }
 /// Try to determine the field index from the expression's type.
 ///
@@ -442,8 +449,8 @@ fn elaborate_if(
     let ite_const = Expr::Const(Name::str("ite"), vec![]);
     let (_id, alpha_meta) = ctx.fresh_meta(Expr::Sort(Level::succ(Level::zero())));
     let decidable_ty = Expr::App(
-        Box::new(Expr::Const(Name::str("Decidable"), vec![])),
-        Box::new(cond_expr.clone()),
+        Node::new(Expr::Const(Name::str("Decidable"), vec![])),
+        Node::new(cond_expr.clone()),
     );
     let (_id, inst_meta) = ctx.fresh_meta(decidable_ty);
     let result = mk_app5(
@@ -465,8 +472,8 @@ fn elaborate_if_with_expected(
     let ite_const = Expr::Const(Name::str("ite"), vec![]);
     let alpha = expected_ty.clone();
     let decidable_ty = Expr::App(
-        Box::new(Expr::Const(Name::str("Decidable"), vec![])),
-        Box::new(cond_expr.clone()),
+        Node::new(Expr::Const(Name::str("Decidable"), vec![])),
+        Node::new(cond_expr.clone()),
     );
     let (_id, inst_meta) = ctx.fresh_meta(decidable_ty);
     let result = mk_app5(ite_const, alpha, cond_expr, inst_meta, then_expr, else_expr);
@@ -490,10 +497,10 @@ fn elaborate_have(
     let lambda = Expr::Lam(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty_expr),
-        Box::new(body_expr),
+        Node::new(ty_expr),
+        Node::new(body_expr),
     );
-    Ok(Expr::App(Box::new(lambda), Box::new(proof_expr)))
+    Ok(Expr::App(Node::new(lambda), Node::new(proof_expr)))
 }
 /// Elaborate `suffices h : T by tactic; body`.
 ///
@@ -513,10 +520,10 @@ fn elaborate_suffices(
     let lambda = Expr::Lam(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty_expr),
-        Box::new(goal_meta),
+        Node::new(ty_expr),
+        Node::new(goal_meta),
     );
-    Ok(Expr::App(Box::new(lambda), Box::new(body_expr)))
+    Ok(Expr::App(Node::new(lambda), Node::new(body_expr)))
 }
 /// Elaborate `show T from e`.
 ///
@@ -546,8 +553,8 @@ fn elaborate_match(
             let ite_const = Expr::Const(Name::str("ite"), vec![]);
             let (_id, alpha_meta) = ctx.fresh_meta(Expr::Sort(Level::succ(Level::zero())));
             let decidable_ty = Expr::App(
-                Box::new(Expr::Const(Name::str("Decidable"), vec![])),
-                Box::new(guard_expr.clone()),
+                Node::new(Expr::Const(Name::str("Decidable"), vec![])),
+                Node::new(guard_expr.clone()),
             );
             let (_id2, inst_meta) = ctx.fresh_meta(decidable_ty);
             let sorry_else = Expr::Const(Name::str("sorry"), vec![]);
@@ -565,12 +572,12 @@ fn elaborate_match(
     let cases_on_name = infer_cases_on_name_from_arms(arms).unwrap_or_else(|| Name::str("casesOn"));
     let (_id, motive_meta) = ctx.fresh_meta(Expr::Sort(Level::succ(Level::zero())));
     let mut result = Expr::App(
-        Box::new(Expr::Const(cases_on_name, vec![])),
-        Box::new(motive_meta),
+        Node::new(Expr::Const(cases_on_name, vec![])),
+        Node::new(motive_meta),
     );
-    result = Expr::App(Box::new(result), Box::new(scrutinee_expr));
+    result = Expr::App(Node::new(result), Node::new(scrutinee_expr));
     for arm_expr in arm_exprs {
-        result = Expr::App(Box::new(result), Box::new(arm_expr));
+        result = Expr::App(Node::new(result), Node::new(arm_expr));
     }
     Ok(result)
 }
@@ -653,9 +660,9 @@ fn elaborate_do_actions(
                 ctx.pop_local();
                 Ok(Expr::Let(
                     Name::str(name),
-                    Box::new(ty_meta),
-                    Box::new(val_expr),
-                    Box::new(rest),
+                    Node::new(ty_meta),
+                    Node::new(val_expr),
+                    Node::new(rest),
                 ))
             }
         }
@@ -671,9 +678,9 @@ fn elaborate_do_actions(
                 ctx.pop_local();
                 Ok(Expr::Let(
                     Name::str(name),
-                    Box::new(ty_expr),
-                    Box::new(val_expr),
-                    Box::new(rest),
+                    Node::new(ty_expr),
+                    Node::new(val_expr),
+                    Node::new(rest),
                 ))
             }
         }
@@ -693,12 +700,12 @@ fn elaborate_do_actions(
                 let callback = Expr::Lam(
                     BinderInfo::Default,
                     Name::str(name),
-                    Box::new(ty_meta),
-                    Box::new(rest),
+                    Node::new(ty_meta),
+                    Node::new(rest),
                 );
                 Ok(Expr::App(
-                    Box::new(Expr::App(Box::new(bind_const), Box::new(m_expr))),
-                    Box::new(callback),
+                    Node::new(Expr::App(Node::new(bind_const), Node::new(m_expr))),
+                    Node::new(callback),
                 ))
             }
         }
@@ -713,19 +720,19 @@ fn elaborate_do_actions(
                 let callback = Expr::Lam(
                     BinderInfo::Default,
                     Name::str("_"),
-                    Box::new(unit_ty),
-                    Box::new(rest),
+                    Node::new(unit_ty),
+                    Node::new(rest),
                 );
                 Ok(Expr::App(
-                    Box::new(Expr::App(Box::new(bind_const), Box::new(e))),
-                    Box::new(callback),
+                    Node::new(Expr::App(Node::new(bind_const), Node::new(e))),
+                    Node::new(callback),
                 ))
             }
         }
         oxilean_parse::DoAction::Return(expr) => {
             let e = elaborate_expr(ctx, expr)?;
             let pure_const = Expr::Const(Name::str("Pure.pure"), vec![]);
-            Ok(Expr::App(Box::new(pure_const), Box::new(e)))
+            Ok(Expr::App(Node::new(pure_const), Node::new(e)))
         }
     }
 }
@@ -738,7 +745,7 @@ fn elaborate_return(
 ) -> Result<Expr, ElabError> {
     let inner_expr = elaborate_expr(ctx, inner)?;
     let pure_const = Expr::Const(Name::str("Pure.pure"), vec![]);
-    Ok(Expr::App(Box::new(pure_const), Box::new(inner_expr)))
+    Ok(Expr::App(Node::new(pure_const), Node::new(inner_expr)))
 }
 /// Elaborate `[a, b, c]` into `List.cons a (List.cons b (List.cons c List.nil))`.
 fn elaborate_list_lit(
@@ -750,8 +757,8 @@ fn elaborate_list_lit(
         let elem_expr = elaborate_expr(ctx, elem)?;
         let cons = Expr::Const(Name::str("List.cons"), vec![]);
         result = Expr::App(
-            Box::new(Expr::App(Box::new(cons), Box::new(elem_expr))),
-            Box::new(result),
+            Node::new(Expr::App(Node::new(cons), Node::new(elem_expr))),
+            Node::new(result),
         );
     }
     Ok(result)
@@ -777,8 +784,8 @@ fn elaborate_list_lit_with_expected(
     };
     let nil = if let Some(ref ety) = elem_ty {
         Expr::App(
-            Box::new(Expr::Const(Name::str("List.nil"), vec![])),
-            Box::new(ety.clone()),
+            Node::new(Expr::Const(Name::str("List.nil"), vec![])),
+            Node::new(ety.clone()),
         )
     } else {
         Expr::Const(Name::str("List.nil"), vec![])
@@ -791,8 +798,8 @@ fn elaborate_list_lit_with_expected(
         };
         let cons = Expr::Const(Name::str("List.cons"), vec![]);
         result = Expr::App(
-            Box::new(Expr::App(Box::new(cons), Box::new(elem_expr))),
-            Box::new(result),
+            Node::new(Expr::App(Node::new(cons), Node::new(elem_expr))),
+            Node::new(result),
         );
     }
     Ok(result)
@@ -814,8 +821,8 @@ fn elaborate_tuple(
         let elem_expr = elaborate_expr(ctx, elem)?;
         let prod_mk = Expr::Const(Name::str("Prod.mk"), vec![]);
         result = Expr::App(
-            Box::new(Expr::App(Box::new(prod_mk), Box::new(elem_expr))),
-            Box::new(result),
+            Node::new(Expr::App(Node::new(prod_mk), Node::new(elem_expr))),
+            Node::new(result),
         );
     }
     Ok(result)
@@ -834,7 +841,7 @@ fn elaborate_anonymous_ctor(
     let (_id, ctor_meta) = ctx.fresh_meta(Expr::Sort(Level::succ(Level::zero())));
     let mut result = ctor_meta;
     for field_expr in field_exprs {
-        result = Expr::App(Box::new(result), Box::new(field_expr));
+        result = Expr::App(Node::new(result), Node::new(field_expr));
     }
     Ok(result)
 }
@@ -868,7 +875,7 @@ fn elaborate_anonymous_ctor_with_expected(
     };
     let mut result = ctor;
     for field_expr in field_exprs {
-        result = Expr::App(Box::new(result), Box::new(field_expr));
+        result = Expr::App(Node::new(result), Node::new(field_expr));
     }
     Ok(result)
 }
@@ -895,7 +902,7 @@ fn elaborate_string_interp(ctx: &mut ElabContext, parts: &[StringPart]) -> Resul
                     elaborate_expr(ctx, &parsed)?
                 };
                 let to_string = Expr::Const(Name::str("toString"), vec![]);
-                Expr::App(Box::new(to_string), Box::new(elaborated))
+                Expr::App(Node::new(to_string), Node::new(elaborated))
             }
         };
         result = Some(match result {
@@ -903,8 +910,8 @@ fn elaborate_string_interp(ctx: &mut ElabContext, parts: &[StringPart]) -> Resul
             Some(acc) => {
                 let append = Expr::Const(Name::str("String.append"), vec![]);
                 Expr::App(
-                    Box::new(Expr::App(Box::new(append), Box::new(acc))),
-                    Box::new(part_expr),
+                    Node::new(Expr::App(Node::new(append), Node::new(acc))),
+                    Node::new(part_expr),
                 )
             }
         });
@@ -924,7 +931,7 @@ fn elaborate_range(
     let range_mk = Expr::Const(Name::str("Range.mk"), vec![]);
     let lo_expr = match lo {
         Some(e) => elaborate_expr(ctx, e)?,
-        None => Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+        None => Expr::Lit(oxilean_kernel::Literal::nat(0)),
     };
     let hi_expr = match hi {
         Some(e) => elaborate_expr(ctx, e)?,
@@ -934,8 +941,8 @@ fn elaborate_range(
         }
     };
     Ok(Expr::App(
-        Box::new(Expr::App(Box::new(range_mk), Box::new(lo_expr))),
-        Box::new(hi_expr),
+        Node::new(Expr::App(Node::new(range_mk), Node::new(lo_expr))),
+        Node::new(hi_expr),
     ))
 }
 /// Elaborate `by tactic1; tactic2; ...`.
@@ -963,17 +970,83 @@ fn elaborate_by_tactic(
         .into_iter()
         .map(|(n, ty)| (n.clone(), ty.clone()))
         .collect();
-    let mut goal = crate::tactic::Goal::new(Name::str("main"), goal_ty);
-    for (name, ty) in hyps {
-        goal.add_hypothesis(name, ty);
+    // Build the local variable context with FVarIds for proof reconstruction.
+    // This allows verify_proof_term to resolve Expr::FVar references in the kernel.
+    let locals: Vec<(oxilean_kernel::FVarId, Name, Expr)> = ctx
+        .locals()
+        .iter()
+        .map(|entry| (entry.fvar, entry.name.clone(), entry.ty.clone()))
+        .collect();
+    let mut goal = crate::tactic::Goal::new(Name::str("main"), goal_ty.clone());
+    for (name, ty) in &hyps {
+        goal.add_hypothesis(name.clone(), ty.clone());
     }
     let mut state = crate::tactic::TacticState::new();
     state.add_goal(goal);
     let tactic_strs: Vec<String> = tactics.iter().map(|t| t.value.clone()).collect();
     match crate::tactic::eval_tactic_block(&state, &tactic_strs, ctx.env()) {
         Ok(final_state) if final_state.is_complete() => {
-            let sorry_term = Expr::Const(Name::str("sorry"), vec![]);
-            ctx.assign_meta(proof_id, sorry_term);
+            // Try to reconstruct a real proof term from the certificate.
+            let proof_term = match &final_state.certificate {
+                Some(oxilean_meta::ProofCertificate::Direct(proof)) => {
+                    // Kernel-verify the direct proof term before using it.
+                    // Inject locals so FVar references in the proof can be resolved.
+                    let mut checker = oxilean_kernel::TypeChecker::new(ctx.env());
+                    for (fvar, name, ty) in &locals {
+                        checker.push_local(oxilean_kernel::LocalDecl {
+                            fvar: *fvar,
+                            name: name.clone(),
+                            ty: ty.clone(),
+                            val: None,
+                        });
+                    }
+                    if let Ok(ty) = checker.infer_type(proof) {
+                        if checker.is_def_eq(&ty, &goal_ty) {
+                            Some(proof.clone())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                Some(oxilean_meta::ProofCertificate::Omega(ref cert)) => {
+                    crate::tactic::proof_recon::omega_proof_to_expr(
+                        cert,
+                        &goal_ty,
+                        &hyps,
+                        &locals,
+                        ctx.env(),
+                    )
+                }
+                Some(oxilean_meta::ProofCertificate::Linarith(cert)) => {
+                    // Farkas proof reconstruction.
+                    // `farkas_cert_to_expr` attempts to build a kernel-verified
+                    // contradiction proof from the FarkasCert's ConSource provenance.
+                    // Returns None (→ sorry fallback) if:
+                    // - sources are empty or contain augmented (non-hypothesis) constraints,
+                    // - kernel verification of the candidate term fails.
+                    crate::tactic::proof_recon::farkas::farkas_cert_to_expr(
+                        cert,
+                        &goal_ty,
+                        &hyps,
+                        &locals,
+                        ctx.env(),
+                    )
+                }
+                Some(oxilean_meta::ProofCertificate::Polyrith(cert)) => {
+                    crate::tactic::proof_recon::polyrith::polyrith_cert_to_expr(
+                        cert,
+                        &goal_ty,
+                        &hyps,
+                        &locals,
+                        ctx.env(),
+                    )
+                }
+                None => None,
+            };
+            let term = proof_term.unwrap_or_else(|| Expr::Const(Name::str("sorry"), vec![]));
+            ctx.assign_meta(proof_id, term);
         }
         _ => {}
     }
@@ -1004,8 +1077,8 @@ fn elaborate_calc(
         };
         let trans_const = Expr::Const(Name::str(trans_name), vec![]);
         proof = Expr::App(
-            Box::new(Expr::App(Box::new(trans_const), Box::new(proof))),
-            Box::new(step_proof),
+            Node::new(Expr::App(Node::new(trans_const), Node::new(proof))),
+            Node::new(step_proof),
         );
     }
     Ok(proof)
@@ -1037,7 +1110,7 @@ pub fn resolve_overload(
         }
         if success {
             for arg_expr in elaborated_args {
-                fun = Expr::App(Box::new(fun), Box::new(arg_expr));
+                fun = Expr::App(Node::new(fun), Node::new(arg_expr));
             }
             return Ok(fun);
         }
@@ -1069,31 +1142,34 @@ fn convert_binder_kind(kind: &oxilean_parse::BinderKind) -> oxilean_kernel::Bind
 /// Convert a parse `Literal` to a kernel `Literal`.
 fn convert_literal(lit: oxilean_parse::Literal) -> oxilean_kernel::Literal {
     match lit {
-        oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::Nat(n),
+        oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s),
         oxilean_parse::Literal::Char(c) => oxilean_kernel::Literal::Str(c.to_string()),
-        oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::Nat(0),
+        oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }
 /// Build a 5-argument application.
 fn mk_app5(f: Expr, a1: Expr, a2: Expr, a3: Expr, a4: Expr, a5: Expr) -> Expr {
-    let app1 = Expr::App(Box::new(f), Box::new(a1));
-    let app2 = Expr::App(Box::new(app1), Box::new(a2));
-    let app3 = Expr::App(Box::new(app2), Box::new(a3));
-    let app4 = Expr::App(Box::new(app3), Box::new(a4));
-    Expr::App(Box::new(app4), Box::new(a5))
+    let app1 = Expr::App(Node::new(f), Node::new(a1));
+    let app2 = Expr::App(Node::new(app1), Node::new(a2));
+    let app3 = Expr::App(Node::new(app2), Node::new(a3));
+    let app4 = Expr::App(Node::new(app3), Node::new(a4));
+    Expr::App(Node::new(app4), Node::new(a5))
 }
 /// Build a 2-argument application.
 #[allow(dead_code)]
 fn mk_app2(f: Expr, a1: Expr, a2: Expr) -> Expr {
-    Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a1))), Box::new(a2))
+    Expr::App(
+        Node::new(Expr::App(Node::new(f), Node::new(a1))),
+        Node::new(a2),
+    )
 }
 /// Build a 3-argument application.
 #[allow(dead_code)]
 fn mk_app3(f: Expr, a1: Expr, a2: Expr, a3: Expr) -> Expr {
-    let app1 = Expr::App(Box::new(f), Box::new(a1));
-    let app2 = Expr::App(Box::new(app1), Box::new(a2));
-    Expr::App(Box::new(app2), Box::new(a3))
+    let app1 = Expr::App(Node::new(f), Node::new(a1));
+    let app2 = Expr::App(Node::new(app1), Node::new(a2));
+    Expr::App(Node::new(app2), Node::new(a3))
 }
 /// Elaborate an explicit application (`@f args...`), which suppresses
 /// implicit argument insertion.

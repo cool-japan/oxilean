@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     BinderInfo, Declaration, Environment, Expr, InductiveEnv, Level, Literal, Name,
 };
@@ -34,8 +35,8 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Build `Nat -> Nat -> Nat`.
@@ -57,20 +58,20 @@ pub fn nat_to_nat_to_prop() -> Expr {
 #[allow(dead_code)]
 pub fn eq_nat(a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                Box::new(nat_ty()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                Node::new(nat_ty()),
             )),
-            Box::new(a),
+            Node::new(a),
         )),
-        Box::new(b),
+        Node::new(b),
     )
 }
 /// Build a function application `f a`.
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Build a function application `f a b`.
 #[allow(dead_code)]
@@ -126,8 +127,8 @@ pub fn forall_nat(name: &str, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(nat_ty()),
-        Box::new(body),
+        Node::new(nat_ty()),
+        Node::new(body),
     )
 }
 /// Build an implication `a -> b` (non-dependent Pi).
@@ -136,8 +137,8 @@ pub fn implies(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Build the Nat type and all standard declarations, adding them to the
@@ -237,8 +238,8 @@ pub fn build_nat_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Resu
     let c_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(nat_ty()),
-        Box::new(sort_u),
+        Node::new(nat_ty()),
+        Node::new(sort_u),
     );
     let zero_case_ty = app(Expr::BVar(0), Expr::Const(Name::str("Nat.zero"), vec![]));
     let c_n_for_ih = app(Expr::BVar(2), Expr::BVar(0));
@@ -249,34 +250,34 @@ pub fn build_nat_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Resu
     let succ_case_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(nat_ty()),
-        Box::new(Expr::Pi(
+        Node::new(nat_ty()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("ih"),
-            Box::new(c_n_for_ih),
-            Box::new(c_succ_n),
+            Node::new(c_n_for_ih),
+            Node::new(c_succ_n),
         )),
     );
     let result_ty = app(Expr::BVar(3), Expr::BVar(0));
     let target = Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(nat_ty()),
-        Box::new(result_ty),
+        Node::new(nat_ty()),
+        Node::new(result_ty),
     );
     let rec_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("C"),
-        Box::new(c_ty),
-        Box::new(Expr::Pi(
+        Node::new(c_ty),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("hz"),
-            Box::new(zero_case_ty),
-            Box::new(Expr::Pi(
+            Node::new(zero_case_ty),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("hs"),
-                Box::new(succ_case_ty),
-                Box::new(target),
+                Node::new(succ_case_ty),
+                Node::new(target),
             )),
         )),
     );
@@ -1130,7 +1131,7 @@ pub fn build_nat_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Resu
 }
 /// Create a Nat literal expression.
 pub fn nat_lit(n: u64) -> Expr {
-    Expr::Lit(Literal::Nat(n))
+    Expr::Lit(Literal::nat(n))
 }
 /// Create a Nat.succ expression.
 pub fn nat_succ(n: Expr) -> Expr {
@@ -1239,16 +1240,16 @@ mod tests {
         let eq_ty = Expr::Pi(
             BinderInfo::Implicit,
             Name::str("\u{03b1}"),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Sort(Level::zero())),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Sort(Level::zero())),
                 )),
             )),
         );
@@ -1330,7 +1331,7 @@ mod tests {
     #[test]
     fn test_nat_lit() {
         let expr = nat_lit(42);
-        assert_eq!(expr, Expr::Lit(Literal::Nat(42)));
+        assert_eq!(expr, Expr::Lit(Literal::nat(42)));
     }
     #[test]
     fn test_nat_zero() {
@@ -1349,9 +1350,9 @@ mod tests {
         let expr = nat_add(a, b);
         assert!(matches!(expr, Expr::App(_, _)));
         if let Expr::App(f, arg) = &expr {
-            assert_eq!(**arg, Expr::Lit(Literal::Nat(4)));
+            assert_eq!(**arg, Expr::Lit(Literal::nat(4)));
             if let Expr::App(ff, farg) = f.as_ref() {
-                assert_eq!(**farg, Expr::Lit(Literal::Nat(3)));
+                assert_eq!(**farg, Expr::Lit(Literal::nat(3)));
                 assert!(matches!(ff.as_ref(), Expr::Const(_, _)));
             } else {
                 panic!("expected nested App");
@@ -1408,19 +1409,19 @@ mod tests {
         let motive = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(nat_ty()),
-            Box::new(nat_ty()),
+            Node::new(nat_ty()),
+            Node::new(nat_ty()),
         );
         let zero_case = nat_zero();
         let succ_case = Expr::Lam(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty()),
-            Box::new(Expr::Lam(
+            Node::new(nat_ty()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("ih"),
-                Box::new(nat_ty()),
-                Box::new(nat_succ(Expr::BVar(0))),
+                Node::new(nat_ty()),
+                Node::new(nat_succ(Expr::BVar(0))),
             )),
         );
         let n = nat_lit(5);

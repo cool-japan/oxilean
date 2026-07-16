@@ -577,6 +577,7 @@ impl FortranBackend {
     pub(crate) fn compile_lit(&self, lit: &LcnfLit) -> FortranExpr {
         match lit {
             LcnfLit::Nat(n) => FortranExpr::Lit(FortranLit::Int(*n as i64)),
+            LcnfLit::Int(i) => FortranExpr::Lit(FortranLit::Int(*i)),
             LcnfLit::Str(s) => FortranExpr::Lit(FortranLit::Char(s.clone())),
         }
     }

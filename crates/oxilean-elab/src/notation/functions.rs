@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 use super::types::{
@@ -20,7 +21,7 @@ pub fn expand_notation_impl(notation: &Notation, args: &[Expr]) -> Result<Expr, 
         NotationExpansion::Simple(base) => {
             let mut result = base.clone();
             for arg in args {
-                result = Expr::App(Box::new(result), Box::new(arg.clone()));
+                result = Expr::App(Node::new(result), Node::new(arg.clone()));
             }
             Ok(result)
         }
@@ -28,7 +29,7 @@ pub fn expand_notation_impl(notation: &Notation, args: &[Expr]) -> Result<Expr, 
         NotationExpansion::Custom(name) => {
             let mut result = Expr::Const(name.clone(), vec![]);
             for arg in args {
-                result = Expr::App(Box::new(result), Box::new(arg.clone()));
+                result = Expr::App(Node::new(result), Node::new(arg.clone()));
             }
             Ok(result)
         }
@@ -43,7 +44,7 @@ fn expand_template(parts: &[ExpansionPart], args: &[Expr]) -> Result<Expr, Strin
     let mut result = head;
     for part in &parts[1..] {
         let arg = expand_part(part, args)?;
-        result = Expr::App(Box::new(result), Box::new(arg));
+        result = Expr::App(Node::new(result), Node::new(arg));
     }
     Ok(result)
 }
@@ -58,7 +59,7 @@ fn expand_part(part: &ExpansionPart, args: &[Expr]) -> Result<Expr, String> {
         ExpansionPart::App(f, a) => {
             let f_expr = expand_part(f, args)?;
             let a_expr = expand_part(a, args)?;
-            Ok(Expr::App(Box::new(f_expr), Box::new(a_expr)))
+            Ok(Expr::App(Node::new(f_expr), Node::new(a_expr)))
         }
     }
 }
@@ -102,27 +103,27 @@ pub fn expand_do_notation(expr: &Expr) -> Expr {
 /// sub-structure into explicit bind/pure chains.
 fn expand_do_expr(expr: &Expr) -> Expr {
     match expr {
-        Expr::App(f, a) => Expr::App(Box::new(expand_do_expr(f)), Box::new(expand_do_expr(a))),
+        Expr::App(f, a) => Expr::App(Node::new(expand_do_expr(f)), Node::new(expand_do_expr(a))),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(expand_do_expr(ty)),
-            Box::new(expand_do_expr(body)),
+            Node::new(expand_do_expr(ty)),
+            Node::new(expand_do_expr(body)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(expand_do_expr(ty)),
-            Box::new(expand_do_expr(body)),
+            Node::new(expand_do_expr(ty)),
+            Node::new(expand_do_expr(body)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(expand_do_expr(ty)),
-            Box::new(expand_do_expr(val)),
-            Box::new(expand_do_expr(body)),
+            Node::new(expand_do_expr(ty)),
+            Node::new(expand_do_expr(val)),
+            Node::new(expand_do_expr(body)),
         ),
         Expr::Proj(name, idx, inner) => {
-            Expr::Proj(name.clone(), *idx, Box::new(expand_do_expr(inner)))
+            Expr::Proj(name.clone(), *idx, Node::new(expand_do_expr(inner)))
         }
         other => other.clone(),
     }
@@ -142,8 +143,8 @@ fn desugar_do_statements(stmts: &[DoStatement]) -> Expr {
             let lam = Expr::Lam(
                 oxilean_kernel::BinderInfo::Default,
                 name.clone(),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(rest),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(rest),
             );
             mk_app2("Bind.bind", rhs.clone(), lam)
         }
@@ -151,9 +152,9 @@ fn desugar_do_statements(stmts: &[DoStatement]) -> Expr {
             let rest = desugar_do_statements(&stmts[1..]);
             Expr::Let(
                 name.clone(),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(val.clone()),
-                Box::new(rest),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(val.clone()),
+                Node::new(rest),
             )
         }
         DoStatement::Expr(e) => {
@@ -161,8 +162,8 @@ fn desugar_do_statements(stmts: &[DoStatement]) -> Expr {
             let lam = Expr::Lam(
                 oxilean_kernel::BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(rest),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(rest),
             );
             mk_app2("Bind.bind", e.clone(), lam)
         }
@@ -173,20 +174,20 @@ fn desugar_do_statements(stmts: &[DoStatement]) -> Expr {
             let lam = Expr::Lam(
                 oxilean_kernel::BinderInfo::Default,
                 var.clone(),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(Expr::Lam(
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::Lam(
                     oxilean_kernel::BinderInfo::Default,
                     Name::str("_acc"),
-                    Box::new(Expr::Sort(Level::zero())),
-                    Box::new(body_expr),
+                    Node::new(Expr::Sort(Level::zero())),
+                    Node::new(body_expr),
                 )),
             );
             let for_in = mk_app2("ForIn.forIn", collection.clone(), lam);
             let seq_lam = Expr::Lam(
                 oxilean_kernel::BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(rest),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(rest),
             );
             mk_app2("Bind.bind", for_in, seq_lam)
         }
@@ -200,16 +201,16 @@ fn desugar_single_do_stmt(stmt: &DoStatement) -> Expr {
             let lam = Expr::Lam(
                 oxilean_kernel::BinderInfo::Default,
                 name.clone(),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(mk_app1("Pure.pure", Expr::BVar(0))),
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(mk_app1("Pure.pure", Expr::BVar(0))),
             );
             mk_app2("Bind.bind", rhs.clone(), lam)
         }
         DoStatement::Let(name, val) => Expr::Let(
             name.clone(),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(val.clone()),
-            Box::new(mk_app1("Pure.pure", Expr::BVar(0))),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(val.clone()),
+            Node::new(mk_app1("Pure.pure", Expr::BVar(0))),
         ),
         DoStatement::Expr(e) => e.clone(),
         DoStatement::Return(e) => mk_app1("Pure.pure", e.clone()),
@@ -218,12 +219,12 @@ fn desugar_single_do_stmt(stmt: &DoStatement) -> Expr {
             let lam = Expr::Lam(
                 oxilean_kernel::BinderInfo::Default,
                 var.clone(),
-                Box::new(Expr::Sort(Level::zero())),
-                Box::new(Expr::Lam(
+                Node::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::Lam(
                     oxilean_kernel::BinderInfo::Default,
                     Name::str("_acc"),
-                    Box::new(Expr::Sort(Level::zero())),
-                    Box::new(body_expr),
+                    Node::new(Expr::Sort(Level::zero())),
+                    Node::new(body_expr),
                 )),
             );
             mk_app2("ForIn.forIn", collection.clone(), lam)
@@ -243,8 +244,8 @@ pub fn expand_list_literal_with_type(elements: &[Expr], _elem_type: Option<&Expr
     elements.iter().rev().fold(nil, |acc, elem| {
         let cons = Expr::Const(Name::str("List.cons"), vec![]);
         Expr::App(
-            Box::new(Expr::App(Box::new(cons), Box::new(elem.clone()))),
-            Box::new(acc),
+            Node::new(Expr::App(Node::new(cons), Node::new(elem.clone()))),
+            Node::new(acc),
         )
     })
 }
@@ -254,13 +255,13 @@ fn mk_const(name: &str) -> Expr {
 }
 /// Make `f a`.
 fn mk_app1(f_name: &str, a: Expr) -> Expr {
-    Expr::App(Box::new(mk_const(f_name)), Box::new(a))
+    Expr::App(Node::new(mk_const(f_name)), Node::new(a))
 }
 /// Make `f a b`.
 fn mk_app2(f_name: &str, a: Expr, b: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(Box::new(mk_const(f_name)), Box::new(a))),
-        Box::new(b),
+        Node::new(Expr::App(Node::new(mk_const(f_name)), Node::new(a))),
+        Node::new(b),
     )
 }
 /// Get the precedence for a binary operator symbol from the registry.
@@ -403,8 +404,8 @@ mod tests {
         let add = registry
             .lookup_infix("+")
             .expect("test operation should succeed");
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(2));
         let expanded = registry
             .expand_notation(add, &[a, b])
             .expect("macro expansion should succeed");
@@ -414,11 +415,11 @@ mod tests {
                     Expr::App(g, arg1) => {
                         assert!(matches!(g.as_ref(), Expr::Const(n, _) if n == &
                             Name::str("HAdd.hAdd")));
-                        assert_eq!(*arg1.as_ref(), Expr::Lit(Literal::Nat(1)));
+                        assert_eq!(*arg1.as_ref(), Expr::Lit(Literal::nat(1)));
                     }
                     _ => panic!("Expected App"),
                 }
-                assert_eq!(*arg2.as_ref(), Expr::Lit(Literal::Nat(2)));
+                assert_eq!(*arg2.as_ref(), Expr::Lit(Literal::nat(2)));
             }
             _ => panic!("Expected App"),
         }
@@ -479,7 +480,7 @@ mod tests {
     }
     #[test]
     fn test_expand_list_single() {
-        let elems = [Expr::Lit(Literal::Nat(42))];
+        let elems = [Expr::Lit(Literal::nat(42))];
         let result = expand_list_literal(&elems);
         match &result {
             Expr::App(f, tail) => {
@@ -487,7 +488,7 @@ mod tests {
                     Expr::App(cons, head) => {
                         assert!(matches!(cons.as_ref(), Expr::Const(n, _) if n == &
                             Name::str("List.cons")));
-                        assert_eq!(*head.as_ref(), Expr::Lit(Literal::Nat(42)));
+                        assert_eq!(*head.as_ref(), Expr::Lit(Literal::nat(42)));
                     }
                     _ => panic!("Expected App"),
                 }
@@ -499,15 +500,15 @@ mod tests {
     #[test]
     fn test_expand_list_multiple() {
         let elems = [
-            Expr::Lit(Literal::Nat(1)),
-            Expr::Lit(Literal::Nat(2)),
-            Expr::Lit(Literal::Nat(3)),
+            Expr::Lit(Literal::nat(1)),
+            Expr::Lit(Literal::nat(2)),
+            Expr::Lit(Literal::nat(3)),
         ];
         let result = expand_list_literal(&elems);
         match &result {
             Expr::App(f, _) => match f.as_ref() {
                 Expr::App(_, head) => {
-                    assert_eq!(*head.as_ref(), Expr::Lit(Literal::Nat(1)));
+                    assert_eq!(*head.as_ref(), Expr::Lit(Literal::nat(1)));
                 }
                 _ => panic!("Expected App"),
             },
@@ -516,19 +517,19 @@ mod tests {
     }
     #[test]
     fn test_do_single_expr() {
-        let stmts = [DoStatement::Expr(Expr::Lit(Literal::Nat(42)))];
+        let stmts = [DoStatement::Expr(Expr::Lit(Literal::nat(42)))];
         let result = desugar_do_statements(&stmts);
-        assert_eq!(result, Expr::Lit(Literal::Nat(42)));
+        assert_eq!(result, Expr::Lit(Literal::nat(42)));
     }
     #[test]
     fn test_do_return() {
-        let stmts = [DoStatement::Return(Expr::Lit(Literal::Nat(7)))];
+        let stmts = [DoStatement::Return(Expr::Lit(Literal::nat(7)))];
         let result = desugar_do_statements(&stmts);
         match &result {
             Expr::App(f, a) => {
                 assert!(matches!(f.as_ref(), Expr::Const(n, _) if n == &
                     Name::str("Pure.pure")));
-                assert_eq!(*a.as_ref(), Expr::Lit(Literal::Nat(7)));
+                assert_eq!(*a.as_ref(), Expr::Lit(Literal::nat(7)));
             }
             _ => panic!("Expected App (Pure.pure 7)"),
         }
@@ -554,7 +555,7 @@ mod tests {
     #[test]
     fn test_do_let() {
         let stmts = [
-            DoStatement::Let(Name::str("x"), Expr::Lit(Literal::Nat(10))),
+            DoStatement::Let(Name::str("x"), Expr::Lit(Literal::nat(10))),
             DoStatement::Return(Expr::BVar(0)),
         ];
         let result = desugar_do_statements(&stmts);
@@ -579,14 +580,14 @@ mod tests {
             ExpansionPart::Arg(0),
             ExpansionPart::Arg(1),
         ];
-        let args = [Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))];
+        let args = [Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))];
         let result = expand_template(&parts, &args);
         assert!(result.is_ok());
     }
     #[test]
     fn test_template_arg_out_of_range() {
         let parts = vec![ExpansionPart::Text(Name::str("f")), ExpansionPart::Arg(5)];
-        let result = expand_template(&parts, &[Expr::Lit(Literal::Nat(1))]);
+        let result = expand_template(&parts, &[Expr::Lit(Literal::nat(1))]);
         assert!(result.is_err());
     }
     #[test]

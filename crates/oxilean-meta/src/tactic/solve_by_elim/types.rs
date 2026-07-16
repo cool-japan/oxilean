@@ -6,6 +6,7 @@ use super::functions::*;
 use crate::basic::{MVarId, MetaContext, MetaState, MetavarKind};
 use crate::def_eq::MetaDefEq;
 use crate::tactic::state::TacticState;
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 /// Saved state for one level of the backtracking search.
@@ -141,7 +142,7 @@ impl<'a> SearchEngine<'a> {
         }
         let mut app_expr = candidate_expr.clone();
         for (_mid, mex) in &arg_mvars {
-            app_expr = Expr::App(Box::new(app_expr), Box::new(mex.clone()));
+            app_expr = Expr::App(Node::new(app_expr), Node::new(mex.clone()));
         }
         let mut deq = MetaDefEq::new();
         let result_ty = candidate

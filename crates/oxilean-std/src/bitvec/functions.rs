@@ -3,12 +3,13 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 #![allow(clippy::items_after_test_module)]
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 /// Build a function application `f a`.
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Build a function application `f a b`.
 #[allow(dead_code)]
@@ -23,7 +24,7 @@ pub fn app3(f: Expr, a: Expr, b: Expr, c: Expr) -> Expr {
 /// Build `Pi (name : dom), body` with given binder info.
 #[allow(dead_code)]
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 /// Build a non-dependent arrow `A -> B`.
 #[allow(dead_code)]

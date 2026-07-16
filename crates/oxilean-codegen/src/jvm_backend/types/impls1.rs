@@ -254,6 +254,16 @@ impl JvmBackend {
                     vec![JvmInstruction::new(JvmOpcode::Ldc(0))]
                 }
             }
+            LcnfLit::Int(i) => {
+                let v = *i;
+                if v == 0 {
+                    vec![JvmInstruction::new(JvmOpcode::Lconst(0))]
+                } else if v == 1 {
+                    vec![JvmInstruction::new(JvmOpcode::Lconst(1))]
+                } else {
+                    vec![JvmInstruction::new(JvmOpcode::Ldc(0))]
+                }
+            }
             LcnfLit::Str(_) => vec![JvmInstruction::new(JvmOpcode::Ldc(0))],
         };
         Ok(instrs)

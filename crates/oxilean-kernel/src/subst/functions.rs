@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, FVarId};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, FlatSubstitution, FocusStack, LabelSet, NonEmptyVec,
@@ -12,17 +14,53 @@ use super::types::{
     TransitiveClosure, VersionedRecord, WindowIterator, WriteOnce,
 };
 
-/// Instantiate BVar(0) with arg in body, shifting down all other BVars.
+/// Instantiate BVar(0) with arg in body, shifting down all other loose BVars.
 ///
 /// This is the core operation for β-reduction: `(λx.body) arg → body[arg/x]`.
+///
+/// `arg` is expressed in the context *outside* the redex. When the
+/// substitution site sits under `depth` additional binders inside `body`,
+/// every loose bound variable of `arg` must be lifted by `depth` so it keeps
+/// referring to the same outer binder (otherwise it would be captured by the
+/// inner binders — the classic de Bruijn capture bug, exposed by open-term
+/// reduction such as iota under a `Pi` body during def-eq).
 pub fn instantiate(body: &Expr, arg: &Expr) -> Expr {
     instantiate_at(body, arg, 0)
 }
 fn instantiate_at(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
+    // Stage E-2 (structural sharing): this substitution only ever touches loose
+    // bvars with index >= depth. `expr.range()` (the O(1) cached
+    // `looseBVarRange`, read from the child `Node` edges) is `1 + the largest
+    // loose bvar`, so `range <= depth` means "no such bvar exists" — `expr` is
+    // unchanged and we share it via `expr.clone()` (a shallow clone whose `Node`
+    // children are refcount bumps) instead of rebuilding the subtree. This tames
+    // the `let`-tower / `Int.add_mul_ediv_right` blow-up: the closed value is
+    // shared, not re-materialized at every binder level. Correctness is pinned
+    // by the `instantiate_skip_matches_reference` differential test below.
+    //
+    // Fuel MUST stay identical to the no-skip baseline, or a fuel-limited decl
+    // reduces further (or less) than before and can flip its verdict — the exact
+    // failure the reverted Stage-D/E-draft skips hit (a false rejection + a
+    // checking-time OOM on `Char.succ?_eq` / the `WellFounded` family). So we
+    // charge precisely what the no-skip recursion would have (`rebuild_cost`);
+    // the `-1` is the one unit `expr.clone()` itself charges just below.
+    if expr.range() <= depth {
+        crate::fuel::charge(u64::from(expr.rebuild_cost().saturating_sub(1)));
+        return expr.clone();
+    }
+    // C16b: substitution is the kernel's dominant term *builder*. Rebuilt
+    // spine nodes never pass through `Expr::clone`, so an explosive
+    // substitution (e.g. a `let`-tower duplicating its value at every level)
+    // could allocate multi-GiB while burning no clone-fuel at all. Charging
+    // one unit per visited node makes the per-declaration budget an upper
+    // bound on substitution-driven allocation; the exhaustion latch is then
+    // observed by `infer_type`/`whnf`/`is_def_eq` at their next step. The
+    // result term itself is always exact — fuel never truncates a term.
+    crate::fuel::charge(1);
     match expr {
         Expr::BVar(n) => {
             if *n == depth {
-                arg.clone()
+                crate::expr_util::lift_loose_bvars(arg, depth, 0)
             } else if *n > depth {
                 Expr::BVar(*n - 1)
             } else {
@@ -33,17 +71,17 @@ fn instantiate_at(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
         Expr::App(f, a) => {
             let f_new = instantiate_at(f, arg, depth);
             let a_new = instantiate_at(a, arg, depth);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = instantiate_at(ty, arg, depth);
             let body_new = instantiate_at(body, arg, depth + 1);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = instantiate_at(ty, arg, depth);
             let body_new = instantiate_at(body, arg, depth + 1);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = instantiate_at(ty, arg, depth);
@@ -51,42 +89,56 @@ fn instantiate_at(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
             let body_new = instantiate_at(body, arg, depth + 1);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = instantiate_at(e, arg, depth);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
     }
 }
-/// Replace FVar with BVar(0), shifting up all existing BVars.
+/// Replace FVar with BVar(0), shifting up loose (unbound) BVars.
 ///
 /// This is the inverse of instantiation, used when forming binders.
+/// Bound variables (BVars pointing at binders *inside* `expr`) are left
+/// unchanged; only loose BVars — which refer to binders outside `expr`
+/// and therefore move one binder further away when the new binder is
+/// wrapped around the result — are shifted by one.
 pub fn abstract_expr(expr: &Expr, fvar: FVarId) -> Expr {
     abstract_at(expr, fvar, 0)
 }
 fn abstract_at(expr: &Expr, fvar: FVarId, depth: u32) -> Expr {
+    // C16b: see `instantiate_at` — one fuel unit per visited (rebuilt) node.
+    crate::fuel::charge(1);
     match expr {
         Expr::FVar(id) if *id == fvar => Expr::BVar(depth),
-        Expr::BVar(n) => Expr::BVar(*n + 1),
+        Expr::BVar(n) => {
+            if *n >= depth {
+                // Loose: bound outside `expr`; the new binder adds one level.
+                Expr::BVar(*n + 1)
+            } else {
+                // Bound inside `expr`: unchanged.
+                Expr::BVar(*n)
+            }
+        }
         Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => {
             let f_new = abstract_at(f, fvar, depth);
             let a_new = abstract_at(a, fvar, depth);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = abstract_at(ty, fvar, depth);
             let body_new = abstract_at(body, fvar, depth + 1);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = abstract_at(ty, fvar, depth);
             let body_new = abstract_at(body, fvar, depth + 1);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = abstract_at(ty, fvar, depth);
@@ -94,20 +146,349 @@ fn abstract_at(expr: &Expr, fvar: FVarId, depth: u32) -> Expr {
             let body_new = abstract_at(body, fvar, depth + 1);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = abstract_at(e, fvar, depth);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{BinderInfo, Level, Name};
+
+    // --- Stage E-2 differential test: the structural-sharing skip in
+    // `instantiate`/`lift_loose_bvars` must produce results IDENTICAL to a
+    // straightforward no-skip reference, on many random OPEN terms. This is the
+    // guard the reverted Stage-D attempt lacked — a subtle skip bug there slid
+    // past every hand-written test and only surfaced as a corpus rejection.
+
+    /// Reference lift with NO range-skip.
+    fn lift_ref(e: &Expr, n: u32, depth: u32) -> Expr {
+        if n == 0 {
+            return e.clone();
+        }
+        match e {
+            Expr::BVar(idx) => {
+                if *idx >= depth {
+                    Expr::BVar(idx + n)
+                } else {
+                    e.clone()
+                }
+            }
+            Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => e.clone(),
+            Expr::App(f, a) => Expr::App(
+                Node::new(lift_ref(f, n, depth)),
+                Node::new(lift_ref(a, n, depth)),
+            ),
+            Expr::Lam(bi, nm, ty, b) => Expr::Lam(
+                *bi,
+                nm.clone(),
+                Node::new(lift_ref(ty, n, depth)),
+                Node::new(lift_ref(b, n, depth + 1)),
+            ),
+            Expr::Pi(bi, nm, ty, b) => Expr::Pi(
+                *bi,
+                nm.clone(),
+                Node::new(lift_ref(ty, n, depth)),
+                Node::new(lift_ref(b, n, depth + 1)),
+            ),
+            Expr::Let(nm, ty, v, b) => Expr::Let(
+                nm.clone(),
+                Node::new(lift_ref(ty, n, depth)),
+                Node::new(lift_ref(v, n, depth)),
+                Node::new(lift_ref(b, n, depth + 1)),
+            ),
+            Expr::Proj(nm, i, x) => Expr::Proj(nm.clone(), *i, Node::new(lift_ref(x, n, depth))),
+        }
+    }
+
+    /// Reference instantiate with NO range-skip.
+    fn inst_ref(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
+        match expr {
+            Expr::BVar(k) => {
+                if *k == depth {
+                    lift_ref(arg, depth, 0)
+                } else if *k > depth {
+                    Expr::BVar(k - 1)
+                } else {
+                    expr.clone()
+                }
+            }
+            Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
+            Expr::App(f, a) => Expr::App(
+                Node::new(inst_ref(f, arg, depth)),
+                Node::new(inst_ref(a, arg, depth)),
+            ),
+            Expr::Lam(bi, nm, ty, b) => Expr::Lam(
+                *bi,
+                nm.clone(),
+                Node::new(inst_ref(ty, arg, depth)),
+                Node::new(inst_ref(b, arg, depth + 1)),
+            ),
+            Expr::Pi(bi, nm, ty, b) => Expr::Pi(
+                *bi,
+                nm.clone(),
+                Node::new(inst_ref(ty, arg, depth)),
+                Node::new(inst_ref(b, arg, depth + 1)),
+            ),
+            Expr::Let(nm, ty, v, b) => Expr::Let(
+                nm.clone(),
+                Node::new(inst_ref(ty, arg, depth)),
+                Node::new(inst_ref(v, arg, depth)),
+                Node::new(inst_ref(b, arg, depth + 1)),
+            ),
+            Expr::Proj(nm, i, x) => Expr::Proj(nm.clone(), *i, Node::new(inst_ref(x, arg, depth))),
+        }
+    }
+
+    fn lcg(s: &mut u64) -> u64 {
+        *s = s
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        *s >> 33
+    }
+
+    /// Generate a random term with up to `fuel` depth, referencing up to
+    /// `binders` enclosing binders plus a few LOOSE bvars beyond them.
+    fn gen(s: &mut u64, fuel: u32, binders: u32) -> Expr {
+        if fuel == 0 || lcg(s) % 100 < 35 {
+            match lcg(s) % 4 {
+                0 => Expr::BVar((lcg(s) as u32) % (binders + 3)),
+                1 => Expr::Sort(Level::zero()),
+                2 => Expr::FVar(FVarId(lcg(s) % 4)),
+                _ => Expr::Const(Name::str("c"), Vec::new()),
+            }
+        } else {
+            match lcg(s) % 5 {
+                0 => Expr::App(
+                    Node::new(gen(s, fuel - 1, binders)),
+                    Node::new(gen(s, fuel - 1, binders)),
+                ),
+                1 => Expr::Lam(
+                    BinderInfo::Default,
+                    Name::str("x"),
+                    Node::new(gen(s, fuel - 1, binders)),
+                    Node::new(gen(s, fuel - 1, binders + 1)),
+                ),
+                2 => Expr::Pi(
+                    BinderInfo::Default,
+                    Name::str("x"),
+                    Node::new(gen(s, fuel - 1, binders)),
+                    Node::new(gen(s, fuel - 1, binders + 1)),
+                ),
+                3 => Expr::Let(
+                    Name::str("x"),
+                    Node::new(gen(s, fuel - 1, binders)),
+                    Node::new(gen(s, fuel - 1, binders)),
+                    Node::new(gen(s, fuel - 1, binders + 1)),
+                ),
+                _ => Expr::Proj(Name::str("S"), 0, Node::new(gen(s, fuel - 1, binders))),
+            }
+        }
+    }
+
+    #[test]
+    fn instantiate_skip_matches_reference() {
+        let mut s: u64 = 0x1234_5678_9abc_def0;
+        for _ in 0..3000 {
+            let body = gen(&mut s, 5, 1);
+            let arg = gen(&mut s, 4, 0);
+            let got = instantiate(&body, &arg);
+            let want = inst_ref(&body, &arg, 0);
+            assert_eq!(
+                got, want,
+                "instantiate range-skip diverged from reference\nbody={body:?}\narg={arg:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn lift_skip_matches_reference() {
+        let mut s: u64 = 0xdead_beef_cafe_babe;
+        for _ in 0..3000 {
+            let e = gen(&mut s, 5, 0);
+            let n = 1 + (lcg(&mut s) as u32 % 3);
+            let off = lcg(&mut s) as u32 % 3;
+            let got = crate::expr_util::lift_loose_bvars(&e, n, off);
+            let want = lift_ref(&e, n, off);
+            assert_eq!(
+                got, want,
+                "lift range-skip diverged from reference\ne={e:?} n={n} off={off}"
+            );
+        }
+    }
+
+    /// `Expr::range()` (the cached looseBVarRange) must equal a direct
+    /// recomputation from scratch.
+    #[test]
+    fn cached_range_matches_recomputation() {
+        fn recompute(e: &Expr) -> u32 {
+            match e {
+                Expr::BVar(n) => n.saturating_add(1),
+                Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => 0,
+                Expr::App(f, a) => recompute(f).max(recompute(a)),
+                Expr::Lam(_, _, ty, b) | Expr::Pi(_, _, ty, b) => {
+                    recompute(ty).max(recompute(b).saturating_sub(1))
+                }
+                Expr::Let(_, ty, v, b) => recompute(ty)
+                    .max(recompute(v))
+                    .max(recompute(b).saturating_sub(1)),
+                Expr::Proj(_, _, x) => recompute(x),
+            }
+        }
+        let mut s: u64 = 0x0f0f_0f0f_1234_9999;
+        for _ in 0..3000 {
+            let e = gen(&mut s, 6, 0);
+            assert_eq!(e.range(), recompute(&e), "cached range wrong for {e:?}");
+        }
+    }
+
+    /// `Expr::rebuild_cost()` (cached) must equal a from-scratch recomputation,
+    /// so the fuel charged on a skip exactly matches the no-skip baseline.
+    #[test]
+    fn cached_rebuild_cost_matches_recomputation() {
+        fn recompute(e: &Expr) -> u32 {
+            match e {
+                Expr::Sort(_)
+                | Expr::BVar(_)
+                | Expr::FVar(_)
+                | Expr::Const(_, _)
+                | Expr::Lit(_) => 2,
+                Expr::App(f, a) => 1u32
+                    .saturating_add(recompute(f))
+                    .saturating_add(recompute(a)),
+                Expr::Lam(_, _, ty, b) | Expr::Pi(_, _, ty, b) => 1u32
+                    .saturating_add(recompute(ty))
+                    .saturating_add(recompute(b)),
+                Expr::Let(_, ty, v, b) => 1u32
+                    .saturating_add(recompute(ty))
+                    .saturating_add(recompute(v))
+                    .saturating_add(recompute(b)),
+                Expr::Proj(_, _, x) => 1u32.saturating_add(recompute(x)),
+            }
+        }
+        let mut s: u64 = 0xabcd_1234_5678_ef01;
+        for _ in 0..3000 {
+            let e = gen(&mut s, 6, 0);
+            assert_eq!(
+                e.rebuild_cost(),
+                recompute(&e),
+                "cached cost wrong for {e:?}"
+            );
+        }
+    }
+
+    /// The structural-sharing skip must charge EXACTLY the fuel a no-skip
+    /// substitution would, so a fuel-limited declaration behaves identically.
+    #[test]
+    fn instantiate_skip_preserves_fuel() {
+        // Reference instantiate that charges fuel the pre-skip way: one unit per
+        // visited node, and (via `Expr::clone`) one per returned leaf.
+        fn inst_ref_fueled(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
+            crate::fuel::charge(1);
+            match expr {
+                Expr::BVar(k) => {
+                    if *k == depth {
+                        lift_ref_fueled(arg, depth, 0)
+                    } else if *k > depth {
+                        Expr::BVar(k - 1)
+                    } else {
+                        expr.clone()
+                    }
+                }
+                Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
+                Expr::App(f, a) => Expr::App(
+                    Node::new(inst_ref_fueled(f, arg, depth)),
+                    Node::new(inst_ref_fueled(a, arg, depth)),
+                ),
+                Expr::Lam(bi, nm, ty, b) => Expr::Lam(
+                    *bi,
+                    nm.clone(),
+                    Node::new(inst_ref_fueled(ty, arg, depth)),
+                    Node::new(inst_ref_fueled(b, arg, depth + 1)),
+                ),
+                Expr::Pi(bi, nm, ty, b) => Expr::Pi(
+                    *bi,
+                    nm.clone(),
+                    Node::new(inst_ref_fueled(ty, arg, depth)),
+                    Node::new(inst_ref_fueled(b, arg, depth + 1)),
+                ),
+                Expr::Let(nm, ty, v, b) => Expr::Let(
+                    nm.clone(),
+                    Node::new(inst_ref_fueled(ty, arg, depth)),
+                    Node::new(inst_ref_fueled(v, arg, depth)),
+                    Node::new(inst_ref_fueled(b, arg, depth + 1)),
+                ),
+                Expr::Proj(nm, i, x) => {
+                    Expr::Proj(nm.clone(), *i, Node::new(inst_ref_fueled(x, arg, depth)))
+                }
+            }
+        }
+        fn lift_ref_fueled(e: &Expr, n: u32, depth: u32) -> Expr {
+            if n == 0 {
+                return e.clone();
+            }
+            crate::fuel::charge(1);
+            match e {
+                Expr::BVar(idx) => {
+                    if *idx >= depth {
+                        Expr::BVar(idx + n)
+                    } else {
+                        e.clone()
+                    }
+                }
+                Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => e.clone(),
+                Expr::App(f, a) => Expr::App(
+                    Node::new(lift_ref_fueled(f, n, depth)),
+                    Node::new(lift_ref_fueled(a, n, depth)),
+                ),
+                Expr::Lam(bi, nm, ty, b) => Expr::Lam(
+                    *bi,
+                    nm.clone(),
+                    Node::new(lift_ref_fueled(ty, n, depth)),
+                    Node::new(lift_ref_fueled(b, n, depth + 1)),
+                ),
+                Expr::Pi(bi, nm, ty, b) => Expr::Pi(
+                    *bi,
+                    nm.clone(),
+                    Node::new(lift_ref_fueled(ty, n, depth)),
+                    Node::new(lift_ref_fueled(b, n, depth + 1)),
+                ),
+                Expr::Let(nm, ty, v, b) => Expr::Let(
+                    nm.clone(),
+                    Node::new(lift_ref_fueled(ty, n, depth)),
+                    Node::new(lift_ref_fueled(v, n, depth)),
+                    Node::new(lift_ref_fueled(b, n, depth + 1)),
+                ),
+                Expr::Proj(nm, i, x) => {
+                    Expr::Proj(nm.clone(), *i, Node::new(lift_ref_fueled(x, n, depth)))
+                }
+            }
+        }
+        let mut s: u64 = 0x5555_aaaa_3333_cccc;
+        for _ in 0..3000 {
+            let body = gen(&mut s, 5, 1);
+            let arg = gen(&mut s, 4, 0);
+            crate::fuel::set_budget(Some(u64::MAX));
+            let _ = instantiate(&body, &arg);
+            let fuel_skip = crate::fuel::used();
+            crate::fuel::set_budget(Some(u64::MAX));
+            let _ = inst_ref_fueled(&body, &arg, 0);
+            let fuel_ref = crate::fuel::used();
+            assert_eq!(
+                fuel_skip, fuel_ref,
+                "skip charged {fuel_skip} but no-skip charges {fuel_ref}\nbody={body:?}\narg={arg:?}"
+            );
+        }
+        crate::fuel::set_budget(None);
+    }
+
     #[test]
     fn test_instantiate_simple() {
         let bvar0 = Expr::BVar(0);
@@ -132,7 +513,7 @@ mod tests {
     }
     #[test]
     fn test_instantiate_app() {
-        let app = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let app = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let arg = Expr::FVar(FVarId(99));
         let result = instantiate(&app, &arg);
         match result {
@@ -155,6 +536,8 @@ pub fn instantiate_many(expr: &Expr, args: &[Expr]) -> Expr {
     instantiate_many_at(expr, args, k, 0)
 }
 fn instantiate_many_at(expr: &Expr, args: &[Expr], k: u32, offset: u32) -> Expr {
+    // C16b: see `instantiate_at` — one fuel unit per visited (rebuilt) node.
+    crate::fuel::charge(1);
     match expr {
         Expr::BVar(n) => {
             let idx = *n;
@@ -168,31 +551,31 @@ fn instantiate_many_at(expr: &Expr, args: &[Expr], k: u32, offset: u32) -> Expr 
         }
         Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(instantiate_many_at(f, args, k, offset)),
-            Box::new(instantiate_many_at(a, args, k, offset)),
+            Node::new(instantiate_many_at(f, args, k, offset)),
+            Node::new(instantiate_many_at(a, args, k, offset)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(instantiate_many_at(ty, args, k, offset)),
-            Box::new(instantiate_many_at(body, args, k, offset + 1)),
+            Node::new(instantiate_many_at(ty, args, k, offset)),
+            Node::new(instantiate_many_at(body, args, k, offset + 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(instantiate_many_at(ty, args, k, offset)),
-            Box::new(instantiate_many_at(body, args, k, offset + 1)),
+            Node::new(instantiate_many_at(ty, args, k, offset)),
+            Node::new(instantiate_many_at(body, args, k, offset + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(instantiate_many_at(ty, args, k, offset)),
-            Box::new(instantiate_many_at(val, args, k, offset)),
-            Box::new(instantiate_many_at(body, args, k, offset + 1)),
+            Node::new(instantiate_many_at(ty, args, k, offset)),
+            Node::new(instantiate_many_at(val, args, k, offset)),
+            Node::new(instantiate_many_at(body, args, k, offset + 1)),
         ),
         Expr::Proj(name, idx, e) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(instantiate_many_at(e, args, k, offset)),
+            Node::new(instantiate_many_at(e, args, k, offset)),
         ),
     }
 }
@@ -205,6 +588,8 @@ pub fn parallel_subst(expr: &Expr, map: &SubstMap) -> Expr {
     parallel_subst_impl(expr, map)
 }
 fn parallel_subst_impl(expr: &Expr, map: &SubstMap) -> Expr {
+    // C16b: see `instantiate_at` — one fuel unit per visited (rebuilt) node.
+    crate::fuel::charge(1);
     match expr {
         Expr::FVar(id) => {
             if let Some(replacement) = map.get(id) {
@@ -215,34 +600,36 @@ fn parallel_subst_impl(expr: &Expr, map: &SubstMap) -> Expr {
         }
         Expr::BVar(_) | Expr::Sort(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(parallel_subst_impl(f, map)),
-            Box::new(parallel_subst_impl(a, map)),
+            Node::new(parallel_subst_impl(f, map)),
+            Node::new(parallel_subst_impl(a, map)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(parallel_subst_impl(ty, map)),
-            Box::new(parallel_subst_impl(body, map)),
+            Node::new(parallel_subst_impl(ty, map)),
+            Node::new(parallel_subst_impl(body, map)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(parallel_subst_impl(ty, map)),
-            Box::new(parallel_subst_impl(body, map)),
+            Node::new(parallel_subst_impl(ty, map)),
+            Node::new(parallel_subst_impl(body, map)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(parallel_subst_impl(ty, map)),
-            Box::new(parallel_subst_impl(val, map)),
-            Box::new(parallel_subst_impl(body, map)),
+            Node::new(parallel_subst_impl(ty, map)),
+            Node::new(parallel_subst_impl(val, map)),
+            Node::new(parallel_subst_impl(body, map)),
         ),
         Expr::Proj(name, idx, e) => {
-            Expr::Proj(name.clone(), *idx, Box::new(parallel_subst_impl(e, map)))
+            Expr::Proj(name.clone(), *idx, Node::new(parallel_subst_impl(e, map)))
         }
     }
 }
 /// Shift all `BVar(i)` with `i >= cutoff` up by `amount`.
 pub fn shift_bvars(expr: &Expr, amount: u32, cutoff: u32) -> Expr {
+    // C16b: see `instantiate_at` — one fuel unit per visited (rebuilt) node.
+    crate::fuel::charge(1);
     match expr {
         Expr::BVar(i) => {
             if *i >= cutoff {
@@ -253,30 +640,32 @@ pub fn shift_bvars(expr: &Expr, amount: u32, cutoff: u32) -> Expr {
         }
         Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(shift_bvars(f, amount, cutoff)),
-            Box::new(shift_bvars(a, amount, cutoff)),
+            Node::new(shift_bvars(f, amount, cutoff)),
+            Node::new(shift_bvars(a, amount, cutoff)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, amount, cutoff)),
-            Box::new(shift_bvars(body, amount, cutoff + 1)),
+            Node::new(shift_bvars(ty, amount, cutoff)),
+            Node::new(shift_bvars(body, amount, cutoff + 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(shift_bvars(ty, amount, cutoff)),
-            Box::new(shift_bvars(body, amount, cutoff + 1)),
+            Node::new(shift_bvars(ty, amount, cutoff)),
+            Node::new(shift_bvars(body, amount, cutoff + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(shift_bvars(ty, amount, cutoff)),
-            Box::new(shift_bvars(val, amount, cutoff)),
-            Box::new(shift_bvars(body, amount, cutoff + 1)),
+            Node::new(shift_bvars(ty, amount, cutoff)),
+            Node::new(shift_bvars(val, amount, cutoff)),
+            Node::new(shift_bvars(body, amount, cutoff + 1)),
         ),
-        Expr::Proj(name, idx, e) => {
-            Expr::Proj(name.clone(), *idx, Box::new(shift_bvars(e, amount, cutoff)))
-        }
+        Expr::Proj(name, idx, e) => Expr::Proj(
+            name.clone(),
+            *idx,
+            Node::new(shift_bvars(e, amount, cutoff)),
+        ),
     }
 }
 /// Collect the set of free `FVarId`s occurring in `expr`.
@@ -344,12 +733,17 @@ pub fn instantiate_tracked(body: &Expr, arg: &Expr, stats: &mut SubstStats) -> E
     instantiate_tracked_at(body, arg, 0, stats)
 }
 fn instantiate_tracked_at(expr: &Expr, arg: &Expr, depth: u32, stats: &mut SubstStats) -> Expr {
+    // C16b: see `instantiate_at` — one fuel unit per visited (rebuilt) node.
+    crate::fuel::charge(1);
     stats.nodes_visited += 1;
     match expr {
         Expr::BVar(n) => {
             if *n == depth {
                 stats.bvar_hits += 1;
-                arg.clone()
+                // Same capture-avoidance as `instantiate_at`: lift the loose
+                // bound variables of `arg` past the binders it is inserted
+                // under.
+                crate::expr_util::lift_loose_bvars(arg, depth, 0)
             } else if *n > depth {
                 stats.bvar_misses += 1;
                 Expr::BVar(*n - 1)
@@ -359,31 +753,31 @@ fn instantiate_tracked_at(expr: &Expr, arg: &Expr, depth: u32, stats: &mut Subst
         }
         Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(instantiate_tracked_at(f, arg, depth, stats)),
-            Box::new(instantiate_tracked_at(a, arg, depth, stats)),
+            Node::new(instantiate_tracked_at(f, arg, depth, stats)),
+            Node::new(instantiate_tracked_at(a, arg, depth, stats)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(instantiate_tracked_at(ty, arg, depth, stats)),
-            Box::new(instantiate_tracked_at(body, arg, depth + 1, stats)),
+            Node::new(instantiate_tracked_at(ty, arg, depth, stats)),
+            Node::new(instantiate_tracked_at(body, arg, depth + 1, stats)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(instantiate_tracked_at(ty, arg, depth, stats)),
-            Box::new(instantiate_tracked_at(body, arg, depth + 1, stats)),
+            Node::new(instantiate_tracked_at(ty, arg, depth, stats)),
+            Node::new(instantiate_tracked_at(body, arg, depth + 1, stats)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(instantiate_tracked_at(ty, arg, depth, stats)),
-            Box::new(instantiate_tracked_at(val, arg, depth, stats)),
-            Box::new(instantiate_tracked_at(body, arg, depth + 1, stats)),
+            Node::new(instantiate_tracked_at(ty, arg, depth, stats)),
+            Node::new(instantiate_tracked_at(val, arg, depth, stats)),
+            Node::new(instantiate_tracked_at(body, arg, depth + 1, stats)),
         ),
         Expr::Proj(name, idx, e) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(instantiate_tracked_at(e, arg, depth, stats)),
+            Node::new(instantiate_tracked_at(e, arg, depth, stats)),
         ),
     }
 }
@@ -484,31 +878,31 @@ fn parallel_subst_tracked_impl(expr: &Expr, map: &SubstMap, stats: &mut SubstSta
         }
         Expr::BVar(_) | Expr::Sort(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(parallel_subst_tracked_impl(f, map, stats)),
-            Box::new(parallel_subst_tracked_impl(a, map, stats)),
+            Node::new(parallel_subst_tracked_impl(f, map, stats)),
+            Node::new(parallel_subst_tracked_impl(a, map, stats)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(parallel_subst_tracked_impl(ty, map, stats)),
-            Box::new(parallel_subst_tracked_impl(body, map, stats)),
+            Node::new(parallel_subst_tracked_impl(ty, map, stats)),
+            Node::new(parallel_subst_tracked_impl(body, map, stats)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(parallel_subst_tracked_impl(ty, map, stats)),
-            Box::new(parallel_subst_tracked_impl(body, map, stats)),
+            Node::new(parallel_subst_tracked_impl(ty, map, stats)),
+            Node::new(parallel_subst_tracked_impl(body, map, stats)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(parallel_subst_tracked_impl(ty, map, stats)),
-            Box::new(parallel_subst_tracked_impl(val, map, stats)),
-            Box::new(parallel_subst_tracked_impl(body, map, stats)),
+            Node::new(parallel_subst_tracked_impl(ty, map, stats)),
+            Node::new(parallel_subst_tracked_impl(val, map, stats)),
+            Node::new(parallel_subst_tracked_impl(body, map, stats)),
         ),
         Expr::Proj(name, idx, e) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(parallel_subst_tracked_impl(e, map, stats)),
+            Node::new(parallel_subst_tracked_impl(e, map, stats)),
         ),
     }
 }
@@ -520,14 +914,14 @@ mod extended_tests {
         Expr::FVar(FVarId(id))
     }
     fn lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn sort0() -> Expr {
         Expr::Sort(Level::zero())
     }
     #[test]
     fn test_instantiate_many_two() {
-        let app = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let app = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let result = instantiate_many(&app, &[lit(10), lit(20)]);
         match result {
             Expr::App(f, a) => {
@@ -570,13 +964,13 @@ mod extended_tests {
     }
     #[test]
     fn test_occurs_free_true() {
-        let expr = Expr::App(Box::new(fvar(1)), Box::new(fvar(2)));
+        let expr = Expr::App(Node::new(fvar(1)), Node::new(fvar(2)));
         assert!(occurs_free(&expr, FVarId(1)));
         assert!(!occurs_free(&expr, FVarId(3)));
     }
     #[test]
     fn test_count_free_occurrences() {
-        let expr = Expr::App(Box::new(fvar(1)), Box::new(fvar(1)));
+        let expr = Expr::App(Node::new(fvar(1)), Node::new(fvar(1)));
         assert_eq!(count_free_occurrences(&expr, FVarId(1)), 2);
     }
     #[test]
@@ -618,16 +1012,16 @@ mod extended_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(Expr::BVar(0)),
+            Node::new(sort0()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(lam), Box::new(lit(42)));
+        let app = Expr::App(Node::new(lam), Node::new(lit(42)));
         let result = try_beta_reduce(&app).expect("result should be present");
         assert_eq!(result, lit(42));
     }
     #[test]
     fn test_try_beta_reduce_fail() {
-        let app = Expr::App(Box::new(fvar(1)), Box::new(lit(42)));
+        let app = Expr::App(Node::new(fvar(1)), Node::new(lit(42)));
         assert!(try_beta_reduce(&app).is_none());
     }
     #[test]
@@ -635,10 +1029,10 @@ mod extended_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(Expr::BVar(0)),
+            Node::new(sort0()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(lam), Box::new(lit(7)));
+        let app = Expr::App(Node::new(lam), Node::new(lit(7)));
         let result = beta_reduce_head(app);
         assert_eq!(result, lit(7));
     }
@@ -653,8 +1047,8 @@ mod extended_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(Expr::BVar(0)),
+            Node::new(sort0()),
+            Node::new(Expr::BVar(0)),
         );
         assert!(is_whnf_beta(&lam));
     }
@@ -663,22 +1057,22 @@ mod extended_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(sort0()),
-            Box::new(Expr::BVar(0)),
+            Node::new(sort0()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(lam), Box::new(lit(1)));
+        let app = Expr::App(Node::new(lam), Node::new(lit(1)));
         assert!(!is_whnf_beta(&app));
     }
     #[test]
     fn test_collect_loose_bvar_indices() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(2)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(2)));
         let indices = collect_loose_bvar_indices(&e);
         assert!(indices.contains(&0));
         assert!(indices.contains(&2));
     }
     #[test]
     fn test_parallel_subst_tracked() {
-        let expr = Expr::App(Box::new(fvar(1)), Box::new(fvar(2)));
+        let expr = Expr::App(Node::new(fvar(1)), Node::new(fvar(2)));
         let mut map = SubstMap::new();
         map.insert(FVarId(1), lit(10));
         map.insert(FVarId(2), lit(20));
@@ -704,7 +1098,7 @@ pub fn apply_args(f: &Expr, args: &[Expr]) -> Expr {
         if let Expr::Lam(_, _, _, body) = result {
             result = instantiate(&body, arg);
         } else {
-            result = Expr::App(Box::new(result), Box::new(arg.clone()));
+            result = Expr::App(Node::new(result), Node::new(arg.clone()));
         }
     }
     result
@@ -719,10 +1113,7 @@ pub fn is_lambda(e: &Expr) -> bool {
 /// Returns `(binders, body)` where `binders` is a vector of `(name, binder_info, type)`
 /// tuples and `body` is the inner expression with `n` fewer lambdas.
 #[allow(clippy::type_complexity)]
-pub fn peel_lambdas(
-    e: &Expr,
-    n: usize,
-) -> (Vec<(crate::Name, crate::BinderInfo, Box<Expr>)>, &Expr) {
+pub fn peel_lambdas(e: &Expr, n: usize) -> (Vec<(crate::Name, crate::BinderInfo, Node)>, &Expr) {
     let mut binders = Vec::new();
     let mut cur = e;
     for _ in 0..n {
@@ -760,7 +1151,7 @@ mod extended2_tests {
     use super::*;
     use crate::{BinderInfo, Expr, FVarId, Literal, Name};
     fn lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn fvar(id: u64) -> Expr {
         Expr::FVar(FVarId(id))
@@ -771,8 +1162,8 @@ mod extended2_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(body),
+            Node::new(lit(0)),
+            Node::new(body),
         );
         let result = apply_args(&lam, &[lit(42)]);
         assert_eq!(result, lit(42));
@@ -800,8 +1191,8 @@ mod extended2_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(lit(1)),
+            Node::new(lit(0)),
+            Node::new(lit(1)),
         );
         assert!(is_lambda(&lam));
         assert!(!is_lambda(&lit(0)));
@@ -812,14 +1203,14 @@ mod extended2_tests {
         let lam1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(inner),
+            Node::new(lit(0)),
+            Node::new(inner),
         );
         let lam2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(lam1),
+            Node::new(lit(0)),
+            Node::new(lam1),
         );
         assert_eq!(count_lambdas(&lam2), 2);
         assert_eq!(count_lambdas(&lit(0)), 0);
@@ -830,14 +1221,14 @@ mod extended2_tests {
         let pi1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(inner),
+            Node::new(lit(0)),
+            Node::new(inner),
         );
         let pi2 = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(pi1),
+            Node::new(lit(0)),
+            Node::new(pi1),
         );
         assert_eq!(count_pis(&pi2), 2);
         assert_eq!(count_pis(&lit(0)), 0);
@@ -848,14 +1239,14 @@ mod extended2_tests {
         let lam1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(body),
+            Node::new(lit(0)),
+            Node::new(body),
         );
         let lam2 = Expr::Lam(
             BinderInfo::Implicit,
             Name::str("_"),
-            Box::new(lit(0)),
-            Box::new(lam1),
+            Node::new(lit(0)),
+            Node::new(lam1),
         );
         let (binders, inner) = peel_lambdas(&lam2, 2);
         assert_eq!(binders.len(), 2);
@@ -917,27 +1308,32 @@ fn open_binder_at(expr: &Expr, fvar_expr: &Expr, depth: u32) -> Expr {
         Expr::App(f, a) => {
             let f2 = open_binder_at(f, fvar_expr, depth);
             let a2 = open_binder_at(a, fvar_expr, depth);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty2 = open_binder_at(ty, fvar_expr, depth);
             let body2 = open_binder_at(body, fvar_expr, depth + 1);
-            Expr::Lam(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty2 = open_binder_at(ty, fvar_expr, depth);
             let body2 = open_binder_at(body, fvar_expr, depth + 1);
-            Expr::Pi(*bi, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(name, ty, val, body) => {
             let ty2 = open_binder_at(ty, fvar_expr, depth);
             let val2 = open_binder_at(val, fvar_expr, depth);
             let body2 = open_binder_at(body, fvar_expr, depth + 1);
-            Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                name.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(name, idx, inner) => {
             let inner2 = open_binder_at(inner, fvar_expr, depth);
-            Expr::Proj(name.clone(), *idx, Box::new(inner2))
+            Expr::Proj(name.clone(), *idx, Node::new(inner2))
         }
         _ => expr.clone(),
     }
@@ -947,7 +1343,7 @@ mod extended3_subst_tests {
     use super::*;
     use crate::{BinderInfo, Expr, FVarId, Literal, Name};
     fn lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn fvar(id: u64) -> Expr {
         Expr::FVar(FVarId(id))
@@ -998,7 +1394,7 @@ mod extended3_subst_tests {
     }
     #[test]
     fn test_substitute_fvars_parallel() {
-        let expr = Expr::App(Box::new(fvar(0)), Box::new(fvar(1)));
+        let expr = Expr::App(Node::new(fvar(0)), Node::new(fvar(1)));
         let result = substitute_fvars(&expr, &[FVarId(0), FVarId(1)], &[lit(10), lit(20)]);
         match result {
             Expr::App(f, a) => {
@@ -1010,7 +1406,7 @@ mod extended3_subst_tests {
     }
     #[test]
     fn test_expr_contains_fvar_true() {
-        let expr = Expr::App(Box::new(fvar(3)), Box::new(lit(0)));
+        let expr = Expr::App(Node::new(fvar(3)), Node::new(lit(0)));
         assert!(expr_contains_fvar(&expr, &[FVarId(3)]));
     }
     #[test]
@@ -1030,10 +1426,10 @@ mod extended3_subst_tests {
         let inner_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(inner_body),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(inner_body),
         );
-        let outer_body = Expr::App(Box::new(inner_lam), Box::new(Expr::BVar(0)));
+        let outer_body = Expr::App(Node::new(inner_lam), Node::new(Expr::BVar(0)));
         let opened = open_binder(&outer_body, FVarId(99));
         match opened {
             Expr::App(f, arg) => {
@@ -1213,7 +1609,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

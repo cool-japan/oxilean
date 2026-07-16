@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{
-    BinderInfo, Declaration, Environment, Expr, InductiveEnv, InductiveType, IntroRule, Level, Name,
+    BinderInfo, Declaration, Environment, Expr, InductiveEnv, InductiveType, IntroRule, Level,
+    Literal, Name,
 };
 
 use super::types::{Fin, FinFun, FinIter};
@@ -16,37 +18,37 @@ pub fn build_fin_env(env: &mut Environment, ind_env: &mut InductiveEnv) -> Resul
     let fin_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(type1.clone()),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(type1.clone()),
     );
     let zero_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Fin"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                Box::new(Expr::BVar(0)),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Fin"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
         )),
     );
     let succ_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("i"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                    Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -97,15 +99,15 @@ pub fn build_fin_operations(env: &mut Environment) -> Result<(), String> {
     let val_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("i"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         )),
     );
     env.add(Declaration::Axiom {
@@ -117,12 +119,12 @@ pub fn build_fin_operations(env: &mut Environment) -> Result<(), String> {
     let last_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Fin"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                Box::new(Expr::BVar(0)),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Fin"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
         )),
     );
@@ -135,19 +137,19 @@ pub fn build_fin_operations(env: &mut Environment) -> Result<(), String> {
     let cast_succ_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("i"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                    Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -161,17 +163,17 @@ pub fn build_fin_operations(env: &mut Environment) -> Result<(), String> {
     let fin_n_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("i"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
         )),
     );
@@ -184,16 +186,16 @@ pub fn build_fin_operations(env: &mut Environment) -> Result<(), String> {
     let of_nat_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("k"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-                    Box::new(Expr::BVar(1)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -208,15 +210,15 @@ pub fn build_fin_operations(env: &mut Environment) -> Result<(), String> {
     let is_lt_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("i"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(prop),
+            Node::new(prop),
         )),
     );
     env.add(Declaration::Axiom {
@@ -228,15 +230,15 @@ pub fn build_fin_operations(env: &mut Environment) -> Result<(), String> {
     let elim0_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("i"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(0u64))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::Lit(oxilean_kernel::Literal::nat(0u64))),
             )),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::BVar(1)),
         )),
     );
     env.add(Declaration::Axiom {
@@ -252,24 +254,24 @@ pub fn build_fin_arithmetic(env: &mut Environment) -> Result<(), String> {
     let fin_bin_op = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Fin"), vec![])),
-                    Box::new(Expr::BVar(2)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Fin"), vec![])),
+                    Node::new(Expr::BVar(2)),
                 )),
             )),
         )),
@@ -355,25 +357,25 @@ pub fn fin_index_to_pair(k: Fin, col_bound: usize) -> Option<(Fin, Fin)> {
 /// Build an `Expr` representing `Fin n` applied to a nat literal.
 pub fn make_fin_type(n: u64) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Fin"), vec![])),
-        Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(n))),
+        Node::new(Expr::Const(Name::str("Fin"), vec![])),
+        Node::new(Expr::Lit(Literal::nat(n))),
     )
 }
 /// Build an `Expr` for `Fin.zero {n}`.
 pub fn make_fin_zero(n_expr: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Fin.zero"), vec![])),
-        Box::new(n_expr),
+        Node::new(Expr::Const(Name::str("Fin.zero"), vec![])),
+        Node::new(n_expr),
     )
 }
 /// Build an `Expr` for `Fin.succ {n} i`.
 pub fn make_fin_succ(n_expr: Expr, i_expr: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Fin.succ"), vec![])),
-            Box::new(n_expr),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Fin.succ"), vec![])),
+            Node::new(n_expr),
         )),
-        Box::new(i_expr),
+        Node::new(i_expr),
     )
 }
 /// Return all registered `Fin`-related names present in the environment.
@@ -419,8 +421,8 @@ mod tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("n"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             ),
         })
         .expect("operation should succeed");
@@ -678,18 +680,18 @@ pub fn fin_sum<F: Fn(Fin) -> u64>(bound: usize, f: F) -> u64 {
 /// Build an `Expr` for `Fin.last {n}`.
 pub fn make_fin_last(n_expr: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Fin.last"), vec![])),
-        Box::new(n_expr),
+        Node::new(Expr::Const(Name::str("Fin.last"), vec![])),
+        Node::new(n_expr),
     )
 }
 /// Build an `Expr` for `Fin.castSucc {n} i`.
 pub fn make_fin_cast_succ(n_expr: Expr, i_expr: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Fin.castSucc"), vec![])),
-            Box::new(n_expr),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Fin.castSucc"), vec![])),
+            Node::new(n_expr),
         )),
-        Box::new(i_expr),
+        Node::new(i_expr),
     )
 }
 /// Whether a `Fin n` value can be viewed as an element of `Fin m` (m >= n).
@@ -735,7 +737,7 @@ mod fin_extra_tests {
     }
     #[test]
     fn test_make_fin_last() {
-        let n_expr = Expr::Lit(oxilean_kernel::Literal::Nat(4));
+        let n_expr = Expr::Lit(oxilean_kernel::Literal::nat(4));
         let e = make_fin_last(n_expr);
         assert!(matches!(e, Expr::App(_, _)));
     }
@@ -751,7 +753,7 @@ pub fn fin_ext_cst(s: &str) -> Expr {
     Expr::Const(Name::str(s), vec![])
 }
 pub fn fin_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn fin_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
     fin_ext_app(fin_ext_app(f, a), b)
@@ -772,7 +774,7 @@ pub fn fin_ext_fin_n() -> Expr {
     fin_ext_app(fin_ext_cst("Fin"), Expr::BVar(0))
 }
 pub fn fin_ext_pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn fin_ext_forall_nat(body: Expr) -> Expr {
     fin_ext_pi(BinderInfo::Default, "n", fin_ext_nat(), body)
@@ -825,7 +827,7 @@ pub fn axiom_fin_zero_val_ty() -> Expr {
                 fin_ext_cst("Fin.val"),
                 fin_ext_app(fin_ext_cst("Fin.zero"), Expr::BVar(0)),
             ),
-            Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+            Expr::Lit(oxilean_kernel::Literal::nat(0)),
         ),
     )
 }
@@ -945,7 +947,7 @@ pub fn axiom_fin_rev_val_ty() -> Expr {
                     fin_ext_app2(
                         fin_ext_cst("Nat.sub"),
                         Expr::BVar(1),
-                        Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+                        Expr::Lit(oxilean_kernel::Literal::nat(1)),
                     ),
                     fin_ext_app(fin_ext_cst("Fin.val"), Expr::BVar(0)),
                 ),
@@ -1022,7 +1024,7 @@ pub fn axiom_fin_zero_elim_ty() -> Expr {
             "i",
             fin_ext_app(
                 fin_ext_cst("Fin"),
-                Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+                Expr::Lit(oxilean_kernel::Literal::nat(0)),
             ),
             Expr::BVar(1),
         ),
@@ -1086,9 +1088,9 @@ pub fn axiom_nat_factorial_zero_ty() -> Expr {
     fin_ext_nat_eq(
         fin_ext_app(
             fin_ext_cst("Nat.factorial"),
-            Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+            Expr::Lit(oxilean_kernel::Literal::nat(0)),
         ),
-        Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+        Expr::Lit(oxilean_kernel::Literal::nat(1)),
     )
 }
 /// Nat.factorial_succ : ∀ n, Eq (Nat.factorial (Nat.succ n)) (Nat.mul (Nat.succ n) (Nat.factorial n))
@@ -1151,9 +1153,9 @@ pub fn axiom_fin_binomial_zero_ty() -> Expr {
         fin_ext_app2(
             fin_ext_cst("Fin.binomial"),
             Expr::BVar(0),
-            Expr::Lit(oxilean_kernel::Literal::Nat(0)),
+            Expr::Lit(oxilean_kernel::Literal::nat(0)),
         ),
-        Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+        Expr::Lit(oxilean_kernel::Literal::nat(1)),
     ))
 }
 /// Fin.binomial_self : ∀ n, Eq (Fin.binomial n n) 1
@@ -1161,7 +1163,7 @@ pub fn axiom_fin_binomial_zero_ty() -> Expr {
 pub fn axiom_fin_binomial_self_ty() -> Expr {
     fin_ext_forall_nat(fin_ext_nat_eq(
         fin_ext_app2(fin_ext_cst("Fin.binomial"), Expr::BVar(0), Expr::BVar(0)),
-        Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+        Expr::Lit(oxilean_kernel::Literal::nat(1)),
     ))
 }
 /// Fin.binomial_symm : ∀ n k, Eq (Fin.binomial n k) (Fin.binomial n (Nat.sub n k))
@@ -1235,7 +1237,7 @@ pub fn axiom_fin_euler_phi_prime_ty() -> Expr {
             fin_ext_app2(
                 fin_ext_cst("Nat.sub"),
                 Expr::BVar(1),
-                Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+                Expr::Lit(oxilean_kernel::Literal::nat(1)),
             ),
         ),
     ))
@@ -1283,7 +1285,7 @@ pub fn axiom_fin_cayley_formula_ty() -> Expr {
             fin_ext_app2(
                 fin_ext_cst("Nat.sub"),
                 Expr::BVar(0),
-                Expr::Lit(oxilean_kernel::Literal::Nat(2)),
+                Expr::Lit(oxilean_kernel::Literal::nat(2)),
             ),
         ),
     ))
@@ -1356,7 +1358,7 @@ pub fn axiom_fin_perm_sign_id_ty() -> Expr {
         ),
         fin_ext_app(
             fin_ext_cst("Int.ofNat"),
-            Expr::Lit(oxilean_kernel::Literal::Nat(1)),
+            Expr::Lit(oxilean_kernel::Literal::nat(1)),
         ),
     ))
 }

@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Declaration, Environment, Expr, Name};
 
 use super::types::{
@@ -40,8 +41,8 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// `PAdicPeriodRingsTy : Nat → Type` — the period rings B_crys, B_st, B_dR, B_HT.

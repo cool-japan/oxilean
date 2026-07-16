@@ -3,15 +3,16 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::types::{
-    FarkasCert, LinCombExpr, LinCombMap, LinCombTerm, LinearCombCache, LinearCombLogger,
-    LinearCombPriorityQueue, LinearCombRegistry, LinearCombStats, LinearCombUtil0,
-    LinearCombination, LinearCombinationExtConfig2900, LinearCombinationExtConfigVal2900,
-    LinearCombinationExtDiag2900, LinearCombinationExtDiff2900, LinearCombinationExtPass2900,
-    LinearCombinationExtPipeline2900, LinearCombinationExtResult2900, LinearCombinationTactic,
-    LpSolveResult, Rat, RatMatrix, SimpleLp, TacticLinearCombinationAnalysisPass,
-    TacticLinearCombinationConfig, TacticLinearCombinationConfigValue,
-    TacticLinearCombinationDiagnostics, TacticLinearCombinationDiff,
-    TacticLinearCombinationPipeline, TacticLinearCombinationResult, UniPoly,
+    ConOrient, FarkasCert, FarkasCertEntry, LinCombExpr, LinCombMap, LinCombTerm, LinearCombCache,
+    LinearCombLogger, LinearCombPriorityQueue, LinearCombRegistry, LinearCombStats,
+    LinearCombUtil0, LinearCombination, LinearCombinationExtConfig2900,
+    LinearCombinationExtConfigVal2900, LinearCombinationExtDiag2900, LinearCombinationExtDiff2900,
+    LinearCombinationExtPass2900, LinearCombinationExtPipeline2900, LinearCombinationExtResult2900,
+    LinearCombinationTactic, LpSolveResult, Rat, RatMatrix, SimpleLp,
+    TacticLinearCombinationAnalysisPass, TacticLinearCombinationConfig,
+    TacticLinearCombinationConfigValue, TacticLinearCombinationDiagnostics,
+    TacticLinearCombinationDiff, TacticLinearCombinationPipeline, TacticLinearCombinationResult,
+    UniPoly,
 };
 use std::collections::HashMap;
 
@@ -296,8 +297,65 @@ mod lc_extended_tests {
     }
     #[test]
     fn test_farkas_cert_valid() {
-        let cert = FarkasCert::new(vec![Rat::new(1, 1), Rat::new(1, 1)], Rat::new(-1, 1));
+        let entries = vec![
+            FarkasCertEntry {
+                constraint_index: 0,
+                multiplier: Rat::new(1, 1),
+                orient: ConOrient::GeZero,
+            },
+            FarkasCertEntry {
+                constraint_index: 1,
+                multiplier: Rat::new(1, 1),
+                orient: ConOrient::LeZero,
+            },
+        ];
+        let cert = FarkasCert::new(entries, Rat::new(-1, 1));
         assert!(cert.is_valid_refutation());
+    }
+    #[test]
+    fn test_farkas_cert_new() {
+        let entry = FarkasCertEntry {
+            constraint_index: 0,
+            multiplier: Rat::new(2, 1),
+            orient: ConOrient::GeZero,
+        };
+        let cert = FarkasCert::new(vec![entry], Rat::new(-1, 1));
+        assert!(cert.is_valid_refutation());
+    }
+    #[test]
+    fn test_farkas_cert_invalid_negative_multiplier() {
+        let entry = FarkasCertEntry {
+            constraint_index: 0,
+            multiplier: Rat::new(-1, 1),
+            orient: ConOrient::GeZero,
+        };
+        let cert = FarkasCert::new(vec![entry], Rat::new(-1, 1));
+        assert!(!cert.is_valid_refutation());
+    }
+    #[test]
+    fn test_farkas_cert_invalid_positive_rhs() {
+        let entry = FarkasCertEntry {
+            constraint_index: 0,
+            multiplier: Rat::new(1, 1),
+            orient: ConOrient::GeZero,
+        };
+        let cert = FarkasCert::new(vec![entry], Rat::new(1, 1));
+        assert!(!cert.is_valid_refutation());
+    }
+    #[test]
+    fn test_farkas_cert_from_search() {
+        let pairs = vec![
+            (0usize, Rat::new(3, 2), ConOrient::GeZero),
+            (1usize, Rat::new(1, 1), ConOrient::LeZero),
+        ];
+        let mut cert = FarkasCert::from_search(&pairs);
+        cert.combined_rhs = Rat::new(-2, 1);
+        assert_eq!(cert.num_entries(), 2);
+        assert!(cert.is_valid_refutation());
+        assert_eq!(cert.entries[0].constraint_index, 0);
+        assert_eq!(cert.entries[1].constraint_index, 1);
+        assert_eq!(cert.entries[0].orient, ConOrient::GeZero);
+        assert_eq!(cert.entries[1].orient, ConOrient::LeZero);
     }
     #[test]
     fn test_simple_lp_feasible() {

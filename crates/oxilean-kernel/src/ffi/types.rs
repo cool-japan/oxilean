@@ -108,7 +108,7 @@ pub enum FfiSafety {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -116,7 +116,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }
@@ -504,25 +504,29 @@ impl FfiValue {
     /// Try to convert an OxiLean expression to an FFI value.
     pub fn try_from_expr(expr: &Expr, ty: &FfiType) -> Result<Self, FfiError> {
         match (expr, ty) {
-            (Expr::Lit(crate::Literal::Nat(n)), FfiType::UInt64) => Ok(FfiValue::UInt(*n)),
+            (Expr::Lit(crate::Literal::Nat(n)), FfiType::UInt64) => match n.to_u64() {
+                Some(v) => Ok(FfiValue::UInt(v)),
+                None => Err(FfiError::ValueOutOfRange(format!(
+                    "u64 range exceeded: {}",
+                    n
+                ))),
+            },
             (Expr::Lit(crate::Literal::Nat(n)), FfiType::UInt32) => {
-                if *n <= u32::MAX as u64 {
-                    Ok(FfiValue::UInt(*n))
-                } else {
-                    Err(FfiError::ValueOutOfRange(format!(
+                match n.to_u64().filter(|v| *v <= u32::MAX as u64) {
+                    Some(v) => Ok(FfiValue::UInt(v)),
+                    None => Err(FfiError::ValueOutOfRange(format!(
                         "u32 range exceeded: {}",
                         n
-                    )))
+                    ))),
                 }
             }
             (Expr::Lit(crate::Literal::Nat(n)), FfiType::Int64) => {
-                if *n <= i64::MAX as u64 {
-                    Ok(FfiValue::Int(*n as i64))
-                } else {
-                    Err(FfiError::ValueOutOfRange(format!(
+                match n.to_u64().filter(|v| *v <= i64::MAX as u64) {
+                    Some(v) => Ok(FfiValue::Int(v as i64)),
+                    None => Err(FfiError::ValueOutOfRange(format!(
                         "i64 range exceeded: {}",
                         n
-                    )))
+                    ))),
                 }
             }
             (Expr::Lit(crate::Literal::Str(s)), FfiType::String) => Ok(FfiValue::Str(s.clone())),
@@ -543,10 +547,10 @@ impl FfiValue {
                 },
                 vec![],
             ),
-            FfiValue::UInt(n) => Expr::Lit(crate::Literal::Nat(*n)),
+            FfiValue::UInt(n) => Expr::Lit(crate::Literal::nat(*n)),
             FfiValue::Int(n) => {
                 if *n >= 0 {
-                    Expr::Lit(crate::Literal::Nat(*n as u64))
+                    Expr::Lit(crate::Literal::nat(*n as u64))
                 } else {
                     Expr::Const(Name::str("Int.neg"), vec![])
                 }
@@ -1543,7 +1547,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -1553,7 +1557,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -1567,7 +1571,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;

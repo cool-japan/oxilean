@@ -3,7 +3,9 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::expr_util::lift_loose_bvars;
+use crate::Node;
 use crate::{Expr, FVarId, Level, Name};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, LabelSet, MinHeap,
@@ -28,6 +30,8 @@ pub fn instantiate_rev(body: &Expr, subst: &[Expr]) -> Expr {
     instantiate_rev_at(body, subst, 0)
 }
 fn instantiate_rev_at(expr: &Expr, subst: &[Expr], offset: u32) -> Expr {
+    // C16b: one fuel unit per visited (rebuilt) node; see subst::instantiate_at.
+    crate::fuel::charge(1);
     match expr {
         Expr::BVar(idx) => {
             if *idx >= offset {
@@ -46,17 +50,17 @@ fn instantiate_rev_at(expr: &Expr, subst: &[Expr], offset: u32) -> Expr {
         Expr::App(f, a) => {
             let f_new = instantiate_rev_at(f, subst, offset);
             let a_new = instantiate_rev_at(a, subst, offset);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = instantiate_rev_at(ty, subst, offset);
             let body_new = instantiate_rev_at(body, subst, offset + 1);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = instantiate_rev_at(ty, subst, offset);
             let body_new = instantiate_rev_at(body, subst, offset + 1);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = instantiate_rev_at(ty, subst, offset);
@@ -64,14 +68,14 @@ fn instantiate_rev_at(expr: &Expr, subst: &[Expr], offset: u32) -> Expr {
             let body_new = instantiate_rev_at(body, subst, offset + 1);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = instantiate_rev_at(e, subst, offset);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
     }
 }
@@ -88,6 +92,8 @@ pub fn instantiate_many(body: &Expr, subst: &[Expr]) -> Expr {
     instantiate_many_at(body, subst, 0)
 }
 fn instantiate_many_at(expr: &Expr, subst: &[Expr], offset: u32) -> Expr {
+    // C16b: one fuel unit per visited (rebuilt) node; see subst::instantiate_at.
+    crate::fuel::charge(1);
     match expr {
         Expr::BVar(idx) => {
             if *idx >= offset {
@@ -105,17 +111,17 @@ fn instantiate_many_at(expr: &Expr, subst: &[Expr], offset: u32) -> Expr {
         Expr::App(f, a) => {
             let f_new = instantiate_many_at(f, subst, offset);
             let a_new = instantiate_many_at(a, subst, offset);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = instantiate_many_at(ty, subst, offset);
             let body_new = instantiate_many_at(body, subst, offset + 1);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = instantiate_many_at(ty, subst, offset);
             let body_new = instantiate_many_at(body, subst, offset + 1);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = instantiate_many_at(ty, subst, offset);
@@ -123,14 +129,14 @@ fn instantiate_many_at(expr: &Expr, subst: &[Expr], offset: u32) -> Expr {
             let body_new = instantiate_many_at(body, subst, offset + 1);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = instantiate_many_at(e, subst, offset);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
     }
 }
@@ -146,6 +152,8 @@ pub fn instantiate_type_lparams(ty: &Expr, param_names: &[Name], levels: &[Level
     instantiate_type_lparams_core(ty, param_names, levels)
 }
 fn instantiate_type_lparams_core(expr: &Expr, param_names: &[Name], levels: &[Level]) -> Expr {
+    // C16b: one fuel unit per visited (rebuilt) node; see subst::instantiate_at.
+    crate::fuel::charge(1);
     match expr {
         Expr::Sort(l) => {
             let new_l = instantiate_level_param(l, param_names, levels);
@@ -161,17 +169,17 @@ fn instantiate_type_lparams_core(expr: &Expr, param_names: &[Name], levels: &[Le
         Expr::App(f, a) => {
             let f_new = instantiate_type_lparams_core(f, param_names, levels);
             let a_new = instantiate_type_lparams_core(a, param_names, levels);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = instantiate_type_lparams_core(ty, param_names, levels);
             let body_new = instantiate_type_lparams_core(body, param_names, levels);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = instantiate_type_lparams_core(ty, param_names, levels);
             let body_new = instantiate_type_lparams_core(body, param_names, levels);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = instantiate_type_lparams_core(ty, param_names, levels);
@@ -179,14 +187,14 @@ fn instantiate_type_lparams_core(expr: &Expr, param_names: &[Name], levels: &[Le
             let body_new = instantiate_type_lparams_core(body, param_names, levels);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = instantiate_type_lparams_core(e, param_names, levels);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
         Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => expr.clone(),
     }
@@ -231,17 +239,17 @@ pub fn instantiate_expr_mvars(expr: &Expr, subst: &dyn Fn(FVarId) -> Option<Expr
         Expr::App(f, a) => {
             let f_new = instantiate_expr_mvars(f, subst);
             let a_new = instantiate_expr_mvars(a, subst);
-            Expr::App(Box::new(f_new), Box::new(a_new))
+            Expr::App(Node::new(f_new), Node::new(a_new))
         }
         Expr::Lam(bi, name, ty, body) => {
             let ty_new = instantiate_expr_mvars(ty, subst);
             let body_new = instantiate_expr_mvars(body, subst);
-            Expr::Lam(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Pi(bi, name, ty, body) => {
             let ty_new = instantiate_expr_mvars(ty, subst);
             let body_new = instantiate_expr_mvars(body, subst);
-            Expr::Pi(*bi, name.clone(), Box::new(ty_new), Box::new(body_new))
+            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
         }
         Expr::Let(name, ty, val, body) => {
             let ty_new = instantiate_expr_mvars(ty, subst);
@@ -249,14 +257,14 @@ pub fn instantiate_expr_mvars(expr: &Expr, subst: &dyn Fn(FVarId) -> Option<Expr
             let body_new = instantiate_expr_mvars(body, subst);
             Expr::Let(
                 name.clone(),
-                Box::new(ty_new),
-                Box::new(val_new),
-                Box::new(body_new),
+                Node::new(ty_new),
+                Node::new(val_new),
+                Node::new(body_new),
             )
         }
         Expr::Proj(name, idx, e) => {
             let e_new = instantiate_expr_mvars(e, subst);
-            Expr::Proj(name.clone(), *idx, Box::new(e_new))
+            Expr::Proj(name.clone(), *idx, Node::new(e_new))
         }
         Expr::Sort(_) | Expr::BVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
     }
@@ -267,7 +275,7 @@ mod tests {
     use crate::BinderInfo;
     #[test]
     fn test_instantiate_rev_basic() {
-        let body = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let body = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let a = Expr::FVar(FVarId(0));
         let b = Expr::FVar(FVarId(1));
         let result = instantiate_rev(&body, &[a.clone(), b.clone()]);
@@ -299,8 +307,8 @@ mod tests {
         let body = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(1)),
         );
         let arg = Expr::FVar(FVarId(99));
         let result = instantiate_rev(&body, std::slice::from_ref(&arg));
@@ -318,7 +326,7 @@ mod tests {
     }
     #[test]
     fn test_instantiate_many_basic() {
-        let body = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let body = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let a = Expr::FVar(FVarId(0));
         let b = Expr::FVar(FVarId(1));
         let result = instantiate_many(&body, &[a.clone(), b.clone()]);
@@ -348,8 +356,8 @@ mod tests {
         let ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::param(Name::str("u")))),
-            Box::new(Expr::Sort(Level::param(Name::str("v")))),
+            Node::new(Expr::Sort(Level::param(Name::str("u")))),
+            Node::new(Expr::Sort(Level::param(Name::str("v")))),
         );
         let result = instantiate_type_lparams(
             &ty,
@@ -366,8 +374,8 @@ mod tests {
     #[test]
     fn test_instantiate_expr_mvars() {
         let e = Expr::App(
-            Box::new(Expr::FVar(FVarId(1))),
-            Box::new(Expr::FVar(FVarId(2))),
+            Node::new(Expr::FVar(FVarId(1))),
+            Node::new(Expr::FVar(FVarId(2))),
         );
         let result = instantiate_expr_mvars(&e, &|id| {
             if id == FVarId(1) {
@@ -396,29 +404,29 @@ pub fn abstract_fvar(expr: &Expr, fvar_id: FVarId, depth: u32) -> Expr {
             expr.clone()
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(abstract_fvar(f, fvar_id, depth)),
-            Box::new(abstract_fvar(a, fvar_id, depth)),
+            Node::new(abstract_fvar(f, fvar_id, depth)),
+            Node::new(abstract_fvar(a, fvar_id, depth)),
         ),
         Expr::Lam(bi, n, dom, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(abstract_fvar(dom, fvar_id, depth)),
-            Box::new(abstract_fvar(body, fvar_id, depth + 1)),
+            Node::new(abstract_fvar(dom, fvar_id, depth)),
+            Node::new(abstract_fvar(body, fvar_id, depth + 1)),
         ),
         Expr::Pi(bi, n, dom, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(abstract_fvar(dom, fvar_id, depth)),
-            Box::new(abstract_fvar(body, fvar_id, depth + 1)),
+            Node::new(abstract_fvar(dom, fvar_id, depth)),
+            Node::new(abstract_fvar(body, fvar_id, depth + 1)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(abstract_fvar(ty, fvar_id, depth)),
-            Box::new(abstract_fvar(val, fvar_id, depth)),
-            Box::new(abstract_fvar(body, fvar_id, depth + 1)),
+            Node::new(abstract_fvar(ty, fvar_id, depth)),
+            Node::new(abstract_fvar(val, fvar_id, depth)),
+            Node::new(abstract_fvar(body, fvar_id, depth + 1)),
         ),
         Expr::Proj(n, i, e) => {
-            Expr::Proj(n.clone(), *i, Box::new(abstract_fvar(e, fvar_id, depth)))
+            Expr::Proj(n.clone(), *i, Node::new(abstract_fvar(e, fvar_id, depth)))
         }
     }
 }
@@ -503,29 +511,29 @@ fn lift_bvars_at(expr: &Expr, n: u32, depth: u32) -> Expr {
         }
         Expr::FVar(_) | Expr::Sort(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(lift_bvars_at(f, n, depth)),
-            Box::new(lift_bvars_at(a, n, depth)),
+            Node::new(lift_bvars_at(f, n, depth)),
+            Node::new(lift_bvars_at(a, n, depth)),
         ),
         Expr::Lam(bi, name, dom, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(lift_bvars_at(dom, n, depth)),
-            Box::new(lift_bvars_at(body, n, depth + 1)),
+            Node::new(lift_bvars_at(dom, n, depth)),
+            Node::new(lift_bvars_at(body, n, depth + 1)),
         ),
         Expr::Pi(bi, name, dom, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(lift_bvars_at(dom, n, depth)),
-            Box::new(lift_bvars_at(body, n, depth + 1)),
+            Node::new(lift_bvars_at(dom, n, depth)),
+            Node::new(lift_bvars_at(body, n, depth + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(lift_bvars_at(ty, n, depth)),
-            Box::new(lift_bvars_at(val, n, depth)),
-            Box::new(lift_bvars_at(body, n, depth + 1)),
+            Node::new(lift_bvars_at(ty, n, depth)),
+            Node::new(lift_bvars_at(val, n, depth)),
+            Node::new(lift_bvars_at(body, n, depth + 1)),
         ),
         Expr::Proj(name, idx, e) => {
-            Expr::Proj(name.clone(), *idx, Box::new(lift_bvars_at(e, n, depth)))
+            Expr::Proj(name.clone(), *idx, Node::new(lift_bvars_at(e, n, depth)))
         }
     }
 }
@@ -584,7 +592,7 @@ pub fn beta_reduce_head(expr: &Expr) -> Expr {
 #[allow(dead_code)]
 pub fn beta_apply(f: &Expr, args: &[Expr]) -> Expr {
     args.iter().fold(f.clone(), |acc, arg| {
-        let applied = Expr::App(Box::new(acc), Box::new(arg.clone()));
+        let applied = Expr::App(Node::new(acc), Node::new(arg.clone()));
         beta_reduce_head(&applied)
     })
 }
@@ -597,28 +605,28 @@ pub fn subst_fvar(expr: &Expr, id: FVarId, replacement: &Expr) -> Expr {
             expr.clone()
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_fvar(f, id, replacement)),
-            Box::new(subst_fvar(a, id, replacement)),
+            Node::new(subst_fvar(f, id, replacement)),
+            Node::new(subst_fvar(a, id, replacement)),
         ),
         Expr::Lam(bi, n, dom, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(subst_fvar(dom, id, replacement)),
-            Box::new(subst_fvar(body, id, replacement)),
+            Node::new(subst_fvar(dom, id, replacement)),
+            Node::new(subst_fvar(body, id, replacement)),
         ),
         Expr::Pi(bi, n, dom, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(subst_fvar(dom, id, replacement)),
-            Box::new(subst_fvar(body, id, replacement)),
+            Node::new(subst_fvar(dom, id, replacement)),
+            Node::new(subst_fvar(body, id, replacement)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(subst_fvar(ty, id, replacement)),
-            Box::new(subst_fvar(val, id, replacement)),
-            Box::new(subst_fvar(body, id, replacement)),
+            Node::new(subst_fvar(ty, id, replacement)),
+            Node::new(subst_fvar(val, id, replacement)),
+            Node::new(subst_fvar(body, id, replacement)),
         ),
-        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Box::new(subst_fvar(e, id, replacement))),
+        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Node::new(subst_fvar(e, id, replacement))),
     }
 }
 /// Simultaneously substitute multiple `FVar` ids.
@@ -675,8 +683,8 @@ mod instantiate_extra_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(inner),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(inner),
         );
         let lifted = lift_bvars(&lam, 1);
         if let Expr::Lam(_, _, _, body) = &lifted {
@@ -692,10 +700,10 @@ mod instantiate_extra_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(body),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(body),
         );
-        let app = Expr::App(Box::new(lam), Box::new(a.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(a.clone()));
         let result = beta_reduce_once(&app).expect("result should be present");
         assert_eq!(result, a);
     }
@@ -705,9 +713,9 @@ mod instantiate_extra_tests {
         let body = Expr::BVar(0);
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(a.clone()),
-            Box::new(body),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(a.clone()),
+            Node::new(body),
         );
         let result = unfold_let_one(&let_expr).expect("result should be present");
         assert_eq!(result, a);
@@ -746,9 +754,9 @@ mod instantiate_extra_tests {
     fn test_is_whnf_simple_let() {
         let e = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert!(!is_whnf_simple(&e));
     }
@@ -772,28 +780,28 @@ pub(super) fn named_subst_apply(expr: &Expr, subst: &NamedSubst) -> Expr {
             expr.clone()
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(named_subst_apply(f, subst)),
-            Box::new(named_subst_apply(a, subst)),
+            Node::new(named_subst_apply(f, subst)),
+            Node::new(named_subst_apply(a, subst)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(named_subst_apply(ty, subst)),
-            Box::new(named_subst_apply(body, subst)),
+            Node::new(named_subst_apply(ty, subst)),
+            Node::new(named_subst_apply(body, subst)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(named_subst_apply(ty, subst)),
-            Box::new(named_subst_apply(body, subst)),
+            Node::new(named_subst_apply(ty, subst)),
+            Node::new(named_subst_apply(body, subst)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(named_subst_apply(ty, subst)),
-            Box::new(named_subst_apply(val, subst)),
-            Box::new(named_subst_apply(body, subst)),
+            Node::new(named_subst_apply(ty, subst)),
+            Node::new(named_subst_apply(val, subst)),
+            Node::new(named_subst_apply(body, subst)),
         ),
-        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Box::new(named_subst_apply(e, subst))),
+        Expr::Proj(n, i, e) => Expr::Proj(n.clone(), *i, Node::new(named_subst_apply(e, subst))),
         other => other.clone(),
     }
 }
@@ -823,12 +831,12 @@ mod instantiate_new_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("y"),
-                Box::new(nat.clone()),
-                Box::new(nat.clone()),
+                Node::new(nat.clone()),
+                Node::new(nat.clone()),
             )),
         );
         let (tel, body) = Telescope::from_pi(&pi);
@@ -858,7 +866,7 @@ mod instantiate_new_tests {
     fn test_named_subst_basic() {
         let mut subst = NamedSubst::new();
         assert!(subst.is_empty());
-        subst.insert(Name::str("x"), Expr::Lit(crate::Literal::Nat(42)));
+        subst.insert(Name::str("x"), Expr::Lit(crate::Literal::nat(42)));
         assert_eq!(subst.len(), 1);
         assert!(subst.get(&Name::str("x")).is_some());
         assert!(subst.get(&Name::str("y")).is_none());
@@ -866,7 +874,7 @@ mod instantiate_new_tests {
     #[test]
     fn test_named_subst_apply_hit() {
         let mut subst = NamedSubst::new();
-        let repl = Expr::Lit(crate::Literal::Nat(99));
+        let repl = Expr::Lit(crate::Literal::nat(99));
         subst.insert(Name::str("x"), repl.clone());
         let expr = Expr::Const(Name::str("x"), vec![]);
         let result = subst.apply(&expr);
@@ -884,8 +892,8 @@ mod instantiate_new_tests {
         let mut subst = NamedSubst::new();
         subst.insert(Name::str("f"), Expr::Const(Name::str("g"), vec![]));
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(crate::Literal::Nat(1))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(crate::Literal::nat(1))),
         );
         let result = subst.apply(&expr);
         if let Expr::App(head, _) = &result {
@@ -907,8 +915,8 @@ mod instantiate_new_tests {
         use crate::FVarId;
         let ids = vec![FVarId(0), FVarId(1)];
         let expr = Expr::App(
-            Box::new(Expr::FVar(FVarId(0))),
-            Box::new(Expr::FVar(FVarId(1))),
+            Node::new(Expr::FVar(FVarId(0))),
+            Node::new(Expr::FVar(FVarId(1))),
         );
         let result = abstract_fvars(&expr, &ids, 0);
         if let Expr::App(f, a) = &result {
@@ -921,7 +929,7 @@ mod instantiate_new_tests {
     #[test]
     fn test_named_subst_const_with_levels_not_replaced() {
         let mut subst = NamedSubst::new();
-        subst.insert(Name::str("f"), Expr::Lit(crate::Literal::Nat(0)));
+        subst.insert(Name::str("f"), Expr::Lit(crate::Literal::nat(0)));
         let expr = Expr::Const(Name::str("f"), vec![Level::zero()]);
         let result = subst.apply(&expr);
         assert_eq!(result, expr);
@@ -1078,7 +1086,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

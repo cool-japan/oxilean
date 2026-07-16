@@ -12,6 +12,7 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 
 /// Apply a calc proof to close the current goal.
@@ -81,8 +82,8 @@ pub(super) fn build_trans(
     };
     let trans = Expr::Const(Name::str(trans_name), vec![Level::zero()]);
     Expr::App(
-        Box::new(Expr::App(Box::new(trans), Box::new(proof1))),
-        Box::new(proof2),
+        Node::new(Expr::App(Node::new(trans), Node::new(proof1))),
+        Node::new(proof2),
     )
 }
 /// Parse an equality goal.
@@ -93,7 +94,7 @@ pub(super) fn parse_eq_goal(expr: &Expr) -> TacticResult<(Expr, Expr)> {
                 if matches!(
                     eq_const.as_ref(), Expr::Const(name, _) if * name == Name::str("Eq")
                 ) {
-                    return Ok((*lhs.clone(), *rhs.clone()));
+                    return Ok(((**lhs).clone(), (**rhs).clone()));
                 }
             }
         }
@@ -174,14 +175,14 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let eq_goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
-                    Box::new(nat_ty()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
+                    Node::new(nat_ty()),
                 )),
-                Box::new(a.clone()),
+                Node::new(a.clone()),
             )),
-            Box::new(b.clone()),
+            Node::new(b.clone()),
         );
         let (lhs, rhs) = parse_eq_goal(&eq_goal).expect("value should be present");
         assert_eq!(lhs, a);
@@ -211,11 +212,11 @@ pub fn normalize_calc_chain(chain: &TypedCalcChain) -> TypedCalcChain {
             let next = &chain.steps[i + 1];
             if next.kind == RelationKind::Eq {
                 let merged_proof = Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Eq.trans"), vec![Level::zero()])),
-                        Box::new(step.proof.clone()),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Eq.trans"), vec![Level::zero()])),
+                        Node::new(step.proof.clone()),
                     )),
-                    Box::new(next.proof.clone()),
+                    Node::new(next.proof.clone()),
                 );
                 result.steps.push(TypedCalcStep {
                     kind: RelationKind::Eq,
@@ -265,8 +266,8 @@ pub fn reverse_eq_chain(chain: &TypedCalcChain) -> Option<TypedCalcChain> {
         .collect();
     for i in (0..chain.steps.len()).rev() {
         let symm_proof = Expr::App(
-            Box::new(Expr::Const(Name::str("Eq.symm"), vec![Level::zero()])),
-            Box::new(chain.steps[i].proof.clone()),
+            Node::new(Expr::Const(Name::str("Eq.symm"), vec![Level::zero()])),
+            Node::new(chain.steps[i].proof.clone()),
         );
         new_steps.push(TypedCalcStep {
             kind: RelationKind::Eq,

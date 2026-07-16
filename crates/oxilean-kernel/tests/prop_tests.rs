@@ -14,6 +14,7 @@
 
 use oxilean_kernel::instantiate::has_loose_bvars;
 use oxilean_kernel::level::normalize as normalize_level;
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     abstract_expr, instantiate, is_def_eq_simple, whnf, BinderInfo, Expr, FVarId, Level, Literal,
     Name,
@@ -43,29 +44,29 @@ fn lower_bvars_at(expr: &Expr, n: u32, depth: u32) -> Expr {
         }
         Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(lower_bvars_at(f, n, depth)),
-            Box::new(lower_bvars_at(a, n, depth)),
+            Node::new(lower_bvars_at(f, n, depth)),
+            Node::new(lower_bvars_at(a, n, depth)),
         ),
         Expr::Lam(bi, name, dom, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(lower_bvars_at(dom, n, depth)),
-            Box::new(lower_bvars_at(body, n, depth + 1)),
+            Node::new(lower_bvars_at(dom, n, depth)),
+            Node::new(lower_bvars_at(body, n, depth + 1)),
         ),
         Expr::Pi(bi, name, dom, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(lower_bvars_at(dom, n, depth)),
-            Box::new(lower_bvars_at(body, n, depth + 1)),
+            Node::new(lower_bvars_at(dom, n, depth)),
+            Node::new(lower_bvars_at(body, n, depth + 1)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(lower_bvars_at(ty, n, depth)),
-            Box::new(lower_bvars_at(val, n, depth)),
-            Box::new(lower_bvars_at(body, n, depth + 1)),
+            Node::new(lower_bvars_at(ty, n, depth)),
+            Node::new(lower_bvars_at(val, n, depth)),
+            Node::new(lower_bvars_at(body, n, depth + 1)),
         ),
         Expr::Proj(name, idx, e) => {
-            Expr::Proj(name.clone(), *idx, Box::new(lower_bvars_at(e, n, depth)))
+            Expr::Proj(name.clone(), *idx, Node::new(lower_bvars_at(e, n, depth)))
         }
     }
 }
@@ -143,7 +144,7 @@ fn arb_closed_expr_impl(depth: u32, binder_depth: u32) -> impl Strategy<Value = 
         prop_oneof![
             arb_level(2).prop_map(Expr::Sort),
             arb_name().prop_map(|n| Expr::Const(n, vec![])),
-            (0u64..=1000u64).prop_map(|n| Expr::Lit(Literal::Nat(n))),
+            (0u64..=1000u64).prop_map(|n| Expr::Lit(Literal::nat(n))),
         ]
         .boxed()
     } else {
@@ -151,13 +152,13 @@ fn arb_closed_expr_impl(depth: u32, binder_depth: u32) -> impl Strategy<Value = 
             // Atomic expressions
             arb_level(2).prop_map(Expr::Sort),
             arb_name().prop_map(|n| Expr::Const(n, vec![])),
-            (0u64..=1000u64).prop_map(|n| Expr::Lit(Literal::Nat(n))),
+            (0u64..=1000u64).prop_map(|n| Expr::Lit(Literal::nat(n))),
             // Application: f applied to a (both closed)
             (
                 arb_closed_expr_impl(depth - 1, binder_depth),
                 arb_closed_expr_impl(depth - 1, binder_depth)
             )
-                .prop_map(|(f, a)| Expr::App(Box::new(f), Box::new(a))),
+                .prop_map(|(f, a)| Expr::App(Node::new(f), Node::new(a))),
             // Lambda: Lam binder — body has binder_depth + 1, but we generate
             // body as a closed expression (BVar(0) inside = bound by this lam).
             // We skip BVar inside to keep it truly closed externally.
@@ -167,7 +168,7 @@ fn arb_closed_expr_impl(depth: u32, binder_depth: u32) -> impl Strategy<Value = 
                 arb_closed_expr_impl(depth - 1, binder_depth + 1)
             )
                 .prop_map(|(name, ty, body)| {
-                    Expr::Lam(BinderInfo::Default, name, Box::new(ty), Box::new(body))
+                    Expr::Lam(BinderInfo::Default, name, Node::new(ty), Node::new(body))
                 }),
             // Pi: same pattern
             (
@@ -176,7 +177,7 @@ fn arb_closed_expr_impl(depth: u32, binder_depth: u32) -> impl Strategy<Value = 
                 arb_closed_expr_impl(depth - 1, binder_depth + 1)
             )
                 .prop_map(|(name, ty, body)| {
-                    Expr::Pi(BinderInfo::Default, name, Box::new(ty), Box::new(body))
+                    Expr::Pi(BinderInfo::Default, name, Node::new(ty), Node::new(body))
                 }),
         ]
         .boxed()
@@ -194,7 +195,7 @@ fn arb_fvar_expr_impl(depth: u32, fvar: FVarId) -> impl Strategy<Value = Expr> {
         prop_oneof![
             arb_level(2).prop_map(Expr::Sort),
             arb_name().prop_map(|n| Expr::Const(n, vec![])),
-            (0u64..=100u64).prop_map(|n| Expr::Lit(Literal::Nat(n))),
+            (0u64..=100u64).prop_map(|n| Expr::Lit(Literal::nat(n))),
             // The specific FVar we care about
             Just(Expr::FVar(fvar)),
         ]
@@ -203,14 +204,14 @@ fn arb_fvar_expr_impl(depth: u32, fvar: FVarId) -> impl Strategy<Value = Expr> {
         prop_oneof![
             arb_level(2).prop_map(Expr::Sort),
             arb_name().prop_map(|n| Expr::Const(n, vec![])),
-            (0u64..=100u64).prop_map(|n| Expr::Lit(Literal::Nat(n))),
+            (0u64..=100u64).prop_map(|n| Expr::Lit(Literal::nat(n))),
             Just(Expr::FVar(fvar)),
             // App
             (
                 arb_fvar_expr_impl(depth - 1, fvar),
                 arb_fvar_expr_impl(depth - 1, fvar)
             )
-                .prop_map(|(f, a)| Expr::App(Box::new(f), Box::new(a))),
+                .prop_map(|(f, a)| Expr::App(Node::new(f), Node::new(a))),
             // Lam — generate body without embedding fvar inside the binder body,
             // because abstract_expr would shift BVars inside, breaking the
             // identity for expressions that contain BVar(0) bound by THIS lambda.
@@ -222,7 +223,7 @@ fn arb_fvar_expr_impl(depth: u32, fvar: FVarId) -> impl Strategy<Value = Expr> {
                 arb_level(1).prop_map(Expr::Sort),
             )
                 .prop_map(|(name, ty, body)| {
-                    Expr::Lam(BinderInfo::Default, name, Box::new(ty), Box::new(body))
+                    Expr::Lam(BinderInfo::Default, name, Node::new(ty), Node::new(body))
                 }),
             // Pi — same constraint
             (
@@ -231,7 +232,7 @@ fn arb_fvar_expr_impl(depth: u32, fvar: FVarId) -> impl Strategy<Value = Expr> {
                 arb_level(1).prop_map(Expr::Sort),
             )
                 .prop_map(|(name, ty, body)| {
-                    Expr::Pi(BinderInfo::Default, name, Box::new(ty), Box::new(body))
+                    Expr::Pi(BinderInfo::Default, name, Node::new(ty), Node::new(body))
                 }),
         ]
         .boxed()
@@ -414,7 +415,7 @@ proptest! {
     /// Literal expressions are already in WHNF.
     #[test]
     fn prop_whnf_lit_fixed_points(n in 0u64..=u64::MAX) {
-        let lit = Expr::Lit(Literal::Nat(n));
+        let lit = Expr::Lit(Literal::nat(n));
         let whnf_lit = whnf(&lit);
         prop_assert_eq!(whnf_lit, lit,
             "Literal::Nat is always a WHNF fixed point");
@@ -430,8 +431,8 @@ proptest! {
         n in 0u64..=999u64,
         m in 1000u64..=1999u64,
     ) {
-        let e1 = Expr::Lit(Literal::Nat(n));
-        let e2 = Expr::Lit(Literal::Nat(m));
+        let e1 = Expr::Lit(Literal::nat(n));
+        let e2 = Expr::Lit(Literal::nat(m));
         let result = is_def_eq_simple(&e1, &e2);
         prop_assert!(!result,
             "Distinct literal naturals {} and {} should not be definitionally equal", n, m);

@@ -4,6 +4,7 @@
 
 use crate::basic::MVarId;
 use crate::discr_tree::DiscrTree;
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::{BTreeMap, HashMap};
 
@@ -44,8 +45,8 @@ impl StructExtInfo {
     pub(super) fn field_equalities(&self, lhs: &Expr, rhs: &Expr) -> Vec<Expr> {
         let mut eqs = Vec::new();
         for i in 0..self.field_names.len() {
-            let lhs_proj = Expr::Proj(self.struct_name.clone(), i as u32, Box::new(lhs.clone()));
-            let rhs_proj = Expr::Proj(self.struct_name.clone(), i as u32, Box::new(rhs.clone()));
+            let lhs_proj = Expr::Proj(self.struct_name.clone(), i as u32, Node::new(lhs.clone()));
+            let rhs_proj = Expr::Proj(self.struct_name.clone(), i as u32, Node::new(rhs.clone()));
             let field_ty = self
                 .field_types
                 .get(i)

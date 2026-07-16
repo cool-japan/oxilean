@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Level, Name};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use super::functions::*;
 
@@ -713,28 +715,28 @@ impl ProofNormalizer {
                 let f_reduced = Self::beta_reduce(f);
                 let arg_reduced = Self::beta_reduce(arg);
                 if let Expr::Lam(_, _, _, body) = f_reduced {
-                    let substituted = Self::subst_bvar(*body, 0, &arg_reduced);
+                    let substituted = Self::subst_bvar((*body).clone(), 0, &arg_reduced);
                     Self::beta_reduce(&substituted)
                 } else {
-                    Expr::App(Box::new(f_reduced), Box::new(arg_reduced))
+                    Expr::App(Node::new(f_reduced), Node::new(arg_reduced))
                 }
             }
             Expr::Lam(bk, n, ty, body) => {
                 let ty_red = Self::beta_reduce(ty);
                 let body_red = Self::beta_reduce(body);
-                Expr::Lam(*bk, n.clone(), Box::new(ty_red), Box::new(body_red))
+                Expr::Lam(*bk, n.clone(), Node::new(ty_red), Node::new(body_red))
             }
             Expr::Pi(bk, n, ty, body) => {
                 let ty_red = Self::beta_reduce(ty);
                 let body_red = Self::beta_reduce(body);
-                Expr::Pi(*bk, n.clone(), Box::new(ty_red), Box::new(body_red))
+                Expr::Pi(*bk, n.clone(), Node::new(ty_red), Node::new(body_red))
             }
             Expr::Let(_n, _ty, val, body) => {
                 let val_red = Self::beta_reduce(val);
-                let body_subst = Self::subst_bvar(*body.clone(), 0, &val_red);
+                let body_subst = Self::subst_bvar((**body).clone(), 0, &val_red);
                 Self::beta_reduce(&body_subst)
             }
-            Expr::Proj(idx, n, e) => Expr::Proj(idx.clone(), *n, Box::new(Self::beta_reduce(e))),
+            Expr::Proj(idx, n, e) => Expr::Proj(idx.clone(), *n, Node::new(Self::beta_reduce(e))),
             other => other.clone(),
         }
     }
@@ -754,30 +756,32 @@ impl ProofNormalizer {
                 }
             }
             Expr::App(f, a) => Expr::App(
-                Box::new(Self::subst_bvar(*f, depth, replacement)),
-                Box::new(Self::subst_bvar(*a, depth, replacement)),
+                Node::new(Self::subst_bvar((*f).clone(), depth, replacement)),
+                Node::new(Self::subst_bvar((*a).clone(), depth, replacement)),
             ),
             Expr::Lam(bk, n, ty, body) => Expr::Lam(
                 bk,
                 n,
-                Box::new(Self::subst_bvar(*ty, depth, replacement)),
-                Box::new(Self::subst_bvar(*body, depth + 1, replacement)),
+                Node::new(Self::subst_bvar((*ty).clone(), depth, replacement)),
+                Node::new(Self::subst_bvar((*body).clone(), depth + 1, replacement)),
             ),
             Expr::Pi(bk, n, ty, body) => Expr::Pi(
                 bk,
                 n,
-                Box::new(Self::subst_bvar(*ty, depth, replacement)),
-                Box::new(Self::subst_bvar(*body, depth + 1, replacement)),
+                Node::new(Self::subst_bvar((*ty).clone(), depth, replacement)),
+                Node::new(Self::subst_bvar((*body).clone(), depth + 1, replacement)),
             ),
             Expr::Let(n, ty, val, body) => Expr::Let(
                 n,
-                Box::new(Self::subst_bvar(*ty, depth, replacement)),
-                Box::new(Self::subst_bvar(*val, depth, replacement)),
-                Box::new(Self::subst_bvar(*body, depth + 1, replacement)),
+                Node::new(Self::subst_bvar((*ty).clone(), depth, replacement)),
+                Node::new(Self::subst_bvar((*val).clone(), depth, replacement)),
+                Node::new(Self::subst_bvar((*body).clone(), depth + 1, replacement)),
             ),
-            Expr::Proj(idx, n, e) => {
-                Expr::Proj(idx, n, Box::new(Self::subst_bvar(*e, depth, replacement)))
-            }
+            Expr::Proj(idx, n, e) => Expr::Proj(
+                idx,
+                n,
+                Node::new(Self::subst_bvar((*e).clone(), depth, replacement)),
+            ),
             other => other,
         }
     }
@@ -1366,7 +1370,7 @@ impl<T> FocusStack<T> {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -1374,7 +1378,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }
@@ -1476,7 +1480,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -1486,7 +1490,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -1500,7 +1504,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;

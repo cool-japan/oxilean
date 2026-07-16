@@ -11,6 +11,7 @@ use super::types::{
     MetaBasicStateMachine, MetaBasicWindow, MetaBasicWorkQueue, MetaConfig, MetaStatistics,
     MetaVarPool, MetavarKind, UnificationTrace,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, ConstantInfo, Environment, Expr, FVarId, Level, Name};
 
 /// Offset added to MVarId to create FVarId placeholders.
@@ -27,27 +28,32 @@ pub fn abstract_fvar_in_expr(expr: &Expr, fvar_id: FVarId, idx: u32) -> Expr {
         Expr::App(f, a) => {
             let f2 = abstract_fvar_in_expr(f, fvar_id, idx);
             let a2 = abstract_fvar_in_expr(a, fvar_id, idx);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(info, name, ty, body) => {
             let ty2 = abstract_fvar_in_expr(ty, fvar_id, idx);
             let body2 = abstract_fvar_in_expr(body, fvar_id, idx + 1);
-            Expr::Lam(*info, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*info, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(info, name, ty, body) => {
             let ty2 = abstract_fvar_in_expr(ty, fvar_id, idx);
             let body2 = abstract_fvar_in_expr(body, fvar_id, idx + 1);
-            Expr::Pi(*info, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*info, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(name, ty, val, body) => {
             let ty2 = abstract_fvar_in_expr(ty, fvar_id, idx);
             let val2 = abstract_fvar_in_expr(val, fvar_id, idx);
             let body2 = abstract_fvar_in_expr(body, fvar_id, idx + 1);
-            Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                name.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(name, pidx, e) => {
             let e2 = abstract_fvar_in_expr(e, fvar_id, idx);
-            Expr::Proj(name.clone(), *pidx, Box::new(e2))
+            Expr::Proj(name.clone(), *pidx, Node::new(e2))
         }
     }
 }
@@ -81,18 +87,18 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let (id, _) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         assert!(!ctx.is_mvar_assigned(id));
-        let val = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let val = Expr::Lit(oxilean_kernel::Literal::nat(42));
         assert!(ctx.assign_mvar(id, val.clone()));
         assert!(ctx.is_mvar_assigned(id));
         assert_eq!(ctx.get_mvar_assignment(id), Some(&val));
-        assert!(!ctx.assign_mvar(id, Expr::Lit(oxilean_kernel::Literal::Nat(0))));
+        assert!(!ctx.assign_mvar(id, Expr::Lit(oxilean_kernel::Literal::nat(0))));
     }
     #[test]
     fn test_instantiate_mvars() {
         let mut ctx = MetaContext::new(mk_env());
         let ty = Expr::Sort(Level::zero());
         let (id, placeholder) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
-        let val = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let val = Expr::Lit(oxilean_kernel::Literal::nat(42));
         ctx.assign_mvar(id, val.clone());
         let result = ctx.instantiate_mvars(&placeholder);
         assert_eq!(result, val);
@@ -103,13 +109,16 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let (id, placeholder) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(placeholder),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(placeholder),
         );
-        let val = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let val = Expr::Lit(oxilean_kernel::Literal::nat(42));
         ctx.assign_mvar(id, val.clone());
         let result = ctx.instantiate_mvars(&app);
-        let expected = Expr::App(Box::new(Expr::Const(Name::str("f"), vec![])), Box::new(val));
+        let expected = Expr::App(
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(val),
+        );
         assert_eq!(result, expected);
     }
     #[test]
@@ -118,7 +127,7 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let (id, placeholder) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         assert!(ctx.has_unassigned_mvars(&placeholder));
-        ctx.assign_mvar(id, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+        ctx.assign_mvar(id, Expr::Lit(oxilean_kernel::Literal::nat(42)));
         assert!(!ctx.has_unassigned_mvars(&placeholder));
     }
     #[test]
@@ -142,13 +151,13 @@ mod tests {
         let fvar = ctx.mk_let_decl(
             Name::str("x"),
             Expr::Sort(Level::zero()),
-            Expr::Lit(oxilean_kernel::Literal::Nat(42)),
+            Expr::Lit(oxilean_kernel::Literal::nat(42)),
         );
         let decl = ctx.find_local_decl(fvar).expect("decl should be present");
         assert!(decl.value.is_some());
         assert_eq!(
             ctx.get_fvar_value(fvar).expect("value should be present"),
-            &Expr::Lit(oxilean_kernel::Literal::Nat(42))
+            &Expr::Lit(oxilean_kernel::Literal::nat(42))
         );
     }
     #[test]
@@ -174,7 +183,7 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let (id, _) = ctx.mk_fresh_expr_mvar(ty.clone(), MetavarKind::Natural);
         let state = ctx.save_state();
-        ctx.assign_mvar(id, Expr::Lit(oxilean_kernel::Literal::Nat(42)));
+        ctx.assign_mvar(id, Expr::Lit(oxilean_kernel::Literal::nat(42)));
         let _ = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         ctx.postpone(Expr::BVar(0), Expr::BVar(1));
         assert!(ctx.is_mvar_assigned(id));

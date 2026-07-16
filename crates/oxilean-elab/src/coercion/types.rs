@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -483,8 +484,8 @@ impl CoercionRegistry {
     pub fn apply_coercion(&self, expr: Expr, from: &Expr, to: &Expr) -> Option<Expr> {
         self.find_coercion(from, to).map(|coercion| {
             Expr::App(
-                Box::new(Expr::Const(coercion.coerce.clone(), vec![])),
-                Box::new(expr),
+                Node::new(Expr::Const(coercion.coerce.clone(), vec![])),
+                Node::new(expr),
             )
         })
     }
@@ -584,8 +585,8 @@ impl CoercionRegistry {
     pub fn apply_coercion_chain(&self, mut expr: Expr, path: &CoercionPath) -> Expr {
         for step in &path.steps {
             expr = Expr::App(
-                Box::new(Expr::Const(step.coerce.clone(), vec![])),
-                Box::new(expr),
+                Node::new(Expr::Const(step.coerce.clone(), vec![])),
+                Node::new(expr),
             );
         }
         expr

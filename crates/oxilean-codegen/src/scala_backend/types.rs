@@ -1388,6 +1388,7 @@ impl ScalaBackend {
             }
             LcnfLetValue::Lit(lit) => match lit {
                 LcnfLit::Nat(n) => ScalaExpr::Lit(ScalaLit::Long(*n as i64)),
+                LcnfLit::Int(i) => ScalaExpr::Lit(ScalaLit::Long(*i)),
                 LcnfLit::Str(s) => ScalaExpr::Lit(ScalaLit::Str(s.clone())),
             },
             LcnfLetValue::Erased | LcnfLetValue::Reset(_) => ScalaExpr::Lit(ScalaLit::Unit),
@@ -1426,6 +1427,7 @@ impl ScalaBackend {
             LcnfArg::Var(v) => ScalaExpr::Var(format!("{}", v)),
             LcnfArg::Lit(lit) => match lit {
                 LcnfLit::Nat(n) => ScalaExpr::Lit(ScalaLit::Long(*n as i64)),
+                LcnfLit::Int(i) => ScalaExpr::Lit(ScalaLit::Long(*i)),
                 LcnfLit::Str(s) => ScalaExpr::Lit(ScalaLit::Str(s.clone())),
             },
             LcnfArg::Erased | LcnfArg::Type(_) => ScalaExpr::Lit(ScalaLit::Unit),

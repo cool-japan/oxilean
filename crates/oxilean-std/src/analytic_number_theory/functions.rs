@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Declaration, Environment, Expr, Name};
 use std::f64::consts::PI;
 
@@ -211,8 +212,8 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// `ZetaFunctionTy : Real → Real` — the Riemann zeta function.
@@ -308,7 +309,7 @@ pub fn chen_theorem_ty() -> Expr {
     prop()
 }
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
     app(app(f, a), b)
@@ -320,8 +321,8 @@ pub fn pi_impl(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 /// WeylInequalityTy : ∀ (f : Nat → Real) (N : Nat), ExpSum f N ≤ WeylBound f N

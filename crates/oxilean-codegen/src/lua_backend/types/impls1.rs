@@ -583,6 +583,7 @@ impl LuaBackend {
     pub fn lcnf_to_lua_type(ty: &LcnfType) -> LuaType {
         match ty {
             LcnfType::Nat => LuaType::Number(true),
+            LcnfType::Int => LuaType::Number(true),
             LcnfType::LcnfString => LuaType::String,
             LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => LuaType::Nil,
             LcnfType::Object => LuaType::Table,
@@ -595,6 +596,7 @@ impl LuaBackend {
     pub fn compile_lit(lit: &LcnfLit) -> LuaExpr {
         match lit {
             LcnfLit::Nat(n) => LuaExpr::Int(*n as i64),
+            LcnfLit::Int(i) => LuaExpr::Int(*i),
             LcnfLit::Str(s) => LuaExpr::Str(s.clone()),
         }
     }

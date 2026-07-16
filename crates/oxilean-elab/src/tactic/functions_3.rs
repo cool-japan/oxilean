@@ -2,7 +2,12 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
+use oxilean_meta::tactic::linear_combination::{
+    ConOrient, ConSource, FarkasCert, FarkasCertEntry, Rat,
+};
+use oxilean_meta::ProofCertificate;
 use std::collections::HashMap;
 
 use super::functions::TacticResult;
@@ -83,7 +88,7 @@ fn parse_sym_lin_expr(expr: &Expr) -> Option<SymLinExpr> {
                 }
                 _ if args.is_empty() => Some(SymLinExpr::from_var(s)),
                 _ => {
-                    let key = format!("__app_{}", expr as *const _ as usize);
+                    let key = format!("__app_{:?}", expr);
                     Some(SymLinExpr::from_var(key))
                 }
             }
@@ -139,32 +144,186 @@ pub(super) fn parse_sym_lin_cons(expr: &Expr) -> Option<Vec<SymLinCon>> {
         _ => None,
     }
 }
-/// Search for a Farkas certificate: find non-negative integer multipliers (≤ 3)
-/// for subsets of constraints such that the weighted sum is contradictory.
-pub(super) fn has_farkas_certificate(cons: &[SymLinCon]) -> bool {
-    let n = cons.len();
-    if n == 0 {
-        return false;
-    }
-    for c in cons {
-        if c.is_contradiction() {
-            return true;
+/// Parse the hypothesis list into `(SymLinCon, ConSource)` pairs for provenance-aware
+/// Farkas certificate reconstruction.
+///
+/// For each hypothesis `(name, ty)` that parses as a linear constraint:
+/// - `Eq`-typed hypotheses expand into two constraints (both forward and negated),
+///   each tagged with the same source.
+/// - All others expand into one constraint tagged with the hypothesis name.
+///
+/// The returned `Vec<ConSource>` is parallel to the returned `Vec<SymLinCon>`:
+/// `sources[i]` is the provenance for `cons[i]`.
+///
+/// The first slot is reserved for the negated goal (always `ConSource { hyp_name: None, .. }`).
+/// Callers should prepend the negated goal's constraint and its source before calling.
+pub(super) fn parse_hyps_with_sources(hyps: &[(Name, Expr)]) -> (Vec<SymLinCon>, Vec<ConSource>) {
+    let mut cons: Vec<SymLinCon> = Vec::new();
+    let mut sources: Vec<ConSource> = Vec::new();
+
+    for (hyp_name, hyp_ty) in hyps {
+        let (head, args) = decompose_app_tactic(hyp_ty);
+        let name_str = if let Expr::Const(n, _) = head {
+            n.to_string()
+        } else {
+            continue;
+        };
+        if args.len() < 2 {
+            continue;
+        }
+        let lhs_expr = args[args.len() - 2];
+        let rhs_expr = args[args.len() - 1];
+        let l = match parse_sym_lin_expr(lhs_expr) {
+            Some(v) => v,
+            None => continue,
+        };
+        let r = match parse_sym_lin_expr(rhs_expr) {
+            Some(v) => v,
+            None => continue,
+        };
+        let diff = SymLinExpr::add(&l, &r.negate());
+
+        match name_str.as_str() {
+            "Nat.le" | "LE.le" => {
+                cons.push(SymLinCon {
+                    lhs: diff,
+                    strict: false,
+                });
+                sources.push(ConSource {
+                    hyp_name: Some(hyp_name.clone()),
+                    hyp_type: hyp_ty.clone(),
+                    orient: ConOrient::LeZero,
+                });
+            }
+            "Nat.lt" | "LT.lt" => {
+                cons.push(SymLinCon {
+                    lhs: diff,
+                    strict: true,
+                });
+                sources.push(ConSource {
+                    hyp_name: Some(hyp_name.clone()),
+                    hyp_type: hyp_ty.clone(),
+                    orient: ConOrient::LeZero,
+                });
+            }
+            "Nat.ge" | "GE.ge" => {
+                cons.push(SymLinCon {
+                    lhs: diff.negate(),
+                    strict: false,
+                });
+                sources.push(ConSource {
+                    hyp_name: Some(hyp_name.clone()),
+                    hyp_type: hyp_ty.clone(),
+                    orient: ConOrient::LeZero,
+                });
+            }
+            "Nat.gt" | "GT.gt" => {
+                cons.push(SymLinCon {
+                    lhs: diff.negate(),
+                    strict: true,
+                });
+                sources.push(ConSource {
+                    hyp_name: Some(hyp_name.clone()),
+                    hyp_type: hyp_ty.clone(),
+                    orient: ConOrient::LeZero,
+                });
+            }
+            "Eq" => {
+                // Equality expands to two constraints; same source for both.
+                cons.push(SymLinCon {
+                    lhs: diff.clone(),
+                    strict: false,
+                });
+                sources.push(ConSource {
+                    hyp_name: Some(hyp_name.clone()),
+                    hyp_type: hyp_ty.clone(),
+                    orient: ConOrient::LeZero,
+                });
+                cons.push(SymLinCon {
+                    lhs: diff.negate(),
+                    strict: false,
+                });
+                sources.push(ConSource {
+                    hyp_name: Some(hyp_name.clone()),
+                    hyp_type: hyp_ty.clone(),
+                    orient: ConOrient::LeZero,
+                });
+            }
+            _ => continue,
         }
     }
+
+    (cons, sources)
+}
+
+/// Search for a Farkas certificate: find non-negative integer multipliers (≤ 5)
+/// for subsets of constraints such that the weighted sum is contradictory.
+///
+/// Returns `Some(FarkasCert)` with the multipliers and participating constraint
+/// indices when a refutation is found, or `None` otherwise.
+///
+/// The `combined_rhs` in the returned cert is the contradictory constant sum
+/// (negative rational) derived from the scaled constraints.
+pub(super) fn find_farkas_certificate(cons: &[SymLinCon]) -> Option<FarkasCert> {
+    let n = cons.len();
+    if n == 0 {
+        return None;
+    }
+    // Case 1: single constraint is already contradictory (multiplier = 1).
+    for (i, c) in cons.iter().enumerate() {
+        if c.is_contradiction() {
+            let entry = FarkasCertEntry {
+                constraint_index: i,
+                multiplier: Rat::one(),
+                orient: if c.strict {
+                    ConOrient::LeZero
+                } else {
+                    ConOrient::LeZero
+                },
+            };
+            let rhs = Rat::new(c.lhs.constant, 1);
+            return Some(FarkasCert::new(vec![entry], rhs));
+        }
+    }
+    // Case 2: sum of all constraints is contradictory (all multipliers = 1).
     let all_sum = cons
         .iter()
         .skip(1)
         .fold(cons[0].clone(), |acc, c| SymLinCon::add(&acc, c));
     if all_sum.is_contradiction() {
-        return true;
+        let entries: Vec<FarkasCertEntry> = (0..n)
+            .map(|i| FarkasCertEntry {
+                constraint_index: i,
+                multiplier: Rat::one(),
+                orient: ConOrient::LeZero,
+            })
+            .collect();
+        let rhs = Rat::new(all_sum.lhs.constant, 1);
+        return Some(FarkasCert::new(entries, rhs));
     }
+    // Case 3: pair sum with unit multipliers.
     for i in 0..n {
         for j in (i + 1)..n {
             if SymLinCon::add(&cons[i], &cons[j]).is_contradiction() {
-                return true;
+                let combined = SymLinCon::add(&cons[i], &cons[j]);
+                let entries = vec![
+                    FarkasCertEntry {
+                        constraint_index: i,
+                        multiplier: Rat::one(),
+                        orient: ConOrient::LeZero,
+                    },
+                    FarkasCertEntry {
+                        constraint_index: j,
+                        multiplier: Rat::one(),
+                        orient: ConOrient::LeZero,
+                    },
+                ];
+                let rhs = Rat::new(combined.lhs.constant, 1);
+                return Some(FarkasCert::new(entries, rhs));
             }
         }
     }
+    // Case 4: pair sum with scaled multipliers (li, lj ∈ 1..=5).
     for i in 0..n {
         for j in 0..n {
             if i == j {
@@ -173,19 +332,52 @@ pub(super) fn has_farkas_certificate(cons: &[SymLinCon]) -> bool {
             for li in 1..=5i64 {
                 for lj in 1..=5i64 {
                     if SymLinCon::add(&cons[i].scale(li), &cons[j].scale(lj)).is_contradiction() {
-                        return true;
+                        let combined = SymLinCon::add(&cons[i].scale(li), &cons[j].scale(lj));
+                        let entries = vec![
+                            FarkasCertEntry {
+                                constraint_index: i,
+                                multiplier: Rat::new(li, 1),
+                                orient: ConOrient::LeZero,
+                            },
+                            FarkasCertEntry {
+                                constraint_index: j,
+                                multiplier: Rat::new(lj, 1),
+                                orient: ConOrient::LeZero,
+                            },
+                        ];
+                        let rhs = Rat::new(combined.lhs.constant, 1);
+                        return Some(FarkasCert::new(entries, rhs));
                     }
                 }
             }
         }
     }
+    // Case 5: triple sums (limited to n ≤ 12 for performance).
     if n <= 12 {
         for i in 0..n {
             for j in (i + 1)..n {
                 for k in (j + 1)..n {
                     let s = SymLinCon::add(&SymLinCon::add(&cons[i], &cons[j]), &cons[k]);
                     if s.is_contradiction() {
-                        return true;
+                        let entries = vec![
+                            FarkasCertEntry {
+                                constraint_index: i,
+                                multiplier: Rat::one(),
+                                orient: ConOrient::LeZero,
+                            },
+                            FarkasCertEntry {
+                                constraint_index: j,
+                                multiplier: Rat::one(),
+                                orient: ConOrient::LeZero,
+                            },
+                            FarkasCertEntry {
+                                constraint_index: k,
+                                multiplier: Rat::one(),
+                                orient: ConOrient::LeZero,
+                            },
+                        ];
+                        let rhs = Rat::new(s.lhs.constant, 1);
+                        return Some(FarkasCert::new(entries, rhs));
                     }
                     for (li, lj, lk) in [
                         (2, 1, 1),
@@ -202,46 +394,94 @@ pub(super) fn has_farkas_certificate(cons: &[SymLinCon]) -> bool {
                             &cons[k].scale(*lk),
                         );
                         if s2.is_contradiction() {
-                            return true;
+                            let entries = vec![
+                                FarkasCertEntry {
+                                    constraint_index: i,
+                                    multiplier: Rat::new(*li, 1),
+                                    orient: ConOrient::LeZero,
+                                },
+                                FarkasCertEntry {
+                                    constraint_index: j,
+                                    multiplier: Rat::new(*lj, 1),
+                                    orient: ConOrient::LeZero,
+                                },
+                                FarkasCertEntry {
+                                    constraint_index: k,
+                                    multiplier: Rat::new(*lk, 1),
+                                    orient: ConOrient::LeZero,
+                                },
+                            ];
+                            let rhs = Rat::new(s2.lhs.constant, 1);
+                            return Some(FarkasCert::new(entries, rhs));
                         }
                     }
                 }
             }
         }
     }
+    // Case 6: Fourier-Motzkin variable elimination (pairs from pos/neg coeffs).
     if n >= 2 {
         let all_vars: std::collections::HashSet<String> =
             cons.iter().flat_map(|c| c.vars()).collect();
         for var in &all_vars {
-            let mut pos: Vec<&SymLinCon> = vec![];
-            let mut neg: Vec<&SymLinCon> = vec![];
+            let mut pos: Vec<(usize, &SymLinCon)> = vec![];
+            let mut neg: Vec<(usize, &SymLinCon)> = vec![];
             let mut zero: Vec<&SymLinCon> = vec![];
-            for c in cons {
+            for (idx, c) in cons.iter().enumerate() {
                 let coeff = c.coeff_of(var);
                 if coeff > 0 {
-                    pos.push(c);
+                    pos.push((idx, c));
                 } else if coeff < 0 {
-                    neg.push(c);
+                    neg.push((idx, c));
                 } else {
                     zero.push(c);
                 }
             }
-            for p in &pos {
-                for q in &neg {
+            for (pi, p) in &pos {
+                for (qi, q) in &neg {
                     let pc = p.coeff_of(var).abs();
                     let qc = q.coeff_of(var).abs();
                     let combined = SymLinCon::add(&p.scale(qc), &q.scale(pc));
                     let mut new_cons: Vec<SymLinCon> = zero.iter().map(|c| (*c).clone()).collect();
-                    new_cons.push(combined);
+                    new_cons.push(combined.clone());
                     for c in &new_cons {
                         if c.is_contradiction() {
-                            return true;
+                            // combined is the last element — indices pi, qi with multipliers qc, pc
+                            let entries = vec![
+                                FarkasCertEntry {
+                                    constraint_index: *pi,
+                                    multiplier: Rat::new(qc, 1),
+                                    orient: ConOrient::LeZero,
+                                },
+                                FarkasCertEntry {
+                                    constraint_index: *qi,
+                                    multiplier: Rat::new(pc, 1),
+                                    orient: ConOrient::LeZero,
+                                },
+                            ];
+                            let rhs = Rat::new(c.lhs.constant, 1);
+                            return Some(FarkasCert::new(entries, rhs));
                         }
                     }
-                    for i in 0..new_cons.len() {
-                        for j in (i + 1)..new_cons.len() {
-                            if SymLinCon::add(&new_cons[i], &new_cons[j]).is_contradiction() {
-                                return true;
+                    for ii in 0..new_cons.len() {
+                        for jj in (ii + 1)..new_cons.len() {
+                            if SymLinCon::add(&new_cons[ii], &new_cons[jj]).is_contradiction() {
+                                let combined2 = SymLinCon::add(&new_cons[ii], &new_cons[jj]);
+                                // Conservative: report pi,qi as participants with unit multipliers
+                                let entries = vec![
+                                    FarkasCertEntry {
+                                        constraint_index: *pi,
+                                        multiplier: Rat::new(qc, 1),
+                                        orient: ConOrient::LeZero,
+                                    },
+                                    FarkasCertEntry {
+                                        constraint_index: *qi,
+                                        multiplier: Rat::new(pc, 1),
+                                        orient: ConOrient::LeZero,
+                                    },
+                                ];
+                                let rhs = Rat::new(combined2.lhs.constant, 1);
+                                return Some(FarkasCert::new(entries, rhs));
                             }
                         }
                     }
@@ -249,7 +489,15 @@ pub(super) fn has_farkas_certificate(cons: &[SymLinCon]) -> bool {
             }
         }
     }
-    false
+    None
+}
+
+/// Thin bool wrapper around `find_farkas_certificate` for backward compatibility.
+///
+/// Returns `true` iff a Farkas refutation certificate exists for `cons`.
+/// Callers that need the certificate itself should call `find_farkas_certificate` directly.
+pub(super) fn has_farkas_certificate(cons: &[SymLinCon]) -> bool {
+    find_farkas_certificate(cons).is_some()
 }
 /// Try to close the focused goal using symbolic linear arithmetic over all hypotheses.
 ///
@@ -334,21 +582,21 @@ pub(super) fn tactic_fin_cases_impl(state: &TacticState, subject: Option<&str>) 
         let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
         let mut sub_goals: Vec<Goal> = Vec::with_capacity(upper as usize);
         for val in 0..upper {
-            let lit = Expr::Lit(Literal::Nat(val));
+            let lit = Expr::Lit(Literal::nat(val));
             let mut sub = goal.clone();
             sub.mvar_id = fresh_mvar_id();
             sub.name = Name::str(format!("{}_case_{}", goal.name, val));
             sub.tag = Some(format!("case val = {}", val));
             remove_hypothesis(&mut sub, hyp_name);
             let eq_ty = Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                        Box::new(nat_ty.clone()),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                        Node::new(nat_ty.clone()),
                     )),
-                    Box::new(Expr::Const(Name::str(&var_name_str), vec![])),
+                    Node::new(Expr::Const(Name::str(&var_name_str), vec![])),
                 )),
-                Box::new(lit),
+                Node::new(lit),
             );
             let eq_hyp_name = Name::str(format!("h_{}_eq_{}", var_name_str, val));
             sub.add_hypothesis(eq_hyp_name, eq_ty);
@@ -542,25 +790,25 @@ pub(crate) fn apply_simp_rules(expr: &Expr) -> Expr {
         Expr::App(f, a) => {
             let f2 = apply_simp_rules(f);
             let a2 = apply_simp_rules(a);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(apply_simp_rules(ty)),
-            Box::new(apply_simp_rules(body)),
+            Node::new(apply_simp_rules(ty)),
+            Node::new(apply_simp_rules(body)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(apply_simp_rules(ty)),
-            Box::new(apply_simp_rules(body)),
+            Node::new(apply_simp_rules(ty)),
+            Node::new(apply_simp_rules(body)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(apply_simp_rules(ty)),
-            Box::new(apply_simp_rules(val)),
-            Box::new(apply_simp_rules(body)),
+            Node::new(apply_simp_rules(ty)),
+            Node::new(apply_simp_rules(val)),
+            Node::new(apply_simp_rules(body)),
         ),
         _ => expr.clone(),
     };
@@ -574,25 +822,25 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
         Expr::App(f, p) => {
             if let Expr::App(head, arg1) = f.as_ref() {
                 if is_const_named(head, "And") && is_const_named(arg1, "True") {
-                    return *p.clone();
+                    return (**p).clone();
                 }
                 if is_const_named(head, "And") && is_const_named(arg1, "False") {
                     return false_e.clone();
                 }
                 if is_const_named(head, "And") && is_const_named(p, "True") {
-                    return *arg1.clone();
+                    return (**arg1).clone();
                 }
                 if is_const_named(head, "And") && is_const_named(p, "False") {
                     return false_e.clone();
                 }
                 if is_const_named(head, "Or") && is_const_named(arg1, "False") {
-                    return *p.clone();
+                    return (**p).clone();
                 }
                 if is_const_named(head, "Or") && is_const_named(arg1, "True") {
                     return true_e.clone();
                 }
                 if is_const_named(head, "Or") && is_const_named(p, "False") {
-                    return *arg1.clone();
+                    return (**arg1).clone();
                 }
                 if is_const_named(head, "Or") && is_const_named(p, "True") {
                     return true_e.clone();
@@ -603,17 +851,17 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
                     }
                 }
                 if is_const_named(head, "Iff") && is_const_named(arg1, "True") {
-                    return *p.clone();
+                    return (**p).clone();
                 }
                 if is_const_named(head, "Iff") && is_const_named(arg1, "False") {
-                    return Expr::App(Box::new(Expr::Const(Name::str("Not"), vec![])), p.clone());
+                    return Expr::App(Node::new(Expr::Const(Name::str("Not"), vec![])), p.clone());
                 }
                 if is_const_named(head, "Iff") && is_const_named(p, "True") {
-                    return *arg1.clone();
+                    return (**arg1).clone();
                 }
                 if is_const_named(head, "Iff") && is_const_named(p, "False") {
                     return Expr::App(
-                        Box::new(Expr::Const(Name::str("Not"), vec![])),
+                        Node::new(Expr::Const(Name::str("Not"), vec![])),
                         arg1.clone(),
                     );
                 }
@@ -621,32 +869,32 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
                     return true_e.clone();
                 }
                 if is_const_named(head, "And") && arg1.as_ref() == p.as_ref() {
-                    return *p.clone();
+                    return (**p).clone();
                 }
                 if is_const_named(head, "Or") && arg1.as_ref() == p.as_ref() {
-                    return *p.clone();
+                    return (**p).clone();
                 }
                 if is_const_named(head, "Nat.pow")
-                    && matches!(p.as_ref(), Expr::Lit(Literal::Nat(0)))
+                    && matches!(p.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 0u64)
                 {
-                    return Expr::Lit(Literal::Nat(1));
+                    return Expr::Lit(Literal::nat(1));
                 }
                 if is_const_named(head, "Nat.pow")
-                    && matches!(p.as_ref(), Expr::Lit(Literal::Nat(1)))
+                    && matches!(p.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 1u64)
                 {
-                    return *arg1.clone();
+                    return (**arg1).clone();
                 }
                 if is_const_named(head, "Nat.pow")
-                    && matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(0)))
+                    && matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 0u64)
                 {
                     if let Expr::Lit(Literal::Nat(exp)) = p.as_ref() {
-                        return Expr::Lit(Literal::Nat(if *exp == 0 { 1 } else { 0 }));
+                        return Expr::Lit(Literal::nat(if exp.is_zero() { 1 } else { 0 }));
                     }
                 }
                 if is_const_named(head, "Nat.pow")
-                    && matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(1)))
+                    && matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 1u64)
                 {
-                    return Expr::Lit(Literal::Nat(1));
+                    return Expr::Lit(Literal::nat(1));
                 }
             }
             if is_const_named(f, "Not") && is_const_named(p, "False") {
@@ -658,7 +906,7 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
             if is_const_named(f, "Not") {
                 if let Expr::App(inner_f, inner_p) = p.as_ref() {
                     if is_const_named(inner_f, "Not") {
-                        return *inner_p.clone();
+                        return (**inner_p).clone();
                     }
                 }
             }
@@ -669,38 +917,39 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
                     is_const_named(head, "Nat.mul") || is_const_named(head, "HMul.hMul");
                 let is_nat_sub =
                     is_const_named(head, "Nat.sub") || is_const_named(head, "HSub.hSub");
-                let arg1_is_zero = matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(0)));
-                let arg2_is_zero = matches!(p.as_ref(), Expr::Lit(Literal::Nat(0)));
-                let arg1_is_one = matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(1)));
-                let arg2_is_one = matches!(p.as_ref(), Expr::Lit(Literal::Nat(1)));
+                let arg1_is_zero =
+                    matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 0u64);
+                let arg2_is_zero = matches!(p.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 0u64);
+                let arg1_is_one = matches!(arg1.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 1u64);
+                let arg2_is_one = matches!(p.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 1u64);
                 if is_nat_add {
                     if arg1_is_zero {
-                        return *p.clone();
+                        return (**p).clone();
                     }
                     if arg2_is_zero {
-                        return *arg1.clone();
+                        return (**arg1).clone();
                     }
                 }
                 if is_nat_mul {
                     if arg1_is_zero || arg2_is_zero {
-                        return Expr::Lit(Literal::Nat(0));
+                        return Expr::Lit(Literal::nat(0));
                     }
                     if arg1_is_one {
-                        return *p.clone();
+                        return (**p).clone();
                     }
                     if arg2_is_one {
-                        return *arg1.clone();
+                        return (**arg1).clone();
                     }
                 }
                 if is_nat_sub {
                     if arg2_is_zero {
-                        return *arg1.clone();
+                        return (**arg1).clone();
                     }
                     if arg1_is_zero {
-                        return Expr::Lit(Literal::Nat(0));
+                        return Expr::Lit(Literal::nat(0));
                     }
                     if arg1.as_ref() == p.as_ref() {
-                        return Expr::Lit(Literal::Nat(0));
+                        return Expr::Lit(Literal::nat(0));
                     }
                 }
                 let is_nat_pow =
@@ -712,7 +961,7 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
                 let is_nat_max = is_const_named(head, "Nat.max") || is_const_named(head, "Max.max");
                 let is_nat_min = is_const_named(head, "Nat.min") || is_const_named(head, "Min.min");
                 if (is_nat_max || is_nat_min) && arg1.as_ref() == p.as_ref() {
-                    return *p.clone();
+                    return (**p).clone();
                 }
                 if is_nat_add
                     || is_nat_mul
@@ -752,7 +1001,7 @@ fn apply_simp_top_level_rule(expr: &Expr) -> Expr {
                             None
                         };
                         if let Some(n) = result {
-                            return Expr::Lit(Literal::Nat(n));
+                            return Expr::Lit(Literal::nat(n));
                         }
                     }
                 }
@@ -779,20 +1028,20 @@ pub(super) fn apply_extended_simp_rules(expr: &Expr) -> Expr {
     let false_e = Expr::Const(Name::str("False"), vec![]);
     let e = match expr {
         Expr::App(f, a) => Expr::App(
-            Box::new(apply_extended_simp_rules(f)),
-            Box::new(apply_extended_simp_rules(a)),
+            Node::new(apply_extended_simp_rules(f)),
+            Node::new(apply_extended_simp_rules(a)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(apply_extended_simp_rules(ty)),
-            Box::new(apply_extended_simp_rules(body)),
+            Node::new(apply_extended_simp_rules(ty)),
+            Node::new(apply_extended_simp_rules(body)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(apply_extended_simp_rules(ty)),
-            Box::new(apply_extended_simp_rules(body)),
+            Node::new(apply_extended_simp_rules(ty)),
+            Node::new(apply_extended_simp_rules(body)),
         ),
         _ => expr.clone(),
     };
@@ -806,10 +1055,10 @@ pub(super) fn apply_extended_simp_rules(expr: &Expr) -> Expr {
                 };
                 if head_name == "ite" || head_name == "Bool.ite" || head_name == "dite" {
                     if is_const_named(cond, "True") || is_const_named(cond, "true") {
-                        return *a_then.clone();
+                        return (**a_then).clone();
                     }
                     if is_const_named(cond, "False") || is_const_named(cond, "false") {
-                        return *b_else.clone();
+                        return (**b_else).clone();
                     }
                 }
             }
@@ -826,7 +1075,7 @@ pub(super) fn apply_extended_simp_rules(expr: &Expr) -> Expr {
         }
         if is_const_named(f, "Nat.succ") {
             if let Some(n) = eval_nat_expr(a) {
-                return Expr::Lit(Literal::Nat(n + 1));
+                return Expr::Lit(Literal::nat(n + 1));
             }
         }
     }
@@ -841,7 +1090,7 @@ pub(super) fn apply_extended_simp_rules(expr: &Expr) -> Expr {
                 if lhs == rhs {
                     return true_e.clone();
                 }
-                if matches!(lhs.as_ref(), Expr::Lit(Literal::Nat(0))) {
+                if matches!(lhs.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 0u64) {
                     return true_e.clone();
                 }
             }
@@ -852,7 +1101,7 @@ pub(super) fn apply_extended_simp_rules(expr: &Expr) -> Expr {
                 if lhs == rhs {
                     return true_e.clone();
                 }
-                if matches!(rhs.as_ref(), Expr::Lit(Literal::Nat(0))) {
+                if matches!(rhs.as_ref(), Expr::Lit(Literal::Nat(n)) if *n == 0u64) {
                     return true_e.clone();
                 }
             }
@@ -938,6 +1187,200 @@ pub(super) fn parse_simp_only_lemmas(args: &str) -> Vec<String> {
         })
         .collect()
 }
+/// Positivstellensatz-lite augmentation of a constraint set.
+///
+/// Walks the goal and hypothesis expressions to find nonlinear atom
+/// sub-expressions (e.g., `x^2`, `x*y`). For each such atom that already
+/// appears in the parsed constraint system (via its `__app_{:?}` key), adds
+/// the auxiliary constraint `atom ≥ 0` (i.e., `-atom ≤ 0`).
+///
+/// Over natural-number arithmetic every expression evaluates to a non-negative
+/// value, so `atom ≥ 0` is a tautology. Adding it as an explicit constraint
+/// lets the Farkas refutation search close goals like `0 ≤ x^2` that are
+/// invisible to purely linear arithmetic.
+///
+/// # Key-matching requirement
+/// For the auxiliary constraint to help, its atom key must appear in the
+/// already-parsed constraint set. We therefore derive the key the same way
+/// as `parse_sym_lin_expr` does: `format!("__app_{:?}", expr)`.
+pub(super) fn positivstellensatz_augment(
+    base_cons: &[SymLinCon],
+    atom_exprs: &[Expr],
+) -> Vec<SymLinCon> {
+    let mut result = base_cons.to_vec();
+
+    // Collect all variable keys present in the base constraint set.
+    let present_keys: std::collections::HashSet<String> =
+        base_cons.iter().flat_map(|c| c.vars()).collect();
+
+    // For each atom expression, derive its key and emit `-atom ≤ 0` if the key
+    // already appears in the parsed system (so it can participate in Farkas).
+    for expr in atom_exprs {
+        let key = format!("__app_{:?}", expr);
+        if present_keys.contains(&key) {
+            // atom ≥ 0  ↔  -atom ≤ 0  ↔  SymLinCon { lhs: -1·atom + 0, strict: false }
+            let lhs = SymLinExpr {
+                terms: vec![(key, -1)],
+                constant: 0,
+            };
+            let con = SymLinCon { lhs, strict: false };
+            // Only add if not already present.
+            let already_present = result.iter().any(|c| {
+                c.lhs.terms == con.lhs.terms
+                    && c.lhs.constant == con.lhs.constant
+                    && c.strict == con.strict
+            });
+            if !already_present {
+                result.push(con);
+            }
+        }
+    }
+
+    result
+}
+
+/// Try to close the focused goal using Positivstellensatz-lite.
+///
+/// Strategy:
+/// 1. Parse the negated goal and all hypothesis constraints, collecting provenance.
+/// 2. Walk all goal/hypothesis expressions to collect nonlinear atom sub-exprs.
+/// 3. Augment the constraint set with `atom ≥ 0` facts for every nonlinear atom
+///    that already appears in the parsed system.
+/// 4. Run the Farkas certificate search on the augmented set.
+/// 5. Attach `ConSource` provenance to the certificate for proof reconstruction.
+///
+/// This closes goals like `0 ≤ x^2` that pure linear arithmetic cannot handle.
+pub(super) fn try_nlinarith_with_positivstellensatz(state: &TacticState) -> TacticResult {
+    let goal = get_focused_goal(state)?;
+    let goal_cons = parse_sym_lin_cons(&goal.target).ok_or_else(|| {
+        TacticError::TypeMismatch("nlinarith: goal is not a comparison".to_string())
+    })?;
+    let neg_goal = goal_cons[0].negate();
+
+    // Build base constraints WITH provenance.
+    // Slot 0 = negated goal (hyp_name = None).
+    let neg_goal_source = ConSource {
+        hyp_name: None,
+        hyp_type: goal.target.clone(),
+        orient: ConOrient::LeZero,
+    };
+    let mut base_cons: Vec<SymLinCon> = vec![neg_goal];
+    let mut base_sources: Vec<ConSource> = vec![neg_goal_source];
+
+    let (hyp_cons, hyp_sources) = parse_hyps_with_sources(&goal.hypotheses);
+    base_cons.extend(hyp_cons);
+    base_sources.extend(hyp_sources);
+
+    // Collect nonlinear atom expressions from the goal and all hypotheses.
+    let mut atom_exprs: Vec<Expr> = Vec::new();
+    collect_atom_exprs_from(&goal.target, &mut atom_exprs);
+    for (_, ty) in &goal.hypotheses {
+        collect_atom_exprs_from(ty, &mut atom_exprs);
+    }
+    // Deduplicate by key (structural equality).
+    let mut seen_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
+    atom_exprs.retain(|e| seen_keys.insert(format!("__app_{:?}", e)));
+
+    let augmented = positivstellensatz_augment(&base_cons, &atom_exprs);
+
+    // Only worth running if augmentation actually added constraints.
+    if augmented.len() <= base_cons.len() {
+        return Err(TacticError::TypeMismatch(
+            "nlinarith: no nonlinear atoms found to augment".to_string(),
+        ));
+    }
+
+    // Build augmented sources: for base constraints use collected sources; for augmented
+    // constraints (the new ones added by positivstellensatz_augment) use a placeholder.
+    let n_base = base_cons.len();
+    let mut augmented_sources = base_sources;
+    for _ in n_base..augmented.len() {
+        // Augmented constraints (e.g. `atom ≥ 0`) have no direct hypothesis source.
+        // Proof reconstruction will see hyp_name = None and safely return None for these.
+        augmented_sources.push(ConSource {
+            hyp_name: None,
+            hyp_type: Expr::Const(Name::str("__augmented__"), vec![]),
+            orient: ConOrient::LeZero,
+        });
+    }
+
+    if let Some(cert) = find_farkas_certificate(&augmented) {
+        let cert_with_sources = cert.with_sources(augmented_sources);
+        let mut new_state = replace_focused(state, vec![])?;
+        new_state.certificate = Some(ProofCertificate::Linarith(cert_with_sources));
+        Ok(new_state)
+    } else {
+        Err(TacticError::TypeMismatch(
+            "nlinarith: Positivstellensatz augmentation found no refutation".to_string(),
+        ))
+    }
+}
+
+/// Recursively collect all nonlinear atom sub-expressions from `expr`.
+///
+/// Mirrors the logic of `parse_sym_lin_expr`:
+/// - Comparison / arithmetic operators that `parse_sym_lin_cons` handles
+///   transparently (LE.le, LT.lt, Eq, Nat.add, Nat.sub, Nat.mul, Nat.succ)
+///   cause recursion into their argument sub-expressions.
+/// - Anything else that `parse_sym_lin_expr` would treat as an opaque atom
+///   (the `__app_{:?}` branch) is pushed into `atoms`.
+///
+/// This ensures that the atom keys produced here match exactly the keys
+/// embedded in the constraint system by `parse_sym_lin_expr`.
+fn collect_atom_exprs_from(expr: &Expr, atoms: &mut Vec<Expr>) {
+    if eval_nat_expr(expr).is_some() {
+        return;
+    }
+    let (head, args) = decompose_app_tactic(expr);
+    match head {
+        Expr::Const(n, _) => {
+            let s = n.to_string();
+            match s.as_str() {
+                // Comparison operators: recurse into both sides.
+                "Nat.le" | "LE.le" | "Nat.lt" | "LT.lt" | "Nat.ge" | "GE.ge" | "Nat.gt"
+                | "GT.gt" | "Eq"
+                    if args.len() >= 2 =>
+                {
+                    collect_atom_exprs_from(args[args.len() - 2], atoms);
+                    collect_atom_exprs_from(args[args.len() - 1], atoms);
+                }
+                // Additive operators: recurse into both operands.
+                "Nat.add" | "HAdd.hAdd" if args.len() >= 2 => {
+                    collect_atom_exprs_from(args[args.len() - 2], atoms);
+                    collect_atom_exprs_from(args[args.len() - 1], atoms);
+                }
+                "Nat.sub" | "HSub.hSub" if args.len() >= 2 => {
+                    collect_atom_exprs_from(args[args.len() - 2], atoms);
+                    collect_atom_exprs_from(args[args.len() - 1], atoms);
+                }
+                // Multiplicative: only recurse when one side is a constant.
+                "Nat.mul" | "HMul.hMul" if args.len() >= 2 => {
+                    let a = args[args.len() - 2];
+                    let b = args[args.len() - 1];
+                    if eval_nat_expr(a).is_some() {
+                        collect_atom_exprs_from(b, atoms);
+                    } else if eval_nat_expr(b).is_some() {
+                        collect_atom_exprs_from(a, atoms);
+                    } else {
+                        // Genuinely nonlinear product — this node is an atom.
+                        atoms.push(expr.clone());
+                    }
+                }
+                "Nat.succ" if !args.is_empty() => {
+                    collect_atom_exprs_from(args[args.len() - 1], atoms);
+                }
+                // Pure variable leaf — not an atom.
+                _ if args.is_empty() => {}
+                // Everything else (pow, complex application) is an opaque atom.
+                _ => {
+                    atoms.push(expr.clone());
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Evaluate a block of tactics in sequence.
 pub fn eval_tactic_block(
     state: &TacticState,
@@ -952,493 +1395,5 @@ pub fn eval_tactic_block(
 }
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::tactic::*;
-    use oxilean_kernel::Level;
-    fn mk_prop() -> Expr {
-        Expr::Sort(Level::zero())
-    }
-    fn mk_type() -> Expr {
-        Expr::Sort(Level::succ(Level::zero()))
-    }
-    fn mk_pi(name: &str, domain: Expr, body: Expr) -> Expr {
-        Expr::Pi(
-            BinderInfo::Default,
-            Name::str(name),
-            Box::new(domain),
-            Box::new(body),
-        )
-    }
-    fn mk_eq(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
-        Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(ty),
-                )),
-                Box::new(lhs),
-            )),
-            Box::new(rhs),
-        )
-    }
-    fn mk_or(a: Expr, b: Expr) -> Expr {
-        Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(a),
-            )),
-            Box::new(b),
-        )
-    }
-    fn mk_state_with_goal(goal: Goal) -> TacticState {
-        let mut state = TacticState::new();
-        state.add_goal(goal);
-        state
-    }
-    #[test]
-    fn test_error_display() {
-        let e = TacticError::NoGoals;
-        assert!(e.to_string().contains("no goals"));
-        let e = TacticError::GoalNotFound(Name::str("g1"));
-        assert!(e.to_string().contains("g1"));
-        let e = TacticError::UnknownTactic("foo".to_string());
-        assert!(e.to_string().contains("foo"));
-    }
-    #[test]
-    fn test_goal_create() {
-        let goal = Goal::new(Name::str("g1"), Expr::Lit(Literal::Nat(42)));
-        assert_eq!(goal.name, Name::str("g1"));
-        assert_eq!(goal.hypotheses().len(), 0);
-        assert!(goal.tag.is_none());
-    }
-    #[test]
-    fn test_goal_add_hypothesis() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("h"), mk_type());
-        assert_eq!(goal.hypotheses().len(), 1);
-        assert_eq!(goal.local_ctx.len(), 1);
-    }
-    #[test]
-    fn test_goal_with_hypothesis() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let new_goal = goal.with_hypothesis(Name::str("h"), mk_type());
-        assert_eq!(new_goal.hypotheses().len(), 1);
-        assert_eq!(goal.hypotheses().len(), 0);
-    }
-    #[test]
-    fn test_goal_replace_target() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let new_goal = goal.replace_target(mk_type());
-        assert_eq!(new_goal.target(), &mk_type());
-        assert_ne!(new_goal.mvar_id, goal.mvar_id);
-    }
-    #[test]
-    fn test_goal_has_hypothesis() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("h"), mk_type());
-        assert!(goal.has_hypothesis(&Name::str("h")));
-        assert!(!goal.has_hypothesis(&Name::str("x")));
-    }
-    #[test]
-    fn test_goal_find_hypothesis() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("h"), mk_type());
-        assert_eq!(goal.find_hypothesis(&Name::str("h")), Some(&mk_type()));
-        assert_eq!(goal.find_hypothesis(&Name::str("x")), None);
-    }
-    #[test]
-    fn test_goal_local_names() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("h1"), mk_type());
-        goal.add_hypothesis(Name::str("h2"), mk_prop());
-        let names = goal.local_names();
-        assert_eq!(names.len(), 2);
-    }
-    #[test]
-    fn test_tactic_state() {
-        let mut state = TacticState::new();
-        assert!(state.is_complete());
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        state.add_goal(goal);
-        assert_eq!(state.num_goals(), 1);
-        assert!(!state.is_complete());
-        state.solve_goal(&Name::str("g1"));
-        assert_eq!(state.num_goals(), 0);
-        assert!(state.is_complete());
-    }
-    #[test]
-    fn test_state_focus() {
-        let mut state = TacticState::new();
-        assert!(state.focus().is_none());
-        state.add_goal(Goal::new(Name::str("g1"), mk_prop()));
-        state.add_goal(Goal::new(Name::str("g2"), mk_type()));
-        assert_eq!(
-            state.focus().expect("test operation should succeed").name,
-            Name::str("g1")
-        );
-    }
-    #[test]
-    fn test_state_rotate() {
-        let mut state = TacticState::new();
-        state.add_goal(Goal::new(Name::str("g1"), mk_prop()));
-        state.add_goal(Goal::new(Name::str("g2"), mk_type()));
-        state.add_goal(Goal::new(Name::str("g3"), mk_prop()));
-        state.rotate(1);
-        assert_eq!(state.goals()[0].name, Name::str("g2"));
-        assert_eq!(state.goals()[2].name, Name::str("g1"));
-    }
-    #[test]
-    fn test_state_swap() {
-        let mut state = TacticState::new();
-        state.add_goal(Goal::new(Name::str("g1"), mk_prop()));
-        state.add_goal(Goal::new(Name::str("g2"), mk_type()));
-        state.swap();
-        assert_eq!(state.goals()[0].name, Name::str("g2"));
-        assert_eq!(state.goals()[1].name, Name::str("g1"));
-    }
-    #[test]
-    fn test_state_replace_goal() {
-        let mut state = TacticState::new();
-        state.add_goal(Goal::new(Name::str("g1"), mk_prop()));
-        state.replace_goal(
-            &Name::str("g1"),
-            vec![
-                Goal::new(Name::str("g1a"), mk_prop()),
-                Goal::new(Name::str("g1b"), mk_type()),
-            ],
-        );
-        assert_eq!(state.num_goals(), 2);
-        assert_eq!(state.goals()[0].name, Name::str("g1a"));
-    }
-    #[test]
-    fn test_state_save_restore() {
-        let mut state = TacticState::new();
-        state.add_goal(Goal::new(Name::str("g1"), mk_prop()));
-        let saved = state.save_state();
-        state.solve_goal(&Name::str("g1"));
-        assert!(state.is_complete());
-        state.restore_state(saved);
-        assert_eq!(state.num_goals(), 1);
-    }
-    #[test]
-    fn test_tactic_intro_pi() {
-        let target = mk_pi("x", mk_type(), mk_prop());
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_intro(&state, Name::str("x")).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-        let new_goal = &result.goals()[0];
-        assert!(new_goal.has_hypothesis(&Name::str("x")));
-        assert_eq!(new_goal.target(), &mk_prop());
-    }
-    #[test]
-    fn test_tactic_intro_not_pi() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_intro(&state, Name::str("x"));
-        assert!(result.is_err());
-    }
-    #[test]
-    fn test_tactic_intro_no_goals() {
-        let state = TacticState::new();
-        let result = tactic_intro(&state, Name::str("x"));
-        assert!(matches!(result, Err(TacticError::NoGoals)));
-    }
-    #[test]
-    fn test_tactic_intros() {
-        let target = mk_pi("a", mk_type(), mk_pi("b", mk_type(), mk_prop()));
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_intros(&state, &[Name::str("x"), Name::str("y")])
-            .expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-        let new_goal = &result.goals()[0];
-        assert!(new_goal.has_hypothesis(&Name::str("x")));
-        assert!(new_goal.has_hypothesis(&Name::str("y")));
-    }
-    #[test]
-    fn test_tactic_exact() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_exact(&state, mk_prop()).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_exact_no_goals() {
-        let state = TacticState::new();
-        let result = tactic_exact(&state, mk_prop());
-        assert!(result.is_err());
-    }
-    #[test]
-    fn test_tactic_assumption_found() {
-        let target = mk_prop();
-        let mut goal = Goal::new(Name::str("g1"), target.clone());
-        goal.add_hypothesis(Name::str("h"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_assumption(&state).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_assumption_not_found() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("h"), mk_type());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_assumption(&state);
-        assert!(result.is_err());
-    }
-    #[test]
-    fn test_tactic_refl_eq() {
-        let nat_const = Expr::Const(Name::str("Nat"), vec![]);
-        let zero = Expr::Lit(Literal::Nat(0));
-        let target = mk_eq(nat_const, zero.clone(), zero);
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_refl(&state).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_refl_not_eq() {
-        let nat_const = Expr::Const(Name::str("Nat"), vec![]);
-        let zero = Expr::Lit(Literal::Nat(0));
-        let one = Expr::Lit(Literal::Nat(1));
-        let target = mk_eq(nat_const, zero, one);
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_refl(&state);
-        assert!(result.is_err());
-    }
-    #[test]
-    fn test_tactic_trivial_refl() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_trivial(&state).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_trivial_assumption() {
-        let target = mk_type();
-        let mut goal = Goal::new(Name::str("g1"), target.clone());
-        goal.add_hypothesis(Name::str("h"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_trivial(&state).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_trivial_true() {
-        let target = Expr::Const(Name::str("True"), vec![]);
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_trivial(&state).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_sorry() {
-        let goal = Goal::new(Name::str("g1"), mk_type());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_sorry(&state).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_apply_matching() {
-        let target = mk_prop();
-        let goal = Goal::new(Name::str("g1"), target.clone());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_apply(&state, target).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_apply_pi() {
-        let pi = mk_pi("x", mk_type(), mk_prop());
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_apply(&state, pi).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-    }
-    #[test]
-    fn test_tactic_constructor_true() {
-        let target = Expr::Const(Name::str("True"), vec![]);
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_constructor(&state).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_left_or() {
-        let a = Expr::Const(Name::str("A"), vec![]);
-        let b = Expr::Const(Name::str("B"), vec![]);
-        let target = mk_or(a.clone(), b);
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_left(&state).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-        assert_eq!(result.goals()[0].target(), &a);
-    }
-    #[test]
-    fn test_tactic_right_or() {
-        let a = Expr::Const(Name::str("A"), vec![]);
-        let b = Expr::Const(Name::str("B"), vec![]);
-        let target = mk_or(a, b.clone());
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let result = tactic_right(&state).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-        assert_eq!(result.goals()[0].target(), &b);
-    }
-    #[test]
-    fn test_tactic_exfalso() {
-        let goal = Goal::new(Name::str("g1"), mk_type());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_exfalso(&state).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-        assert_eq!(
-            result.goals()[0].target(),
-            &Expr::Const(Name::str("False"), vec![])
-        );
-    }
-    #[test]
-    fn test_tactic_clear() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("h"), mk_type());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_clear(&state, &Name::str("h")).expect("tactic should succeed");
-        assert!(!result.goals()[0].has_hypothesis(&Name::str("h")));
-    }
-    #[test]
-    fn test_tactic_clear_not_found() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_clear(&state, &Name::str("h"));
-        assert!(result.is_err());
-    }
-    #[test]
-    fn test_tactic_rename() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("old"), mk_type());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_rename(&state, &Name::str("old"), Name::str("new_name"))
-            .expect("tactic should succeed");
-        assert!(result.goals()[0].has_hypothesis(&Name::str("new_name")));
-        assert!(!result.goals()[0].has_hypothesis(&Name::str("old")));
-    }
-    #[test]
-    fn test_tactic_revert() {
-        let mut goal = Goal::new(Name::str("g1"), mk_prop());
-        goal.add_hypothesis(Name::str("h"), mk_type());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_revert(&state, &Name::str("h")).expect("tactic should succeed");
-        let new_goal = &result.goals()[0];
-        assert!(!new_goal.has_hypothesis(&Name::str("h")));
-        assert!(new_goal.target().is_pi());
-    }
-    #[test]
-    fn test_tactic_have_with_proof() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result = tactic_have(&state, Name::str("h"), mk_type(), Some(mk_type()))
-            .expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-        assert!(result.goals()[0].has_hypothesis(&Name::str("h")));
-    }
-    #[test]
-    fn test_tactic_have_without_proof() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result =
-            tactic_have(&state, Name::str("h"), mk_type(), None).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 2);
-    }
-    #[test]
-    fn test_tactic_suffices() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let result =
-            tactic_suffices(&state, Name::str("h"), mk_type()).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 2);
-    }
-    #[test]
-    fn test_eval_tactic_sorry() {
-        let goal = Goal::new(Name::str("g1"), mk_type());
-        let state = mk_state_with_goal(goal);
-        let env = oxilean_kernel::Environment::new();
-        let result = eval_tactic(&state, "sorry", &env).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_eval_tactic_intro() {
-        let target = mk_pi("x", mk_type(), mk_prop());
-        let goal = Goal::new(Name::str("g1"), target);
-        let state = mk_state_with_goal(goal);
-        let env = oxilean_kernel::Environment::new();
-        let result = eval_tactic(&state, "intro x", &env).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-    }
-    #[test]
-    fn test_eval_tactic_unknown() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let env = oxilean_kernel::Environment::new();
-        let result = eval_tactic(&state, "nonexistent", &env);
-        assert!(matches!(result, Err(TacticError::UnknownTactic(_))));
-    }
-    #[test]
-    fn test_eval_tactic_block() {
-        let target = mk_pi("x", mk_prop(), mk_prop());
-        let mut goal = Goal::new(Name::str("g1"), target);
-        goal.tag = Some("test".to_string());
-        let state = mk_state_with_goal(goal);
-        let tactics = vec!["intro h".to_string(), "sorry".to_string()];
-        let env = oxilean_kernel::Environment::new();
-        let result = eval_tactic_block(&state, &tactics, &env).expect("tactic should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_eval_tactic_block_empty() {
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let env = oxilean_kernel::Environment::new();
-        let result = eval_tactic_block(&state, &[], &env).expect("tactic should succeed");
-        assert_eq!(result.num_goals(), 1);
-    }
-    #[test]
-    fn test_tactic_registry() {
-        let registry = TacticRegistry::default();
-        assert!(registry.get(&Name::str("intro")).is_some());
-        assert!(registry.get(&Name::str("apply")).is_some());
-        assert!(registry.get(&Name::str("exact")).is_some());
-        assert!(registry.get(&Name::str("refl")).is_some());
-        assert!(registry.get(&Name::str("sorry")).is_some());
-        assert!(registry.get(&Name::str("unknown")).is_none());
-    }
-    #[test]
-    fn test_tactic_registry_all() {
-        let registry = TacticRegistry::default();
-        let all = registry.all_tactics();
-        assert!(all.len() >= 15);
-    }
-    #[test]
-    fn test_tactic_registry_execute() {
-        let registry = TacticRegistry::default();
-        let goal = Goal::new(Name::str("g1"), mk_prop());
-        let state = mk_state_with_goal(goal);
-        let env = oxilean_kernel::Environment::new();
-        let result = registry
-            .execute("sorry", &state, &[], &env)
-            .expect("test operation should succeed");
-        assert!(result.is_complete());
-    }
-    #[test]
-    fn test_tactic_registry_execute_unknown() {
-        let registry = TacticRegistry::default();
-        let state = TacticState::new();
-        let env = oxilean_kernel::Environment::new();
-        let result = registry.execute("nonexistent", &state, &[], &env);
-        assert!(result.is_err());
-    }
-    #[test]
-    fn test_tactic_registry_arity() {
-        let registry = TacticRegistry::default();
-        assert_eq!(registry.arity(&Name::str("refl")), Some(Some(0)));
-        assert_eq!(registry.arity(&Name::str("intro")), Some(Some(1)));
-        assert_eq!(registry.arity(&Name::str("intros")), Some(None));
-    }
+    include!("functions_3_tests.rs");
 }

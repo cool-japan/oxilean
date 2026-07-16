@@ -3,7 +3,9 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::reduce::TransparencyMode;
+use crate::Node;
 use crate::{Environment, Expr, Reducer};
+use std::rc::Rc;
 
 use super::types::{
     BitSet64, BucketCounter, Coercion, CoercionTable, ConfigNode, ConvResult, ConversionChecker,
@@ -20,14 +22,14 @@ mod tests {
     #[test]
     fn test_convertible_identical() {
         let mut checker = ConversionChecker::new();
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(checker.is_convertible(&e, &e));
     }
     #[test]
     fn test_convertible_different_lits() {
         let mut checker = ConversionChecker::new();
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         assert!(!checker.is_convertible(&e1, &e2));
     }
     #[test]
@@ -41,9 +43,9 @@ mod tests {
     fn test_convertible_apps() {
         let mut checker = ConversionChecker::new();
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let app2 = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let app2 = Expr::App(Node::new(f), Node::new(a));
         assert!(checker.is_convertible(&app1, &app2));
     }
     #[test]
@@ -74,20 +76,20 @@ mod tests {
             name: Name::str("answer"),
             univ_params: vec![],
             ty: Expr::Const(Name::str("Nat"), vec![]),
-            val: Expr::Lit(Literal::Nat(42)),
+            val: Expr::Lit(Literal::nat(42)),
             hint: crate::ReducibilityHint::Regular(1),
         })
         .expect("value should be present");
         let answer = Expr::Const(Name::str("answer"), vec![]);
-        let forty_two = Expr::Lit(Literal::Nat(42));
+        let forty_two = Expr::Lit(Literal::nat(42));
         assert!(checker.is_convertible_in_env(&answer, &forty_two, &env));
     }
     #[test]
     fn test_proj_convertible() {
         let mut checker = ConversionChecker::new();
         let e = Expr::BVar(0);
-        let p1 = Expr::Proj(Name::str("Prod"), 0, Box::new(e.clone()));
-        let p2 = Expr::Proj(Name::str("Prod"), 0, Box::new(e));
+        let p1 = Expr::Proj(Name::str("Prod"), 0, Node::new(e.clone()));
+        let p2 = Expr::Proj(Name::str("Prod"), 0, Node::new(e));
         assert!(checker.is_convertible(&p1, &p2));
     }
 }
@@ -231,7 +233,7 @@ mod extended_tests {
     }
     #[test]
     fn test_check_conversion_equal() {
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(check_conversion(&e, &e, 1000).is_equal());
     }
     #[test]
@@ -264,7 +266,7 @@ mod extended_tests {
     }
     #[test]
     fn test_is_transparency_neutral_lit() {
-        assert!(is_transparency_neutral(&Expr::Lit(Literal::Nat(0))));
+        assert!(is_transparency_neutral(&Expr::Lit(Literal::nat(0))));
     }
     #[test]
     fn test_is_transparency_neutral_const() {
@@ -276,7 +278,7 @@ mod extended_tests {
     #[test]
     fn test_def_eq_with_mode() {
         let env = Environment::new();
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(def_eq_with_mode(&e, &e, &env, TransparencyMode::Default));
     }
 }
@@ -333,19 +335,19 @@ mod bounded_tests {
     use crate::{Literal, Name};
     #[test]
     fn test_syntactic_eq() {
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(syntactic_eq(&e, &e));
-        assert!(!syntactic_eq(&e, &Expr::Lit(Literal::Nat(43))));
+        assert!(!syntactic_eq(&e, &Expr::Lit(Literal::nat(43))));
     }
     #[test]
     fn test_bounded_conversion_equal() {
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         assert!(bounded_conversion(&e, &e, 5).is_equal());
     }
     #[test]
     fn test_bounded_conversion_not_equal() {
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         assert!(!bounded_conversion(&e1, &e2, 5).is_equal());
     }
     #[test]
@@ -356,8 +358,8 @@ mod bounded_tests {
     }
     #[test]
     fn test_same_head_lits() {
-        let l1 = Expr::Lit(Literal::Nat(1));
-        let l2 = Expr::Lit(Literal::Nat(2));
+        let l1 = Expr::Lit(Literal::nat(1));
+        let l2 = Expr::Lit(Literal::nat(2));
         assert!(same_head(&l1, &l2));
     }
     #[test]
@@ -398,8 +400,8 @@ mod bounded_tests {
         let f = Expr::Const(crate::Name::str("f"), vec![]);
         let a1 = Expr::BVar(0);
         let a2 = Expr::BVar(1);
-        let app1 = Expr::App(Box::new(f.clone()), Box::new(a1));
-        let app2 = Expr::App(Box::new(f), Box::new(a2));
+        let app1 = Expr::App(Node::new(f.clone()), Node::new(a1));
+        let app2 = Expr::App(Node::new(f), Node::new(a2));
         let diffs = conversion_diff(&app1, &app2);
         assert_eq!(diffs.len(), 1);
     }
@@ -451,7 +453,7 @@ mod atomic_tests {
     }
     #[test]
     fn test_is_atomic_app() {
-        let app = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let app = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         assert!(!is_atomic(&app));
     }
     #[test]
@@ -466,7 +468,7 @@ mod atomic_tests {
     #[test]
     fn test_count_free_vars_dedup() {
         let fv = Expr::FVar(FVarId(1));
-        let app = Expr::App(Box::new(fv.clone()), Box::new(fv));
+        let app = Expr::App(Node::new(fv.clone()), Node::new(fv));
         assert_eq!(count_free_vars(&app), 1);
     }
     #[test]
@@ -475,14 +477,17 @@ mod atomic_tests {
         let lam = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(crate::Level::zero())),
-            Box::new(Expr::App(Box::new(Expr::BVar(1)), Box::new(Expr::BVar(0)))),
+            Node::new(Expr::Sort(crate::Level::zero())),
+            Node::new(Expr::App(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::BVar(0)),
+            )),
         );
         let _ = is_eta_equal(&f, &lam);
     }
     #[test]
     fn test_is_atomic_lit() {
-        assert!(is_atomic(&Expr::Lit(Literal::Nat(42))));
+        assert!(is_atomic(&Expr::Lit(Literal::nat(42))));
     }
     #[test]
     fn test_is_atomic_const() {
@@ -615,14 +620,14 @@ mod extra_conv_tests {
     fn test_contains_subterm_inside_app() {
         let needle = Expr::BVar(0);
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(needle.clone()),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(needle.clone()),
         );
         assert!(contains_subterm(&e, &needle));
     }
     #[test]
     fn test_structural_distance_same() {
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         assert_eq!(structural_distance(&e, &e), 0);
     }
     #[test]
@@ -642,7 +647,7 @@ mod extra_conv_tests {
     }
     #[test]
     fn test_expr_depth_app() {
-        let app = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let app = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         assert_eq!(expr_depth(&app), 1);
     }
     #[test]
@@ -651,7 +656,7 @@ mod extra_conv_tests {
     }
     #[test]
     fn test_expr_size_app() {
-        let app = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let app = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         assert_eq!(expr_size(&app), 3);
     }
     #[test]
@@ -661,8 +666,8 @@ mod extra_conv_tests {
     #[test]
     fn test_is_beta_normal_app_not_lam() {
         let app = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert!(is_beta_normal(&app));
     }
@@ -672,10 +677,10 @@ mod extra_conv_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let redex = Expr::App(Box::new(lam), Box::new(Expr::BVar(0)));
+        let redex = Expr::App(Node::new(lam), Node::new(Expr::BVar(0)));
         assert!(!is_beta_normal(&redex));
     }
     #[test]
@@ -693,14 +698,14 @@ mod extra_conv_tests {
     }
     #[test]
     fn test_alpha_similar_app() {
-        let e1 = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
-        let e2 = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let e1 = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
+        let e2 = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         assert!(alpha_similar(&e1, &e2));
     }
     #[test]
     fn test_structural_distance_nested() {
-        let e1 = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
-        let e2 = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(2)));
+        let e1 = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
+        let e2 = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(2)));
         assert_eq!(structural_distance(&e1, &e2), 1);
     }
 }
@@ -855,7 +860,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

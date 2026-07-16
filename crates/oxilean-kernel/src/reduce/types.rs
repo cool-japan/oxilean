@@ -6,8 +6,10 @@ use super::functions::*;
 use crate::expr_util::{get_app_args, get_app_fn, mk_app};
 use crate::instantiate::instantiate_type_lparams;
 use crate::subst::instantiate;
+use crate::Node;
 use crate::{Environment, Expr, Literal, Name};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// A tagged union for representing a simple two-case discriminated union.
 #[allow(dead_code)]
@@ -114,7 +116,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -124,7 +126,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -138,7 +140,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;
@@ -922,6 +924,17 @@ impl StringPool {
         self.free.len()
     }
 }
+/// Maximum AST size (in nodes) of a key or value retained in the WHNF
+/// cache. Entries beyond this are recomputed instead of retained; results
+/// are unchanged. See [`crate::expr_util::expr_size_within`].
+pub(crate) const WHNF_CACHE_MAX_NODES: usize = 4096;
+/// The outcome of one head-reduction step (see `Reducer::whnf_step`).
+enum StepOutcome {
+    /// The term is in weak head normal form.
+    Done(Expr),
+    /// One step of progress; the caller's loop continues on this term.
+    Continue(Expr),
+}
 /// Reduction context with caching.
 pub struct Reducer {
     /// WHNF cache: expr -> whnf(expr)
@@ -930,6 +943,13 @@ pub struct Reducer {
     max_depth: u32,
     /// Current transparency mode.
     transparency: TransparencyMode,
+    /// Types of the free variables of the surrounding checker's local
+    /// context (mirrored via [`Reducer::record_fvar_type`]). K-like iota
+    /// reduction must *type* the recursor's major premise; a major that
+    /// mentions local FVars (e.g. `Eq.symm … (h : ctorIdx t = 0)` inside
+    /// `Std.IterStep.noConfusionType`) is only typeable with this context —
+    /// Lean's kernel reads the same information from its local context.
+    local_fvar_types: HashMap<u64, Expr>,
 }
 impl Reducer {
     /// Create a new reducer with default settings.
@@ -938,6 +958,7 @@ impl Reducer {
             cache: HashMap::new(),
             max_depth: 10000,
             transparency: TransparencyMode::Default,
+            local_fvar_types: HashMap::new(),
         }
     }
     /// Create a reducer with custom max depth.
@@ -946,7 +967,22 @@ impl Reducer {
             cache: HashMap::new(),
             max_depth,
             transparency: TransparencyMode::Default,
+            local_fvar_types: HashMap::new(),
         }
+    }
+    /// Record the type of a free variable opened by the surrounding checker
+    /// so K-like iota reduction can type majors that mention it.
+    ///
+    /// `FVarId`s are dispensed monotonically and never reused, so recorded
+    /// types are stable and cached WHNF results stay sound. Defensively, a
+    /// conflicting re-bind invalidates the cache.
+    pub fn record_fvar_type(&mut self, id: crate::FVarId, ty: Expr) {
+        if let Some(prev) = self.local_fvar_types.get(&id.0) {
+            if *prev != ty {
+                self.cache.clear();
+            }
+        }
+        self.local_fvar_types.insert(id.0, ty);
     }
     /// Set the transparency mode.
     pub fn set_transparency(&mut self, mode: TransparencyMode) {
@@ -987,7 +1023,7 @@ impl Reducer {
                         let reduced = instantiate(&body, a);
                         self.whnf_with_depth(&reduced, depth + 1)
                     }
-                    _ => Expr::App(Box::new(f_whnf), a.clone()),
+                    _ => Expr::App(Node::new(f_whnf), a.clone()),
                 }
             }
             Expr::Let(_, _, val, body) => {
@@ -996,10 +1032,14 @@ impl Reducer {
             }
             Expr::Proj(struct_name, idx, struct_expr) => {
                 let struct_whnf = self.whnf_with_depth(struct_expr, depth + 1);
-                Expr::Proj(struct_name.clone(), *idx, Box::new(struct_whnf))
+                Expr::Proj(struct_name.clone(), *idx, Node::new(struct_whnf))
             }
         };
-        self.cache.insert(expr.clone(), result.clone());
+        if crate::expr_util::expr_size_within(expr, WHNF_CACHE_MAX_NODES)
+            && crate::expr_util::expr_size_within(&result, WHNF_CACHE_MAX_NODES)
+        {
+            self.cache.insert(expr.clone(), result.clone());
+        }
         result
     }
     /// Reduce to WHNF with delta-reduction (constant unfolding).
@@ -1040,7 +1080,7 @@ impl Reducer {
                         let reduced = instantiate(&body, a);
                         self.whnf_delta_with_depth(&reduced, lookup, depth + 1)
                     }
-                    _ => Expr::App(Box::new(f_whnf), a.clone()),
+                    _ => Expr::App(Node::new(f_whnf), a.clone()),
                 }
             }
             Expr::Let(_, _, val, body) => {
@@ -1049,7 +1089,7 @@ impl Reducer {
             }
             Expr::Proj(struct_name, idx, struct_expr) => {
                 let struct_whnf = self.whnf_delta_with_depth(struct_expr, lookup, depth + 1);
-                Expr::Proj(struct_name.clone(), *idx, Box::new(struct_whnf))
+                Expr::Proj(struct_name.clone(), *idx, Node::new(struct_whnf))
             }
         }
     }
@@ -1073,25 +1113,64 @@ impl Reducer {
         if depth > self.max_depth {
             return expr.clone();
         }
+        // Resource-fuel degradation (C16): once the per-declaration budget
+        // is exhausted, reduction stops making progress — a stuck term is
+        // always sound, and it halts the term growth that exhausted the
+        // budget. The caller reports the failure as a named resource limit.
+        if crate::fuel::is_exhausted() {
+            return expr.clone();
+        }
         if let Some(cached) = self.cache.get(expr) {
             return cached.clone();
         }
-        let result = self.whnf_core(expr, env, depth);
-        self.cache.insert(expr.clone(), result.clone());
+        // The head-reduction chain runs as a LOOP, not recursion: each step
+        // *moves* ownership of the intermediate term into the next step, so
+        // exactly one intermediate is alive at a time. The old tail
+        // recursion kept every intermediate of a long delta/iota chain
+        // alive on the call stack simultaneously — the multi-GiB peak of
+        // Lean core's `Int.add_mul_ediv_right` (C16) and a large share of
+        // the deep-stack requirement (C17).
+        let mut current: Option<Expr> = None;
+        let mut steps = depth;
+        let result = loop {
+            let cur: &Expr = current.as_ref().unwrap_or(expr);
+            if steps > self.max_depth || crate::fuel::is_exhausted() {
+                break cur.clone();
+            }
+            match self.whnf_step(cur, env, steps) {
+                StepOutcome::Done(done) => break done,
+                StepOutcome::Continue(next) => {
+                    steps += 1;
+                    // Drop the previous intermediate before the next step.
+                    current = Some(next);
+                }
+            }
+        };
+        // Retain only reasonably-sized entries: caching every multi-million
+        // node intermediate of a long reduction retains O(steps × term) heap.
+        // Skipping retention never changes a result — only memoisation.
+        if crate::expr_util::expr_size_within(expr, WHNF_CACHE_MAX_NODES)
+            && crate::expr_util::expr_size_within(&result, WHNF_CACHE_MAX_NODES)
+        {
+            self.cache.insert(expr.clone(), result.clone());
+        }
         result
     }
-    fn whnf_core(&mut self, expr: &Expr, env: &Environment, depth: u32) -> Expr {
+    /// Perform ONE head-reduction step (zeta, delta, beta, literal folding,
+    /// iota, quotient iota, projection). `StepOutcome::Continue` hands the
+    /// reduct back to the caller's loop ([`Self::whnf_env_depth`]);
+    /// `StepOutcome::Done` is the WHNF. Sub-terms (application heads,
+    /// recursor majors, projection structs) are still reduced by recursive
+    /// calls — only the head-reduction *chain* is iterative.
+    fn whnf_step(&mut self, expr: &Expr, env: &Environment, depth: u32) -> StepOutcome {
         match expr {
             Expr::Sort(_)
             | Expr::BVar(_)
             | Expr::FVar(_)
             | Expr::Lam(_, _, _, _)
             | Expr::Pi(_, _, _, _)
-            | Expr::Lit(_) => expr.clone(),
-            Expr::Let(_, _, val, body) => {
-                let reduced = instantiate(body, val);
-                self.whnf_env_depth(&reduced, env, depth + 1)
-            }
+            | Expr::Lit(_) => StepOutcome::Done(expr.clone()),
+            Expr::Let(_, _, val, body) => StepOutcome::Continue(instantiate(body, val)),
             Expr::Const(name, levels) => {
                 if let Some(ci) = env.find(name) {
                     if let Some(val) = ci.value() {
@@ -1102,59 +1181,165 @@ impl Reducer {
                             } else {
                                 instantiate_type_lparams(val, ci.level_params(), levels)
                             };
-                            return self.whnf_env_depth(&unfolded, env, depth + 1);
+                            return StepOutcome::Continue(unfolded);
                         }
                     }
                 }
-                expr.clone()
+                StepOutcome::Done(expr.clone())
             }
             Expr::App(_, _) => {
+                // Keep the spine arguments BORROWED until a reduction rule
+                // actually needs owned copies: cloning every argument up
+                // front (and again in the final `mk_app` rebuild) doubled
+                // the clone volume of every whnf step on large stuck spines
+                // (C16, Lean core's `Int.add_mul_ediv_right`).
                 let head = get_app_fn(expr);
-                let args: Vec<Expr> = get_app_args(expr).into_iter().cloned().collect();
-                let head_whnf = self.whnf_env_depth(head, env, depth + 1);
-                if let Expr::Lam(_, _, _, _) = &head_whnf {
-                    let mut result = head_whnf;
-                    for arg in &args {
-                        match result {
-                            Expr::Lam(_, _, _, body) => {
-                                result = instantiate(&body, arg);
+                let args: Vec<&Expr> = get_app_args(expr);
+                // The head is reduced ONE STEP AT A TIME while the
+                // application context is kept, exactly like Lean's whnf loop
+                // (whnf_core, then the literal extension, then
+                // `unfold_definition` — which unfolds the head constant of
+                // the WHOLE application and re-wraps the arguments). Every
+                // iteration therefore re-checks the Nat/String literal
+                // extension and iota on the current head, so a definition
+                // chain that lands on `Nat.mod lit lit` (e.g. through
+                // `HMod.hMod → instHMod → Mod.mod → Nat.instMod`) folds via
+                // the extension instead of delta-unfolding `Nat.mod` into
+                // its structural-recursion body. Reducing the bare head in
+                // isolation (the old code) unfolded accelerated operations
+                // before the extension could see the arguments — the
+                // wrong-REJECT class of `UInt64.toUInt32_mul`,
+                // `Int64.toInt_minValue` and the Omega constraint lemmas on
+                // the Init corpus. The extension itself fires only at the
+                // operation's exact arity, so an over-applied op is left
+                // stuck and no argument is ever dropped; real exports
+                // declare `Nat.ble`/`Nat.add`/… as ordinary definitions
+                // (structural recursion over `Nat`), and the extension
+                // computes exactly what those definitions compute.
+                let mut head_owned: Option<Expr> = None;
+                let mut head_steps = depth;
+                loop {
+                    if head_steps > self.max_depth || crate::fuel::is_exhausted() {
+                        break;
+                    }
+                    head_steps += 1;
+                    let head_ref: &Expr = head_owned.as_ref().unwrap_or(head);
+                    match head_ref {
+                        Expr::Lam(_, _, _, _) => {
+                            // β: consume as many leading lambdas as args.
+                            let mut result = head_ref.clone();
+                            for arg in &args {
+                                match result {
+                                    Expr::Lam(_, _, _, body) => {
+                                        result = instantiate(&body, arg);
+                                    }
+                                    _ => {
+                                        result =
+                                            Expr::App(Node::new(result), Node::new((*arg).clone()));
+                                    }
+                                }
                             }
-                            _ => {
-                                result = Expr::App(Box::new(result), Box::new(arg.clone()));
-                            }
+                            return StepOutcome::Continue(result);
                         }
+                        Expr::Const(name, levels) => {
+                            // 1. Literal folding (Nat/String kernel
+                            //    extension), before delta — the Lean order.
+                            if let Some(arity) = lit_op_arity(&name.to_string()) {
+                                if args.len() == arity {
+                                    let args_whnf: Vec<Expr> = args
+                                        .iter()
+                                        .map(|a| self.whnf_env_depth(a, env, depth + 1))
+                                        .collect();
+                                    if let Some(reduced) = try_reduce_nat_app(head_ref, &args_whnf)
+                                    {
+                                        let reduced = respell_bool_const_for_env(reduced, env);
+                                        return StepOutcome::Continue(reduced);
+                                    }
+                                }
+                            }
+                            // 2. Iota (recursor) and quotient reduction.
+                            if let Some(reduced) =
+                                self.try_reduce_recursor(name, levels, &args, env, depth)
+                            {
+                                return StepOutcome::Continue(reduced);
+                            }
+                            if let Some(reduced) = self.try_reduce_quot(name, &args, env, depth) {
+                                return StepOutcome::Continue(reduced);
+                            }
+                            // 3. Delta: unfold the head IN CONTEXT and keep
+                            //    stepping (the next iteration β-reduces).
+                            if let Some(ci) = env.find(name) {
+                                if let Some(val) = ci.value() {
+                                    if self.should_unfold_hint(ci.reducibility_hint()) {
+                                        let unfolded = if ci.level_params().is_empty()
+                                            || levels.is_empty()
+                                        {
+                                            val.clone()
+                                        } else {
+                                            instantiate_type_lparams(val, ci.level_params(), levels)
+                                        };
+                                        head_owned = Some(unfolded);
+                                        continue;
+                                    }
+                                }
+                            }
+                            break; // stuck constant head
+                        }
+                        // Let / Proj / FVar / Sort / Pi / Lit heads: step the
+                        // head itself; `Done` means the head is in WHNF and
+                        // the application is stuck.
+                        _ => match self.whnf_step(head_ref, env, depth + 1) {
+                            StepOutcome::Continue(h2) => {
+                                head_owned = Some(h2);
+                            }
+                            StepOutcome::Done(h2) => {
+                                head_owned = Some(h2);
+                                break;
+                            }
+                        },
                     }
-                    return self.whnf_env_depth(&result, env, depth + 1);
                 }
-                if let Some(reduced) = try_reduce_nat_app(&head_whnf, &args) {
-                    return self.whnf_env_depth(&reduced, env, depth + 1);
+                match head_owned {
+                    Some(h) => StepOutcome::Done(crate::expr_util::mk_app_refs(h, &args)),
+                    None => StepOutcome::Done(expr.clone()),
                 }
-                if let Expr::Const(name, levels) = &head_whnf {
-                    if let Some(reduced) = self.try_reduce_recursor(name, levels, &args, env, depth)
-                    {
-                        return self.whnf_env_depth(&reduced, env, depth + 1);
-                    }
-                    if let Some(reduced) = try_reduce_quot(name, &args, env) {
-                        return self.whnf_env_depth(&reduced, env, depth + 1);
-                    }
-                }
-                mk_app(head_whnf, &args)
             }
             Expr::Proj(struct_name, idx, struct_expr) => {
-                let struct_whnf = self.whnf_env_depth(struct_expr, env, depth + 1);
-                if let Some(reduced) = try_reduce_proj(struct_name, *idx, &struct_whnf, env) {
-                    return self.whnf_env_depth(&reduced, env, depth + 1);
+                let mut struct_whnf = self.whnf_env_depth(struct_expr, env, depth + 1);
+                // Lean v4.32 `reduce_proj_core`: a string-literal struct is
+                // expanded (`String.ofList l`, then WHNF'd into constructor
+                // form) before the field is projected — e.g.
+                // `Proj String 0 (StrLit s)` must reduce, or Lean core's
+                // `String.toByteArray ""` lemmas go stuck and are wrongly
+                // rejected.
+                if let Expr::Lit(Literal::Str(s)) = &struct_whnf {
+                    if let Some(e) = super::iota::str_lit_expansion(s, env) {
+                        struct_whnf = self.whnf_env_depth(&e, env, depth + 1);
+                    }
                 }
-                Expr::Proj(struct_name.clone(), *idx, Box::new(struct_whnf))
+                if let Some(reduced) = try_reduce_proj(struct_name, *idx, &struct_whnf, env) {
+                    return StepOutcome::Continue(reduced);
+                }
+                StepOutcome::Done(Expr::Proj(
+                    struct_name.clone(),
+                    *idx,
+                    Node::new(struct_whnf),
+                ))
             }
         }
     }
-    /// Try to reduce a recursor application (iota-reduction).
+    /// Try to reduce a recursor application (iota-reduction), following the
+    /// Lean 4 kernel: K-like reduction first (when the recursor carries the
+    /// K flag), then WHNF of the major premise, then `Nat`/`String` literal
+    /// expansion, and finally rule application. Rule right-hand sides are
+    /// closed lambdas applied to `params ++ motives ++ minors ++ fields`;
+    /// arguments beyond the major premise are re-applied (over-application
+    /// never drops arguments). See [`super::iota`].
     fn try_reduce_recursor(
         &mut self,
         rec_name: &Name,
         rec_levels: &[crate::Level],
-        args: &[Expr],
+        args: &[&Expr],
         env: &Environment,
         depth: u32,
     ) -> Option<Expr> {
@@ -1163,21 +1348,109 @@ impl Reducer {
         if args.len() <= major_idx {
             return None;
         }
-        let major = &args[major_idx];
-        let major_whnf = self.whnf_env_depth(major, env, depth + 1);
-        let ctor_fn = get_app_fn(&major_whnf);
-        let ctor_name = if let Expr::Const(name, _) = ctor_fn {
-            name
+        // K-like reduction: replace the major premise by the canonical
+        // constructor when its *type* has the right shape (Lean does this
+        // before reducing the major itself).
+        let mut major = if rec_val.k {
+            super::iota::to_ctor_when_k(rec_val, args[major_idx], env, &self.local_fvar_types)
+                .unwrap_or_else(|| args[major_idx].clone())
+        } else {
+            args[major_idx].clone()
+        };
+        major = self.whnf_env_depth(&major, env, depth + 1);
+        // Literal-to-constructor expansion (one layer at a time for Nat), and
+        // structure-eta expansion of stuck majors of structure-like inductives
+        // (Lean's `toCtorWhenStruct`) on the fallthrough arm — same order as
+        // lean4lean's `inductiveReduceRec`.
+        match &major {
+            Expr::Lit(Literal::Nat(n)) => {
+                if let Some(e) = super::iota::nat_lit_to_ctor(n, rec_val) {
+                    major = e;
+                }
+            }
+            Expr::Lit(Literal::Str(s)) => {
+                // Lean v4.32: `major = whnf(string_lit_to_constructor(major))`
+                // — the expansion goes through the `String.ofList` *function*
+                // (the constructor is `ofByteArray` since the UTF-8 String
+                // refactor), so it must be WHNF'd into constructor form.
+                if let Some(e) = super::iota::str_lit_expansion(s, env) {
+                    major = self.whnf_env_depth(&e, env, depth + 1);
+                }
+            }
+            _ => {
+                if let Some(e) =
+                    super::iota::to_ctor_when_struct(rec_val, &major, env, &self.local_fvar_types)
+                {
+                    major = e;
+                }
+            }
+        }
+        super::iota::apply_recursor_rule(rec_val, rec_levels, args, major_idx, &major, env)
+    }
+    /// Try to reduce a `Quot.lift` / `Quot.ind` application (quotient iota).
+    ///
+    /// This mirrors Lean's `quot.cpp` `quot_reduce_rec`:
+    ///
+    /// - `Quot.lift {α} {r} {β} (f : α → β) (h) (q : Quot r)` has `mk_pos = 5`
+    ///   with the applied function `f` at position `3`. When the major premise
+    ///   `q` reduces to `Quot.mk α r a`, the result is `f a`.
+    /// - `Quot.ind {α} {r} {β} (m : ∀ a, β (Quot.mk r a)) (q : Quot r)` has
+    ///   `mk_pos = 4` with the minor premise `m` at position `3`. When `q`
+    ///   reduces to `Quot.mk α r a`, the result is `m a`.
+    ///
+    /// The quotiented element is always `mk_args[2]` of the fully-applied
+    /// `Quot.mk` (`Quot.mk {α} (r) (a)` — three explicit-position arguments).
+    ///
+    /// Unlike a naive implementation, this:
+    /// 1. WHNFs the major premise before inspecting its head, so a `q` that
+    ///    only reduces to `Quot.mk` (e.g. `id (Quot.mk r a)`) still fires; and
+    /// 2. re-applies any over-application arguments `args[mk_pos + 1 ..]` to
+    ///    the result, so no argument is ever silently dropped (which would be
+    ///    unsound on the def-eq path).
+    fn try_reduce_quot(
+        &mut self,
+        name: &Name,
+        args: &[&Expr],
+        env: &Environment,
+        depth: u32,
+    ) -> Option<Expr> {
+        use crate::declaration::QuotKind;
+        let qv = env.get_quotient_val(name)?;
+        // (arg_pos, mk_pos): position of the applied function / minor premise,
+        // and position of the major premise (the `Quot.mk` value).
+        let (arg_pos, mk_pos) = match qv.kind {
+            QuotKind::Lift => (3usize, 5usize),
+            QuotKind::Ind => (3usize, 4usize),
+            QuotKind::Type | QuotKind::Mk => return None,
+        };
+        // The major premise must be present.
+        if args.len() <= mk_pos {
+            return None;
+        }
+        // WHNF the major premise so terms that only *reduce* to `Quot.mk`
+        // still fire the computation rule.
+        let major_whnf = self.whnf_env_depth(args[mk_pos], env, depth + 1);
+        let mk_head = get_app_fn(&major_whnf);
+        let mk_name = if let Expr::Const(n, _) = mk_head {
+            n
         } else {
             return None;
         };
-        if !env.is_constructor(ctor_name) {
+        // The head must be a registered `Quot.mk`.
+        let mk_qv = env.get_quotient_val(mk_name)?;
+        if mk_qv.kind != QuotKind::Mk {
             return None;
         }
-        let rule = rec_val.get_rule(ctor_name)?;
-        let ctor_args: Vec<Expr> = get_app_args(&major_whnf).into_iter().cloned().collect();
-        let rhs = instantiate_recursor_rhs(&rule.rhs, rec_val, rec_levels, args, &ctor_args);
-        Some(rhs)
+        // `Quot.mk {α} (r) (a)` — the quotiented element is `mk_args[2]`.
+        let mk_args = get_app_args(&major_whnf);
+        if mk_args.len() < 3 {
+            return None;
+        }
+        let a = mk_args[2];
+        let f = args[arg_pos];
+        let reduced = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        // Re-apply any over-application arguments so they are never dropped.
+        Some(crate::expr_util::mk_app_refs(reduced, &args[mk_pos + 1..]))
     }
     /// Check if two expressions are alpha-equivalent (syntactically equal).
     pub fn is_alpha_equiv(e1: &Expr, e2: &Expr) -> bool {
@@ -1279,7 +1552,7 @@ impl ReductionTrace {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -1287,7 +1560,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }

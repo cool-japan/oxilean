@@ -5,6 +5,7 @@
 use super::functions::*;
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::{HashSet, VecDeque};
 
@@ -681,8 +682,8 @@ impl RcasesEngine {
             .ok_or_else(|| TacticError::Internal("goal has no type".into()))?;
         let rec_name = Name::str(format!("{}.rec", info.name));
         let proof = Expr::App(
-            Box::new(Expr::Const(rec_name, vec![Level::zero()])),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Const(rec_name, vec![Level::zero()])),
+            Node::new(Expr::Sort(Level::zero())),
         );
         ctx.assign_mvar(goal_id, proof);
         let _ = goal_ty;
@@ -746,7 +747,7 @@ impl RcasesEngine {
         }
         let mut ctor_app = Expr::Const(ctor.ctor_name.clone(), vec![Level::zero()]);
         for (_, fexpr) in &field_exprs {
-            ctor_app = Expr::App(Box::new(ctor_app), Box::new(fexpr.clone()));
+            ctor_app = Expr::App(Node::new(ctor_app), Node::new(fexpr.clone()));
         }
         let (new_goal_id, new_goal_expr) =
             ctx.mk_fresh_expr_mvar(goal_ty.clone(), MetavarKind::Natural);
@@ -757,11 +758,11 @@ impl RcasesEngine {
                 .unwrap_or_else(|| "unknown".to_string())
         ));
         let match_proof = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(cases_on_name, vec![Level::zero()])),
-                Box::new(target.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(cases_on_name, vec![Level::zero()])),
+                Node::new(target.clone()),
             )),
-            Box::new(new_goal_expr),
+            Node::new(new_goal_expr),
         );
         ctx.assign_mvar(goal_id, match_proof);
         result.goals.push(new_goal_id);
@@ -856,12 +857,12 @@ impl RcasesEngine {
         }
         let cases_on_name = Name::str(format!("{}.casesOn", info.name));
         let mut proof = Expr::Const(cases_on_name, vec![Level::zero()]);
-        proof = Expr::App(Box::new(proof), Box::new(target.clone()));
+        proof = Expr::App(Node::new(proof), Node::new(target.clone()));
         for case_id in case_goals.iter() {
             let case_ref = Expr::FVar(oxilean_kernel::FVarId::new(
                 case_id.0 + crate::basic::MVAR_FVAR_OFFSET,
             ));
-            proof = Expr::App(Box::new(proof), Box::new(case_ref));
+            proof = Expr::App(Node::new(proof), Node::new(case_ref));
         }
         ctx.assign_mvar(goal_id, proof);
         result.goals.extend(case_goals);

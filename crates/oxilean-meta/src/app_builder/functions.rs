@@ -9,6 +9,7 @@ use super::types::{
     AppBuilderExtDiag3700, AppBuilderExtDiff3700, AppBuilderExtPass3700, AppBuilderExtPipeline3700,
     AppBuilderExtResult3700, AppBuilderPipeline, AppBuilderResult,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Name};
 
 /// Build `@Eq α a b` (equality type).
@@ -158,8 +159,8 @@ pub fn mk_arrow(domain: Expr, codomain: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(domain),
-        Box::new(codomain),
+        Node::new(domain),
+        Node::new(codomain),
     )
 }
 /// Build `@Prod α β`.
@@ -180,33 +181,33 @@ pub fn mk_sigma(alpha: Expr, beta: Expr) -> Expr {
 }
 /// Build `f a`.
 pub(super) fn mk_app1(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Build `f a b`.
 pub(super) fn mk_app2(f: Expr, a: Expr, b: Expr) -> Expr {
-    Expr::App(Box::new(mk_app1(f, a)), Box::new(b))
+    Expr::App(Node::new(mk_app1(f, a)), Node::new(b))
 }
 /// Build `f a b c`.
 pub(super) fn mk_app3(f: Expr, a: Expr, b: Expr, c: Expr) -> Expr {
-    Expr::App(Box::new(mk_app2(f, a, b)), Box::new(c))
+    Expr::App(Node::new(mk_app2(f, a, b)), Node::new(c))
 }
 /// Build `f a b c d`.
 pub(super) fn mk_app4(f: Expr, a: Expr, b: Expr, c: Expr, d: Expr) -> Expr {
-    Expr::App(Box::new(mk_app3(f, a, b, c)), Box::new(d))
+    Expr::App(Node::new(mk_app3(f, a, b, c)), Node::new(d))
 }
 /// Build `f a b c d e`.
 pub(super) fn mk_app5(f: Expr, a: Expr, b: Expr, c: Expr, d: Expr, e: Expr) -> Expr {
-    Expr::App(Box::new(mk_app4(f, a, b, c, d)), Box::new(e))
+    Expr::App(Node::new(mk_app4(f, a, b, c, d)), Node::new(e))
 }
 /// Build `f a b c d e g`.
 pub(super) fn mk_app6(f: Expr, a: Expr, b: Expr, c: Expr, d: Expr, e: Expr, g: Expr) -> Expr {
-    Expr::App(Box::new(mk_app5(f, a, b, c, d, e)), Box::new(g))
+    Expr::App(Node::new(mk_app5(f, a, b, c, d, e)), Node::new(g))
 }
 /// Build `f args[0] args[1] ... args[n-1]`.
 pub(super) fn mk_apps(f: Expr, args: &[Expr]) -> Expr {
     let mut result = f;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg.clone()));
+        result = Expr::App(Node::new(result), Node::new(arg.clone()));
     }
     result
 }
@@ -299,7 +300,7 @@ pub fn mk_nat_succ(n: Expr) -> Expr {
 /// Constructs the corresponding chain of `Nat.succ` applications.
 /// Uses `Nat.ofNat` for large values to avoid deep nesting.
 pub fn mk_nat_lit(n: u64) -> Expr {
-    Expr::Lit(oxilean_kernel::Literal::Nat(n))
+    Expr::Lit(oxilean_kernel::Literal::nat(n))
 }
 /// Build `@List.nil α`.
 pub fn mk_list_nil(alpha: Expr) -> Expr {
@@ -393,25 +394,30 @@ pub fn mk_nat_to_nat() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
     )
 }
 /// Build `∀ (x : α), P x` from a name, type, and body.
 pub fn mk_forall(name: Name, alpha: Expr, body: Expr) -> Expr {
-    Expr::Pi(BinderInfo::Default, name, Box::new(alpha), Box::new(body))
+    Expr::Pi(BinderInfo::Default, name, Node::new(alpha), Node::new(body))
 }
 /// Build `∀ (x : α), P x` with implicit binder.
 pub fn mk_forall_implicit(name: Name, alpha: Expr, body: Expr) -> Expr {
-    Expr::Pi(BinderInfo::Implicit, name, Box::new(alpha), Box::new(body))
+    Expr::Pi(
+        BinderInfo::Implicit,
+        name,
+        Node::new(alpha),
+        Node::new(body),
+    )
 }
 /// Build a lambda abstraction.
 pub fn mk_lam(name: Name, alpha: Expr, body: Expr) -> Expr {
-    Expr::Lam(BinderInfo::Default, name, Box::new(alpha), Box::new(body))
+    Expr::Lam(BinderInfo::Default, name, Node::new(alpha), Node::new(body))
 }
 /// Build a let expression.
 pub fn mk_let(name: Name, ty: Expr, val: Expr, body: Expr) -> Expr {
-    Expr::Let(name, Box::new(ty), Box::new(val), Box::new(body))
+    Expr::Let(name, Node::new(ty), Node::new(val), Node::new(body))
 }
 /// Build `Prop` (Sort 0).
 pub fn mk_prop() -> Expr {
@@ -588,8 +594,8 @@ pub fn collect_app(expr: &Expr) -> (Expr, Vec<Expr>) {
     let mut args = Vec::new();
     let mut e = expr.clone();
     while let Expr::App(f, a) = e {
-        args.push(*a);
-        e = *f;
+        args.push((*a).clone());
+        e = (*f).clone();
     }
     args.reverse();
     (e, args)
@@ -598,7 +604,7 @@ pub fn collect_app(expr: &Expr) -> (Expr, Vec<Expr>) {
 pub fn rebuild_app(head: Expr, args: Vec<Expr>) -> Expr {
     let mut result = head;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg));
+        result = Expr::App(Node::new(result), Node::new(arg));
     }
     result
 }
@@ -673,11 +679,11 @@ mod tests_util {
     #[test]
     fn test_collect_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(oxilean_kernel::Literal::Nat(1));
-        let b = Expr::Lit(oxilean_kernel::Literal::Nat(2));
+        let a = Expr::Lit(oxilean_kernel::Literal::nat(1));
+        let b = Expr::Lit(oxilean_kernel::Literal::nat(2));
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = collect_app(&app);
         assert_eq!(head, f);
@@ -688,14 +694,17 @@ mod tests_util {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = nat();
         let rebuilt = rebuild_app(f.clone(), vec![a.clone()]);
-        assert_eq!(rebuilt, Expr::App(Box::new(f), Box::new(a)));
+        assert_eq!(rebuilt, Expr::App(Node::new(f), Node::new(a)));
     }
     #[test]
     fn test_app_arity() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = nat();
         let b = nat();
-        let app = Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b));
+        let app = Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        );
         assert_eq!(app_arity(&app), 2);
         assert_eq!(app_arity(&nat()), 0);
     }
@@ -703,14 +712,14 @@ mod tests_util {
     fn test_app_head() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = nat();
-        let app = Expr::App(Box::new(f.clone()), Box::new(a));
+        let app = Expr::App(Node::new(f.clone()), Node::new(a));
         assert_eq!(app_head(&app), &f);
     }
     #[test]
     fn test_is_app_of() {
         let f = Expr::Const(Name::str("Nat.succ"), vec![]);
         let z = Expr::Const(Name::str("Nat.zero"), vec![]);
-        let one = Expr::App(Box::new(f), Box::new(z));
+        let one = Expr::App(Node::new(f), Node::new(z));
         assert!(is_app_of(&one, &Name::str("Nat.succ")));
         assert!(!is_app_of(&one, &Name::str("Nat.zero")));
     }
@@ -871,14 +880,14 @@ mod expr_helpers_tests {
     }
     #[test]
     fn test_expr_to_debug_str_lit() {
-        let e = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let e = Expr::Lit(oxilean_kernel::Literal::nat(42));
         assert_eq!(expr_to_debug_str(&e), "42");
     }
     #[test]
     fn test_expr_to_debug_str_app() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         let s = expr_to_debug_str(&e);
         assert!(s.contains('f'));
@@ -890,7 +899,7 @@ mod expr_helpers_tests {
     }
     #[test]
     fn test_spine_length_one() {
-        let e = Expr::App(Box::new(zero()), Box::new(zero()));
+        let e = Expr::App(Node::new(zero()), Node::new(zero()));
         assert_eq!(spine_length(&e), 1);
     }
     #[test]
@@ -899,7 +908,7 @@ mod expr_helpers_tests {
     }
     #[test]
     fn test_has_const_head_app() {
-        let e = Expr::App(Box::new(zero()), Box::new(zero()));
+        let e = Expr::App(Node::new(zero()), Node::new(zero()));
         assert!(has_const_head(&e));
     }
     #[test]

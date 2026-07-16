@@ -343,6 +343,12 @@ pub mod type_theory_advanced;
 pub mod variational_analysis;
 pub mod zero_knowledge_proofs;
 
+// ── Tactic lemma bundles ──────────────────────────────────────────────────────
+pub mod cc_helper;
+pub mod linarith_helper;
+pub mod omega_helper;
+pub mod polyrith_helper;
+
 // ── Registry and utilities sub-modules ───────────────────────────────────────
 pub mod registry;
 pub mod std_utilities;
@@ -354,9 +360,11 @@ pub use array::build_array_env;
 pub use bitvec::build_bitvec_env;
 pub use bool::build_bool_env;
 pub use category_theory::build_category_theory_env;
+pub use cc_helper::register_cc_helper;
 pub use char::build_char_env;
 pub use decidable::build_decidable_env;
 pub use either::build_either_env;
+pub use env_builder::functions_2::add_omega_lemmas;
 pub use eq::build_eq_env;
 pub use fin::build_fin_env;
 pub use functor::build_functor_env;
@@ -366,15 +374,18 @@ pub use hashset::build_hashset_env;
 pub use int::build_int_env;
 pub use io::build_io_env;
 pub use lazy::build_lazy_env;
+pub use linarith_helper::register_linarith_helper;
 pub use list::build_list_env;
 pub use logic::build_logic_env;
 pub use monad::build_monad_env;
 pub use nat::build_nat_env;
+pub use omega_helper::register_omega_helper;
 pub use option::build_option_env;
 pub use ord::build_ord_env;
 pub use order::build_order_env;
 pub use ordering::build_ordering_env;
 pub use parsec::build_parsec_env;
+pub use polyrith_helper::register_polyrith_helper;
 pub use prod::build_prod_env;
 pub use prop::build_prop_env;
 pub use quotient_types::build_quotient_types_env;

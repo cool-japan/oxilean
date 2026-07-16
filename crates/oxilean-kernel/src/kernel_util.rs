@@ -49,7 +49,7 @@ pub fn mk_sort(level: Level) -> Expr {
 /// Convenience: make a `Nat` literal expression.
 #[allow(dead_code)]
 pub fn mk_nat_lit(n: u64) -> Expr {
-    Expr::Lit(Literal::Nat(n))
+    Expr::Lit(Literal::nat(n))
 }
 
 /// Convenience: make a `String` literal expression.
@@ -765,7 +765,7 @@ mod kernel_extra_tests {
 
     #[test]
     fn test_is_literal_true() {
-        assert!(is_literal(&Expr::Lit(Literal::Nat(42))));
+        assert!(is_literal(&Expr::Lit(Literal::nat(42))));
     }
 
     #[test]
@@ -904,7 +904,7 @@ mod kernel_extra_tests {
 
     #[test]
     fn test_collect_literals() {
-        let e = mk_app(Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2)));
+        let e = mk_app(Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2)));
         let lits = collect_literals(&e);
         assert_eq!(lits.len(), 2);
     }

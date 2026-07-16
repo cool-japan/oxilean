@@ -3,7 +3,8 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::context::ElabContext;
-use oxilean_kernel::{Environment, Expr, FVarId, Level, Name};
+use oxilean_kernel::Node;
+use oxilean_kernel::{Environment, Expr, FVarId, Level, Literal, Name};
 use oxilean_parse::{Located, MatchArm, Pattern, SurfaceExpr};
 use std::collections::HashMap;
 
@@ -414,10 +415,10 @@ fn elaborate_pattern_inner(
 /// Convert a parse literal to a kernel literal.
 fn convert_literal(lit: &oxilean_parse::Literal) -> oxilean_kernel::Literal {
     match lit {
-        oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::Nat(*n),
+        oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(*n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s.clone()),
         oxilean_parse::Literal::Char(_) => oxilean_kernel::Literal::Str("?".to_string()),
-        oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::Nat(0),
+        oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }
 /// Extract all variables bound by a pattern.
@@ -532,20 +533,20 @@ pub fn surface_to_placeholder(surf: &SurfaceExpr) -> Expr {
         SurfaceExpr::Sort(oxilean_parse::SortKind::Prop) => Expr::Sort(Level::zero()),
         SurfaceExpr::Sort(_) => Expr::Sort(Level::succ(Level::zero())),
         SurfaceExpr::Lit(oxilean_parse::Literal::Nat(n)) => {
-            Expr::Lit(oxilean_kernel::Literal::Nat(*n))
+            Expr::Lit(oxilean_kernel::Literal::nat(*n))
         }
         SurfaceExpr::Lit(oxilean_parse::Literal::String(s)) => {
             Expr::Lit(oxilean_kernel::Literal::Str(s.clone()))
         }
         SurfaceExpr::App(f, a) => Expr::App(
-            Box::new(surface_to_placeholder(&f.value)),
-            Box::new(surface_to_placeholder(&a.value)),
+            Node::new(surface_to_placeholder(&f.value)),
+            Node::new(surface_to_placeholder(&a.value)),
         ),
         SurfaceExpr::Ann(e, _ty) => surface_to_placeholder(&e.value),
         SurfaceExpr::Proj(base, field) => Expr::Proj(
             Name::str(field),
             0,
-            Box::new(surface_to_placeholder(&base.value)),
+            Node::new(surface_to_placeholder(&base.value)),
         ),
         SurfaceExpr::Hole => Expr::Sort(Level::succ(Level::zero())),
         _ => Expr::Sort(Level::succ(Level::zero())),
@@ -744,7 +745,7 @@ mod tests {
         let (elab, bindings) = elaborate_pattern(&mut ctx, &pat, &placeholder_ty())
             .expect("elaboration should succeed");
         match elab {
-            ElabPattern::Lit(oxilean_kernel::Literal::Nat(42)) => {}
+            ElabPattern::Lit(oxilean_kernel::Literal::Nat(ref n)) if *n == 42u64 => {}
             _ => panic!("expected Lit(42) pattern"),
         }
         assert!(bindings.is_empty());
@@ -859,7 +860,7 @@ mod tests {
         let arms = vec![(mk_wild(), mk_rhs(42))];
         let tree = DecisionTree::new(&arms).expect("test operation should succeed");
         let expr = tree.compile();
-        assert!(matches!(expr, Expr::Lit(oxilean_kernel::Literal::Nat(42))));
+        assert!(matches!(expr, Expr::Lit(Literal::Nat(ref n)) if *n == 42u64));
     }
     #[test]
     fn test_decision_tree_ctor() {
@@ -874,12 +875,12 @@ mod tests {
     fn test_decision_tree_from_equations() {
         let equations = vec![MatchEquation {
             patterns: vec![ElabPattern::Wild],
-            rhs: Expr::Lit(oxilean_kernel::Literal::Nat(99)),
+            rhs: Expr::Lit(oxilean_kernel::Literal::nat(99)),
             arm_idx: 0,
         }];
         let tree = DecisionTree::from_equations(&equations).expect("test operation should succeed");
         let expr = tree.compile();
-        assert!(matches!(expr, Expr::Lit(oxilean_kernel::Literal::Nat(99))));
+        assert!(matches!(expr, Expr::Lit(Literal::Nat(ref n)) if *n == 99u64));
     }
     #[test]
     fn test_nested_ctor_pattern() {
@@ -985,7 +986,7 @@ mod tests {
     #[test]
     fn test_is_irrefutable_lit() {
         assert!(!is_irrefutable(&ElabPattern::Lit(
-            oxilean_kernel::Literal::Nat(42)
+            oxilean_kernel::Literal::nat(42)
         )));
     }
     #[test]
@@ -1160,10 +1161,10 @@ mod tests {
     #[test]
     fn test_flatten_or() {
         let or_pat = ElabPattern::Or(
-            Box::new(ElabPattern::Lit(oxilean_kernel::Literal::Nat(1))),
+            Box::new(ElabPattern::Lit(oxilean_kernel::Literal::nat(1))),
             Box::new(ElabPattern::Or(
-                Box::new(ElabPattern::Lit(oxilean_kernel::Literal::Nat(2))),
-                Box::new(ElabPattern::Lit(oxilean_kernel::Literal::Nat(3))),
+                Box::new(ElabPattern::Lit(oxilean_kernel::Literal::nat(2))),
+                Box::new(ElabPattern::Lit(oxilean_kernel::Literal::nat(3))),
             )),
         );
         let flat = flatten_or_pattern(&or_pat);
@@ -1265,10 +1266,10 @@ pub fn elab_pattern_with_counter(
 #[allow(dead_code)]
 fn convert_lit_helper(lit: &oxilean_parse::Literal) -> oxilean_kernel::Literal {
     match lit {
-        oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::Nat(*n),
+        oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(*n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s.clone()),
         oxilean_parse::Literal::Char(_) => oxilean_kernel::Literal::Str("?".to_string()),
-        oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::Nat(0),
+        oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }
 /// Check structural equivalence of two elaborated patterns (ignoring FVarIds).
@@ -1403,7 +1404,7 @@ mod extended_tests {
         Expr::Sort(Level::succ(Level::zero()))
     }
     fn mk_nat_lit(n: u64) -> ElabPattern {
-        ElabPattern::Lit(oxilean_kernel::Literal::Nat(n))
+        ElabPattern::Lit(Literal::nat(n))
     }
     fn mk_str_lit(s: &str) -> ElabPattern {
         ElabPattern::Lit(oxilean_kernel::Literal::Str(s.to_string()))
@@ -1486,9 +1487,9 @@ mod extended_tests {
     #[test]
     fn test_literal_set_nats() {
         let mut ls = LiteralSet::new();
-        ls.add_literal(&oxilean_kernel::Literal::Nat(1));
-        ls.add_literal(&oxilean_kernel::Literal::Nat(2));
-        ls.add_literal(&oxilean_kernel::Literal::Nat(1));
+        ls.add_literal(&oxilean_kernel::Literal::nat(1));
+        ls.add_literal(&oxilean_kernel::Literal::nat(2));
+        ls.add_literal(&oxilean_kernel::Literal::nat(1));
         assert_eq!(ls.nats.len(), 2);
         assert!(ls.covers_nat(1));
         assert!(!ls.covers_nat(3));
@@ -1659,12 +1660,12 @@ mod extended_tests {
     #[test]
     fn test_pattern_to_expr_lit() {
         let expr = pattern_to_expr(&mk_nat_lit(5));
-        assert!(matches!(expr, Expr::Lit(oxilean_kernel::Literal::Nat(5))));
+        assert!(matches!(expr, Expr::Lit(Literal::Nat(ref n)) if *n == 5u64));
     }
     #[test]
     fn test_pattern_matcher_literals() {
         let matcher = PatternMatcher::new();
-        let lit = oxilean_kernel::Literal::Nat(7);
+        let lit = oxilean_kernel::Literal::nat(7);
         assert!(matcher.matches_literal(&ElabPattern::Wild, &lit));
         assert!(matcher.matches_literal(&mk_nat_lit(7), &lit));
         assert!(!matcher.matches_literal(&mk_nat_lit(8), &lit));
@@ -1675,16 +1676,16 @@ mod extended_tests {
     fn test_pattern_matcher_first_match() {
         let matcher = PatternMatcher::new();
         let arms = vec![mk_nat_lit(1), mk_nat_lit(2), ElabPattern::Wild];
-        let lit = oxilean_kernel::Literal::Nat(2);
+        let lit = oxilean_kernel::Literal::nat(2);
         assert_eq!(matcher.first_match_idx(&arms, &lit), Some(1));
-        let lit2 = oxilean_kernel::Literal::Nat(99);
+        let lit2 = oxilean_kernel::Literal::nat(99);
         assert_eq!(matcher.first_match_idx(&arms, &lit2), Some(2));
     }
     #[test]
     fn test_pattern_matcher_all_match_idxs() {
         let matcher = PatternMatcher::new();
         let arms = vec![mk_nat_lit(1), ElabPattern::Wild, mk_nat_lit(1)];
-        let lit = oxilean_kernel::Literal::Nat(1);
+        let lit = oxilean_kernel::Literal::nat(1);
         let idxs = matcher.all_match_idxs(&arms, &lit);
         assert_eq!(idxs, vec![0, 1, 2]);
     }

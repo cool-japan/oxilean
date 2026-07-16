@@ -11,6 +11,7 @@ use super::types::{
     UnificationStats,
 };
 use crate::basic::{MVarId, MetaContext};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, FVarId};
 
 #[cfg(test)]
@@ -26,15 +27,15 @@ mod tests {
     fn test_def_eq_identical() {
         let mut deq = MetaDefEq::new();
         let mut ctx = MetaContext::new(mk_env());
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(deq.is_def_eq(&e, &e, &mut ctx).is_equal());
     }
     #[test]
     fn test_def_eq_different_lits() {
         let mut deq = MetaDefEq::new();
         let mut ctx = MetaContext::new(mk_env());
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         assert!(deq.is_def_eq(&e1, &e2, &mut ctx).is_not_equal());
     }
     #[test]
@@ -43,7 +44,7 @@ mod tests {
         let mut ctx = MetaContext::new(mk_env());
         let ty = Expr::Sort(Level::zero());
         let (id, placeholder) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         let result = deq.is_def_eq(&placeholder, &val, &mut ctx);
         assert!(result.is_equal());
         assert!(ctx.is_mvar_assigned(id));
@@ -67,11 +68,11 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let arg = Expr::Lit(Literal::Nat(42));
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let arg = Expr::Lit(Literal::nat(42));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let result = deq.is_def_eq(&app, &arg, &mut ctx);
         assert!(result.is_equal());
     }
@@ -92,14 +93,14 @@ mod tests {
         let p1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         let p2 = Expr::Pi(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         assert!(deq.is_def_eq(&p1, &p2, &mut ctx).is_equal());
     }
@@ -110,8 +111,8 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let (id, placeholder) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         let bad_val = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(placeholder.clone()),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(placeholder.clone()),
         );
         let result = deq.is_def_eq(&placeholder, &bad_val, &mut ctx);
         assert!(result.is_not_equal());
@@ -132,9 +133,9 @@ mod tests {
         let mut deq = MetaDefEq::new();
         let mut ctx = MetaContext::new(mk_env());
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let app2 = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let app2 = Expr::App(Node::new(f), Node::new(a));
         assert!(deq.is_def_eq(&app1, &app2, &mut ctx).is_equal());
     }
     #[test]
@@ -142,10 +143,10 @@ mod tests {
         let mut deq = MetaDefEq::new();
         let mut ctx = MetaContext::new(mk_env());
         let e = Expr::BVar(0);
-        let p1 = Expr::Proj(Name::str("Prod"), 0, Box::new(e.clone()));
-        let p2 = Expr::Proj(Name::str("Prod"), 0, Box::new(e.clone()));
+        let p1 = Expr::Proj(Name::str("Prod"), 0, Node::new(e.clone()));
+        let p2 = Expr::Proj(Name::str("Prod"), 0, Node::new(e.clone()));
         assert!(deq.is_def_eq(&p1, &p2, &mut ctx).is_equal());
-        let p3 = Expr::Proj(Name::str("Prod"), 1, Box::new(e));
+        let p3 = Expr::Proj(Name::str("Prod"), 1, Node::new(e));
         assert!(deq.is_def_eq(&p1, &p3, &mut ctx).is_not_equal());
     }
     #[test]
@@ -155,12 +156,12 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let (id, placeholder) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         let lhs = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(placeholder),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(placeholder),
         );
         let rhs = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(42))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(42))),
         );
         let result = deq.is_def_eq(&lhs, &rhs, &mut ctx);
         assert!(result.is_equal());
@@ -170,8 +171,8 @@ mod tests {
     fn test_step_counting() {
         let mut deq = MetaDefEq::new();
         let mut ctx = MetaContext::new(mk_env());
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         let _ = deq.is_def_eq(&e1, &e2, &mut ctx);
         assert!(deq.num_steps() > 0);
         deq.reset_steps();
@@ -212,22 +213,22 @@ mod extra_def_eq_tests {
     }
     #[test]
     fn test_unif_constraint_trivial() {
-        let e = Expr::Lit(Literal::Nat(1));
+        let e = Expr::Lit(Literal::nat(1));
         let c = UnifConstraint::new(e.clone(), e.clone(), 0);
         assert!(c.is_trivial());
     }
     #[test]
     fn test_unif_constraint_not_trivial() {
-        let lhs = Expr::Lit(Literal::Nat(1));
-        let rhs = Expr::Lit(Literal::Nat(2));
+        let lhs = Expr::Lit(Literal::nat(1));
+        let rhs = Expr::Lit(Literal::nat(2));
         let c = UnifConstraint::new(lhs, rhs, 0);
         assert!(!c.is_trivial());
     }
     #[test]
     fn test_unif_queue_push_pop() {
         let mut q = UnifConstraintQueue::new();
-        let e1 = Expr::Lit(Literal::Nat(1));
-        let e2 = Expr::Lit(Literal::Nat(2));
+        let e1 = Expr::Lit(Literal::nat(1));
+        let e2 = Expr::Lit(Literal::nat(2));
         q.push(e1.clone(), e2.clone(), 0);
         assert_eq!(q.len(), 1);
         let c = q.pop().expect("collection should not be empty");
@@ -238,9 +239,9 @@ mod extra_def_eq_tests {
     #[test]
     fn test_unif_queue_drain_trivial() {
         let mut q = UnifConstraintQueue::new();
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         q.push(e.clone(), e.clone(), 0);
-        q.push(e.clone(), Expr::Lit(Literal::Nat(99)), 0);
+        q.push(e.clone(), Expr::Lit(Literal::nat(99)), 0);
         assert_eq!(q.len(), 2);
         q.drain_trivial();
         assert_eq!(q.len(), 1);
@@ -257,7 +258,7 @@ mod extra_def_eq_tests {
         let mut deq = MetaDefEq::new();
         let mut ctx = MetaContext::new(mk_env());
         let pairs = vec![
-            (Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(1))),
+            (Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(1))),
             (Expr::Sort(Level::zero()), Expr::Sort(Level::zero())),
         ];
         let result = all_def_eq(&pairs, &mut deq, &mut ctx);
@@ -268,8 +269,8 @@ mod extra_def_eq_tests {
         let mut deq = MetaDefEq::new();
         let mut ctx = MetaContext::new(mk_env());
         let pairs = vec![
-            (Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(1))),
-            (Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))),
+            (Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(1))),
+            (Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))),
         ];
         let result = all_def_eq(&pairs, &mut deq, &mut ctx);
         assert!(result.is_not_equal());
@@ -281,14 +282,14 @@ mod extra_def_eq_tests {
         let l1 = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         let l2 = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert!(deq.is_def_eq(&l1, &l2, &mut ctx).is_equal());
     }

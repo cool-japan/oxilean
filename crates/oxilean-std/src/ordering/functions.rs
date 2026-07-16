@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -39,8 +40,8 @@ pub fn build_ordering_env(env: &mut Environment) -> Result<(), String> {
     let is_le_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("o"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Const(Name::str("Bool"), vec![])),
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Const(Name::str("Bool"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Ordering.isLE"),
@@ -51,8 +52,8 @@ pub fn build_ordering_env(env: &mut Environment) -> Result<(), String> {
     let is_ge_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("o"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Const(Name::str("Bool"), vec![])),
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Const(Name::str("Bool"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Ordering.isGE"),
@@ -63,8 +64,8 @@ pub fn build_ordering_env(env: &mut Environment) -> Result<(), String> {
     let reverse_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("o"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Ordering.reverse"),
@@ -75,12 +76,12 @@ pub fn build_ordering_env(env: &mut Environment) -> Result<(), String> {
     let then_ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("o1"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("o2"),
-            Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-            Box::new(Expr::Const(Name::str("Ordering"), vec![])),
+            Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+            Node::new(Expr::Const(Name::str("Ordering"), vec![])),
         )),
     );
     env.add(Declaration::Axiom {
@@ -370,12 +371,12 @@ pub fn build_full_ordering_env(env: &mut Environment) -> Result<(), String> {
     let decide_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("o1"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("o2"),
-            Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-            Box::new(Expr::Const(Name::str("Bool"), vec![])),
+            Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+            Node::new(Expr::Const(Name::str("Bool"), vec![])),
         )),
     );
     env.add(Declaration::Axiom {
@@ -753,8 +754,8 @@ pub fn ord_ext_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Type of `WQO.carrier`: the carrier type of a well-quasi-order.
@@ -772,22 +773,22 @@ pub fn axiom_wqo_carrier_ty() -> Expr {
 pub fn axiom_wqo_le_ty() -> Expr {
     let wqo = Expr::Const(Name::str("WQO"), vec![]);
     let carrier_w = Expr::App(
-        Box::new(Expr::Const(Name::str("WQO.carrier"), vec![])),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Const(Name::str("WQO.carrier"), vec![])),
+        Node::new(Expr::BVar(0)),
     );
     Expr::Pi(
         BinderInfo::Default,
         Name::str("w"),
-        Box::new(wqo),
-        Box::new(Expr::Pi(
+        Node::new(wqo),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(carrier_w.clone()),
-            Box::new(Expr::Pi(
+            Node::new(carrier_w.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(carrier_w),
-                Box::new(Expr::Sort(Level::zero())),
+                Node::new(carrier_w),
+                Node::new(Expr::Sort(Level::zero())),
             )),
         )),
     )
@@ -953,12 +954,12 @@ pub fn axiom_ordinal_comparability_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("alpha"),
-        Box::new(ord.clone()),
-        Box::new(Expr::Pi(
+        Node::new(ord.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("beta"),
-            Box::new(ord),
-            Box::new(Expr::Const(Name::str("Ordinal.trichotomy"), vec![])),
+            Node::new(ord),
+            Node::new(Expr::Const(Name::str("Ordinal.trichotomy"), vec![])),
         )),
     )
 }
@@ -1040,11 +1041,11 @@ pub fn axiom_dedekind_completeness_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("F"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(ord_ext_arrow(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(ord_ext_arrow(
             Expr::App(
-                Box::new(Expr::Const(Name::str("DedekindCut"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("DedekindCut"), vec![])),
+                Node::new(Expr::BVar(0)),
             ),
             Expr::BVar(1),
         )),
@@ -1083,11 +1084,11 @@ pub fn axiom_ordered_field_archimedean_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("F"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(ord_ext_arrow(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(ord_ext_arrow(
             Expr::App(
-                Box::new(Expr::Const(Name::str("OrderedField"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("OrderedField"), vec![])),
+                Node::new(Expr::BVar(0)),
             ),
             Expr::Sort(Level::zero()),
         )),
@@ -1133,13 +1134,13 @@ pub fn axiom_ordinal_cnf_ty() -> Expr {
     ord_ext_arrow(
         Expr::Const(Name::str("Ordinal"), vec![]),
         Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                    Box::new(Expr::Const(Name::str("Ordinal"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                    Node::new(Expr::Const(Name::str("Ordinal"), vec![])),
                 )),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             )),
         ),
     )
@@ -1151,8 +1152,8 @@ pub fn axiom_partial_order_antisymmetry_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("alpha"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(Expr::Const(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(Expr::Const(
             Name::str("PartialOrder.antisymmetryStatement"),
             vec![],
         )),
@@ -1448,8 +1449,8 @@ pub fn axiom_complete_lattice_sup_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("L"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(ord_ext_arrow(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(ord_ext_arrow(
             ord_ext_arrow(Expr::BVar(0), Expr::Sort(Level::zero())),
             Expr::BVar(1),
         )),
@@ -1462,12 +1463,12 @@ pub fn axiom_galois_connection_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("P"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("Q"),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
-            Box::new(ord_ext_arrow(
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(ord_ext_arrow(
                 ord_ext_arrow(Expr::BVar(1), Expr::BVar(0)),
                 ord_ext_arrow(
                     ord_ext_arrow(Expr::BVar(1), Expr::BVar(2)),
@@ -1513,12 +1514,12 @@ pub fn axiom_order_iso_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("A"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("B"),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
-            Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
         )),
     )
 }
@@ -1529,12 +1530,12 @@ pub fn axiom_order_embedding_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("A"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("B"),
-            Box::new(Expr::Sort(Level::succ(Level::zero()))),
-            Box::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
+            Node::new(Expr::Sort(Level::succ(Level::zero()))),
+            Node::new(Expr::Sort(Level::succ(Level::succ(Level::zero())))),
         )),
     )
 }
@@ -1546,8 +1547,8 @@ pub fn axiom_cofinal_subset_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("P"),
-        Box::new(Expr::Sort(Level::succ(Level::zero()))),
-        Box::new(ord_ext_arrow(
+        Node::new(Expr::Sort(Level::succ(Level::zero()))),
+        Node::new(ord_ext_arrow(
             ord_ext_arrow(Expr::BVar(0), Expr::Sort(Level::zero())),
             Expr::Sort(Level::zero()),
         )),

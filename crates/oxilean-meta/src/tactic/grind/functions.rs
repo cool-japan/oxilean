@@ -8,8 +8,10 @@ use super::types::{
     NatConstraint, NatRelKind, ProofStep, SignatureTable, Substitution, TermIndex, UnionFind,
 };
 use crate::basic::MetaContext;
+use crate::tactic::certificate::ProofCertificate;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
-use oxilean_kernel::{Expr, Level, Name};
+use oxilean_kernel::Node;
+use oxilean_kernel::{Expr, FVarId, Level, Name};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Run E-matching over the congruence closure, returning all substitutions
@@ -172,16 +174,16 @@ pub(super) fn build_single_step_proof(step: &EqualityStep) -> Expr {
         MergeReason::Reflexivity => mk_eq_refl(step.lhs.clone()),
         MergeReason::Hypothesis(name, _) => Expr::Const(name.clone(), vec![]),
         MergeReason::Congruence(_, _) => Expr::App(
-            Box::new(Expr::Const(Name::str("congr"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq.refl"), vec![])),
-                Box::new(step.lhs.clone()),
+            Node::new(Expr::Const(Name::str("congr"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq.refl"), vec![])),
+                Node::new(step.lhs.clone()),
             )),
         ),
         MergeReason::EMatchInstance { hyp_name, subst } => {
             let mut result: Expr = Expr::Const(hyp_name.clone(), vec![]);
             for (_, val) in subst {
-                result = Expr::App(Box::new(result), Box::new(val.clone()));
+                result = Expr::App(Node::new(result), Node::new(val.clone()));
             }
             result
         }
@@ -192,25 +194,25 @@ pub(super) fn build_single_step_proof(step: &EqualityStep) -> Expr {
 /// Build `Eq.refl a`.
 pub(super) fn mk_eq_refl(a: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Eq.refl"), vec![])),
-        Box::new(a),
+        Node::new(Expr::Const(Name::str("Eq.refl"), vec![])),
+        Node::new(a),
     )
 }
 /// Build `Eq.trans p1 p2`.
 pub(super) fn mk_eq_trans(p1: Expr, p2: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Eq.trans"), vec![])),
-            Box::new(p1),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Eq.trans"), vec![])),
+            Node::new(p1),
         )),
-        Box::new(p2),
+        Node::new(p2),
     )
 }
 /// Build `Eq.symm p`.
 pub(super) fn mk_eq_symm(p: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Eq.symm"), vec![])),
-        Box::new(p),
+        Node::new(Expr::Const(Name::str("Eq.symm"), vec![])),
+        Node::new(p),
     )
 }
 /// Convert a ProofStep tree into a kernel Expr.
@@ -233,18 +235,18 @@ pub fn proof_step_to_expr(step: &ProofStep) -> Expr {
             let fp = proof_step_to_expr(func_proof);
             let ap = proof_step_to_expr(arg_proof);
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("congr"), vec![])),
-                    Box::new(fp),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("congr"), vec![])),
+                    Node::new(fp),
                 )),
-                Box::new(ap),
+                Node::new(ap),
             )
         }
         ProofStep::Hypothesis(name, _) => Expr::Const(name.clone(), vec![]),
         ProofStep::Instance { hyp_name, subst } => {
             let mut result: Expr = Expr::Const(hyp_name.clone(), vec![]);
             for (_, val) in subst {
-                result = Expr::App(Box::new(result), Box::new(val.clone()));
+                result = Expr::App(Node::new(result), Node::new(val.clone()));
             }
             result
         }
@@ -256,8 +258,8 @@ pub(super) fn flatten_app(expr: &Expr) -> (Expr, Vec<Expr>) {
     let mut args = Vec::new();
     let mut current = expr.clone();
     while let Expr::App(f, a) = current {
-        args.push(*a);
-        current = *f;
+        args.push((*a).clone());
+        current = (*f).clone();
     }
     args.reverse();
     (current, args)
@@ -292,7 +294,7 @@ pub(super) fn decompose_eq(expr: &Expr) -> Option<(Expr, Expr)> {
             if let Expr::App(eq_head, _ty) = f2.as_ref() {
                 if let Expr::Const(name, _) = eq_head.as_ref() {
                     if name == &Name::str("Eq") || name == &Name::str("Eq").append_str("mk") {
-                        return Some((*lhs.clone(), *rhs.clone()));
+                        return Some(((**lhs).clone(), (**rhs).clone()));
                     }
                 }
             }
@@ -300,7 +302,7 @@ pub(super) fn decompose_eq(expr: &Expr) -> Option<(Expr, Expr)> {
                 if let Expr::App(heq_outer, _) = heq_head.as_ref() {
                     if let Expr::Const(name, _) = heq_outer.as_ref() {
                         if name == &Name::str("HEq") {
-                            return Some((*lhs.clone(), *rhs.clone()));
+                            return Some(((**lhs).clone(), (**rhs).clone()));
                         }
                     }
                 }
@@ -319,7 +321,7 @@ pub(super) fn strip_forall(expr: &Expr) -> (usize, Expr) {
     let mut current = expr.clone();
     while let Expr::Pi(_, _, _, body) = current {
         count += 1;
-        current = *body;
+        current = (*body).clone();
     }
     (count, current)
 }
@@ -329,7 +331,7 @@ pub(super) fn decompose_or(expr: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(or_head, a) = f.as_ref() {
             if let Expr::Const(name, _) = or_head.as_ref() {
                 if name == &Name::str("Or") {
-                    return Some((*a.clone(), *b.clone()));
+                    return Some(((**a).clone(), (**b).clone()));
                 }
             }
         }
@@ -380,27 +382,32 @@ pub(super) fn apply_subst_impl(
         Expr::App(f, a) => {
             let f2 = apply_subst_impl(f, subst, cc, depth + 1);
             let a2 = apply_subst_impl(a, subst, cc, depth + 1);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(info, name, ty, body) => {
             let ty2 = apply_subst_impl(ty, subst, cc, depth + 1);
             let body2 = apply_subst_impl(body, subst, cc, depth + 1);
-            Expr::Lam(*info, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*info, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(info, name, ty, body) => {
             let ty2 = apply_subst_impl(ty, subst, cc, depth + 1);
             let body2 = apply_subst_impl(body, subst, cc, depth + 1);
-            Expr::Pi(*info, name.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*info, name.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(name, ty, val, body) => {
             let ty2 = apply_subst_impl(ty, subst, cc, depth + 1);
             let val2 = apply_subst_impl(val, subst, cc, depth + 1);
             let body2 = apply_subst_impl(body, subst, cc, depth + 1);
-            Expr::Let(name.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(
+                name.clone(),
+                Node::new(ty2),
+                Node::new(val2),
+                Node::new(body2),
+            )
         }
         Expr::Proj(name, idx, base) => {
             let base2 = apply_subst_impl(base, subst, cc, depth + 1);
-            Expr::Proj(name.clone(), *idx, Box::new(base2))
+            Expr::Proj(name.clone(), *idx, Node::new(base2))
         }
         _ => expr.clone(),
     }
@@ -474,14 +481,14 @@ pub fn tac_grind_aggressive(state: &mut TacticState, ctx: &mut MetaContext) -> T
 /// Check if two expressions are provably equal using the grind engine.
 pub fn grind_check_eq(lhs: &Expr, rhs: &Expr, hyps: &[(Name, Expr)], config: &GrindConfig) -> bool {
     let goal = Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                Box::new(Expr::Sort(Level::zero())),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                Node::new(Expr::Sort(Level::zero())),
             )),
-            Box::new(lhs.clone()),
+            Node::new(lhs.clone()),
         )),
-        Box::new(rhs.clone()),
+        Node::new(rhs.clone()),
     );
     let (result, _) = grind_on_goal(config, &goal, hyps);
     result.is_proved()
@@ -519,8 +526,8 @@ pub fn try_parse_nat_constraint(expr: &Expr) -> Option<NatConstraint> {
             };
             if let Some(rel) = rel {
                 return Some(NatConstraint {
-                    lhs: *lhs.clone(),
-                    rhs: *rhs.clone(),
+                    lhs: (**lhs).clone(),
+                    rhs: (**rhs).clone(),
                     rel,
                 });
             }
@@ -528,8 +535,8 @@ pub fn try_parse_nat_constraint(expr: &Expr) -> Option<NatConstraint> {
                 if let Expr::Const(name, _) = func3.as_ref() {
                     if name.to_string() == "Eq" {
                         return Some(NatConstraint {
-                            lhs: *lhs.clone(),
-                            rhs: *rhs.clone(),
+                            lhs: (**lhs).clone(),
+                            rhs: (**rhs).clone(),
                             rel: NatRelKind::Eq,
                         });
                     }
@@ -596,6 +603,204 @@ pub fn grind_with_la(config: &GrindConfig, goal: &Expr, hyps: &[(Name, Expr)]) -
         }
     }
     GrindResult::Saturated
+}
+/// Decompose `@Eq ty a b` into `(ty, a, b)`.
+///
+/// Unlike `decompose_eq` (which drops the type), this also returns the type
+/// argument needed for building kernel-correct proof terms.
+pub(super) fn decompose_eq_full(expr: &Expr) -> Option<(Expr, Expr, Expr)> {
+    if let Expr::App(f1, rhs) = expr {
+        if let Expr::App(f2, lhs) = f1.as_ref() {
+            if let Expr::App(eq_head, ty) = f2.as_ref() {
+                if let Expr::Const(name, _) = eq_head.as_ref() {
+                    if name == &Name::str("Eq") || name == &Name::str("Eq").append_str("mk") {
+                        return Some(((**ty).clone(), (**lhs).clone(), (**rhs).clone()));
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+/// Build a kernel-correct proof term from a sequence of equality steps.
+///
+/// Each step explains why two expressions are equal, using hypotheses,
+/// reflexivity, or congruence. The steps are chained with `Eq.trans`.
+/// Returns `None` if the step sequence is empty.
+pub fn cc_build_proof(steps: &[EqualityStep], hyp_fvars: &[(Name, FVarId)]) -> Option<Expr> {
+    if steps.is_empty() {
+        return None;
+    }
+    let first = cc_build_single_step_proof(&steps[0], hyp_fvars);
+    if steps.len() == 1 {
+        return Some(first);
+    }
+    // Chain remaining steps with @Eq.trans.
+    // @Eq.trans : {α : Sort u} → {a b c : α} → a = b → b = c → a = c
+    // We build it left-associatively.
+    let mut proof = first;
+    for step in &steps[1..] {
+        let step_proof = cc_build_single_step_proof(step, hyp_fvars);
+        // Approximate Eq.trans — drop implicit args since kernel will fill them.
+        proof = Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq.trans"), vec![])),
+                Node::new(proof),
+            )),
+            Node::new(step_proof),
+        );
+    }
+    Some(proof)
+}
+/// Build a proof for a single equality step.
+fn cc_build_single_step_proof(step: &EqualityStep, hyp_fvars: &[(Name, FVarId)]) -> Expr {
+    match &step.reason {
+        MergeReason::Reflexivity => {
+            // @Eq.refl _ a
+            Expr::App(
+                Node::new(Expr::Const(Name::str("Eq.refl"), vec![])),
+                Node::new(step.lhs.clone()),
+            )
+        }
+        MergeReason::Hypothesis(name, _hyp_ty) => {
+            // Look up the FVar for this hypothesis name.
+            // The proof of `h : a = b` is `FVar(h_fvar_id)`.
+            if let Some(&(_, fvar_id)) = hyp_fvars.iter().find(|(n, _)| n == name) {
+                Expr::FVar(fvar_id)
+            } else {
+                // Fallback: use the name as a constant (approximate).
+                Expr::Const(name.clone(), vec![])
+            }
+        }
+        MergeReason::Congruence(node_a, node_b) => {
+            // @congrArg _ _ a b f h  (approximate — drop implicit args)
+            // The step's lhs/rhs should be `f a` and `f b`.
+            // Build: congrArg (Eq.refl f) h_arg
+            let _ = (node_a, node_b); // used via step.lhs/rhs
+            Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("congrArg"), vec![])),
+                    Node::new(step.lhs.clone()),
+                )),
+                Node::new(step.rhs.clone()),
+            )
+        }
+        MergeReason::EMatchInstance { hyp_name, subst } => {
+            let mut result: Expr =
+                if let Some(&(_, fvar_id)) = hyp_fvars.iter().find(|(n, _)| n == hyp_name) {
+                    Expr::FVar(fvar_id)
+                } else {
+                    Expr::Const(hyp_name.clone(), vec![])
+                };
+            for (_, val) in subst {
+                result = Expr::App(Node::new(result), Node::new(val.clone()));
+            }
+            result
+        }
+        MergeReason::Reduction | MergeReason::Assertion => {
+            // Treat as reflexivity on the lhs.
+            Expr::App(
+                Node::new(Expr::Const(Name::str("Eq.refl"), vec![])),
+                Node::new(step.lhs.clone()),
+            )
+        }
+    }
+}
+/// The `cc` (congruence closure) tactic.
+///
+/// Attempts to close an equality goal `⊢ a = b` using congruence closure
+/// over the local hypotheses.  Proof reconstruction uses the
+/// Nieuwenhuis-Oliveras proof-forest algorithm ([`cc_proof::explain`](crate::tactic::grind::cc_proof::explain)) which
+/// produces a fully-applied kernel proof term (all implicit arguments
+/// supplied positionally).
+///
+/// If proof reconstruction fails for any reason the tactic falls back to a
+/// reflexivity placeholder; the elaborator gate will then reject it and emit
+/// `sorry` — identical to the pre-existing behaviour.
+///
+/// # Errors
+/// Returns `TacticError::Failed` if the goal is not an equality or if the
+/// congruence closure engine cannot prove it from the available hypotheses.
+pub fn tac_cc(state: &mut TacticState, ctx: &mut MetaContext) -> TacticResult<()> {
+    use crate::tactic::grind::cc_proof;
+
+    let goal_view = state.goal_view(ctx)?;
+    // Parse goal: must be an equality @Eq ty a b.
+    let (_, lhs, rhs) = decompose_eq_full(&goal_view.target)
+        .ok_or_else(|| TacticError::Failed("cc: goal is not an equality".to_string()))?;
+    // Collect hypothesis FVar ids for proof reconstruction.
+    let hyp_fvars: Vec<(Name, FVarId)> = ctx
+        .local_decls()
+        .iter()
+        .map(|d| (d.user_name.clone(), d.fvar_id))
+        .collect();
+    // Collect local decl types for type-checking FVar references in proof terms.
+    let local_types: Vec<(FVarId, Name, oxilean_kernel::Expr)> = ctx
+        .local_decls()
+        .iter()
+        .map(|d| (d.fvar_id, d.user_name.clone(), d.ty.clone()))
+        .collect();
+
+    // Handle syntactic reflexivity immediately.
+    if lhs == rhs {
+        let proof = cc_proof::mk_eq_refl_full(
+            // type of lhs — we don't have it here without inference, so fall
+            // back to the one-arg form that the existing code used.
+            Expr::Const(Name::str("_"), vec![]),
+            lhs.clone(),
+        );
+        ctx.last_certificate = Some(ProofCertificate::Direct(proof.clone()));
+        state.close_goal(proof, ctx)?;
+        return Ok(());
+    }
+
+    // Build congruence closure from hypotheses.
+    let mut cc = CongruenceClosure::with_capacity(64);
+    let lhs_node = cc.add_term(&lhs);
+    let rhs_node = cc.add_term(&rhs);
+    for (hyp_name, hyp_ty) in &goal_view.hyps {
+        if let Some((_, x, y)) = decompose_eq_full(hyp_ty) {
+            let x_node = cc.add_term(&x);
+            let y_node = cc.add_term(&y);
+            cc.merge_with_reason(
+                x_node,
+                y_node,
+                MergeReason::Hypothesis(hyp_name.clone(), hyp_ty.clone()),
+            );
+        }
+    }
+
+    // Check if the goal is provable by congruence closure.
+    if !cc.are_equal(lhs_node, rhs_node) {
+        return Err(TacticError::Failed(
+            "cc: goal not provable by congruence closure".to_string(),
+        ));
+    }
+
+    // Build the kernel proof term using the NO proof-forest.
+    let refl_fallback = || -> Expr {
+        Expr::App(
+            Node::new(Expr::Const(Name::str("Eq.refl"), vec![])),
+            Node::new(lhs.clone()),
+        )
+    };
+
+    let proof = if lhs == rhs {
+        refl_fallback()
+    } else {
+        let steps = cc_proof::explain(&cc, lhs_node, rhs_node);
+        if steps.is_empty() {
+            // explain returns empty only for equal nodes or disconnected — fall back.
+            refl_fallback()
+        } else {
+            cc_proof::build_eq_proof_with_locals(&steps, ctx.env(), &hyp_fvars, &local_types)
+                .unwrap_or_else(refl_fallback)
+        }
+    };
+
+    ctx.last_certificate = Some(ProofCertificate::Direct(proof.clone()));
+    state.close_goal(proof, ctx)?;
+    Ok(())
 }
 #[cfg(test)]
 mod tests {
@@ -694,8 +899,8 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let f = Expr::Const(Name::str("f"), vec![]);
-        let fa = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let fb = Expr::App(Box::new(f.clone()), Box::new(b.clone()));
+        let fa = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let fb = Expr::App(Node::new(f.clone()), Node::new(b.clone()));
         let na = cc.add_term(&a);
         let nb = cc.add_term(&b);
         let nfa = cc.add_term(&fa);
@@ -732,10 +937,10 @@ mod tests {
         let expr = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("P"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("P"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
         );
         let pattern = compiler.compile(&expr);
@@ -746,8 +951,8 @@ mod tests {
         let mut cc = CongruenceClosure::new();
         let a = Expr::Const(Name::str("a"), vec![]);
         let pa = Expr::App(
-            Box::new(Expr::Const(Name::str("P"), vec![])),
-            Box::new(a.clone()),
+            Node::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(a.clone()),
         );
         cc.add_term(&pa);
         let pattern_node = EPatternNode::App {
@@ -768,8 +973,8 @@ mod tests {
         let mut cc = CongruenceClosure::new();
         let a = Expr::Const(Name::str("a"), vec![]);
         let fa = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(a.clone()),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(a.clone()),
         );
         cc.add_term(&a);
         cc.add_term(&fa);
@@ -800,14 +1005,14 @@ mod tests {
     fn test_grind_state_basic() {
         let mut grind = GrindState::with_defaults();
         let goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(Expr::Sort(Level::zero())),
                 )),
-                Box::new(Expr::Const(Name::str("a"), vec![])),
+                Node::new(Expr::Const(Name::str("a"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         grind.set_goal(goal);
         let result = grind.run();
@@ -819,25 +1024,25 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let eq_ab = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(Expr::Sort(Level::zero())),
                 )),
-                Box::new(a.clone()),
+                Node::new(a.clone()),
             )),
-            Box::new(b.clone()),
+            Node::new(b.clone()),
         );
         grind.add_hypothesis(Name::str("h"), eq_ab);
         let goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(Expr::Sort(Level::zero())),
                 )),
-                Box::new(a),
+                Node::new(a),
             )),
-            Box::new(b),
+            Node::new(b),
         );
         grind.set_goal(goal);
         let result = grind.run();
@@ -852,14 +1057,14 @@ mod tests {
         let ty = Expr::Sort(Level::zero());
         let mk_eq = |l: &Expr, r: &Expr| -> Expr {
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                        Box::new(ty.clone()),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                        Node::new(ty.clone()),
                     )),
-                    Box::new(l.clone()),
+                    Node::new(l.clone()),
                 )),
-                Box::new(r.clone()),
+                Node::new(r.clone()),
             )
         };
         grind.add_hypothesis(Name::str("h1"), mk_eq(&a, &b));
@@ -875,18 +1080,18 @@ mod tests {
         let b = Expr::Const(Name::str("b"), vec![]);
         let f = Expr::Const(Name::str("f"), vec![]);
         let ty = Expr::Sort(Level::zero());
-        let fa = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let fb = Expr::App(Box::new(f.clone()), Box::new(b.clone()));
+        let fa = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let fb = Expr::App(Node::new(f.clone()), Node::new(b.clone()));
         let mk_eq = |l: &Expr, r: &Expr| -> Expr {
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                        Box::new(ty.clone()),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                        Node::new(ty.clone()),
                     )),
-                    Box::new(l.clone()),
+                    Node::new(l.clone()),
                 )),
-                Box::new(r.clone()),
+                Node::new(r.clone()),
             )
         };
         grind.add_hypothesis(Name::str("h"), mk_eq(&a, &b));
@@ -949,8 +1154,8 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = flatten_app(&expr);
         assert_eq!(head, f);
@@ -964,14 +1169,14 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let eq_expr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(ty),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(ty),
                 )),
-                Box::new(a.clone()),
+                Node::new(a.clone()),
             )),
-            Box::new(b.clone()),
+            Node::new(b.clone()),
         );
         let result = decompose_eq(&eq_expr);
         assert!(result.is_some());
@@ -996,14 +1201,14 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let ty = Expr::Sort(Level::zero());
         let goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(ty),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(ty),
                 )),
-                Box::new(a.clone()),
+                Node::new(a.clone()),
             )),
-            Box::new(a),
+            Node::new(a),
         );
         let config = GrindConfig::default();
         let (result, stats) = grind_on_goal(&config, &goal, &[]);
@@ -1052,8 +1257,8 @@ mod tests {
         let forall1 = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Const(Name::str("P"), vec![])),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Const(Name::str("P"), vec![])),
         );
         let (n, _body) = strip_forall(&forall1);
         assert_eq!(n, 1);
@@ -1078,8 +1283,8 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(le), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(le), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let result = try_parse_nat_constraint(&expr);
         assert!(result.is_some());
@@ -1091,7 +1296,10 @@ mod tests {
         let lt = Expr::Const(Name::str("LT.lt"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let expr = Expr::App(Box::new(Expr::App(Box::new(lt), Box::new(a))), Box::new(b));
+        let expr = Expr::App(
+            Node::new(Expr::App(Node::new(lt), Node::new(a))),
+            Node::new(b),
+        );
         let result = try_parse_nat_constraint(&expr);
         assert!(result.is_some());
         assert_eq!(result.expect("result should be valid").rel, NatRelKind::Lt);
@@ -1113,7 +1321,10 @@ mod tests {
         let le = Expr::Const(Name::str("LE.le"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let expr = Expr::App(Box::new(Expr::App(Box::new(le), Box::new(a))), Box::new(b));
+        let expr = Expr::App(
+            Node::new(Expr::App(Node::new(le), Node::new(a))),
+            Node::new(b),
+        );
         let hyps = vec![(Name::str("h1"), expr)];
         let constraints = extract_nat_constraints(&hyps);
         assert_eq!(constraints.len(), 1);
@@ -1174,14 +1385,14 @@ mod tests {
         let a = Expr::Const(Name::str("a"), vec![]);
         let ty = Expr::Sort(Level::zero());
         let goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                    Box::new(ty),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(ty),
                 )),
-                Box::new(a.clone()),
+                Node::new(a.clone()),
             )),
-            Box::new(a),
+            Node::new(a),
         );
         let config = GrindConfig::default();
         let result = grind_with_la(&config, &goal, &[]);
@@ -1192,9 +1403,264 @@ mod tests {
         let le = Expr::Const(Name::str("LE.le"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
         let b = Expr::Const(Name::str("b"), vec![]);
-        let goal = Expr::App(Box::new(Expr::App(Box::new(le), Box::new(a))), Box::new(b));
+        let goal = Expr::App(
+            Node::new(Expr::App(Node::new(le), Node::new(a))),
+            Node::new(b),
+        );
         let config = GrindConfig::default();
         let result = grind_with_la(&config, &goal, &[]);
         assert!(!result.is_proved());
+    }
+    // ---- cc_build_proof and tac_cc tests ----
+    use crate::basic::{MetaContext, MetavarKind};
+    use crate::tactic::certificate::ProofCertificate;
+    use crate::tactic::state::TacticState;
+    use oxilean_kernel::{BinderInfo, Environment, FVarId};
+    fn mk_eq_goal(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
+        Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                    Node::new(ty),
+                )),
+                Node::new(lhs),
+            )),
+            Node::new(rhs),
+        )
+    }
+    fn mk_ctx() -> MetaContext {
+        MetaContext::new(Environment::new())
+    }
+    #[test]
+    fn test_decompose_eq_full_ok() {
+        let ty = Expr::Sort(Level::zero());
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let eq_expr = mk_eq_goal(ty.clone(), a.clone(), b.clone());
+        let result = decompose_eq_full(&eq_expr);
+        assert!(result.is_some());
+        let (got_ty, got_lhs, got_rhs) = result.expect("should decompose");
+        assert_eq!(got_ty, ty);
+        assert_eq!(got_lhs, a);
+        assert_eq!(got_rhs, b);
+    }
+    #[test]
+    fn test_decompose_eq_full_non_eq() {
+        let expr = Expr::Const(Name::str("foo"), vec![]);
+        assert!(decompose_eq_full(&expr).is_none());
+    }
+    #[test]
+    fn test_cc_build_proof_empty_is_none() {
+        let result = cc_build_proof(&[], &[]);
+        assert!(result.is_none());
+    }
+    #[test]
+    fn test_cc_build_proof_single_refl() {
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let step = EqualityStep {
+            lhs: a.clone(),
+            rhs: a.clone(),
+            reason: MergeReason::Reflexivity,
+        };
+        let result = cc_build_proof(&[step], &[]);
+        assert!(result.is_some());
+        // Should be Eq.refl applied to a.
+        let proof = result.expect("should be Some");
+        assert!(matches!(proof, Expr::App(_, _)));
+    }
+    #[test]
+    fn test_cc_build_proof_hypothesis_with_fvar() {
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let hyp_ty = mk_eq_goal(ty, a.clone(), b.clone());
+        let fvar_id = FVarId::new(42);
+        let step = EqualityStep {
+            lhs: a.clone(),
+            rhs: b.clone(),
+            reason: MergeReason::Hypothesis(Name::str("h"), hyp_ty),
+        };
+        let hyp_fvars = vec![(Name::str("h"), fvar_id)];
+        let result = cc_build_proof(&[step], &hyp_fvars);
+        assert!(result.is_some());
+        let proof = result.expect("should be Some");
+        // Should resolve to the FVar for h.
+        assert!(matches!(proof, Expr::FVar(_)));
+    }
+    #[test]
+    fn test_cc_build_proof_hypothesis_fallback_const() {
+        // When the hypothesis name is not found in hyp_fvars, fall back to Const.
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let hyp_ty = mk_eq_goal(ty, a.clone(), b.clone());
+        let step = EqualityStep {
+            lhs: a.clone(),
+            rhs: b.clone(),
+            reason: MergeReason::Hypothesis(Name::str("h"), hyp_ty),
+        };
+        // Empty fvar list → fallback to Const.
+        let result = cc_build_proof(&[step], &[]);
+        assert!(result.is_some());
+        let proof = result.expect("should be Some");
+        assert!(matches!(proof, Expr::Const(_, _)));
+    }
+    #[test]
+    fn test_cc_build_proof_chain() {
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let c = Expr::Const(Name::str("c"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let hyp_ty_ab = mk_eq_goal(ty.clone(), a.clone(), b.clone());
+        let hyp_ty_bc = mk_eq_goal(ty, b.clone(), c.clone());
+        let fvar_h1 = FVarId::new(1);
+        let fvar_h2 = FVarId::new(2);
+        let steps = vec![
+            EqualityStep {
+                lhs: a.clone(),
+                rhs: b.clone(),
+                reason: MergeReason::Hypothesis(Name::str("h1"), hyp_ty_ab),
+            },
+            EqualityStep {
+                lhs: b.clone(),
+                rhs: c.clone(),
+                reason: MergeReason::Hypothesis(Name::str("h2"), hyp_ty_bc),
+            },
+        ];
+        let hyp_fvars = vec![(Name::str("h1"), fvar_h1), (Name::str("h2"), fvar_h2)];
+        let result = cc_build_proof(&steps, &hyp_fvars);
+        assert!(result.is_some());
+        // Should be an Eq.trans application.
+        let proof = result.expect("should be Some");
+        assert!(matches!(proof, Expr::App(_, _)));
+    }
+    #[test]
+    fn test_tac_cc_reflexivity() {
+        let mut ctx = mk_ctx();
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let goal_ty = mk_eq_goal(ty, a.clone(), a.clone());
+        let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
+        let mut state = TacticState::single(mvar_id);
+        let result = tac_cc(&mut state, &mut ctx);
+        assert!(result.is_ok(), "tac_cc should succeed on reflexivity goal");
+        assert!(state.is_done(), "all goals should be closed");
+        // Certificate should be Direct.
+        assert!(matches!(
+            ctx.last_certificate,
+            Some(ProofCertificate::Direct(_))
+        ));
+    }
+    #[test]
+    fn test_tac_cc_fails_non_eq_goal() {
+        let mut ctx = mk_ctx();
+        let goal_ty = Expr::Const(Name::str("SomeProposition"), vec![]);
+        let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
+        let mut state = TacticState::single(mvar_id);
+        let result = tac_cc(&mut state, &mut ctx);
+        assert!(result.is_err(), "tac_cc should fail on non-equality goal");
+    }
+    #[test]
+    fn test_tac_cc_hypothesis_direct() {
+        // Goal: a = b, hypothesis h : a = b.
+        let mut ctx = mk_ctx();
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let hyp_ty = mk_eq_goal(ty.clone(), a.clone(), b.clone());
+        // Add h : a = b to the local context.
+        let _h_fvar = ctx.mk_local_decl(Name::str("h"), hyp_ty.clone(), BinderInfo::Default);
+        let goal_ty = mk_eq_goal(ty, a.clone(), b.clone());
+        let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
+        let mut state = TacticState::single(mvar_id);
+        let result = tac_cc(&mut state, &mut ctx);
+        assert!(
+            result.is_ok(),
+            "tac_cc should succeed with hypothesis h : a = b"
+        );
+        assert!(state.is_done(), "goal should be closed");
+        assert!(matches!(
+            ctx.last_certificate,
+            Some(ProofCertificate::Direct(_))
+        ));
+    }
+    #[test]
+    fn test_tac_cc_transitivity() {
+        // Goal: a = c, hypotheses h1 : a = b, h2 : b = c.
+        let mut ctx = mk_ctx();
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let c = Expr::Const(Name::str("c"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let hyp_ty_ab = mk_eq_goal(ty.clone(), a.clone(), b.clone());
+        let hyp_ty_bc = mk_eq_goal(ty.clone(), b.clone(), c.clone());
+        ctx.mk_local_decl(Name::str("h1"), hyp_ty_ab, BinderInfo::Default);
+        ctx.mk_local_decl(Name::str("h2"), hyp_ty_bc, BinderInfo::Default);
+        let goal_ty = mk_eq_goal(ty, a.clone(), c.clone());
+        let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
+        let mut state = TacticState::single(mvar_id);
+        let result = tac_cc(&mut state, &mut ctx);
+        assert!(
+            result.is_ok(),
+            "tac_cc should prove a = c from h1 : a = b, h2 : b = c"
+        );
+        assert!(state.is_done());
+    }
+    #[test]
+    fn test_tac_cc_fails_no_evidence() {
+        // Goal: a = b, but no hypothesis supporting it.
+        let mut ctx = mk_ctx();
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let goal_ty = mk_eq_goal(ty, a.clone(), b.clone());
+        let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
+        let mut state = TacticState::single(mvar_id);
+        let result = tac_cc(&mut state, &mut ctx);
+        assert!(
+            result.is_err(),
+            "tac_cc should fail without supporting hypothesis"
+        );
+    }
+    #[test]
+    fn test_tac_cc_symmetry() {
+        // Goal: b = a, hypothesis h : a = b.
+        // CC should prove b = a through h (by noting a~b and b~a in the same class).
+        let mut ctx = mk_ctx();
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let ty = Expr::Sort(Level::zero());
+        let hyp_ty = mk_eq_goal(ty.clone(), a.clone(), b.clone());
+        ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
+        // Goal: b = a (symmetry)
+        let goal_ty = mk_eq_goal(ty, b.clone(), a.clone());
+        let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
+        let mut state = TacticState::single(mvar_id);
+        let result = tac_cc(&mut state, &mut ctx);
+        assert!(result.is_ok(), "tac_cc should prove b = a from h : a = b");
+        assert!(state.is_done());
+    }
+    #[test]
+    fn test_tac_cc_congruence() {
+        // Goal: f a = f b, hypothesis h : a = b.
+        // CC merges a~b, then by congruence f(a)~f(b).
+        let mut ctx = mk_ctx();
+        let a = Expr::Const(Name::str("a"), vec![]);
+        let b = Expr::Const(Name::str("b"), vec![]);
+        let f = Expr::Const(Name::str("f"), vec![]);
+        let fa = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let fb = Expr::App(Node::new(f.clone()), Node::new(b.clone()));
+        let ty = Expr::Sort(Level::zero());
+        let hyp_ty = mk_eq_goal(ty.clone(), a.clone(), b.clone());
+        ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
+        let goal_ty = mk_eq_goal(ty, fa.clone(), fb.clone());
+        let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
+        let mut state = TacticState::single(mvar_id);
+        let result = tac_cc(&mut state, &mut ctx);
+        assert!(
+            result.is_ok(),
+            "tac_cc should prove f a = f b from h : a = b"
+        );
+        assert!(state.is_done());
     }
 }

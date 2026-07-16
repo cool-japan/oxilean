@@ -812,8 +812,22 @@ impl LspServer {
             }
         }
 
-        // Offer "add sorry" if there's an incomplete proof region
-        let _ = content; // Used above conceptually; prevent unused warning
+        // Run lint engine and surface any auto-fix suggestions that intersect the range
+        if let Some(doc) = self.document_store.get_document(uri) {
+            if let Some(range_val) = params.get("range") {
+                if let Ok(range) = Range::from_json(range_val) {
+                    let lint_actions =
+                        crate::lsp::code_actions::functions::lint_code_actions_for_range(
+                            uri, content, doc, &range,
+                        );
+                    for action in lint_actions {
+                        actions.push(action.to_json());
+                    }
+                }
+            }
+        }
+
+        let _ = content; // suppress potential unused warning
         actions
     }
 }

@@ -10,6 +10,7 @@ use super::types::{
     MetaDebugExtPipeline3300, MetaDebugExtResult3300, MetaDebugPipeline, MetaDebugResult,
     MetaTracer, TraceEntry, TraceLevel, TraceLog,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level};
 
 /// Pretty-print an Expr in a compact S-expression style for debugging.
@@ -323,14 +324,14 @@ mod tests {
         Expr::Const(Name::str(name), vec![])
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     fn mk_lam(name: &str, ty: Expr, body: Expr) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         )
     }
     #[test]
@@ -406,8 +407,8 @@ mod tests {
         assert!(diffs2
             .iter()
             .any(|d| d.contains("Nat") && d.contains("Int")));
-        let lit1 = Expr::Lit(Literal::Nat(42));
-        let lit2 = Expr::Lit(Literal::Nat(99));
+        let lit1 = Expr::Lit(Literal::nat(42));
+        let lit2 = Expr::Lit(Literal::nat(99));
         let diffs3 = expr_diff(&lit1, &lit2);
         assert!(!diffs3.is_empty());
     }
@@ -630,7 +631,7 @@ mod meta_debug_extended_tests {
     fn test_expr_stats_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let x = Expr::BVar(0);
-        let e = Expr::App(Box::new(f), Box::new(x));
+        let e = Expr::App(Node::new(f), Node::new(x));
         let stats = ExprStats::compute(&e);
         assert_eq!(stats.num_apps, 1);
         assert_eq!(stats.num_bvars, 1);
@@ -650,21 +651,21 @@ mod meta_debug_extended_tests {
         assert_eq!(expr_weight(&Expr::BVar(0)), 1);
         let f = Expr::BVar(0);
         let a = Expr::BVar(1);
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(expr_weight(&app), 3);
     }
     #[test]
     fn test_app_counter() {
         let f = Expr::BVar(0);
         let a = Expr::BVar(1);
-        let e = Expr::App(Box::new(f), Box::new(a));
+        let e = Expr::App(Node::new(f), Node::new(a));
         let mut counter = AppCounter(0);
         walk_expr(&e, &mut counter);
         assert_eq!(counter.0, 1);
     }
     #[test]
     fn test_bvar_collector() {
-        let e = Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1)));
+        let e = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
         let mut collector = BVarCollector(Vec::new());
         walk_expr(&e, &mut collector);
         assert_eq!(collector.0.len(), 2);

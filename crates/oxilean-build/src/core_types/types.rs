@@ -369,6 +369,7 @@ impl BuildSummary {
 /// A no-op plugin for testing.
 #[derive(Debug)]
 pub struct NoopPlugin {
+    /// The plugin name, used for identification in the registry.
     pub name: String,
 }
 impl NoopPlugin {
@@ -812,11 +813,17 @@ impl BuildPlan {
 /// Statistics from a single build run.
 #[derive(Clone, Debug, Default)]
 pub struct BuildStats {
+    /// Number of targets successfully compiled in this run.
     pub targets_built: usize,
+    /// Number of targets skipped because their cached output was up-to-date.
     pub targets_skipped: usize,
+    /// Number of targets that failed to compile.
     pub targets_failed: usize,
+    /// Total compiler warnings emitted across all targets.
     pub total_warnings: usize,
+    /// Total compiler errors emitted across all targets.
     pub total_errors: usize,
+    /// Wall-clock duration of the build in milliseconds.
     pub wall_time_ms: u64,
 }
 impl BuildStats {

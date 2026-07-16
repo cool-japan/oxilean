@@ -565,6 +565,54 @@ mod tests {
         assert!(json.get("definitionProvider").is_some());
     }
 
+    /// Verify that the capabilities advertised on initialize include
+    /// `semanticTokensProvider` with both `full` and `range` set to `true`.
+    #[test]
+    fn test_semantic_tokens_provider_advertised() {
+        let caps = ServerCapabilities::oxilean_defaults();
+        let json = caps.to_json();
+
+        let provider = json
+            .get("semanticTokensProvider")
+            .expect("semanticTokensProvider must be advertised");
+
+        let full = provider
+            .get("full")
+            .and_then(|v| v.as_bool())
+            .expect("semanticTokensProvider.full must be a bool");
+        assert!(full, "semanticTokensProvider.full must be true");
+
+        let range = provider
+            .get("range")
+            .and_then(|v| v.as_bool())
+            .expect("semanticTokensProvider.range must be a bool");
+        assert!(range, "semanticTokensProvider.range must be true");
+
+        let legend = provider
+            .get("legend")
+            .expect("semanticTokensProvider.legend must exist");
+        assert!(
+            legend.get("tokenTypes").is_some(),
+            "legend must have tokenTypes"
+        );
+        assert!(
+            legend.get("tokenModifiers").is_some(),
+            "legend must have tokenModifiers"
+        );
+    }
+
+    /// Verify that the text document sync mode advertises incremental (2).
+    #[test]
+    fn test_text_document_sync_is_incremental() {
+        let caps = ServerCapabilities::oxilean_defaults();
+        let json = caps.to_json();
+        let sync = json
+            .get("textDocumentSync")
+            .and_then(|v| v.as_i64())
+            .expect("textDocumentSync must be a number");
+        assert_eq!(sync, 2, "textDocumentSync must be 2 (Incremental)");
+    }
+
     #[test]
     fn test_initialize_result_json() {
         let result = InitializeResult {
@@ -664,5 +712,275 @@ mod tests {
             .expect("test operation should succeed");
         assert_eq!(shutdown_resp.result, Some(JsonValue::Null));
         assert!(server.shutdown_requested);
+    }
+
+    // ── In-process JSON-RPC integration tests ─────────────────────────────────
+
+    /// Build a framed LSP message from a JSON string.
+    fn make_lsp_frame(json: &str) -> Vec<u8> {
+        let mut buf = Vec::new();
+        let header = format!("Content-Length: {}\r\n\r\n", json.len());
+        buf.extend_from_slice(header.as_bytes());
+        buf.extend_from_slice(json.as_bytes());
+        buf
+    }
+
+    /// Collect all JSON objects from the framed output buffer.
+    fn collect_output_bodies(output: &[u8]) -> Vec<String> {
+        let mut bodies = Vec::new();
+        let mut pos = 0;
+        while pos < output.len() {
+            // Find "Content-Length: " header
+            let remaining = &output[pos..];
+            let header_start = match remaining.windows(16).position(|w| w == b"Content-Length: ") {
+                Some(p) => p,
+                None => break,
+            };
+            let after_prefix = pos + header_start + 16;
+            // Find end of header line (\r\n\r\n)
+            let header_slice = &output[after_prefix..];
+            let crlf_crlf = b"\r\n\r\n";
+            let sep_pos = match header_slice.windows(4).position(|w| w == crlf_crlf) {
+                Some(p) => p,
+                None => break,
+            };
+            let len_str = std::str::from_utf8(&header_slice[..sep_pos])
+                .unwrap_or("")
+                .trim();
+            let content_len: usize = match len_str.parse() {
+                Ok(n) => n,
+                Err(_) => break,
+            };
+            let body_start = after_prefix + sep_pos + 4;
+            let body_end = body_start + content_len;
+            if body_end > output.len() {
+                break;
+            }
+            if let Ok(s) = std::str::from_utf8(&output[body_start..body_end]) {
+                bodies.push(s.to_string());
+            }
+            pos = body_end;
+        }
+        bodies
+    }
+
+    /// Verify that a JSON body string contains a top-level key with the given value substring.
+    fn body_has_method(body: &str, method: &str) -> bool {
+        body.contains(&format!("\"method\":\"{}\"", method))
+            || body.contains(&format!("\"method\": \"{}\"", method))
+    }
+
+    #[test]
+    fn test_lsp_integration_initialize_roundtrip() {
+        // Prepare: a single "initialize" request followed by EOF
+        let init_json = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#;
+        let input_bytes = make_lsp_frame(init_json);
+
+        let mut reader = std::io::BufReader::new(std::io::Cursor::new(input_bytes));
+        let mut output: Vec<u8> = Vec::new();
+
+        super::server::run_server_with_io(&mut reader, &mut output)
+            .expect("server should run without error");
+
+        let bodies = collect_output_bodies(&output);
+        assert!(
+            !bodies.is_empty(),
+            "expected at least one response in output"
+        );
+        // The initialize response must contain "capabilities"
+        let init_resp = &bodies[0];
+        assert!(
+            init_resp.contains("\"capabilities\""),
+            "initialize response should contain capabilities, got: {}",
+            init_resp
+        );
+        assert!(
+            init_resp.contains("\"id\""),
+            "initialize response should have an id, got: {}",
+            init_resp
+        );
+    }
+
+    #[test]
+    fn test_lsp_integration_did_open_no_error_produces_empty_diagnostics() {
+        // Source with no lexer errors: clean definition
+        let source = "def foo : Nat := 42";
+        let did_open_params = format!(
+            r#"{{"textDocument":{{"uri":"file:///test_clean.lean","languageId":"lean4","version":1,"text":{}}}}}"#,
+            serde_json_string(source)
+        );
+        let init_json = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#;
+        let initialized_json = r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#;
+        let did_open_json = format!(
+            r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{}}}"#,
+            did_open_params
+        );
+
+        let mut input_bytes = Vec::new();
+        input_bytes.extend(make_lsp_frame(init_json));
+        input_bytes.extend(make_lsp_frame(initialized_json));
+        input_bytes.extend(make_lsp_frame(&did_open_json));
+
+        let mut reader = std::io::BufReader::new(std::io::Cursor::new(input_bytes));
+        let mut output: Vec<u8> = Vec::new();
+
+        super::server::run_server_with_io(&mut reader, &mut output)
+            .expect("server should run without error");
+
+        let bodies = collect_output_bodies(&output);
+        // Find the publishDiagnostics notification
+        let pub_diag: Vec<&String> = bodies
+            .iter()
+            .filter(|b| body_has_method(b, "textDocument/publishDiagnostics"))
+            .collect();
+        assert!(
+            !pub_diag.is_empty(),
+            "expected a publishDiagnostics notification, got bodies: {:?}",
+            bodies
+        );
+        // For clean source, diagnostics array should be empty
+        let diag_body = pub_diag[0];
+        assert!(
+            diag_body.contains("\"diagnostics\":[]"),
+            "expected empty diagnostics for clean source, got: {}",
+            diag_body
+        );
+    }
+
+    #[test]
+    fn test_lsp_integration_did_open_lexer_error_produces_diagnostic() {
+        // Source with a guaranteed lexer error: "0x " (hex literal with no digits)
+        let source = "0x ";
+        let did_open_params = format!(
+            r#"{{"textDocument":{{"uri":"file:///test_error.lean","languageId":"lean4","version":1,"text":{}}}}}"#,
+            serde_json_string(source)
+        );
+        let init_json = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#;
+        let initialized_json = r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#;
+        let did_open_json = format!(
+            r#"{{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{}}}"#,
+            did_open_params
+        );
+
+        let mut input_bytes = Vec::new();
+        input_bytes.extend(make_lsp_frame(init_json));
+        input_bytes.extend(make_lsp_frame(initialized_json));
+        input_bytes.extend(make_lsp_frame(&did_open_json));
+
+        let mut reader = std::io::BufReader::new(std::io::Cursor::new(input_bytes));
+        let mut output: Vec<u8> = Vec::new();
+
+        super::server::run_server_with_io(&mut reader, &mut output)
+            .expect("server should run without error");
+
+        let bodies = collect_output_bodies(&output);
+        let pub_diag: Vec<&String> = bodies
+            .iter()
+            .filter(|b| body_has_method(b, "textDocument/publishDiagnostics"))
+            .collect();
+        assert!(
+            !pub_diag.is_empty(),
+            "expected a publishDiagnostics notification, got bodies: {:?}",
+            bodies
+        );
+        // For error source, diagnostics should be non-empty
+        let diag_body = pub_diag[0];
+        assert!(
+            !diag_body.contains("\"diagnostics\":[]"),
+            "expected non-empty diagnostics for error source, got: {}",
+            diag_body
+        );
+        assert!(
+            diag_body.contains("\"message\""),
+            "expected diagnostic message field, got: {}",
+            diag_body
+        );
+    }
+
+    #[test]
+    fn test_lsp_integration_pipeline_core_clean_source() {
+        // Direct pipeline-core test: analyze_document on clean source
+        use oxilean_kernel::Environment;
+        let env = Environment::new();
+        let result = analyze_document("file:///clean.lean", "def foo : Nat := 42", &env);
+        assert!(
+            result.diagnostics.is_empty(),
+            "clean source should produce no diagnostics, got: {:?}",
+            result.diagnostics
+        );
+    }
+
+    #[test]
+    fn test_lsp_integration_pipeline_core_lexer_error() {
+        // Direct pipeline-core test: analyze_document on source with lexer error
+        use oxilean_kernel::Environment;
+        let env = Environment::new();
+        // "0x " produces TokenKind::Error (hex literal with no digits)
+        let result = analyze_document("file:///error.lean", "0x ", &env);
+        assert!(
+            !result.diagnostics.is_empty(),
+            "source with lexer error should produce >= 1 diagnostic"
+        );
+        assert!(
+            result.diagnostics[0].message.contains("lexer error"),
+            "diagnostic should mention 'lexer error', got: {:?}",
+            result.diagnostics[0].message
+        );
+    }
+
+    #[test]
+    fn test_lsp_integration_shutdown_sequence() {
+        // Full sequence: initialize → initialized → shutdown → exit
+        let init_json = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#;
+        let initialized_json = r#"{"jsonrpc":"2.0","method":"initialized","params":{}}"#;
+        let shutdown_json = r#"{"jsonrpc":"2.0","id":2,"method":"shutdown","params":null}"#;
+        let exit_json = r#"{"jsonrpc":"2.0","method":"exit","params":null}"#;
+
+        let mut input_bytes = Vec::new();
+        input_bytes.extend(make_lsp_frame(init_json));
+        input_bytes.extend(make_lsp_frame(initialized_json));
+        input_bytes.extend(make_lsp_frame(shutdown_json));
+        input_bytes.extend(make_lsp_frame(exit_json));
+
+        let mut reader = std::io::BufReader::new(std::io::Cursor::new(input_bytes));
+        let mut output: Vec<u8> = Vec::new();
+
+        super::server::run_server_with_io(&mut reader, &mut output)
+            .expect("server should run without error");
+
+        let bodies = collect_output_bodies(&output);
+        // Must have initialize response (id=1) and shutdown response (id=2)
+        assert!(
+            bodies.len() >= 2,
+            "expected at least 2 responses, got: {:?}",
+            bodies
+        );
+        let shutdown_resp = bodies
+            .iter()
+            .find(|b| b.contains("\"id\":2") || b.contains("\"id\": 2"))
+            .expect("shutdown response with id=2 should be present");
+        assert!(
+            shutdown_resp.contains("\"result\":null") || shutdown_resp.contains("\"result\": null"),
+            "shutdown response result should be null, got: {}",
+            shutdown_resp
+        );
+    }
+
+    /// Minimal JSON string-escape for test fixtures (only escapes what JSON requires).
+    fn serde_json_string(s: &str) -> String {
+        let mut out = String::with_capacity(s.len() + 2);
+        out.push('"');
+        for ch in s.chars() {
+            match ch {
+                '"' => out.push_str("\\\""),
+                '\\' => out.push_str("\\\\"),
+                '\n' => out.push_str("\\n"),
+                '\r' => out.push_str("\\r"),
+                '\t' => out.push_str("\\t"),
+                c => out.push(c),
+            }
+        }
+        out.push('"');
+        out
     }
 }

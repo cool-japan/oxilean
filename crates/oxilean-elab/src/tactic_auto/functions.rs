@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::tactic::{Goal, TacticResult, TacticState};
+use oxilean_kernel::Node;
 
 use super::types::{
     AutoAnnotation, AutoConfig, AutoGoalQueue, AutoHintFilterChain, AutoLemmaScorer, AutoResult,
@@ -297,10 +298,10 @@ mod extra_tests {
         let auto = AutoTactic::with_defaults();
         let eq = Expr::Const(Name::str("Eq"), vec![]);
         let nat = make_nat();
-        let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
-        let app1 = Expr::App(Box::new(eq), Box::new(nat));
-        let app2 = Expr::App(Box::new(app1), Box::new(zero.clone()));
-        let app3 = Expr::App(Box::new(app2), Box::new(zero));
+        let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
+        let app1 = Expr::App(Node::new(eq), Node::new(nat));
+        let app2 = Expr::App(Node::new(app1), Node::new(zero.clone()));
+        let app3 = Expr::App(Node::new(app2), Node::new(zero));
         let goal = Goal::new(Name::str("g"), app3);
         assert!(auto.is_trivial(&goal));
     }
@@ -359,23 +360,23 @@ mod extra_tests {
         assert_eq!(expr_to_summary(&s), "Sort");
         let b = Expr::BVar(3);
         assert_eq!(expr_to_summary(&b), "BVar(3)");
-        let app = Expr::App(Box::new(c.clone()), Box::new(b.clone()));
+        let app = Expr::App(Node::new(c.clone()), Node::new(b.clone()));
         assert!(expr_to_summary(&app).starts_with("App(Nat"));
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(c.clone()),
-            Box::new(b.clone()),
+            Node::new(c.clone()),
+            Node::new(b.clone()),
         );
         assert!(expr_to_summary(&pi).starts_with("Pi(x"));
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(c.clone()),
-            Box::new(c.clone()),
+            Node::new(c.clone()),
+            Node::new(c.clone()),
         );
         assert!(expr_to_summary(&lam).starts_with("Lam(y"));
-        let lit = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let lit = Expr::Lit(oxilean_kernel::Literal::nat(42));
         assert!(expr_to_summary(&lit).starts_with("Lit("));
     }
     #[test]
@@ -386,11 +387,11 @@ mod extra_tests {
     fn test_is_refl_target_neq_args() {
         let eq = Expr::Const(Name::str("Eq"), vec![]);
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
-        let one = Expr::Lit(oxilean_kernel::Literal::Nat(1));
-        let app1 = Expr::App(Box::new(eq), Box::new(nat));
-        let app2 = Expr::App(Box::new(app1), Box::new(zero));
-        let app3 = Expr::App(Box::new(app2), Box::new(one));
+        let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
+        let one = Expr::Lit(oxilean_kernel::Literal::nat(1));
+        let app1 = Expr::App(Node::new(eq), Node::new(nat));
+        let app2 = Expr::App(Node::new(app1), Node::new(zero));
+        let app3 = Expr::App(Node::new(app2), Node::new(one));
         assert!(!is_refl_target(&app3));
     }
     #[test]

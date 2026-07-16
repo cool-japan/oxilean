@@ -22,6 +22,7 @@ pub mod types;
 pub mod workercapacitymatrix_traits;
 pub mod workerpool_traits;
 pub mod workerregistry_traits;
+pub mod workspace_integration;
 pub mod workstealingqueue_traits;
 
 // Re-export all types
@@ -47,4 +48,8 @@ pub use types::*;
 pub use workercapacitymatrix_traits::*;
 pub use workerpool_traits::*;
 pub use workerregistry_traits::*;
+pub use workspace_integration::{
+    parse_workspace_manifest, plan_workspace_build, workspace_to_build_units, DistributedBuildUnit,
+    WorkspaceError, WorkspaceManifest,
+};
 pub use workstealingqueue_traits::*;

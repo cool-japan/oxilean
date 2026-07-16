@@ -3,8 +3,10 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use crate::Node;
 use crate::{Expr, KernelError, Name};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// A versioned record that stores a history of values.
 #[allow(dead_code)]
@@ -209,8 +211,12 @@ impl QuotientKernel {
         self.quot_types.iter().any(|qt| &qt.quot_type == expr)
     }
     /// Attempt to reduce a quotient expression.
-    pub fn reduce(&self, head: &Expr, args: &[Expr]) -> Option<Expr> {
-        try_reduce_quot(head, args)
+    ///
+    /// This toy reducer is retired: sound quotient iota-reduction lives in
+    /// `Reducer::try_reduce_quot` (`reduce/types.rs`), driven by the
+    /// environment's `#QUOT` primitives. Always returns `None`.
+    pub fn reduce(&self, _head: &Expr, _args: &[Expr]) -> Option<Expr> {
+        None
     }
     /// Count registered quotient types.
     pub fn count(&self) -> usize {
@@ -256,23 +262,14 @@ impl QuotientNormalizer {
         match expr {
             Expr::App(f, _) => {
                 let args = collect_args_norm(expr);
-                if let Expr::Const(name, _) = &args[0] {
-                    if *name == Name::str("Quot.lift") && args.len() >= 4 {
-                        if let Some(r) = reduce_quot_lift(&args[1..]) {
-                            return (r, true);
-                        }
-                    }
-                    if *name == Name::str("Quot.ind") && args.len() >= 3 {
-                        if let Some(r) = reduce_quot_ind(&args[1..]) {
-                            return (r, true);
-                        }
-                    }
-                }
+                // The toy `Quot.lift` / `Quot.ind` structural rewrites were
+                // removed as unsound; sound iota-reduction is in the kernel
+                // `Reducer`. This normalizer now only recurses structurally.
                 let (f2, cf) = self.step(f);
                 let arg = args.last().cloned().unwrap_or(Expr::BVar(0));
                 let (a2, ca) = self.step(&arg);
                 if cf || ca {
-                    return (Expr::App(Box::new(f2), Box::new(a2)), true);
+                    return (Expr::App(Node::new(f2), Node::new(a2)), true);
                 }
                 (expr.clone(), false)
             }
@@ -420,6 +417,7 @@ pub struct QuotientReducer {
     steps: Vec<QuotReductionStep>,
     #[allow(dead_code)]
     cache: QuotLiftCache,
+    #[allow(dead_code)]
     pub(crate) max_steps: usize,
 }
 impl QuotientReducer {
@@ -431,26 +429,15 @@ impl QuotientReducer {
             max_steps,
         }
     }
-    /// Try to reduce an expression. Returns the reduced expression and whether any reduction happened.
+    /// Try to reduce an expression. Returns the reduced expression and whether
+    /// any reduction happened.
+    ///
+    /// The toy `Quot.lift` / `Quot.ind` rewrites were removed as unsound (wrong
+    /// arities, single-atom name matching, dropped over-application). Sound
+    /// quotient iota-reduction is in `Reducer::try_reduce_quot`
+    /// (`reduce/types.rs`); this retired reducer records no steps.
     pub fn reduce(&mut self, expr: &Expr) -> (Expr, bool) {
-        match expr {
-            Expr::App(f, _arg) => {
-                if let Expr::Const(name, _) = f.as_ref() {
-                    if *name == Name::str("Quot.lift") {
-                        let args = collect_args(expr);
-                        if let Some((reduced, kind)) = try_reduce_quot_full(&args[0], &args[1..]) {
-                            let step = QuotReductionStep::new(kind, expr.clone(), reduced.clone());
-                            if self.steps.len() < self.max_steps {
-                                self.steps.push(step);
-                            }
-                            return (reduced, true);
-                        }
-                    }
-                }
-                (expr.clone(), false)
-            }
-            _ => (expr.clone(), false),
-        }
+        (expr.clone(), false)
     }
     /// Get all recorded reduction steps.
     pub fn steps(&self) -> &[QuotReductionStep] {
@@ -479,11 +466,11 @@ impl QuotientType {
     /// Create a new quotient type.
     pub fn new(base_type: Expr, relation: Expr) -> Self {
         let quot_type = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Quot"), vec![])),
-                Box::new(base_type.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Quot"), vec![])),
+                Node::new(base_type.clone()),
             )),
-            Box::new(relation.clone()),
+            Node::new(relation.clone()),
         );
         Self {
             base_type,
@@ -497,7 +484,7 @@ impl QuotientType {
     }
     /// Apply Quot.mk to an element.
     pub fn mk_apply(&self, elem: Expr) -> Expr {
-        Expr::App(Box::new(self.mk_const()), Box::new(elem))
+        Expr::App(Node::new(self.mk_const()), Node::new(elem))
     }
     /// Get the lift constant.
     pub fn lift_const(&self) -> Expr {
@@ -514,11 +501,11 @@ impl QuotientType {
     /// Apply Quot.lift f h q.
     pub fn lift_apply(&self, f: Expr, h: Expr, q: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(self.lift_const()), Box::new(f))),
-                Box::new(h),
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(self.lift_const()), Node::new(f))),
+                Node::new(h),
             )),
-            Box::new(q),
+            Node::new(q),
         )
     }
 }
@@ -563,7 +550,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -573,7 +560,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -587,7 +574,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;

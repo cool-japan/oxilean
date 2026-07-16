@@ -56,14 +56,16 @@
 - [x] Inference for: `Let`, `Lit`
 - [x] `ensure_sort(e)` — WHNF + verify is Sort
 - [x] `ensure_pi(e)` — WHNF + verify is Pi
-- [x] `infer_proj(e)` — telescopes through InductiveVal constructor to find field type
+- [x] `infer_proj(e)` — structure-like gate (1 ctor, no indices, non-recursive, per Lean `isStructureLike`) + telescopes through the constructor to find the field type; telescope/parameter mismatches are typed errors, never fabricated types (2026-07-12)
 
 ### Definitional Equality (`def_eq.rs` — 428 lines)
 - [x] Pointer/index equality fast path
 - [x] Structural comparison after WHNF
 - [x] `App(f₁, a₁) ≡ App(f₂, a₂)` congruence
 - [x] `Lam`/`Pi` equality with fresh FVar binder opening
-- [x] η-expansion: `f ≡ λx. f x` when `x ∉ FV(f)`
+- [x] η for functions: contraction fast path (`λx. f x ≡ f` when `x ∉ FV(f)`) plus Lean-style eta-expansion of the non-lambda side, so multi-binder telescopes work (`(fun x y => g x y) ≡ g`) (2026-07-12)
+- [x] Definitional η for structures (Lean `isDefEqEtaStruct`): `x ≡ S.mk x.0 ... x.(n-1)` for structure-like `S` (1 ctor, no indices, non-recursive), both orientations, params/levels read off `x`'s type (2026-07-12)
+- [x] Unit-like equality (Lean `isDefEqUnitLike`): any two elements of a 0-field structure-like type are def-eq when their types are (2026-07-12)
 - [x] Proof irrelevance — `is_proof_irrelevant_eq` infers types and checks Sort 0
 - [x] Lazy delta reduction (unfold by reducibility height)
 - [x] Equiv manager integration (Union-Find + failure cache)
@@ -187,10 +189,17 @@ None. All previously tracked issues have been resolved as of 2026-03-09.
 
 - [x] `.oleanc` binary serialization — `serial.rs` (OleanWriter, OleanReader, 8 tests)
 
+## 🔄 In Progress
+
+- [x] Int literal arithmetic: `Literal::Int` + reduction arms (cycle 7, completed 2026-05-30)
+  - **Goal:** Add `Literal::Int(i64)` to the kernel `Literal` enum and reduction arms for `Int.add`/`mul`/`sub`/`neg`, `Int.ble`/`Int.blt`/`Int.beq`, and `Int.ofNat`/`Int.negSucc` bridges. Mirrors the proven Nat literal fast-path. After this, `Int.ble 0 (-1)` reduces to `Bool.false` under `whnf`.
+  - **Files:** `crates/oxilean-kernel/src/expr/types.rs`, `crates/oxilean-kernel/src/reduce/functions.rs`, `crates/oxilean-kernel/src/reduce/types.rs`.
+  - **Tests:** 14 tests covering bridges, arithmetic, Bool comparisons, non-literal stability. All pass.
+
 ## ⚪ Future Optimizations
 
 - [x] Migrate `Expr` from `Box` to arena-based `Idx<Expr>` (hash-consing)
 - [x] Expression caching (hash → index dedup)
-- [x] η-expansion for structures
-- [x] K-like reduction for singleton types
+- [x] η-expansion for structures — implemented for real in `DefEqChecker::try_eta_struct` (`def_eq`, Lean `isDefEqEtaStruct` semantics, 2026-07-12). NOTE: the previous checkmark here was FALSE — it referred to the dead `struct_eta` module, which was never called from the def-eq path, dropped universe levels, and omitted parameters; that module was removed on 2026-07-12.
+- [ ] K-like reduction for singleton inductive *families* (Lean `toCtorWhenK` for recursors on `Eq`-style types) — NOT implemented. The previous checkmark was FALSE (it pointed at the dead `SingletonKReducer` stub, removed 2026-07-12). Unit-like *definitional equality* (Lean `isDefEqUnitLike`) IS implemented in `def_eq`.
 - [x] `no_std` compatibility for WASM

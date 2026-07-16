@@ -1,0 +1,31 @@
+[package]
+name = "oxilake"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+description = "Package manager for OxiLean (Lean4-compatible) projects"
+keywords = ["lean", "package-manager", "build-tool", "proof-assistant"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "oxilake"
+path = "src/main.rs"
+
+[dependencies]
+oxilean-build = { workspace = true }
+oxilean-elab = { workspace = true }
+oxilean-kernel = { workspace = true }
+oxilean-parse = { workspace = true }
+oxilean-std = { workspace = true }
+oxicode = { workspace = true }
+clap = { version = "4.6", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+toml = { workspace = true }
+anyhow = { version = "1.0" }
+
+[dev-dependencies]
+tempfile = { version = "3.27" }

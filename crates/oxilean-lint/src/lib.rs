@@ -3,6 +3,7 @@
 //! This crate provides a lint engine and a collection of lint rules for
 //! analyzing OxiLean source code.
 
+#![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![warn(clippy::all)]
 #![allow(unused_imports)]

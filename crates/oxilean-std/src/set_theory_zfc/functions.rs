@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -11,7 +12,7 @@ use super::types::{
 };
 
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
     app(app(f, a), b)
@@ -32,7 +33,7 @@ pub fn type1() -> Expr {
     Expr::Sort(Level::succ(Level::succ(Level::zero())))
 }
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     pi(BinderInfo::Default, "_", a, b)
@@ -76,8 +77,8 @@ pub fn exists_set(name: &str, body: Expr) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             Name::str(name),
-            Box::new(set_ty()),
-            Box::new(body),
+            Node::new(set_ty()),
+            Node::new(body),
         ),
     )
 }
@@ -250,8 +251,8 @@ pub fn axiom_choice_ty() -> Expr {
                 Expr::Lam(
                     BinderInfo::Default,
                     Name::str("f"),
-                    Box::new(arrow(set_ty(), set_ty())),
-                    Box::new(forall_set(
+                    Node::new(arrow(set_ty(), set_ty())),
+                    Node::new(forall_set(
                         "A",
                         arrow(mem(bvar(0), bvar(2)), mem(app(bvar(1), bvar(0)), bvar(0))),
                     )),
@@ -327,8 +328,8 @@ pub fn well_ordering_ty() -> Expr {
             Expr::Lam(
                 BinderInfo::Default,
                 Name::str("R"),
-                Box::new(arrow(set_ty(), arrow(set_ty(), prop()))),
-                Box::new(app2(cst("WellOrder"), bvar(1), bvar(0))),
+                Node::new(arrow(set_ty(), arrow(set_ty(), prop()))),
+                Node::new(app2(cst("WellOrder"), bvar(1), bvar(0))),
             ),
         ),
     )
@@ -598,8 +599,8 @@ pub fn mahlo_cardinal_ty() -> Expr {
                     Expr::Lam(
                         BinderInfo::Default,
                         Name::str("lambda"),
-                        Box::new(cst("Cardinal")),
-                        Box::new(app(cst("IsInaccessible"), bvar(0))),
+                        Node::new(cst("Cardinal")),
+                        Node::new(app(cst("IsInaccessible"), bvar(0))),
                     ),
                 ),
             ),
@@ -638,8 +639,8 @@ pub fn measurable_cardinal_ty() -> Expr {
                 Expr::Lam(
                     BinderInfo::Default,
                     Name::str("U"),
-                    Box::new(cst("Filter")),
-                    Box::new(app2(cst("IsKappaCompleteUF"), bvar(1), bvar(0))),
+                    Node::new(cst("Filter")),
+                    Node::new(app2(cst("IsKappaCompleteUF"), bvar(1), bvar(0))),
                 ),
             ),
         ),
@@ -658,8 +659,8 @@ pub fn ulam_matrix_ty() -> Expr {
                 Expr::Lam(
                     BinderInfo::Default,
                     Name::str("M"),
-                    Box::new(app(cst("UlamMatrix"), bvar(1))),
-                    Box::new(app2(cst("IsUlamMatrix"), bvar(2), bvar(0))),
+                    Node::new(app(cst("UlamMatrix"), bvar(1))),
+                    Node::new(app2(cst("IsUlamMatrix"), bvar(2), bvar(0))),
                 ),
             ),
         ),
@@ -686,8 +687,8 @@ pub fn supercompact_cardinal_ty() -> Expr {
                         Expr::Lam(
                             BinderInfo::Default,
                             Name::str("U"),
-                            Box::new(app2(cst("NormalMeasure"), bvar(2), bvar(1))),
-                            Box::new(app3(cst("IsNormalMeasure"), bvar(3), bvar(2), bvar(0))),
+                            Node::new(app2(cst("NormalMeasure"), bvar(2), bvar(1))),
+                            Node::new(app3(cst("IsNormalMeasure"), bvar(3), bvar(2), bvar(0))),
                         ),
                     ),
                 ),
@@ -763,8 +764,8 @@ pub fn analytic_sets_ty() -> Expr {
                 Expr::Lam(
                     BinderInfo::Default,
                     Name::str("B"),
-                    Box::new(cst("BorelSet")),
-                    Box::new(app2(cst("IsProjection"), bvar(0), bvar(1))),
+                    Node::new(cst("BorelSet")),
+                    Node::new(app2(cst("IsProjection"), bvar(0), bvar(1))),
                 ),
             ),
         ),
@@ -816,8 +817,8 @@ pub fn generic_filter_exists_ty() -> Expr {
             Expr::Lam(
                 BinderInfo::Default,
                 Name::str("G"),
-                Box::new(cst("Filter")),
-                Box::new(app2(cst("IsGenericFilter"), bvar(1), bvar(0))),
+                Node::new(cst("Filter")),
+                Node::new(app2(cst("IsGenericFilter"), bvar(1), bvar(0))),
             ),
         ),
     )
@@ -918,8 +919,8 @@ pub fn transfinite_recursion_ty() -> Expr {
             Expr::Lam(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(arrow(cst("Ordinal"), set_ty())),
-                Box::new(pi(
+                Node::new(arrow(cst("Ordinal"), set_ty())),
+                Node::new(pi(
                     BinderInfo::Default,
                     "alpha",
                     cst("Ordinal"),
@@ -959,8 +960,8 @@ pub fn well_ordering_ord_iso_ty() -> Expr {
             Expr::Lam(
                 BinderInfo::Default,
                 Name::str("alpha"),
-                Box::new(cst("Ordinal")),
-                Box::new(app2(cst("OrdIso"), bvar(1), bvar(0))),
+                Node::new(cst("Ordinal")),
+                Node::new(app2(cst("OrdIso"), bvar(1), bvar(0))),
             ),
         ),
     )
@@ -1038,8 +1039,8 @@ pub fn fodor_lemma_ty() -> Expr {
                                 Expr::Lam(
                                     BinderInfo::Default,
                                     Name::str("alpha"),
-                                    Box::new(cst("Ordinal")),
-                                    Box::new(app2(
+                                    Node::new(cst("Ordinal")),
+                                    Node::new(app2(
                                         cst("IsStationary"),
                                         bvar(4),
                                         app2(cst("Preimage"), bvar(2), bvar(0)),

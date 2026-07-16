@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Environment, Expr, Reducer};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, LabelSet, LazyNormal,
@@ -49,12 +51,22 @@ pub(super) fn normalize_impl(
         Expr::Lam(info, name, ty, body) => {
             let ty_norm = normalize_impl(reducer, ty, env);
             let body_norm = normalize_impl(reducer, body, env);
-            Expr::Lam(*info, name.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Lam(
+                *info,
+                name.clone(),
+                Node::new(ty_norm),
+                Node::new(body_norm),
+            )
         }
         Expr::Pi(info, name, ty, body) => {
             let ty_norm = normalize_impl(reducer, ty, env);
             let body_norm = normalize_impl(reducer, body, env);
-            Expr::Pi(*info, name.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Pi(
+                *info,
+                name.clone(),
+                Node::new(ty_norm),
+                Node::new(body_norm),
+            )
         }
         Expr::App(_, _) => {
             let whnf = match env {
@@ -64,7 +76,7 @@ pub(super) fn normalize_impl(
             if let Expr::App(f_whnf, a_whnf) = whnf {
                 let f_norm = normalize_impl(reducer, &f_whnf, env);
                 let a_norm = normalize_impl(reducer, &a_whnf, env);
-                Expr::App(Box::new(f_norm), Box::new(a_norm))
+                Expr::App(Node::new(f_norm), Node::new(a_norm))
             } else {
                 normalize_impl(reducer, &whnf, env)
             }
@@ -83,7 +95,7 @@ pub(super) fn normalize_impl(
             };
             if let Expr::Proj(_, _, _) = &whnf {
                 let e_norm = normalize_impl(reducer, e, env);
-                Expr::Proj(name.clone(), *idx, Box::new(e_norm))
+                Expr::Proj(name.clone(), *idx, Node::new(e_norm))
             } else {
                 normalize_impl(reducer, &whnf, env)
             }
@@ -132,7 +144,7 @@ pub fn evaluate(expr: &Expr, env: &Environment) -> Expr {
                 let mut result = head_norm;
                 for arg in args {
                     let arg_eval = evaluate(arg, env);
-                    result = Expr::App(Box::new(result), Box::new(arg_eval));
+                    result = Expr::App(Node::new(result), Node::new(arg_eval));
                 }
                 result
             } else {
@@ -173,7 +185,7 @@ mod tests {
     }
     #[test]
     fn test_normalize_lit() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         let norm = normalize(&expr);
         assert_eq!(norm, expr);
     }
@@ -188,8 +200,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         let norm = normalize(&lam);
         assert!(matches!(norm, Expr::Lam(_, _, _, _)));
@@ -199,24 +211,24 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let arg = Expr::Lit(Literal::Nat(42));
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let arg = Expr::Lit(Literal::nat(42));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let norm = normalize(&app);
         assert_eq!(norm, arg);
     }
     #[test]
     fn test_alpha_eq_same() {
-        let e1 = Expr::Lit(Literal::Nat(42));
-        let e2 = Expr::Lit(Literal::Nat(42));
+        let e1 = Expr::Lit(Literal::nat(42));
+        let e2 = Expr::Lit(Literal::nat(42));
         assert!(alpha_eq(&e1, &e2));
     }
     #[test]
     fn test_alpha_eq_different() {
-        let e1 = Expr::Lit(Literal::Nat(42));
-        let e2 = Expr::Lit(Literal::Nat(43));
+        let e1 = Expr::Lit(Literal::nat(42));
+        let e2 = Expr::Lit(Literal::nat(43));
         assert!(!alpha_eq(&e1, &e2));
     }
     #[test]
@@ -224,23 +236,23 @@ mod tests {
         let inner_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(1)),
         );
         let outer_lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(inner_lam),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(inner_lam),
         );
-        let arg = Expr::Lit(Literal::Nat(42));
-        let app = Expr::App(Box::new(outer_lam), Box::new(arg));
+        let arg = Expr::Lit(Literal::nat(42));
+        let app = Expr::App(Node::new(outer_lam), Node::new(arg));
         let norm = normalize(&app);
         assert!(matches!(norm, Expr::Lam(_, _, _, _)));
     }
     #[test]
     fn test_is_normal_form() {
-        assert!(is_normal_form(&Expr::Lit(Literal::Nat(42))));
+        assert!(is_normal_form(&Expr::Lit(Literal::nat(42))));
         assert!(is_normal_form(&Expr::BVar(0)));
         assert!(is_normal_form(&Expr::Sort(Level::zero())));
     }
@@ -251,13 +263,13 @@ mod tests {
             name: Name::str("answer"),
             univ_params: vec![],
             ty: Expr::Const(Name::str("Nat"), vec![]),
-            val: Expr::Lit(Literal::Nat(42)),
+            val: Expr::Lit(Literal::nat(42)),
             hint: crate::ReducibilityHint::Regular(1),
         })
         .expect("value should be present");
         let expr = Expr::Const(Name::str("answer"), vec![]);
         let norm = normalize_env(&expr, &env);
-        assert_eq!(norm, Expr::Lit(Literal::Nat(42)));
+        assert_eq!(norm, Expr::Lit(Literal::nat(42)));
     }
     #[test]
     fn test_alpha_eq_env() {
@@ -266,7 +278,7 @@ mod tests {
             name: Name::str("a"),
             univ_params: vec![],
             ty: Expr::Const(Name::str("Nat"), vec![]),
-            val: Expr::Lit(Literal::Nat(42)),
+            val: Expr::Lit(Literal::nat(42)),
             hint: crate::ReducibilityHint::Regular(1),
         })
         .expect("value should be present");
@@ -274,7 +286,7 @@ mod tests {
             name: Name::str("b"),
             univ_params: vec![],
             ty: Expr::Const(Name::str("Nat"), vec![]),
-            val: Expr::Lit(Literal::Nat(42)),
+            val: Expr::Lit(Literal::nat(42)),
             hint: crate::ReducibilityHint::Regular(1),
         })
         .expect("value should be present");
@@ -295,20 +307,20 @@ pub(super) fn normalize_types_impl(expr: &Expr) -> Expr {
         Expr::Pi(bk, n, ty, body) => {
             let ty2 = normalize_types_impl(ty);
             let body2 = normalize_types_impl(body);
-            Expr::Pi(*bk, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bk, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Sort(_) => expr.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(normalize_types_impl(f)),
-            Box::new(normalize_types_impl(a)),
+            Node::new(normalize_types_impl(f)),
+            Node::new(normalize_types_impl(a)),
         ),
         Expr::Lam(bk, n, ty, body) => {
             let ty2 = normalize_types_impl(ty);
             Expr::Lam(
                 *bk,
                 n.clone(),
-                Box::new(ty2),
-                Box::new(body.as_ref().clone()),
+                Node::new(ty2),
+                Node::new(body.as_ref().clone()),
             )
         }
         other => other.clone(),
@@ -326,14 +338,14 @@ pub fn head_normal_form(expr: &Expr) -> Expr {
             let f_hnf = head_normal_form(f);
             match f_hnf {
                 Expr::Lam(_, _, _, body) => {
-                    let substituted = subst_bvar_norm(*body, 0, arg);
+                    let substituted = subst_bvar_norm((*body).clone(), 0, arg);
                     head_normal_form(&substituted)
                 }
-                other_f => Expr::App(Box::new(other_f), arg.clone()),
+                other_f => Expr::App(Node::new(other_f), arg.clone()),
             }
         }
         Expr::Let(_, _, val, body) => {
-            let substituted = subst_bvar_norm(*body.clone(), 0, val);
+            let substituted = subst_bvar_norm((**body).clone(), 0, val);
             head_normal_form(&substituted)
         }
         other => other.clone(),
@@ -351,30 +363,32 @@ pub(super) fn subst_bvar_norm(term: Expr, depth: u32, replacement: &Expr) -> Exp
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_bvar_norm(*f, depth, replacement)),
-            Box::new(subst_bvar_norm(*a, depth, replacement)),
+            Node::new(subst_bvar_norm((*f).clone(), depth, replacement)),
+            Node::new(subst_bvar_norm((*a).clone(), depth, replacement)),
         ),
         Expr::Lam(bk, n, ty, body) => Expr::Lam(
             bk,
             n,
-            Box::new(subst_bvar_norm(*ty, depth, replacement)),
-            Box::new(subst_bvar_norm(*body, depth + 1, replacement)),
+            Node::new(subst_bvar_norm((*ty).clone(), depth, replacement)),
+            Node::new(subst_bvar_norm((*body).clone(), depth + 1, replacement)),
         ),
         Expr::Pi(bk, n, ty, body) => Expr::Pi(
             bk,
             n,
-            Box::new(subst_bvar_norm(*ty, depth, replacement)),
-            Box::new(subst_bvar_norm(*body, depth + 1, replacement)),
+            Node::new(subst_bvar_norm((*ty).clone(), depth, replacement)),
+            Node::new(subst_bvar_norm((*body).clone(), depth + 1, replacement)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n,
-            Box::new(subst_bvar_norm(*ty, depth, replacement)),
-            Box::new(subst_bvar_norm(*val, depth, replacement)),
-            Box::new(subst_bvar_norm(*body, depth + 1, replacement)),
+            Node::new(subst_bvar_norm((*ty).clone(), depth, replacement)),
+            Node::new(subst_bvar_norm((*val).clone(), depth, replacement)),
+            Node::new(subst_bvar_norm((*body).clone(), depth + 1, replacement)),
         ),
-        Expr::Proj(idx, n, e) => {
-            Expr::Proj(idx, n, Box::new(subst_bvar_norm(*e, depth, replacement)))
-        }
+        Expr::Proj(idx, n, e) => Expr::Proj(
+            idx,
+            n,
+            Node::new(subst_bvar_norm((*e).clone(), depth, replacement)),
+        ),
         other => other,
     }
 }
@@ -394,28 +408,28 @@ pub(super) fn count_steps_impl(expr: &Expr, steps: &mut usize) -> Expr {
             let arg_norm = count_steps_impl(arg, steps);
             if let Expr::Lam(_, _, _, body) = f_norm {
                 *steps += 1;
-                let substituted = subst_bvar_norm(*body, 0, &arg_norm);
+                let substituted = subst_bvar_norm((*body).clone(), 0, &arg_norm);
                 count_steps_impl(&substituted, steps)
             } else {
-                Expr::App(Box::new(f_norm), Box::new(arg_norm))
+                Expr::App(Node::new(f_norm), Node::new(arg_norm))
             }
         }
         Expr::Let(_, _, val, body) => {
             *steps += 1;
-            let substituted = subst_bvar_norm(*body.clone(), 0, val);
+            let substituted = subst_bvar_norm((**body).clone(), 0, val);
             count_steps_impl(&substituted, steps)
         }
         Expr::Lam(bk, n, ty, body) => {
             let ty2 = count_steps_impl(ty, steps);
             let body2 = count_steps_impl(body, steps);
-            Expr::Lam(*bk, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bk, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bk, n, ty, body) => {
             let ty2 = count_steps_impl(ty, steps);
             let body2 = count_steps_impl(body, steps);
-            Expr::Pi(*bk, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bk, n.clone(), Node::new(ty2), Node::new(body2))
         }
-        Expr::Proj(idx, n, e) => Expr::Proj(idx.clone(), *n, Box::new(count_steps_impl(e, steps))),
+        Expr::Proj(idx, n, e) => Expr::Proj(idx.clone(), *n, Node::new(count_steps_impl(e, steps))),
         other => other.clone(),
     }
 }
@@ -466,24 +480,24 @@ pub(super) fn normalize_fully_impl(expr: &Expr, max_depth: usize, current: usize
             let f2 = normalize_fully_impl(f, max_depth, current + 1);
             let a2 = normalize_fully_impl(arg, max_depth, current + 1);
             if let Expr::Lam(_, _, _, body) = f2 {
-                let sub = subst_bvar_norm(*body, 0, &a2);
+                let sub = subst_bvar_norm((*body).clone(), 0, &a2);
                 normalize_fully_impl(&sub, max_depth, current + 1)
             } else {
-                Expr::App(Box::new(f2), Box::new(a2))
+                Expr::App(Node::new(f2), Node::new(a2))
             }
         }
         Expr::Lam(bk, n, ty, body) => {
             let ty2 = normalize_fully_impl(ty, max_depth, current + 1);
             let b2 = normalize_fully_impl(body, max_depth, current + 1);
-            Expr::Lam(*bk, n.clone(), Box::new(ty2), Box::new(b2))
+            Expr::Lam(*bk, n.clone(), Node::new(ty2), Node::new(b2))
         }
         Expr::Pi(bk, n, ty, body) => {
             let ty2 = normalize_fully_impl(ty, max_depth, current + 1);
             let b2 = normalize_fully_impl(body, max_depth, current + 1);
-            Expr::Pi(*bk, n.clone(), Box::new(ty2), Box::new(b2))
+            Expr::Pi(*bk, n.clone(), Node::new(ty2), Node::new(b2))
         }
         Expr::Let(_, _, val, body) => {
-            let sub = subst_bvar_norm(*body.clone(), 0, val);
+            let sub = subst_bvar_norm((**body).clone(), 0, val);
             normalize_fully_impl(&sub, max_depth, current + 1)
         }
         other => other.clone(),
@@ -509,13 +523,13 @@ pub(super) fn reduce_one_step(expr: &Expr) -> Expr {
     match expr {
         Expr::App(f, arg) => {
             if let Expr::Lam(_, _, _, body) = f.as_ref() {
-                subst_bvar_norm(*body.clone(), 0, arg)
+                subst_bvar_norm((**body).clone(), 0, arg)
             } else {
                 let f2 = reduce_one_step(f);
-                Expr::App(Box::new(f2), arg.clone())
+                Expr::App(Node::new(f2), arg.clone())
             }
         }
-        Expr::Let(_, _, val, body) => subst_bvar_norm(*body.clone(), 0, val),
+        Expr::Let(_, _, val, body) => subst_bvar_norm((**body).clone(), 0, val),
         other => other.clone(),
     }
 }
@@ -539,32 +553,32 @@ pub fn normalize_selective(expr: &Expr, env: &Environment, whitelist: &[crate::N
             let f2 = normalize_selective(f, env, whitelist);
             let a2 = normalize_selective(a, env, whitelist);
             if let Expr::Lam(_, _, _, body) = f2 {
-                let sub = subst_bvar_norm(*body, 0, &a2);
+                let sub = subst_bvar_norm((*body).clone(), 0, &a2);
                 normalize_selective(&sub, env, whitelist)
             } else {
-                Expr::App(Box::new(f2), Box::new(a2))
+                Expr::App(Node::new(f2), Node::new(a2))
             }
         }
         Expr::Lam(bk, n, ty, body) => Expr::Lam(
             *bk,
             n.clone(),
-            Box::new(normalize_selective(ty, env, whitelist)),
-            Box::new(normalize_selective(body, env, whitelist)),
+            Node::new(normalize_selective(ty, env, whitelist)),
+            Node::new(normalize_selective(body, env, whitelist)),
         ),
         Expr::Pi(bk, n, ty, body) => Expr::Pi(
             *bk,
             n.clone(),
-            Box::new(normalize_selective(ty, env, whitelist)),
-            Box::new(normalize_selective(body, env, whitelist)),
+            Node::new(normalize_selective(ty, env, whitelist)),
+            Node::new(normalize_selective(body, env, whitelist)),
         ),
         Expr::Let(_n, _ty, val, body) => {
-            let sub = subst_bvar_norm(*body.clone(), 0, val);
+            let sub = subst_bvar_norm((**body).clone(), 0, val);
             normalize_selective(&sub, env, whitelist)
         }
         Expr::Proj(idx, n, e) => Expr::Proj(
             idx.clone(),
             *n,
-            Box::new(normalize_selective(e, env, whitelist)),
+            Node::new(normalize_selective(e, env, whitelist)),
         ),
         other => other.clone(),
     }
@@ -574,7 +588,7 @@ mod extended_normalize_tests {
     use super::*;
     use crate::{BinderInfo as BinderKind, Expr, Level, Literal, Name};
     fn mk_nat(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn mk_const(s: &str) -> Expr {
         Expr::Const(Name::str(s), vec![])
@@ -591,8 +605,8 @@ mod extended_normalize_tests {
         let pi = Expr::Pi(
             BinderKind::Default,
             Name::str("x"),
-            Box::new(mk_sort(0)),
-            Box::new(mk_sort(0)),
+            Node::new(mk_sort(0)),
+            Node::new(mk_sort(0)),
         );
         let result = normalize_types(&pi);
         assert!(matches!(result, Expr::Pi(_, _, _, _)));
@@ -609,11 +623,11 @@ mod extended_normalize_tests {
         let lam = Expr::Lam(
             BinderKind::Default,
             Name::str("x"),
-            Box::new(mk_sort(0)),
-            Box::new(body),
+            Node::new(mk_sort(0)),
+            Node::new(body),
         );
         let arg = mk_nat(5);
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let hnf = head_normal_form(&app);
         assert_eq!(hnf, arg);
     }
@@ -630,11 +644,11 @@ mod extended_normalize_tests {
         let lam = Expr::Lam(
             BinderKind::Default,
             Name::str("x"),
-            Box::new(mk_sort(0)),
-            Box::new(body),
+            Node::new(mk_sort(0)),
+            Node::new(body),
         );
         let arg = mk_nat(7);
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let (steps, result) = count_reduction_steps(&app);
         assert!(steps >= 1);
         assert_eq!(result, arg);
@@ -665,9 +679,9 @@ mod extended_normalize_tests {
     fn test_is_in_whnf_let() {
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(mk_sort(0)),
-            Box::new(mk_nat(0)),
-            Box::new(Expr::BVar(0)),
+            Node::new(mk_sort(0)),
+            Node::new(mk_nat(0)),
+            Node::new(Expr::BVar(0)),
         );
         assert!(!is_in_whnf(&let_expr));
     }
@@ -677,11 +691,11 @@ mod extended_normalize_tests {
         let lam = Expr::Lam(
             BinderKind::Default,
             Name::str("x"),
-            Box::new(mk_sort(0)),
-            Box::new(body.clone()),
+            Node::new(mk_sort(0)),
+            Node::new(body.clone()),
         );
         let arg = mk_nat(3);
-        let app = Expr::App(Box::new(lam), Box::new(arg));
+        let app = Expr::App(Node::new(lam), Node::new(arg));
         let result = normalize_fully(&app, 0);
         assert!(matches!(result, Expr::App(_, _)));
     }
@@ -697,11 +711,11 @@ mod extended_normalize_tests {
         let lam = Expr::Lam(
             BinderKind::Default,
             Name::str("x"),
-            Box::new(mk_sort(0)),
-            Box::new(body),
+            Node::new(mk_sort(0)),
+            Node::new(body),
         );
         let arg = mk_nat(99);
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let result = reduce_n_steps(&app, 1);
         assert_eq!(result, arg);
     }
@@ -736,14 +750,14 @@ pub fn normalize_binders(expr: &Expr, n: usize) -> Expr {
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(normalize(ty)),
-            Box::new(normalize_binders(body, n - 1)),
+            Node::new(normalize(ty)),
+            Node::new(normalize_binders(body, n - 1)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(normalize(ty)),
-            Box::new(normalize_binders(body, n - 1)),
+            Node::new(normalize(ty)),
+            Node::new(normalize_binders(body, n - 1)),
         ),
         other => normalize(other),
     }
@@ -763,27 +777,27 @@ pub(super) fn norm_stats_impl(expr: &Expr, stats: &mut NormStats) -> Expr {
             let a2 = norm_stats_impl(arg, stats);
             if let Expr::Lam(_, _, _, body) = &f2 {
                 stats.beta_steps += 1;
-                let sub = subst_bvar_norm(*body.clone(), 0, &a2);
+                let sub = subst_bvar_norm((**body).clone(), 0, &a2);
                 norm_stats_impl(&sub, stats)
             } else {
-                Expr::App(Box::new(f2), Box::new(a2))
+                Expr::App(Node::new(f2), Node::new(a2))
             }
         }
         Expr::Let(_, _, val, body) => {
             stats.let_steps += 1;
             let v2 = norm_stats_impl(val, stats);
-            let sub = subst_bvar_norm(*body.clone(), 0, &v2);
+            let sub = subst_bvar_norm((**body).clone(), 0, &v2);
             norm_stats_impl(&sub, stats)
         }
         Expr::Lam(bk, n, ty, body) => {
             let ty2 = norm_stats_impl(ty, stats);
             let b2 = norm_stats_impl(body, stats);
-            Expr::Lam(*bk, n.clone(), Box::new(ty2), Box::new(b2))
+            Expr::Lam(*bk, n.clone(), Node::new(ty2), Node::new(b2))
         }
         Expr::Pi(bk, n, ty, body) => {
             let ty2 = norm_stats_impl(ty, stats);
             let b2 = norm_stats_impl(body, stats);
-            Expr::Pi(*bk, n.clone(), Box::new(ty2), Box::new(b2))
+            Expr::Pi(*bk, n.clone(), Node::new(ty2), Node::new(b2))
         }
         other => other.clone(),
     }
@@ -793,7 +807,7 @@ mod normalize_new_tests {
     use super::*;
     use crate::{BinderInfo, Level, Literal, Name};
     fn mk_nat(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn mk_sort0() -> Expr {
         Expr::Sort(Level::zero())
@@ -801,13 +815,13 @@ mod normalize_new_tests {
     #[test]
     fn test_norm_strategy_none() {
         let e = Expr::App(
-            Box::new(Expr::Lam(
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(mk_sort0()),
-                Box::new(Expr::BVar(0)),
+                Node::new(mk_sort0()),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(mk_nat(5)),
+            Node::new(mk_nat(5)),
         );
         let result = normalize_with_strategy(&e, NormStrategy::None);
         assert_eq!(result, e);
@@ -815,13 +829,13 @@ mod normalize_new_tests {
     #[test]
     fn test_norm_strategy_full() {
         let e = Expr::App(
-            Box::new(Expr::Lam(
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(mk_sort0()),
-                Box::new(Expr::BVar(0)),
+                Node::new(mk_sort0()),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(mk_nat(7)),
+            Node::new(mk_nat(7)),
         );
         let result = normalize_with_strategy(&e, NormStrategy::Full);
         assert_eq!(result, mk_nat(7));
@@ -846,11 +860,11 @@ mod normalize_new_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_sort0()),
-            Box::new(body),
+            Node::new(mk_sort0()),
+            Node::new(body),
         );
         let arg = mk_nat(10);
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let lazy = LazyNormal::new(app);
         assert_eq!(lazy.normalized(), &arg);
     }
@@ -869,11 +883,11 @@ mod normalize_new_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_sort0()),
-            Box::new(body),
+            Node::new(mk_sort0()),
+            Node::new(body),
         );
         let arg = mk_nat(3);
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let (result, stats) = normalize_with_stats(&app);
         assert_eq!(result, arg);
         assert!(stats.beta_steps >= 1);
@@ -883,9 +897,9 @@ mod normalize_new_tests {
         let val = mk_nat(5);
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(mk_sort0()),
-            Box::new(val.clone()),
-            Box::new(Expr::BVar(0)),
+            Node::new(mk_sort0()),
+            Node::new(val.clone()),
+            Node::new(Expr::BVar(0)),
         );
         let (result, stats) = normalize_with_stats(&let_expr);
         assert_eq!(result, val);
@@ -906,8 +920,8 @@ mod normalize_new_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat.clone()),
-            Box::new(nat.clone()),
+            Node::new(nat.clone()),
+            Node::new(nat.clone()),
         );
         let result = normalize_binders(&lam, 1);
         assert!(matches!(result, Expr::Lam(_, _, _, _)));
@@ -1070,7 +1084,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

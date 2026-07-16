@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OxiLean Playground</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>OxiLean Playground</h1>
+    <span class="version">v0.1.3</span>
+    <div class="header-controls">
+      <select id="examples-select" aria-label="Load example proof">
+        <option value="">— Load Example —</option>
+        <option value="theorem refl_example (n : Nat) : n = n := rfl">Reflexivity</option>
+        <option value="theorem omega_ex (a b : Int) (h : a ≤ b) : a ≤ b := by omega">Omega (linear arith)</option>
+        <option value="theorem linarith_ex (x y : Int) (h1 : x ≤ 3) (h2 : 3 ≤ y) : x ≤ y := by linarith">Linarith</option>
+        <option value="theorem simp_true : True := by simp">Simp (True)</option>
+        <option value="theorem nlinarith_ex (x : Int) : 0 ≤ x * x := by nlinarith">Nlinarith</option>
+        <option value="theorem dne (p : Prop) (h : ¬¬p) : p := Classical.byContradiction (fun hn => h hn)">Classical (DNE)</option>
+        <option value="theorem add_zero_induction (n : Nat) : n + 0 = n := by&#10;  induction n with&#10;  | zero =&gt; rfl&#10;  | succ k ih =&gt; rw [Nat.succ_add, ih]">Induction (n + 0 = n)</option>
+        <option value="theorem funext_ex : (fun x : Nat =&gt; x + 0) = (fun x =&gt; x) := by&#10;  funext n&#10;  simp">Funext</option>
+        <option value="theorem and_intro_ex (p q : Prop) (hp : p) (hq : q) : p ∧ q := And.intro hp hq">And Introduction</option>
+        <option value="theorem mp (p q : Prop) (h1 : p → q) (h2 : p) : q := h1 h2">Modus Ponens</option>
+        <option value="theorem trans_ex (a b c : Int) (h1 : a ≤ b) (h2 : b ≤ c) : a ≤ c := by linarith">Transitivity (linarith)</option>
+        <option value="theorem symm_ex (a b : Nat) (h : a = b) : b = a := h.symm">Symmetry</option>
+        <option value="theorem polyrith_ex (a b : Int) (h : a = b) : a * a = a * b := by&#10;  rw [h]">Polyrith (rewrite)</option>
+        <option value="theorem nat_add_comm (a b : Nat) : a + b = b + a := by omega">Nat Add Comm (omega)</option>
+        <option value="def hello : String := &quot;Hello, OxiLean!&quot;&#10;&#10;theorem hello_nonempty : hello.length > 0 := by decide">Def + Theorem (decide)</option>
+      </select>
+      <button id="share-btn" title="Copy share URL to clipboard">Share</button>
+    </div>
+  </header>
+  <main>
+    <div id="editor-pane">
+      <div id="editor-label">Editor</div>
+      <div id="tabs-bar" class="tabs-bar"></div>
+      <div id="editor"></div>
+    </div>
+    <div id="result-pane">
+      <div id="result-label">
+        <span id="status-dot"></span>
+        Results
+      </div>
+      <div id="result-content">
+        <div class="loading">Loading&hellip;</div>
+      </div>
+    </div>
+  </main>
+  <footer>OxiLean &mdash; Lean4-compatible proof assistant &mdash; COOLJAPAN OU</footer>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

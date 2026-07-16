@@ -25,8 +25,20 @@ pub enum TacticError {
     NoGoals,
     /// Expected exactly one goal, but found more
     TooManyGoals,
-    /// Type mismatch during tactic application
+    /// Type mismatch during tactic application (generic message).
     TypeMismatch(String),
+    /// Type mismatch with structured expected/actual/context information.
+    ///
+    /// Use this variant when you have concrete type strings to show the user;
+    /// prefer [`TypeMismatch`](TacticError::TypeMismatch) only when the message is already fully formatted.
+    TypeMismatchDetailed {
+        /// The type that was expected in this position.
+        expected: String,
+        /// The type that was actually found.
+        actual: String,
+        /// Additional context (e.g. tactic name, goal description).
+        context: String,
+    },
     /// Unknown tactic name
     UnknownTactic(String),
     /// Invalid argument to a tactic
@@ -356,6 +368,8 @@ pub struct TacticState {
     pub(super) goals: Vec<Goal>,
     /// Solved goals
     pub solved: Vec<Name>,
+    /// The last proof certificate produced by a decision-procedure tactic (e.g., omega).
+    pub certificate: Option<oxilean_meta::ProofCertificate>,
 }
 impl TacticState {
     /// Create a new tactic state.
@@ -363,6 +377,7 @@ impl TacticState {
         Self {
             goals: Vec::new(),
             solved: Vec::new(),
+            certificate: None,
         }
     }
     /// Add a goal.

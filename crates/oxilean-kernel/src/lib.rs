@@ -265,13 +265,15 @@
 #![warn(clippy::all)]
 
 pub mod arena;
+pub mod bignat;
 pub mod expr;
 pub mod level;
 pub mod name;
 
 // Re-exports for convenience
 pub use arena::{Arena, Idx};
-pub use expr::{BinderInfo, Expr, FVarId, Literal};
+pub use bignat::BigNat;
+pub use expr::{BinderInfo, Expr, FVarId, Literal, Node};
 pub use level::{Level, LevelMVarId};
 pub use name::Name;
 pub mod subst;
@@ -319,11 +321,21 @@ pub mod match_compile;
 pub mod normalize;
 pub mod prettyprint;
 pub mod proof;
+/// Legacy, string-based quotient helpers (superseded, not for external use).
+///
+/// The real, sound quotient support lives in the kernel proper:
+/// [`Environment::add_quot`] installs the `#QUOT` primitives with
+/// kernel-constructed canonical types, and quotient iota-reduction runs in the
+/// `Reducer` (`reduce/`) on the def-eq path. This module's former helpers
+/// matched hard-coded single-atom names with the wrong arities and encoded
+/// incorrect judgments; the unsound ones (`reduce_quot_lift`, `reduce_quot_ind`,
+/// `try_reduce_quot`, `try_reduce_quot_full`, `quot_eq`) have been removed, and
+/// nothing here is re-exported from the crate root any longer.
+#[doc(hidden)]
 pub mod quotient;
 pub mod reduction;
 pub mod serial;
 pub mod simp;
-pub mod struct_eta;
 pub mod substitution;
 pub mod termination;
 pub mod trace;
@@ -336,14 +348,21 @@ pub mod whnf;
 pub mod bench_support;
 /// Caching infrastructure for performance optimization.
 pub mod cache;
+/// Per-declaration wall-clock deadline (backstop for non-fuel-metered loops).
+pub mod deadline;
 /// Foreign function interface support.
 pub mod ffi;
+/// Deterministic per-declaration resource fuel (metered via `Expr::clone`).
+pub mod fuel;
 /// Structural sharing (hash-consing) for `Expr` values.
 pub mod hash_cons;
 /// No-std compatibility layer for constrained and WASM environments.
 pub mod no_std_compat;
 /// Thread-safe string interning pool for `Name` construction.
 pub mod string_intern;
+/// Portable monotonic clock: transparent over `crate::wall_clock::Instant` off wasm, a
+/// non-panicking monotonic counter on `wasm32` (where std time panics).
+pub mod wall_clock;
 
 pub use alpha::{alpha_equiv, canonicalize};
 pub use axiom::{
@@ -365,7 +384,10 @@ pub use export::{
     deserialize_module_header, export_environment, import_module, serialize_module, ExportedModule,
     ModuleCache,
 };
-pub use inductive::{check_inductive, reduce_recursor, InductiveEnv, InductiveType, IntroRule};
+pub use inductive::{
+    add_inductive_family, check_and_derive_family, check_inductive, derive_family_unchecked,
+    reduce_recursor, DerivedFamily, InductiveEnv, InductiveSpec, InductiveType, IntroRule,
+};
 pub use match_compile::{
     CompileResult, ConstructorInfo as MatchConstructorInfo, DecisionTree, MatchArm, MatchCompiler,
     Pattern,
@@ -373,10 +395,10 @@ pub use match_compile::{
 pub use normalize::{alpha_eq_env, evaluate, is_normal_form, normalize_env, normalize_whnf};
 pub use prettyprint::{print_expr, print_expr_ascii, ExprPrinter};
 pub use proof::ProofTerm;
-pub use quotient::{
-    check_equivalence_relation, check_quot_usage, is_quot_type_expr, quot_eq, reduce_quot_lift,
-    QuotUsageKind, QuotientType,
-};
+// NOTE: the toy `quotient` module is intentionally NOT re-exported. Its helpers
+// (`reduce_quot_lift` with the wrong arity, `quot_eq` encoding a bogus
+// judgment, etc.) were unsound as a public API surface. Sound quotient support
+// is `Environment::add_quot` plus the `Reducer` quotient iota path.
 pub use simp::{alpha_eq, normalize, simplify};
 pub use termination::{ParamInfo, RecCallInfo, TerminationChecker, TerminationResult};
 pub use trace::{TraceEvent, TraceLevel, Tracer};

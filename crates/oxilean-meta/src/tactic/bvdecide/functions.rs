@@ -9,6 +9,7 @@ use super::types::{
 };
 use crate::basic::MetaContext;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -40,18 +41,18 @@ pub fn reconstruct_unsat_proof(
     let _proof_steps = unsat_proof.resolution_chain.len();
     let proof_expr = build_false_from_resolution(unsat_proof, var_mapping);
     let neg_goal = Expr::App(
-        Box::new(Expr::Const(Name::str("Not"), vec![])),
-        Box::new(goal.clone()),
+        Node::new(Expr::Const(Name::str("Not"), vec![])),
+        Node::new(goal.clone()),
     );
     let contradiction_proof = Expr::Lam(
         oxilean_kernel::BinderInfo::Default,
         Name::str("h_neg"),
-        Box::new(neg_goal),
-        Box::new(proof_expr),
+        Node::new(neg_goal),
+        Node::new(proof_expr),
     );
     Expr::App(
-        Box::new(Expr::Const(Name::str("Classical.byContradiction"), vec![])),
-        Box::new(contradiction_proof),
+        Node::new(Expr::Const(Name::str("Classical.byContradiction"), vec![])),
+        Node::new(contradiction_proof),
     )
 }
 /// Build a proof of False from a resolution chain.
@@ -66,17 +67,17 @@ pub(super) fn build_false_from_resolution(
     for step in &proof.resolution_chain {
         let _pivot_name = Name::str(format!("x{}", step.pivot.0));
         let step_proof = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Resolution.resolve"), vec![])),
-                Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Resolution.resolve"), vec![])),
+                Node::new(Expr::Lit(oxilean_kernel::Literal::nat(
                     step.clause_a as u64,
                 ))),
             )),
-            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(
+            Node::new(Expr::Lit(oxilean_kernel::Literal::nat(
                 step.clause_b as u64,
             ))),
         );
-        current_proof = Expr::App(Box::new(step_proof), Box::new(current_proof));
+        current_proof = Expr::App(Node::new(step_proof), Node::new(current_proof));
     }
     current_proof
 }

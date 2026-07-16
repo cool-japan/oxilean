@@ -12,6 +12,7 @@ use super::types::{
     CongrThmsExtMap, CongrThmsExtUtil, CongrThmsStateMachine, CongrThmsWindow, CongrThmsWorkQueue,
     MetaCongrTheorem,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::HashMap;
 
@@ -83,26 +84,26 @@ pub(super) fn build_congr_type(
         match arg_kinds.get(i as usize) {
             Some(CongrArgKind::Fixed) => {
                 let arg = Expr::BVar(i);
-                lhs = Expr::App(Box::new(lhs), Box::new(arg.clone()));
-                rhs = Expr::App(Box::new(rhs), Box::new(arg));
+                lhs = Expr::App(Node::new(lhs), Node::new(arg.clone()));
+                rhs = Expr::App(Node::new(rhs), Node::new(arg));
             }
             _ => {
                 let a = Expr::BVar(i * 2);
                 let b = Expr::BVar(i * 2 + 1);
-                lhs = Expr::App(Box::new(lhs), Box::new(a));
-                rhs = Expr::App(Box::new(rhs), Box::new(b));
+                lhs = Expr::App(Node::new(lhs), Node::new(a));
+                rhs = Expr::App(Node::new(rhs), Node::new(b));
             }
         }
     }
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
-                Box::new(sort),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![Level::zero()])),
+                Node::new(sort),
             )),
-            Box::new(lhs),
+            Node::new(lhs),
         )),
-        Box::new(rhs),
+        Node::new(rhs),
     )
 }
 /// Count the number of equality subgoals.

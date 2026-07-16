@@ -2,11 +2,11 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
-use std::time::Instant;
+use crate::wall_clock::Instant;
 
 use std::collections::VecDeque;
 
-/// A simple wall-clock timer backed by [`std::time::Instant`].
+/// A simple wall-clock timer backed by [`crate::wall_clock::Instant`].
 #[derive(Debug, Clone)]
 pub struct BenchTimer {
     start: Instant,
@@ -550,7 +550,7 @@ impl BenchConfig {
 #[allow(dead_code)]
 pub struct ThroughputTracker {
     window_ms: f64,
-    events: std::collections::VecDeque<(std::time::Instant, u64)>,
+    events: std::collections::VecDeque<(crate::wall_clock::Instant, u64)>,
 }
 #[allow(dead_code)]
 impl ThroughputTracker {
@@ -563,7 +563,7 @@ impl ThroughputTracker {
     }
     /// Records that `count` items were processed at this instant.
     pub fn record(&mut self, count: u64) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         self.events.push_back((now, count));
         let cutoff = now - std::time::Duration::from_secs_f64(self.window_ms / 1000.0);
         while self.events.front().is_some_and(|(t, _)| *t < cutoff) {
@@ -1003,15 +1003,16 @@ impl BenchHarnessExt {
         match self.policy {
             IterationPolicy::Fixed(n) => {
                 for _ in 0..n {
-                    let t = std::time::Instant::now();
+                    let t = crate::wall_clock::Instant::now();
                     f();
                     self.samples_us.push(t.elapsed().as_secs_f64() * 1e6);
                 }
             }
             IterationPolicy::TimeBounded(ms) => {
-                let deadline = std::time::Instant::now() + std::time::Duration::from_millis(ms);
-                while std::time::Instant::now() < deadline {
-                    let t = std::time::Instant::now();
+                let deadline =
+                    crate::wall_clock::Instant::now() + std::time::Duration::from_millis(ms);
+                while crate::wall_clock::Instant::now() < deadline {
+                    let t = crate::wall_clock::Instant::now();
                     f();
                     self.samples_us.push(t.elapsed().as_secs_f64() * 1e6);
                 }
@@ -1019,7 +1020,7 @@ impl BenchHarnessExt {
             IterationPolicy::Adaptive { min, max } => {
                 let mut count = 0u64;
                 while count < max {
-                    let t = std::time::Instant::now();
+                    let t = crate::wall_clock::Instant::now();
                     f();
                     let elapsed = t.elapsed().as_secs_f64() * 1e6;
                     self.samples_us.push(elapsed);
@@ -1463,7 +1464,7 @@ impl BenchMatrix {
 #[allow(dead_code)]
 pub struct BenchProfiler {
     label: String,
-    start_time: std::time::Instant,
+    start_time: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl BenchProfiler {
@@ -1471,7 +1472,7 @@ impl BenchProfiler {
     pub fn start(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
-            start_time: std::time::Instant::now(),
+            start_time: crate::wall_clock::Instant::now(),
         }
     }
     /// Stops the profiler and returns elapsed microseconds.
@@ -1527,7 +1528,7 @@ impl BenchPlan {
 /// Measures the average time per item when processing a batch.
 #[allow(dead_code)]
 pub struct BatchTimer {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     batch_size: u64,
 }
 #[allow(dead_code)]
@@ -1535,7 +1536,7 @@ impl BatchTimer {
     /// Starts a batch timer for `batch_size` items.
     pub fn start(batch_size: u64) -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             batch_size,
         }
     }
@@ -1686,7 +1687,7 @@ impl MetricSet {
 pub struct BenchEventLog {
     /// List of (elapsed_ms, event_name) pairs.
     pub events: Vec<(f64, String)>,
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl BenchEventLog {
@@ -1694,7 +1695,7 @@ impl BenchEventLog {
     pub fn new() -> Self {
         Self {
             events: Vec::new(),
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
         }
     }
     /// Records an event with the current elapsed time.

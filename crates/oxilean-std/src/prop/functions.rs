@@ -2,14 +2,15 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 pub(super) fn prop() -> Expr {
@@ -27,14 +28,14 @@ pub fn bool_const() -> Expr {
 /// Create `Decidable p`.
 #[allow(dead_code)]
 pub fn mk_decidable(p: Expr) -> Expr {
-    Expr::App(Box::new(decidable_const()), Box::new(p))
+    Expr::App(Node::new(decidable_const()), Node::new(p))
 }
 /// Create `DecidableEq ty`.
 #[allow(dead_code)]
 pub fn mk_decidable_eq(ty: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("DecidableEq"), vec![])),
-        Box::new(ty),
+        Node::new(Expr::Const(Name::str("DecidableEq"), vec![])),
+        Node::new(ty),
     )
 }
 /// Create `@ite cond then_branch else_branch`.
@@ -44,30 +45,30 @@ pub fn mk_decidable_eq(ty: Expr) -> Expr {
 #[allow(dead_code)]
 pub fn mk_ite(cond: Expr, then_branch: Expr, else_branch: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("ite"), vec![])),
-                Box::new(cond),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("ite"), vec![])),
+                Node::new(cond),
             )),
-            Box::new(then_branch),
+            Node::new(then_branch),
         )),
-        Box::new(else_branch),
+        Node::new(else_branch),
     )
 }
 /// Create `Decidable.decide p` (instance resolution).
 #[allow(dead_code)]
 pub fn decide(p: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Decidable.decide"), vec![])),
-        Box::new(p),
+        Node::new(Expr::Const(Name::str("Decidable.decide"), vec![])),
+        Node::new(p),
     )
 }
 /// Create `Decidable.toBool dec`.
 #[allow(dead_code)]
 pub fn to_bool(dec: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Decidable.toBool"), vec![])),
-        Box::new(dec),
+        Node::new(Expr::Const(Name::str("Decidable.toBool"), vec![])),
+        Node::new(dec),
     )
 }
 /// Build propositional logic declarations in the environment.
@@ -79,12 +80,12 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("inst"),
-                Box::new(mk_decidable(Expr::BVar(0))),
-                Box::new(mk_decidable(Expr::BVar(1))),
+                Node::new(mk_decidable(Expr::BVar(0))),
+                Node::new(mk_decidable(Expr::BVar(1))),
             )),
         ),
     })
@@ -95,8 +96,8 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(arrow(mk_decidable(Expr::BVar(0)), bool_const())),
+            Node::new(prop()),
+            Node::new(arrow(mk_decidable(Expr::BVar(0)), bool_const())),
         ),
     })
     .map_err(|e| e.to_string())?;
@@ -106,12 +107,12 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("inst"),
-                Box::new(mk_decidable(Expr::BVar(0))),
-                Box::new(arrow(Expr::BVar(1), bool_const())),
+                Node::new(mk_decidable(Expr::BVar(0))),
+                Node::new(arrow(Expr::BVar(1), bool_const())),
             )),
         ),
     })
@@ -134,25 +135,25 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("q"),
-                Box::new(prop()),
-                Box::new(Expr::Pi(
+                Node::new(prop()),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("dp"),
-                    Box::new(mk_decidable(Expr::BVar(1))),
-                    Box::new(Expr::Pi(
+                    Node::new(mk_decidable(Expr::BVar(1))),
+                    Node::new(Expr::Pi(
                         BinderInfo::InstImplicit,
                         Name::str("dq"),
-                        Box::new(mk_decidable(Expr::BVar(1))),
-                        Box::new(mk_decidable(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("And"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(mk_decidable(Expr::BVar(1))),
+                        Node::new(mk_decidable(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("And"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         ))),
                     )),
                 )),
@@ -166,25 +167,25 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("q"),
-                Box::new(prop()),
-                Box::new(Expr::Pi(
+                Node::new(prop()),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("dp"),
-                    Box::new(mk_decidable(Expr::BVar(1))),
-                    Box::new(Expr::Pi(
+                    Node::new(mk_decidable(Expr::BVar(1))),
+                    Node::new(Expr::Pi(
                         BinderInfo::InstImplicit,
                         Name::str("dq"),
-                        Box::new(mk_decidable(Expr::BVar(1))),
-                        Box::new(mk_decidable(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(mk_decidable(Expr::BVar(1))),
+                        Node::new(mk_decidable(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         ))),
                     )),
                 )),
@@ -198,14 +199,14 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("dp"),
-                Box::new(mk_decidable(Expr::BVar(0))),
-                Box::new(mk_decidable(Expr::App(
-                    Box::new(Expr::Const(Name::str("Not"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(mk_decidable(Expr::BVar(0))),
+                Node::new(mk_decidable(Expr::App(
+                    Node::new(Expr::Const(Name::str("Not"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 ))),
             )),
         ),
@@ -217,25 +218,25 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("q"),
-                Box::new(prop()),
-                Box::new(Expr::Pi(
+                Node::new(prop()),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("dp"),
-                    Box::new(mk_decidable(Expr::BVar(1))),
-                    Box::new(Expr::Pi(
+                    Node::new(mk_decidable(Expr::BVar(1))),
+                    Node::new(Expr::Pi(
                         BinderInfo::InstImplicit,
                         Name::str("dq"),
-                        Box::new(mk_decidable(Expr::BVar(1))),
-                        Box::new(mk_decidable(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Iff"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(mk_decidable(Expr::BVar(1))),
+                        Node::new(mk_decidable(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Iff"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         ))),
                     )),
                 )),
@@ -249,22 +250,22 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("p"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("q"),
-                Box::new(prop()),
-                Box::new(Expr::Pi(
+                Node::new(prop()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("h"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Iff"), vec![])),
-                            Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Iff"), vec![])),
+                            Node::new(Expr::BVar(1)),
                         )),
-                        Box::new(Expr::BVar(0)),
+                        Node::new(Expr::BVar(0)),
                     )),
-                    Box::new(arrow(
+                    Node::new(arrow(
                         mk_decidable(Expr::BVar(2)),
                         mk_decidable(Expr::BVar(1)),
                     )),
@@ -281,24 +282,24 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
         ty: Expr::Pi(
             BinderInfo::Implicit,
             Name::str("a"),
-            Box::new(sort_u),
-            Box::new(Expr::Pi(
+            Node::new(sort_u),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("c"),
-                Box::new(prop()),
-                Box::new(Expr::Pi(
+                Node::new(prop()),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("dec"),
-                    Box::new(mk_decidable(Expr::BVar(0))),
-                    Box::new(Expr::Pi(
+                    Node::new(mk_decidable(Expr::BVar(0))),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("t"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::Pi(
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("e"),
-                            Box::new(Expr::BVar(3)),
-                            Box::new(Expr::BVar(4)),
+                            Node::new(Expr::BVar(3)),
+                            Node::new(Expr::BVar(4)),
                         )),
                     )),
                 )),
@@ -310,30 +311,30 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
     let if_true_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("a"),
-        Box::new(Expr::Sort(Level::Param(u_name.clone()))),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Sort(Level::Param(u_name.clone()))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Pi(
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("e"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("ite"), vec![])),
-                                    Box::new(Expr::Const(Name::str("True"), vec![])),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("ite"), vec![])),
+                                    Node::new(Expr::Const(Name::str("True"), vec![])),
                                 )),
-                                Box::new(Expr::BVar(1)),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         )),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -348,30 +349,30 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
     let if_false_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("a"),
-        Box::new(Expr::Sort(Level::Param(u_name.clone()))),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Sort(Level::Param(u_name.clone()))),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Pi(
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("e"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("ite"), vec![])),
-                                    Box::new(Expr::Const(Name::str("False"), vec![])),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("ite"), vec![])),
+                                    Node::new(Expr::Const(Name::str("False"), vec![])),
                                 )),
-                                Box::new(Expr::BVar(1)),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         )),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
             )),
         )),
@@ -462,16 +463,16 @@ pub(super) fn add_prereqs_if_missing(env: &mut Environment) -> Result<(), String
         let eq_ty = Expr::Pi(
             BinderInfo::Implicit,
             Name::str("a"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(0)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(0)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("y"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(prop()),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(prop()),
                 )),
             )),
         );
@@ -596,8 +597,8 @@ mod tests {
         assert_eq!(
             d,
             Expr::App(
-                Box::new(Expr::Const(Name::str("Decidable"), vec![])),
-                Box::new(p),
+                Node::new(Expr::Const(Name::str("Decidable"), vec![])),
+                Node::new(p),
             )
         );
     }
@@ -608,8 +609,8 @@ mod tests {
         assert_eq!(
             d,
             Expr::App(
-                Box::new(Expr::Const(Name::str("DecidableEq"), vec![])),
-                Box::new(ty),
+                Node::new(Expr::Const(Name::str("DecidableEq"), vec![])),
+                Node::new(ty),
             )
         );
     }
@@ -670,49 +671,52 @@ mod tests {
 #[allow(dead_code)]
 pub fn mk_and(p: Expr, q: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(p),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(p),
         )),
-        Box::new(q),
+        Node::new(q),
     )
 }
 /// Create `Or p q` (disjunction).
 #[allow(dead_code)]
 pub fn mk_or(p: Expr, q: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(p),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(p),
         )),
-        Box::new(q),
+        Node::new(q),
     )
 }
 /// Create `Not p` (negation).
 #[allow(dead_code)]
 pub fn mk_not(p: Expr) -> Expr {
-    Expr::App(Box::new(Expr::Const(Name::str("Not"), vec![])), Box::new(p))
+    Expr::App(
+        Node::new(Expr::Const(Name::str("Not"), vec![])),
+        Node::new(p),
+    )
 }
 /// Create `Iff p q` (biconditional).
 #[allow(dead_code)]
 pub fn mk_iff(p: Expr, q: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Iff"), vec![])),
-            Box::new(p),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Iff"), vec![])),
+            Node::new(p),
         )),
-        Box::new(q),
+        Node::new(q),
     )
 }
 /// Create `Eq x y` (propositional equality, simplified form).
 #[allow(dead_code)]
 pub fn mk_eq(x: Expr, y: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Eq"), vec![])),
-            Box::new(x),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Eq"), vec![])),
+            Node::new(x),
         )),
-        Box::new(y),
+        Node::new(y),
     )
 }
 /// Create `True` (logical true).
@@ -829,7 +833,7 @@ pub fn prop_simplify(expr: &Expr) -> Expr {
                             return a_s;
                         }
                         if a_s == mk_true() {
-                            return *inner_a.clone();
+                            return (**inner_a).clone();
                         }
                     }
                     if n == &Name::str("Or") {
@@ -837,7 +841,7 @@ pub fn prop_simplify(expr: &Expr) -> Expr {
                             return a_s;
                         }
                         if a_s == mk_false() {
-                            return *inner_a.clone();
+                            return (**inner_a).clone();
                         }
                     }
                 }
@@ -852,7 +856,7 @@ pub fn prop_simplify(expr: &Expr) -> Expr {
                     }
                 }
             }
-            Expr::App(Box::new(f_s), Box::new(a_s))
+            Expr::App(Node::new(f_s), Node::new(a_s))
         }
         other => other.clone(),
     }
@@ -961,8 +965,8 @@ pub(super) fn prp_ext_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Type of `ClassicalLogic.excludedMiddle`: for all p : Prop, p ∨ ¬p.
@@ -972,15 +976,15 @@ pub fn axiom_excluded_middle_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                Box::new(Expr::BVar(0)),
+        Node::new(prop()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Not"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Not"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
         )),
     )
@@ -992,13 +996,13 @@ pub fn axiom_double_negation_elim_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(prp_ext_arrow(
+        Node::new(prop()),
+        Node::new(prp_ext_arrow(
             Expr::App(
-                Box::new(Expr::Const(Name::str("Not"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Not"), vec![])),
-                    Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Not"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Not"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
             ),
             Expr::BVar(0),
@@ -1012,12 +1016,12 @@ pub fn axiom_peirce_law_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 prp_ext_arrow(prp_ext_arrow(Expr::BVar(1), Expr::BVar(0)), Expr::BVar(1)),
                 Expr::BVar(1),
             )),
@@ -1079,22 +1083,22 @@ pub fn axiom_kripke_frame_worlds_ty() -> Expr {
 pub fn axiom_kripke_accessibility_ty() -> Expr {
     let kf = Expr::Const(Name::str("KripkeFrame"), vec![]);
     let worlds_f = Expr::App(
-        Box::new(Expr::Const(Name::str("KripkeFrame.worlds"), vec![])),
-        Box::new(Expr::BVar(0)),
+        Node::new(Expr::Const(Name::str("KripkeFrame.worlds"), vec![])),
+        Node::new(Expr::BVar(0)),
     );
     Expr::Pi(
         BinderInfo::Default,
         Name::str("F"),
-        Box::new(kf),
-        Box::new(Expr::Pi(
+        Node::new(kf),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("w1"),
-            Box::new(worlds_f.clone()),
-            Box::new(Expr::Pi(
+            Node::new(worlds_f.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("w2"),
-                Box::new(worlds_f),
-                Box::new(Expr::Sort(Level::zero())),
+                Node::new(worlds_f),
+                Node::new(Expr::Sort(Level::zero())),
             )),
         )),
     )
@@ -1106,12 +1110,12 @@ pub fn axiom_modal_necessitation_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(prp_ext_arrow(
+        Node::new(prop()),
+        Node::new(prp_ext_arrow(
             Expr::BVar(0),
             Expr::App(
-                Box::new(Expr::Const(Name::str("Box"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Box"), vec![])),
+                Node::new(Expr::BVar(0)),
             ),
         )),
     )
@@ -1123,24 +1127,24 @@ pub fn axiom_modal_k_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 Expr::App(
-                    Box::new(Expr::Const(Name::str("Box"), vec![])),
-                    Box::new(prp_ext_arrow(Expr::BVar(1), Expr::BVar(0))),
+                    Node::new(Expr::Const(Name::str("Box"), vec![])),
+                    Node::new(prp_ext_arrow(Expr::BVar(1), Expr::BVar(0))),
                 ),
                 prp_ext_arrow(
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("Box"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::Const(Name::str("Box"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     ),
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("Box"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                        Node::new(Expr::Const(Name::str("Box"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     ),
                 ),
             )),
@@ -1154,11 +1158,11 @@ pub fn axiom_modal_t_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(prp_ext_arrow(
+        Node::new(prop()),
+        Node::new(prp_ext_arrow(
             Expr::App(
-                Box::new(Expr::Const(Name::str("Box"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Box"), vec![])),
+                Node::new(Expr::BVar(0)),
             ),
             Expr::BVar(0),
         )),
@@ -1171,17 +1175,17 @@ pub fn axiom_modal_s4_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(prp_ext_arrow(
+        Node::new(prop()),
+        Node::new(prp_ext_arrow(
             Expr::App(
-                Box::new(Expr::Const(Name::str("Box"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Box"), vec![])),
+                Node::new(Expr::BVar(0)),
             ),
             Expr::App(
-                Box::new(Expr::Const(Name::str("Box"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Box"), vec![])),
-                    Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Box"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Box"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
             ),
         )),
@@ -1194,17 +1198,17 @@ pub fn axiom_modal_s5_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(prp_ext_arrow(
+        Node::new(prop()),
+        Node::new(prp_ext_arrow(
             Expr::App(
-                Box::new(Expr::Const(Name::str("Diamond"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Diamond"), vec![])),
+                Node::new(Expr::BVar(0)),
             ),
             Expr::App(
-                Box::new(Expr::Const(Name::str("Box"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Diamond"), vec![])),
-                    Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Box"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Diamond"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
             ),
         )),
@@ -1241,25 +1245,25 @@ pub fn axiom_ltl_unfolding_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Iff"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("LTL.eventually"), vec![])),
-                    Box::new(Expr::BVar(0)),
+        Node::new(prop()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Iff"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("LTL.eventually"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
             )),
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Or"), vec![])),
-                    Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Or"), vec![])),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("LTL.next"), vec![])),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("LTL.eventually"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("LTL.next"), vec![])),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("LTL.eventually"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     )),
                 )),
             )),
@@ -1273,8 +1277,8 @@ pub fn axiom_ex_falso_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(prp_ext_arrow(
+        Node::new(prop()),
+        Node::new(prp_ext_arrow(
             Expr::Const(Name::str("False"), vec![]),
             Expr::BVar(0),
         )),
@@ -1300,29 +1304,29 @@ pub fn axiom_bhk_and_intro_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 Expr::App(
-                    Box::new(Expr::Const(Name::str("BHK.proof"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::Const(Name::str("BHK.proof"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 ),
                 prp_ext_arrow(
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("BHK.proof"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                        Node::new(Expr::Const(Name::str("BHK.proof"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     ),
                     Expr::App(
-                        Box::new(Expr::Const(Name::str("BHK.proof"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("And"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(Expr::Const(Name::str("BHK.proof"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("And"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
                     ),
                 ),
@@ -1343,11 +1347,11 @@ pub fn axiom_heyting_implication_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str("H"),
-        Box::new(type1()),
-        Box::new(prp_ext_arrow(
+        Node::new(type1()),
+        Node::new(prp_ext_arrow(
             Expr::App(
-                Box::new(Expr::Const(Name::str("HeytingAlgebra"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("HeytingAlgebra"), vec![])),
+                Node::new(Expr::BVar(0)),
             ),
             prp_ext_arrow(Expr::BVar(1), prp_ext_arrow(Expr::BVar(1), Expr::BVar(1))),
         )),
@@ -1360,36 +1364,36 @@ pub fn axiom_de_morgan_classical1_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Iff"), vec![])),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Not"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("And"), vec![])),
-                                Box::new(Expr::BVar(1)),
+            Node::new(prop()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Iff"), vec![])),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Not"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("And"), vec![])),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         )),
                     )),
                 )),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Or"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Not"), vec![])),
-                            Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Or"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Not"), vec![])),
+                            Node::new(Expr::BVar(1)),
                         )),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Not"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Not"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     )),
                 )),
             )),
@@ -1403,36 +1407,36 @@ pub fn axiom_de_morgan_classical2_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Iff"), vec![])),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Not"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Or"), vec![])),
-                                Box::new(Expr::BVar(1)),
+            Node::new(prop()),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Iff"), vec![])),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Not"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Or"), vec![])),
+                                Node::new(Expr::BVar(1)),
                             )),
-                            Box::new(Expr::BVar(0)),
+                            Node::new(Expr::BVar(0)),
                         )),
                     )),
                 )),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("And"), vec![])),
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Not"), vec![])),
-                            Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("And"), vec![])),
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Not"), vec![])),
+                            Node::new(Expr::BVar(1)),
                         )),
                     )),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Not"), vec![])),
-                        Box::new(Expr::BVar(0)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Not"), vec![])),
+                        Node::new(Expr::BVar(0)),
                     )),
                 )),
             )),
@@ -1465,8 +1469,8 @@ pub fn axiom_prop_soundness_ty() -> Expr {
 #[allow(dead_code)]
 pub fn axiom_prop_consistency_ty() -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Not"), vec![])),
-        Box::new(Expr::Const(Name::str("False"), vec![])),
+        Node::new(Expr::Const(Name::str("Not"), vec![])),
+        Node::new(Expr::Const(Name::str("False"), vec![])),
     )
 }
 /// Type of `IPC.andElimLeft`: p ∧ q → p (intuitionistic and-elimination left).
@@ -1476,18 +1480,18 @@ pub fn axiom_ipc_and_elim_left_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("And"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("And"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 ),
                 Expr::BVar(1),
             )),
@@ -1501,18 +1505,18 @@ pub fn axiom_ipc_and_elim_right_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("And"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("And"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 ),
                 Expr::BVar(0),
             )),
@@ -1526,19 +1530,19 @@ pub fn axiom_ipc_or_intro_left_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 Expr::BVar(1),
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Or"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Or"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 ),
             )),
         )),
@@ -1551,19 +1555,19 @@ pub fn axiom_ipc_or_intro_right_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 Expr::BVar(0),
                 Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Or"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Or"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 ),
             )),
         )),
@@ -1576,12 +1580,12 @@ pub fn axiom_modus_ponens_ty() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(prp_ext_arrow(
+            Node::new(prop()),
+            Node::new(prp_ext_arrow(
                 Expr::BVar(1),
                 prp_ext_arrow(prp_ext_arrow(Expr::BVar(1), Expr::BVar(0)), Expr::BVar(0)),
             )),

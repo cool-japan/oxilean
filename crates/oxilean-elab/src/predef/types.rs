@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Environment, Expr, Level, Name};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -72,16 +73,16 @@ impl WellFoundedOrder {
         let functional = Expr::Lam(
             BinderInfo::Default,
             param_name.clone(),
-            Box::new(self.domain_type.clone()),
-            Box::new(Expr::Lam(
+            Node::new(self.domain_type.clone()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("ih"),
-                Box::new(self.build_ih_type(param_name)),
-                Box::new(body.clone()),
+                Node::new(self.build_ih_type(param_name)),
+                Node::new(body.clone()),
             )),
         );
-        let app1 = Expr::App(Box::new(wf_fix), Box::new(self.proof.clone()));
-        Expr::App(Box::new(app1), Box::new(functional))
+        let app1 = Expr::App(Node::new(wf_fix), Node::new(self.proof.clone()));
+        Expr::App(Node::new(app1), Node::new(functional))
     }
     /// Build the inductive hypothesis type for the well-founded recursion.
     ///
@@ -95,25 +96,25 @@ impl WellFoundedOrder {
         let y_var = Expr::BVar(0);
         let x_var = Expr::BVar(1);
         let rel_app = Expr::App(
-            Box::new(Expr::App(
-                Box::new(self.relation.clone()),
-                Box::new(y_var.clone()),
+            Node::new(Expr::App(
+                Node::new(self.relation.clone()),
+                Node::new(y_var.clone()),
             )),
-            Box::new(x_var),
+            Node::new(x_var),
         );
         let c_y = match &self.motive {
-            Some(motive) => Expr::App(Box::new(motive.clone()), Box::new(y_var)),
+            Some(motive) => Expr::App(Node::new(motive.clone()), Node::new(y_var)),
             None => Expr::Sort(Level::Zero),
         };
         Expr::Pi(
             BinderInfo::Default,
             y_name,
-            Box::new(self.domain_type.clone()),
-            Box::new(Expr::Pi(
+            Node::new(self.domain_type.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(rel_app),
-                Box::new(c_y),
+                Node::new(rel_app),
+                Node::new(c_y),
             )),
         )
     }
@@ -554,11 +555,11 @@ impl<'env> TerminationChecker<'env> {
     ) -> ProofObligation {
         let param_ref = Expr::Const(param_name.clone(), vec![]);
         let goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(order.relation.clone()),
-                Box::new(arg.clone()),
+            Node::new(Expr::App(
+                Node::new(order.relation.clone()),
+                Node::new(arg.clone()),
             )),
-            Box::new(param_ref),
+            Node::new(param_ref),
         );
         ProofObligation::new(
             format!(

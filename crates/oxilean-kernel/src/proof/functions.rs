@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Level, Name};
 use std::collections::HashSet;
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack, LabelSet, MinHeap,
@@ -70,33 +72,33 @@ mod tests {
     use crate::{Literal, Name};
     #[test]
     fn test_is_proof() {
-        let term = Expr::Lit(Literal::Nat(42));
+        let term = Expr::Lit(Literal::nat(42));
         let prop = Expr::Sort(Level::zero());
         assert!(ProofTerm::is_proof(&term, &prop));
     }
     #[test]
     fn test_is_proof_non_prop() {
-        let term = Expr::Lit(Literal::Nat(42));
+        let term = Expr::Lit(Literal::nat(42));
         let non_prop = Expr::Sort(Level::succ(Level::zero()));
         assert!(!ProofTerm::is_proof(&term, &non_prop));
     }
     #[test]
     fn test_size_simple() {
-        let term = Expr::Lit(Literal::Nat(42));
+        let term = Expr::Lit(Literal::nat(42));
         assert_eq!(ProofTerm::size(&term), 1);
     }
     #[test]
     fn test_size_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(ProofTerm::size(&app), 3);
     }
     #[test]
     fn test_depth() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(ProofTerm::depth(&app), 1);
     }
     #[test]
@@ -113,7 +115,7 @@ mod tests {
     fn test_collect_constants() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let g = Expr::Const(Name::str("g"), vec![]);
-        let app = Expr::App(Box::new(f), Box::new(g));
+        let app = Expr::App(Node::new(f), Node::new(g));
         let consts = ProofTerm::collect_constants(&app);
         assert!(consts.contains(&Name::str("f")));
         assert!(consts.contains(&Name::str("g")));
@@ -299,12 +301,12 @@ mod extended_proof_tests {
     fn test_classify_app() {
         let f = mk_const("f");
         let a = mk_const("a");
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(classify_proof(&app), ProofComplexity::Application);
     }
     #[test]
     fn test_proof_analysis_size() {
-        let term = Expr::App(Box::new(mk_const("f")), Box::new(mk_const("a")));
+        let term = Expr::App(Node::new(mk_const("f")), Node::new(mk_const("a")));
         let analysis = ProofAnalysis::analyse(&term);
         assert_eq!(analysis.size, 3);
         assert_eq!(analysis.app_count, 1);
@@ -336,11 +338,11 @@ mod extended_proof_tests {
         let lam = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_prop()),
-            Box::new(body),
+            Node::new(mk_prop()),
+            Node::new(body),
         );
         let arg = mk_const("myarg");
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let reduced = ProofNormalizer::beta_reduce(&app);
         assert_eq!(reduced, arg);
     }
@@ -356,10 +358,10 @@ mod extended_proof_tests {
         let lam = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_prop()),
-            Box::new(body),
+            Node::new(mk_prop()),
+            Node::new(body),
         );
-        let app = Expr::App(Box::new(lam), Box::new(mk_const("arg")));
+        let app = Expr::App(Node::new(lam), Node::new(mk_const("arg")));
         assert_eq!(ProofNormalizer::count_redexes(&app), 1);
         assert!(!ProofNormalizer::is_beta_normal(&app));
     }
@@ -380,7 +382,7 @@ mod extended_proof_tests {
         let target = Name::str("f");
         let f1 = Expr::Const(target.clone(), vec![]);
         let f2 = Expr::Const(target.clone(), vec![]);
-        let app = Expr::App(Box::new(f1), Box::new(f2));
+        let app = Expr::App(Node::new(f1), Node::new(f2));
         assert_eq!(count_const_occurrences(&app, &target), 2);
     }
     #[test]
@@ -493,7 +495,7 @@ mod extra_proof_tests {
     fn test_proof_analyzer_count_apps() {
         let f = mk_const("f");
         let a = mk_const("a");
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         assert_eq!(ProofAnalyzer::count_applications(&app), 1);
     }
     #[test]
@@ -501,8 +503,8 @@ mod extra_proof_tests {
         let f = mk_const("f");
         let a = mk_const("a");
         let b = mk_const("b");
-        let app1 = Expr::App(Box::new(f), Box::new(a));
-        let app2 = Expr::App(Box::new(app1), Box::new(b));
+        let app1 = Expr::App(Node::new(f), Node::new(a));
+        let app2 = Expr::App(Node::new(app1), Node::new(b));
         assert_eq!(ProofAnalyzer::count_applications(&app2), 2);
     }
     #[test]
@@ -667,7 +669,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

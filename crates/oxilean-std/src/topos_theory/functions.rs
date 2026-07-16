@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -136,7 +137,7 @@ pub fn clausen_scholze_condensed_theorem() -> &'static str {
      enabling solid/liquid tensor product theory."
 }
 pub fn _topos_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn _topos_cst(s: &str) -> Expr {
     Expr::Const(Name::str(s), vec![])
@@ -148,7 +149,7 @@ pub fn _topos_type0() -> Expr {
     Expr::Sort(Level::succ(Level::zero()))
 }
 pub fn _topos_pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn _topos_arrow(a: Expr, b: Expr) -> Expr {
     _topos_pi(BinderInfo::Default, "_", a, b)

@@ -85,7 +85,7 @@ impl Generation {
 /// A clock that measures elapsed time in a loop.
 #[allow(dead_code)]
 pub struct LoopClock {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     iters: u64,
 }
 #[allow(dead_code)]
@@ -93,7 +93,7 @@ impl LoopClock {
     /// Starts the clock.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             iters: 0,
         }
     }

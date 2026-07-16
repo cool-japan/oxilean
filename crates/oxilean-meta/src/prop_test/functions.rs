@@ -10,6 +10,7 @@ use super::types::{
     PropTestResult, PropTestSuiteExt, PropertyBatch, RegressionCase, RegressionSuite,
     RegressionTestExt, Rng,
 };
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
 
 /// Trait for types that can be randomly generated
@@ -41,7 +42,7 @@ pub fn arbitrary_expr(rng: &mut Rng, depth: usize) -> Expr {
         match rng.next_u32(4) {
             0 => Expr::BVar(rng.next_u32(3)),
             1 => Expr::Const(Name::str(format!("x{}", rng.next_u32(5))), vec![]),
-            2 => Expr::Lit(Literal::Nat(rng.next_u64() % 10)),
+            2 => Expr::Lit(Literal::nat(rng.next_u64() % 10)),
             _ => Expr::Sort(Level::Zero),
         }
     } else {
@@ -49,22 +50,22 @@ pub fn arbitrary_expr(rng: &mut Rng, depth: usize) -> Expr {
             0 => Expr::BVar(rng.next_u32(3)),
             1 => Expr::Const(Name::str(format!("f{}", rng.next_u32(3))), vec![]),
             2 => Expr::App(
-                Box::new(arbitrary_expr(rng, depth - 1)),
-                Box::new(arbitrary_expr(rng, depth - 1)),
+                Node::new(arbitrary_expr(rng, depth - 1)),
+                Node::new(arbitrary_expr(rng, depth - 1)),
             ),
             3 => Expr::Lam(
                 BinderInfo::Default,
                 Name::str("x"),
-                Box::new(Expr::Sort(Level::Zero)),
-                Box::new(arbitrary_expr(rng, depth - 1)),
+                Node::new(Expr::Sort(Level::Zero)),
+                Node::new(arbitrary_expr(rng, depth - 1)),
             ),
             4 => Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::Sort(Level::Zero)),
-                Box::new(arbitrary_expr(rng, depth - 1)),
+                Node::new(Expr::Sort(Level::Zero)),
+                Node::new(arbitrary_expr(rng, depth - 1)),
             ),
-            _ => Expr::Lit(Literal::Nat(rng.next_u64() % 10)),
+            _ => Expr::Lit(Literal::nat(rng.next_u64() % 10)),
         }
     }
 }
@@ -129,7 +130,7 @@ pub mod properties {
         let a = arbitrary_expr(rng, 2);
         let nf = node_count(&f);
         let na = node_count(&a);
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         Some(node_count(&app) == 1 + nf + na)
     }
 }
@@ -238,15 +239,15 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty.clone()),
-            Box::new(body.clone()),
+            Node::new(ty.clone()),
+            Node::new(body.clone()),
         );
         assert_eq!(node_count(&lam), 3);
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         assert_eq!(node_count(&pi), 3);
     }
@@ -464,20 +465,20 @@ pub fn arbitrary_closed_expr(rng: &mut Rng, depth: usize) -> Expr {
     let b2 = Expr::Lam(
         BinderInfo::Default,
         Name::str("z"),
-        Box::new(ty.clone()),
-        Box::new(inner),
+        Node::new(ty.clone()),
+        Node::new(inner),
     );
     let b1 = Expr::Lam(
         BinderInfo::Default,
         Name::str("y"),
-        Box::new(ty.clone()),
-        Box::new(b2),
+        Node::new(ty.clone()),
+        Node::new(b2),
     );
     Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(ty),
-        Box::new(b1),
+        Node::new(ty),
+        Node::new(b1),
     )
 }
 /// Generate an application chain `f a0 a1 ... a_{n-1}`.
@@ -485,8 +486,8 @@ pub fn arbitrary_app_chain(rng: &mut Rng, depth: usize) -> Expr {
     let head = Expr::Const(Name::str(format!("f{}", rng.next_u32(3))), vec![]);
     (0..depth).fold(head, |acc, i| {
         Expr::App(
-            Box::new(acc),
-            Box::new(Expr::Const(Name::str(format!("a{}", i)), vec![])),
+            Node::new(acc),
+            Node::new(Expr::Const(Name::str(format!("a{}", i)), vec![])),
         )
     })
 }
@@ -498,8 +499,8 @@ pub fn arbitrary_pi_type(rng: &mut Rng, depth: usize) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(format!("a{}", rng.next_u32(4))),
-        Box::new(arbitrary_pi_type(rng, depth - 1)),
-        Box::new(arbitrary_pi_type(rng, depth - 1)),
+        Node::new(arbitrary_pi_type(rng, depth - 1)),
+        Node::new(arbitrary_pi_type(rng, depth - 1)),
     )
 }
 pub(super) fn count_expr_constructors_stats(e: &Expr, stats: &mut ExprStats) {
@@ -540,7 +541,7 @@ pub mod more_properties {
         let a = arbitrary_expr(rng, 2);
         let df = expr_depth(&f);
         let da = expr_depth(&a);
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         Some(expr_depth(&app) == 1 + df.max(da))
     }
     /// Property: arbitrary_closed_expr produces a Lam.
@@ -569,8 +570,8 @@ pub mod more_properties {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         Some(properties::node_count(&pi) == 1 + nt + nb)
     }
@@ -583,8 +584,8 @@ pub mod more_properties {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         Some(properties::node_count(&lam) == 1 + nt + nb)
     }

@@ -2,7 +2,8 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
-use oxilean_kernel::{BinderInfo, Expr, Name};
+use oxilean_kernel::Node;
+use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 
 use super::types::{
     DoBlock, DoBlockOptimizer, DoElabConfig, DoElabError, DoElabStats, DoElem, DoNestingLevel,
@@ -251,9 +252,9 @@ fn elaborate_do_elem(
                 .unwrap_or_else(|| Expr::Const(Name::str("_"), vec![]));
             Ok(Expr::Let(
                 pat.clone(),
-                Box::new(var_ty),
-                Box::new(val.clone()),
-                Box::new(continuation),
+                Node::new(var_ty),
+                Node::new(val.clone()),
+                Node::new(continuation),
             ))
         }
         DoElem::Action(expr) => Ok(monad_inst.mk_seq(expr, &continuation)),
@@ -323,11 +324,11 @@ pub fn desugar_for_loop(
     let iter_fn = Expr::Lam(
         BinderInfo::Default,
         var.clone(),
-        Box::new(Expr::Const(Name::str("_"), vec![])),
-        Box::new(body.clone()),
+        Node::new(Expr::Const(Name::str("_"), vec![])),
+        Node::new(body.clone()),
     );
-    let app1 = Expr::App(Box::new(for_m), Box::new(collection.clone()));
-    Expr::App(Box::new(app1), Box::new(iter_fn))
+    let app1 = Expr::App(Node::new(for_m), Node::new(collection.clone()));
+    Expr::App(Node::new(app1), Node::new(iter_fn))
 }
 /// Desugar a try-catch into a `tryCatch` application.
 ///
@@ -348,18 +349,18 @@ pub fn desugar_try_catch(
     let handler_fn = Expr::Lam(
         BinderInfo::Default,
         catch_var.clone(),
-        Box::new(Expr::Const(Name::str("_"), vec![])),
-        Box::new(handler.clone()),
+        Node::new(Expr::Const(Name::str("_"), vec![])),
+        Node::new(handler.clone()),
     );
-    let app1 = Expr::App(Box::new(try_catch), Box::new(body.clone()));
-    Expr::App(Box::new(app1), Box::new(handler_fn))
+    let app1 = Expr::App(Node::new(try_catch), Node::new(body.clone()));
+    Expr::App(Node::new(app1), Node::new(handler_fn))
 }
 /// Build an if-then-else expression.
 fn build_ite(cond: &Expr, then_: &Expr, else_: &Expr) -> Expr {
     let ite = Expr::Const(Name::str("ite"), vec![]);
-    let app1 = Expr::App(Box::new(ite), Box::new(cond.clone()));
-    let app2 = Expr::App(Box::new(app1), Box::new(then_.clone()));
-    Expr::App(Box::new(app2), Box::new(else_.clone()))
+    let app1 = Expr::App(Node::new(ite), Node::new(cond.clone()));
+    let app2 = Expr::App(Node::new(app1), Node::new(then_.clone()));
+    Expr::App(Node::new(app2), Node::new(else_.clone()))
 }
 /// Build a simple match expression (as nested if-then-else or recursor application).
 fn build_match(scrutinee: &Expr, arms: &[(Name, Expr)]) -> Expr {
@@ -370,9 +371,9 @@ fn build_match(scrutinee: &Expr, arms: &[(Name, Expr)]) -> Expr {
         let (_pat, body) = &arms[0];
         return Expr::Let(
             Name::str("_"),
-            Box::new(Expr::Const(Name::str("_"), vec![])),
-            Box::new(scrutinee.clone()),
-            Box::new(body.clone()),
+            Node::new(Expr::Const(Name::str("_"), vec![])),
+            Node::new(scrutinee.clone()),
+            Node::new(body.clone()),
         );
     }
     let match_name = Name::str("_match");
@@ -383,19 +384,19 @@ fn build_match(scrutinee: &Expr, arms: &[(Name, Expr)]) -> Expr {
         .clone();
     for (pat, body) in arms.iter().rev().skip(1) {
         let eq_check = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("BEq.beq"), vec![])),
-                Box::new(scrutinee.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("BEq.beq"), vec![])),
+                Node::new(scrutinee.clone()),
             )),
-            Box::new(Expr::Const(pat.clone(), vec![])),
+            Node::new(Expr::Const(pat.clone(), vec![])),
         );
         result = build_ite(&eq_check, body, &result);
     }
     Expr::Let(
         match_name,
-        Box::new(Expr::Const(Name::str("_"), vec![])),
-        Box::new(scrutinee.clone()),
-        Box::new(result),
+        Node::new(Expr::Const(Name::str("_"), vec![])),
+        Node::new(scrutinee.clone()),
+        Node::new(result),
     )
 }
 /// Convert a parser-level `DoAction` list into elaborator-level `DoElem` list.
@@ -434,10 +435,10 @@ mod tests {
         Expr::Const(Name::str(name), vec![])
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     fn mk_lit_nat(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     #[test]
     fn test_do_elem_bind() {
@@ -1084,7 +1085,7 @@ mod do_notation_ext_tests {
         Expr::Const(Name::str("IO"), vec![])
     }
     fn mk_lit(n: u64) -> Expr {
-        Expr::Lit(oxilean_kernel::Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn mk_action(s: &str) -> Expr {
         Expr::Const(Name::str(s), vec![])
@@ -1188,8 +1189,8 @@ mod do_notation_ext_tests {
     #[test]
     fn test_optimizer_inline_pure_bind() {
         let pure_expr = Expr::App(
-            Box::new(Expr::Const(Name::str("pure"), vec![])),
-            Box::new(mk_lit(42)),
+            Node::new(Expr::Const(Name::str("pure"), vec![])),
+            Node::new(mk_lit(42)),
         );
         let block = DoBlock::with_monad(
             mk_io(),

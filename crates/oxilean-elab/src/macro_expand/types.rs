@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Literal, Name};
 use std::collections::HashMap;
 
@@ -448,7 +449,7 @@ impl MacroExpander {
             Expr::App(f, a) => {
                 let f_expanded = self.expand_impl(f, depth)?;
                 let a_expanded = self.expand_impl(a, depth)?;
-                Ok(Expr::App(Box::new(f_expanded), Box::new(a_expanded)))
+                Ok(Expr::App(Node::new(f_expanded), Node::new(a_expanded)))
             }
             Expr::Lam(bi, name, ty, body) => {
                 let ty_expanded = self.expand_impl(ty, depth)?;
@@ -456,8 +457,8 @@ impl MacroExpander {
                 Ok(Expr::Lam(
                     *bi,
                     name.clone(),
-                    Box::new(ty_expanded),
-                    Box::new(body_expanded),
+                    Node::new(ty_expanded),
+                    Node::new(body_expanded),
                 ))
             }
             Expr::Pi(bi, name, ty, body) => {
@@ -466,8 +467,8 @@ impl MacroExpander {
                 Ok(Expr::Pi(
                     *bi,
                     name.clone(),
-                    Box::new(ty_expanded),
-                    Box::new(body_expanded),
+                    Node::new(ty_expanded),
+                    Node::new(body_expanded),
                 ))
             }
             Expr::Let(name, ty, val, body) => {
@@ -476,9 +477,9 @@ impl MacroExpander {
                 let body_expanded = self.expand_impl(body, depth)?;
                 Ok(Expr::Let(
                     name.clone(),
-                    Box::new(ty_expanded),
-                    Box::new(val_expanded),
-                    Box::new(body_expanded),
+                    Node::new(ty_expanded),
+                    Node::new(val_expanded),
+                    Node::new(body_expanded),
                 ))
             }
             _ => Ok(expr.clone()),
@@ -494,7 +495,7 @@ impl MacroExpander {
         if !macro_def.rules.is_empty() {
             let mut app_expr = Expr::Const(name.clone(), vec![]);
             for arg in args {
-                app_expr = Expr::App(Box::new(app_expr), Box::new(arg.clone()));
+                app_expr = Expr::App(Node::new(app_expr), Node::new(arg.clone()));
             }
             for rule in &macro_def.rules {
                 if let Some(bindings) = self.match_pattern(&rule.pattern, &app_expr) {
@@ -546,8 +547,8 @@ impl MacroExpander {
                 Expr::Lam(
                     *bi,
                     new_name,
-                    Box::new(self.apply_hygiene_to_expr(ty, scope_id)),
-                    Box::new(self.apply_hygiene_to_expr(body, scope_id)),
+                    Node::new(self.apply_hygiene_to_expr(ty, scope_id)),
+                    Node::new(self.apply_hygiene_to_expr(body, scope_id)),
                 )
             }
             Expr::Pi(bi, name, ty, body) => {
@@ -555,22 +556,22 @@ impl MacroExpander {
                 Expr::Pi(
                     *bi,
                     new_name,
-                    Box::new(self.apply_hygiene_to_expr(ty, scope_id)),
-                    Box::new(self.apply_hygiene_to_expr(body, scope_id)),
+                    Node::new(self.apply_hygiene_to_expr(ty, scope_id)),
+                    Node::new(self.apply_hygiene_to_expr(body, scope_id)),
                 )
             }
             Expr::Let(name, ty, val, body) => {
                 let new_name = hygiene_rename(name, scope_id);
                 Expr::Let(
                     new_name,
-                    Box::new(self.apply_hygiene_to_expr(ty, scope_id)),
-                    Box::new(self.apply_hygiene_to_expr(val, scope_id)),
-                    Box::new(self.apply_hygiene_to_expr(body, scope_id)),
+                    Node::new(self.apply_hygiene_to_expr(ty, scope_id)),
+                    Node::new(self.apply_hygiene_to_expr(val, scope_id)),
+                    Node::new(self.apply_hygiene_to_expr(body, scope_id)),
                 )
             }
             Expr::App(f, a) => Expr::App(
-                Box::new(self.apply_hygiene_to_expr(f, scope_id)),
-                Box::new(self.apply_hygiene_to_expr(a, scope_id)),
+                Node::new(self.apply_hygiene_to_expr(f, scope_id)),
+                Node::new(self.apply_hygiene_to_expr(a, scope_id)),
             ),
             _ => expr.clone(),
         }

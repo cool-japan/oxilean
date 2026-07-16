@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -85,14 +86,14 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 /// Function application `f a`.
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 /// Function application `f a b`.
 #[allow(dead_code)]
@@ -115,8 +116,8 @@ pub fn implicit_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// A default (explicit) Pi binder.
@@ -125,8 +126,8 @@ pub fn default_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// An instance-implicit Pi binder.
@@ -135,8 +136,8 @@ pub fn inst_pi(name: &str, ty: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::InstImplicit,
         Name::str(name),
-        Box::new(ty),
-        Box::new(body),
+        Node::new(ty),
+        Node::new(body),
     )
 }
 /// Build `Eq @{} ty a b`.
@@ -965,28 +966,28 @@ pub fn rng_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 pub fn rng_ext_pi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn rng_ext_ipi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn rng_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn rng_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
     rng_ext_app(rng_ext_app(f, a), b)
@@ -1072,11 +1073,11 @@ pub fn axiom_interval_valid_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(rng_ext_app(
+            Node::new(rng_ext_app(
                 Expr::Const(Name::str("Ord"), vec![]),
                 Expr::BVar(0),
             )),
-            Box::new(rng_ext_arrow(
+            Node::new(rng_ext_arrow(
                 rng_ext_interval_of(Expr::BVar(1)),
                 rng_ext_prop(),
             )),
@@ -1091,11 +1092,11 @@ pub fn axiom_interval_contains_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(rng_ext_app(
+            Node::new(rng_ext_app(
                 Expr::Const(Name::str("Ord"), vec![]),
                 Expr::BVar(0),
             )),
-            Box::new(rng_ext_pi(
+            Node::new(rng_ext_pi(
                 "iv",
                 rng_ext_interval_of(Expr::BVar(1)),
                 rng_ext_pi("x", Expr::BVar(2), rng_ext_prop()),

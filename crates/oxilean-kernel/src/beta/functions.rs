@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{instantiate, BinderInfo, Expr, Name};
+use std::rc::Rc;
 
 use super::types::{
     BetaStats, ConfigNode, DecisionNode, Either2, FlatSubstitution, FocusStack, LabelSet,
@@ -49,19 +51,19 @@ fn beta_normalize_impl(expr: &Expr, fuel: u32) -> Expr {
                     let reduced = instantiate(body, &a_norm);
                     beta_normalize_impl(&reduced, fuel - 1)
                 } else {
-                    Expr::App(Box::new(f_norm), Box::new(a_norm))
+                    Expr::App(Node::new(f_norm), Node::new(a_norm))
                 }
             }
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty_norm = beta_normalize_impl(ty, fuel - 1);
             let body_norm = beta_normalize_impl(body, fuel - 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Lam(*bi, n.clone(), Node::new(ty_norm), Node::new(body_norm))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty_norm = beta_normalize_impl(ty, fuel - 1);
             let body_norm = beta_normalize_impl(body, fuel - 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Pi(*bi, n.clone(), Node::new(ty_norm), Node::new(body_norm))
         }
         Expr::Let(n, ty, val, body) => {
             let ty_norm = beta_normalize_impl(ty, fuel - 1);
@@ -69,14 +71,14 @@ fn beta_normalize_impl(expr: &Expr, fuel: u32) -> Expr {
             let body_norm = beta_normalize_impl(body, fuel - 1);
             Expr::Let(
                 n.clone(),
-                Box::new(ty_norm),
-                Box::new(val_norm),
-                Box::new(body_norm),
+                Node::new(ty_norm),
+                Node::new(val_norm),
+                Node::new(body_norm),
             )
         }
         Expr::Proj(n, i, s) => {
             let s_norm = beta_normalize_impl(s, fuel - 1);
-            Expr::Proj(n.clone(), *i, Box::new(s_norm))
+            Expr::Proj(n.clone(), *i, Node::new(s_norm))
         }
         e => e.clone(),
     }
@@ -106,13 +108,13 @@ pub fn beta_under_binder(body: &Expr, arg: &Expr) -> Expr {
 /// Create a beta redex (lambda application that can be reduced).
 pub fn mk_beta_redex(ty: Expr, body: Expr, arg: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Lam(
+        Node::new(Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         )),
-        Box::new(arg),
+        Node::new(arg),
     )
 }
 #[cfg(test)]
@@ -123,14 +125,14 @@ mod tests {
     fn test_beta_step_simple() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
         let body = Expr::BVar(0);
-        let arg = Expr::Lit(Literal::Nat(42));
+        let arg = Expr::Lit(Literal::nat(42));
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat),
-            Box::new(body),
+            Node::new(nat),
+            Node::new(body),
         );
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let result = beta_step(&app);
         assert!(result.is_some());
         assert_eq!(result.expect("result should be valid"), arg);
@@ -144,37 +146,37 @@ mod tests {
     fn test_beta_normalize() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
         let body = Expr::BVar(0);
-        let arg = Expr::Lit(Literal::Nat(42));
+        let arg = Expr::Lit(Literal::nat(42));
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat),
-            Box::new(body),
+            Node::new(nat),
+            Node::new(body),
         );
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         let result = beta_normalize(&app);
         assert_eq!(result, arg);
     }
     #[test]
     fn test_is_beta_normal() {
-        let e = Expr::Lit(Literal::Nat(42));
+        let e = Expr::Lit(Literal::nat(42));
         assert!(is_beta_normal(&e));
         let nat = Expr::Const(Name::str("Nat"), vec![]);
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat.clone()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat.clone()),
+            Node::new(Expr::BVar(0)),
         );
         assert!(is_beta_normal(&lam));
-        let app = Expr::App(Box::new(lam), Box::new(Expr::Lit(Literal::Nat(42))));
+        let app = Expr::App(Node::new(lam), Node::new(Expr::Lit(Literal::nat(42))));
         assert!(!is_beta_normal(&app));
     }
     #[test]
     fn test_mk_beta_redex() {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
         let body = Expr::BVar(0);
-        let arg = Expr::Lit(Literal::Nat(42));
+        let arg = Expr::Lit(Literal::nat(42));
         let redex = mk_beta_redex(nat, body, arg.clone());
         let result = beta_normalize(&redex);
         assert_eq!(result, arg);
@@ -205,7 +207,7 @@ pub fn reduce_app_spine(head: &Expr, args: &[Expr]) -> Expr {
     for arg in args {
         result = match result {
             Expr::Lam(_bi, _n, _ty, body) => instantiate(&body, arg),
-            other => Expr::App(Box::new(other), Box::new(arg.clone())),
+            other => Expr::App(Node::new(other), Node::new(arg.clone())),
         };
     }
     result
@@ -228,12 +230,12 @@ pub fn collect_app_spine(e: &Expr) -> (&Expr, Vec<&Expr>) {
 /// Given f : A -> B, produces lambda x : A. f x.
 pub fn eta_expand(f: Expr, domain_ty: Expr) -> Expr {
     let var = Expr::BVar(0);
-    let body = Expr::App(Box::new(f), Box::new(var));
+    let body = Expr::App(Node::new(f), Node::new(var));
     Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(domain_ty),
-        Box::new(body),
+        Node::new(domain_ty),
+        Node::new(body),
     )
 }
 /// Check if an expression is eta-reducible.
@@ -299,29 +301,29 @@ pub fn mk_k_combinator(ty_x: Expr, ty_y: Expr) -> Expr {
     let inner = Expr::Lam(
         BinderInfo::Default,
         Name::str("y"),
-        Box::new(ty_y),
-        Box::new(Expr::BVar(1)),
+        Node::new(ty_y),
+        Node::new(Expr::BVar(1)),
     );
     Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(ty_x),
-        Box::new(inner),
+        Node::new(ty_x),
+        Node::new(inner),
     )
 }
 /// Apply the K combinator: K x y = x.
 pub fn apply_k(x: Expr, y: Expr, ty_x: Expr, ty_y: Expr) -> Expr {
     let k = mk_k_combinator(ty_x, ty_y);
-    let kx = Expr::App(Box::new(k), Box::new(x));
-    Expr::App(Box::new(kx), Box::new(y))
+    let kx = Expr::App(Node::new(k), Node::new(x));
+    Expr::App(Node::new(kx), Node::new(y))
 }
 /// Create an I combinator: lambda x. x.
 pub fn mk_i_combinator(ty: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(ty),
-        Box::new(Expr::BVar(0)),
+        Node::new(ty),
+        Node::new(Expr::BVar(0)),
     )
 }
 /// Beta reduce with statistics collection.
@@ -348,29 +350,34 @@ fn beta_stats_impl(expr: &Expr, fuel: u32, stats: &mut BetaStats, depth: u32) ->
                     stats.record_reduction();
                     beta_stats_impl(&reduced, fuel - 1, stats, depth)
                 } else {
-                    Expr::App(Box::new(f_norm), Box::new(a_norm))
+                    Expr::App(Node::new(f_norm), Node::new(a_norm))
                 }
             }
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty_n = beta_stats_impl(ty, fuel - 1, stats, depth + 1);
             let body_n = beta_stats_impl(body, fuel - 1, stats, depth + 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty_n), Box::new(body_n))
+            Expr::Lam(*bi, n.clone(), Node::new(ty_n), Node::new(body_n))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty_n = beta_stats_impl(ty, fuel - 1, stats, depth + 1);
             let body_n = beta_stats_impl(body, fuel - 1, stats, depth + 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty_n), Box::new(body_n))
+            Expr::Pi(*bi, n.clone(), Node::new(ty_n), Node::new(body_n))
         }
         Expr::Let(n, ty, val, body) => {
             let ty_n = beta_stats_impl(ty, fuel - 1, stats, depth + 1);
             let val_n = beta_stats_impl(val, fuel - 1, stats, depth + 1);
             let body_n = beta_stats_impl(body, fuel - 1, stats, depth + 1);
-            Expr::Let(n.clone(), Box::new(ty_n), Box::new(val_n), Box::new(body_n))
+            Expr::Let(
+                n.clone(),
+                Node::new(ty_n),
+                Node::new(val_n),
+                Node::new(body_n),
+            )
         }
         Expr::Proj(n, i, s) => {
             let s_n = beta_stats_impl(s, fuel - 1, stats, depth + 1);
-            Expr::Proj(n.clone(), *i, Box::new(s_n))
+            Expr::Proj(n.clone(), *i, Node::new(s_n))
         }
         e => e.clone(),
     }
@@ -402,7 +409,7 @@ fn beta_whnf_impl(expr: &Expr, fuel: u32) -> Expr {
                 let reduced = instantiate(body, a);
                 beta_whnf_impl(&reduced, fuel - 1)
             } else {
-                Expr::App(Box::new(f_whnf), a.clone())
+                Expr::App(Node::new(f_whnf), a.clone())
             }
         }
         Expr::Let(_n, _ty, val, body) => {
@@ -434,7 +441,7 @@ fn beta_fueled_impl(expr: &Expr, fuel: u32) -> (Expr, u32) {
                     let reduced = instantiate(body, &a_norm);
                     beta_fueled_impl(&reduced, a_fuel)
                 } else {
-                    (Expr::App(Box::new(f_norm), Box::new(a_norm)), a_fuel)
+                    (Expr::App(Node::new(f_norm), Node::new(a_norm)), a_fuel)
                 }
             }
         }
@@ -442,7 +449,7 @@ fn beta_fueled_impl(expr: &Expr, fuel: u32) -> (Expr, u32) {
             let (ty_n, t_fuel) = beta_fueled_impl(ty, fuel - 1);
             let (body_n, b_fuel) = beta_fueled_impl(body, t_fuel);
             (
-                Expr::Lam(*bi, n.clone(), Box::new(ty_n), Box::new(body_n)),
+                Expr::Lam(*bi, n.clone(), Node::new(ty_n), Node::new(body_n)),
                 b_fuel,
             )
         }
@@ -450,7 +457,7 @@ fn beta_fueled_impl(expr: &Expr, fuel: u32) -> (Expr, u32) {
             let (ty_n, t_fuel) = beta_fueled_impl(ty, fuel - 1);
             let (body_n, b_fuel) = beta_fueled_impl(body, t_fuel);
             (
-                Expr::Pi(*bi, n.clone(), Box::new(ty_n), Box::new(body_n)),
+                Expr::Pi(*bi, n.clone(), Node::new(ty_n), Node::new(body_n)),
                 b_fuel,
             )
         }
@@ -460,7 +467,7 @@ fn beta_fueled_impl(expr: &Expr, fuel: u32) -> (Expr, u32) {
         }
         Expr::Proj(n, i, s) => {
             let (s_n, s_fuel) = beta_fueled_impl(s, fuel - 1);
-            (Expr::Proj(n.clone(), *i, Box::new(s_n)), s_fuel)
+            (Expr::Proj(n.clone(), *i, Node::new(s_n)), s_fuel)
         }
         e => (e.clone(), fuel),
     }
@@ -471,7 +478,7 @@ pub fn eta_reduce(expr: &Expr) -> Option<Expr> {
         if let Expr::App(f, arg) = body.as_ref() {
             if let Expr::BVar(0) = arg.as_ref() {
                 if !has_loose_bvar_aux(f, 0) {
-                    return Some(*f.clone());
+                    return Some((**f).clone());
                 }
             }
         }
@@ -493,7 +500,7 @@ fn beta_head_impl(expr: &Expr, fuel: u32) -> Expr {
                 let reduced = instantiate(body, a);
                 beta_head_impl(&reduced, fuel - 1)
             } else {
-                Expr::App(Box::new(f_head), a.clone())
+                Expr::App(Node::new(f_head), a.clone())
             }
         }
         e => e.clone(),
@@ -540,8 +547,8 @@ pub fn mk_identity(ty: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(ty),
-        Box::new(Expr::BVar(0)),
+        Node::new(ty),
+        Node::new(Expr::BVar(0)),
     )
 }
 /// Create a constant function: `lambda _ : dom. val`.
@@ -549,20 +556,20 @@ pub fn mk_const_fn(dom: Expr, val: Expr) -> Expr {
     Expr::Lam(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(dom),
-        Box::new(val),
+        Node::new(dom),
+        Node::new(val),
     )
 }
 /// Compose two functions: `lambda x : dom. f (g x)`.
 pub fn mk_compose(f: Expr, g: Expr, dom: Expr) -> Expr {
     let var = Expr::BVar(0);
-    let g_app = Expr::App(Box::new(g), Box::new(var));
-    let f_app = Expr::App(Box::new(f), Box::new(g_app));
+    let g_app = Expr::App(Node::new(g), Node::new(var));
+    let f_app = Expr::App(Node::new(f), Node::new(g_app));
     Expr::Lam(
         BinderInfo::Default,
         Name::str("x"),
-        Box::new(dom),
-        Box::new(f_app),
+        Node::new(dom),
+        Node::new(f_app),
     )
 }
 /// Create a multi-argument beta redex.
@@ -573,13 +580,13 @@ pub fn mk_multi_beta_redex(tys: &[Expr], body: Expr, args: &[Expr]) -> Expr {
         lam = Expr::Lam(
             BinderInfo::Default,
             Name::str(format!("x{}", i)),
-            Box::new(ty.clone()),
-            Box::new(lam),
+            Node::new(ty.clone()),
+            Node::new(lam),
         );
     }
     let mut result = lam;
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg.clone()));
+        result = Expr::App(Node::new(result), Node::new(arg.clone()));
     }
     result
 }
@@ -591,17 +598,17 @@ mod extra_beta_tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     #[test]
     fn test_beta_step_with_flag_redex() {
         let id = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(42)));
+        let app = Expr::App(Node::new(id), Node::new(lit(42)));
         let (result, reduced) = beta_step_with_flag(&app);
         assert!(reduced);
         assert_eq!(result, lit(42));
@@ -618,8 +625,8 @@ mod extra_beta_tests {
         let a = lit(1);
         let b = lit(2);
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a))),
-            Box::new(b),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a))),
+            Node::new(b),
         );
         let (head, args) = collect_app_spine(&app);
         assert_eq!(head, &f);
@@ -630,8 +637,8 @@ mod extra_beta_tests {
         let id = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         let result = reduce_app_spine(&id, &[lit(99)]);
         assert_eq!(result, lit(99));
@@ -639,12 +646,12 @@ mod extra_beta_tests {
     #[test]
     fn test_is_eta_reducible_true() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let body = Expr::App(Box::new(f), Box::new(Expr::BVar(0)));
+        let body = Expr::App(Node::new(f), Node::new(Expr::BVar(0)));
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(body),
+            Node::new(nat()),
+            Node::new(body),
         );
         assert!(is_eta_reducible(&lam));
     }
@@ -653,8 +660,8 @@ mod extra_beta_tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
         assert!(!is_eta_reducible(&lam));
     }
@@ -662,16 +669,16 @@ mod extra_beta_tests {
     fn test_eta_expand_then_apply() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let expanded = eta_expand(f.clone(), nat());
-        let result = beta_normalize(&Expr::App(Box::new(expanded), Box::new(lit(5))));
-        let expected = Expr::App(Box::new(f), Box::new(lit(5)));
+        let result = beta_normalize(&Expr::App(Node::new(expanded), Node::new(lit(5))));
+        let expected = Expr::App(Node::new(f), Node::new(lit(5)));
         assert_eq!(result, expected);
     }
     #[test]
     fn test_mk_k_combinator() {
         let k = mk_k_combinator(nat(), nat());
         let kxy = Expr::App(
-            Box::new(Expr::App(Box::new(k), Box::new(lit(10)))),
-            Box::new(lit(20)),
+            Node::new(Expr::App(Node::new(k), Node::new(lit(10)))),
+            Node::new(lit(20)),
         );
         assert_eq!(beta_normalize(&kxy), lit(10));
     }
@@ -683,7 +690,7 @@ mod extra_beta_tests {
     #[test]
     fn test_mk_i_combinator() {
         let i = mk_i_combinator(nat());
-        let result = beta_normalize(&Expr::App(Box::new(i), Box::new(lit(7))));
+        let result = beta_normalize(&Expr::App(Node::new(i), Node::new(lit(7))));
         assert_eq!(result, lit(7));
     }
     #[test]
@@ -691,10 +698,10 @@ mod extra_beta_tests {
         let id = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(1)));
+        let app = Expr::App(Node::new(id), Node::new(lit(1)));
         let steps = count_reduction_steps(&app);
         assert!(steps >= 1);
     }
@@ -704,10 +711,10 @@ mod extra_beta_tests {
         let id = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(3)));
+        let app = Expr::App(Node::new(id), Node::new(lit(3)));
         let result = beta_normalize_with_stats(&app, &mut stats);
         assert_eq!(result, lit(3));
         assert!(stats.total_reductions >= 1);
@@ -743,29 +750,36 @@ fn beta_normal_order_impl(expr: &Expr, fuel: u32) -> Expr {
                     beta_normal_order_impl(&reduced, fuel - 1)
                 } else {
                     let a_norm = beta_normal_order_impl(a, fuel - 1);
-                    Expr::App(Box::new(f_norm), Box::new(a_norm))
+                    Expr::App(Node::new(f_norm), Node::new(a_norm))
                 }
             }
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty_norm = beta_normal_order_impl(ty, fuel - 1);
             let body_norm = beta_normal_order_impl(body, fuel - 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Lam(*bi, n.clone(), Node::new(ty_norm), Node::new(body_norm))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty_norm = beta_normal_order_impl(ty, fuel - 1);
             let body_norm = beta_normal_order_impl(body, fuel - 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Pi(*bi, n.clone(), Node::new(ty_norm), Node::new(body_norm))
         }
         Expr::Let(n, ty, val, body) => {
             let ty_n = beta_normal_order_impl(ty, fuel - 1);
             let val_n = beta_normal_order_impl(val, fuel - 1);
             let body_n = beta_normal_order_impl(body, fuel - 1);
-            Expr::Let(n.clone(), Box::new(ty_n), Box::new(val_n), Box::new(body_n))
+            Expr::Let(
+                n.clone(),
+                Node::new(ty_n),
+                Node::new(val_n),
+                Node::new(body_n),
+            )
         }
-        Expr::Proj(n, i, s) => {
-            Expr::Proj(n.clone(), *i, Box::new(beta_normal_order_impl(s, fuel - 1)))
-        }
+        Expr::Proj(n, i, s) => Expr::Proj(
+            n.clone(),
+            *i,
+            Node::new(beta_normal_order_impl(s, fuel - 1)),
+        ),
         e => e.clone(),
     }
 }
@@ -787,27 +801,32 @@ fn beta_applicative_impl(expr: &Expr, fuel: u32) -> Expr {
                 let reduced = instantiate(body, &a_norm);
                 beta_applicative_impl(&reduced, fuel - 1)
             } else {
-                Expr::App(Box::new(f_norm), Box::new(a_norm))
+                Expr::App(Node::new(f_norm), Node::new(a_norm))
             }
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty_norm = beta_applicative_impl(ty, fuel - 1);
             let body_norm = beta_applicative_impl(body, fuel - 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Lam(*bi, n.clone(), Node::new(ty_norm), Node::new(body_norm))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty_norm = beta_applicative_impl(ty, fuel - 1);
             let body_norm = beta_applicative_impl(body, fuel - 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty_norm), Box::new(body_norm))
+            Expr::Pi(*bi, n.clone(), Node::new(ty_norm), Node::new(body_norm))
         }
         Expr::Let(n, ty, val, body) => {
             let ty_n = beta_applicative_impl(ty, fuel - 1);
             let val_n = beta_applicative_impl(val, fuel - 1);
             let body_n = beta_applicative_impl(body, fuel - 1);
-            Expr::Let(n.clone(), Box::new(ty_n), Box::new(val_n), Box::new(body_n))
+            Expr::Let(
+                n.clone(),
+                Node::new(ty_n),
+                Node::new(val_n),
+                Node::new(body_n),
+            )
         }
         Expr::Proj(n, i, s) => {
-            Expr::Proj(n.clone(), *i, Box::new(beta_applicative_impl(s, fuel - 1)))
+            Expr::Proj(n.clone(), *i, Node::new(beta_applicative_impl(s, fuel - 1)))
         }
         e => e.clone(),
     }
@@ -830,20 +849,20 @@ pub fn reduce_lets(expr: &Expr) -> Expr {
             let body_with_val = instantiate(body, &val_reduced);
             reduce_lets(&body_with_val)
         }
-        Expr::App(f, a) => Expr::App(Box::new(reduce_lets(f)), Box::new(reduce_lets(a))),
+        Expr::App(f, a) => Expr::App(Node::new(reduce_lets(f)), Node::new(reduce_lets(a))),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(reduce_lets(ty)),
-            Box::new(reduce_lets(body)),
+            Node::new(reduce_lets(ty)),
+            Node::new(reduce_lets(body)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(reduce_lets(ty)),
-            Box::new(reduce_lets(body)),
+            Node::new(reduce_lets(ty)),
+            Node::new(reduce_lets(body)),
         ),
-        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Box::new(reduce_lets(s))),
+        Expr::Proj(n, i, s) => Expr::Proj(n.clone(), *i, Node::new(reduce_lets(s))),
         e => e.clone(),
     }
 }
@@ -865,30 +884,30 @@ mod strategy_tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     fn identity() -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         )
     }
     #[test]
     fn test_normal_order_simple() {
-        let app = Expr::App(Box::new(identity()), Box::new(lit(5)));
+        let app = Expr::App(Node::new(identity()), Node::new(lit(5)));
         assert_eq!(beta_normal_order(&app), lit(5));
     }
     #[test]
     fn test_applicative_order_simple() {
-        let app = Expr::App(Box::new(identity()), Box::new(lit(5)));
+        let app = Expr::App(Node::new(identity()), Node::new(lit(5)));
         assert_eq!(beta_applicative_order(&app), lit(5));
     }
     #[test]
     fn test_beta_equivalent() {
         let id = identity();
-        let e1 = Expr::App(Box::new(id.clone()), Box::new(lit(7)));
+        let e1 = Expr::App(Node::new(id.clone()), Node::new(lit(7)));
         let e2 = lit(7);
         assert!(beta_equivalent(&e1, &e2));
     }
@@ -902,9 +921,9 @@ mod strategy_tests {
         let val = lit(42);
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(val.clone()),
-            Box::new(body),
+            Node::new(nat()),
+            Node::new(val.clone()),
+            Node::new(body),
         );
         let result = reduce_lets(&let_expr);
         assert_eq!(result, val);
@@ -913,9 +932,9 @@ mod strategy_tests {
     fn test_has_let_true() {
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(lit(1)),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(lit(1)),
+            Node::new(Expr::BVar(0)),
         );
         assert!(has_let(&let_expr));
     }
@@ -928,15 +947,15 @@ mod strategy_tests {
     fn test_reduce_lets_nested() {
         let inner_let = Expr::Let(
             Name::str("y"),
-            Box::new(nat()),
-            Box::new(lit(2)),
-            Box::new(Expr::BVar(1)),
+            Node::new(nat()),
+            Node::new(lit(2)),
+            Node::new(Expr::BVar(1)),
         );
         let outer_let = Expr::Let(
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(lit(1)),
-            Box::new(inner_let),
+            Node::new(nat()),
+            Node::new(lit(1)),
+            Node::new(inner_let),
         );
         let result = reduce_lets(&outer_let);
         assert_eq!(result, lit(1));
@@ -950,17 +969,17 @@ mod extra_beta_tests2 {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
     #[test]
     fn test_normal_order_reduces_id() {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(5)));
+        let app = Expr::App(Node::new(id), Node::new(lit(5)));
         assert_eq!(beta_normal_order(&app), lit(5));
     }
     #[test]
@@ -968,10 +987,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id.clone()), Box::new(lit(7)));
+        let app = Expr::App(Node::new(id.clone()), Node::new(lit(7)));
         assert_eq!(beta_applicative_order(&app), lit(7));
     }
     #[test]
@@ -979,10 +998,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(3)));
+        let app = Expr::App(Node::new(id), Node::new(lit(3)));
         assert_eq!(beta_normal_order(&app), beta_applicative_order(&app));
     }
     #[test]
@@ -990,10 +1009,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(3)));
+        let app = Expr::App(Node::new(id), Node::new(lit(3)));
         assert!(beta_equivalent(&app, &lit(3)));
     }
     #[test]
@@ -1006,9 +1025,9 @@ mod extra_beta_tests2 {
         let body = Expr::BVar(0);
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(val.clone()),
-            Box::new(body),
+            Node::new(nat()),
+            Node::new(val.clone()),
+            Node::new(body),
         );
         assert_eq!(reduce_lets(&let_expr), val);
     }
@@ -1021,9 +1040,9 @@ mod extra_beta_tests2 {
     fn test_has_let_some() {
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(lit(1)),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(lit(1)),
+            Node::new(Expr::BVar(0)),
         );
         assert!(has_let(&let_expr));
     }
@@ -1046,9 +1065,9 @@ mod extra_beta_tests2 {
     fn test_is_whnf_let_is_not() {
         let let_expr = Expr::Let(
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(lit(1)),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(lit(1)),
+            Node::new(Expr::BVar(0)),
         );
         assert!(!is_whnf(&let_expr));
     }
@@ -1057,10 +1076,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(9)));
+        let app = Expr::App(Node::new(id), Node::new(lit(9)));
         assert_eq!(beta_whnf(&app), lit(9));
     }
     #[test]
@@ -1073,10 +1092,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(5)));
+        let app = Expr::App(Node::new(id), Node::new(lit(5)));
         let (result, remaining) = beta_normalize_fueled(&app, 10);
         assert_eq!(result, lit(5));
         assert!(remaining < 10);
@@ -1084,12 +1103,12 @@ mod extra_beta_tests2 {
     #[test]
     fn test_eta_reduce_simple() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let body = Expr::App(Box::new(f.clone()), Box::new(Expr::BVar(0)));
+        let body = Expr::App(Node::new(f.clone()), Node::new(Expr::BVar(0)));
         let lam = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(body),
+            Node::new(nat()),
+            Node::new(body),
         );
         assert_eq!(eta_reduce(&lam), Some(f));
     }
@@ -1099,21 +1118,21 @@ mod extra_beta_tests2 {
         let lam = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(body),
+            Node::new(nat()),
+            Node::new(body),
         );
         assert!(eta_reduce(&lam).is_none());
     }
     #[test]
     fn test_mk_identity_reduces_correctly() {
         let id = mk_identity(nat());
-        let app = Expr::App(Box::new(id), Box::new(lit(42)));
+        let app = Expr::App(Node::new(id), Node::new(lit(42)));
         assert_eq!(beta_normalize(&app), lit(42));
     }
     #[test]
     fn test_mk_const_fn_ignores_arg() {
         let c = mk_const_fn(nat(), lit(99));
-        let app = Expr::App(Box::new(c), Box::new(lit(0)));
+        let app = Expr::App(Node::new(c), Node::new(lit(0)));
         assert_eq!(beta_normalize(&app), lit(99));
     }
     #[test]
@@ -1121,10 +1140,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(77)));
+        let app = Expr::App(Node::new(id), Node::new(lit(77)));
         assert_eq!(beta_head_normalize(&app), lit(77));
     }
     #[test]
@@ -1132,10 +1151,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(1)));
+        let app = Expr::App(Node::new(id), Node::new(lit(1)));
         assert_eq!(count_redexes(&app), 1);
     }
     #[test]
@@ -1147,10 +1166,10 @@ mod extra_beta_tests2 {
         let id = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat()),
-            Box::new(Expr::BVar(0)),
+            Node::new(nat()),
+            Node::new(Expr::BVar(0)),
         );
-        let app = Expr::App(Box::new(id), Box::new(lit(1)));
+        let app = Expr::App(Node::new(id), Node::new(lit(1)));
         assert!(estimate_reduction_depth(&app) >= 1);
     }
     #[test]
@@ -1164,7 +1183,7 @@ mod extra_beta_tests2 {
         let id1 = mk_identity(nat());
         let id2 = mk_identity(nat());
         let composed = mk_compose(id1, id2, nat());
-        let app = Expr::App(Box::new(composed), Box::new(lit(5)));
+        let app = Expr::App(Node::new(composed), Node::new(lit(5)));
         assert_eq!(beta_normalize(&app), lit(5));
     }
 }
@@ -1319,7 +1338,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

@@ -2,13 +2,15 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 
 use super::functions::*;
 use super::functions_3::{
     apply_extended_simp_rules, apply_simp_rules, has_farkas_certificate, is_const_named,
     parse_simp_only_lemmas, parse_sym_lin_cons, tactic_fin_cases_impl, tactic_simp,
-    try_close_numeric, try_linarith_with_hyps, try_ring_norm,
+    try_close_numeric, try_linarith_with_hyps, try_nlinarith_with_positivstellensatz,
+    try_ring_norm,
 };
 use super::types::{NumCmp, SymLinCon, TacticError, TacticState, TypeShape};
 
@@ -124,6 +126,15 @@ pub fn eval_tactic(
             replace_focused(state, vec![new_goal])
         }
         "simp" => {
+            // Try the real meta simp engine first for no-argument invocations.
+            // Arg'd forms (simp only [...], simp at h) keep their existing logic.
+            if args_str.is_empty() {
+                if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                    oxilean_meta::tactic::tac_simp(&mut bridge.meta_state, &mut bridge.meta_ctx)
+                }) {
+                    return Ok(s);
+                }
+            }
             if args_str.starts_with("at ") {
                 let hyp_name = args_str.strip_prefix("at ").unwrap_or(args_str).trim();
                 let goal = get_focused_goal(state)?;
@@ -216,6 +227,7 @@ pub fn eval_tactic(
                     let sub = TacticState {
                         goals: vec![g.clone()],
                         solved: vec![],
+                        certificate: None,
                     };
                     tactic_assumption(&sub)
                         .or_else(|_| tactic_trivial(&sub))
@@ -517,19 +529,19 @@ pub fn eval_tactic(
                     let hn = n.to_string();
                     if (hn == "Nat.le" || hn == "LE.le")
                         && args.len() >= 2
-                        && matches!(args[args.len() - 2], Expr::Lit(Literal::Nat(0)))
+                        && matches!(args[args.len() - 2], Expr::Lit(Literal::Nat(n)) if *n == 0u64)
                     {
                         return replace_focused(state, vec![]);
                     }
                     if (hn == "Nat.ge" || hn == "GE.ge")
                         && args.len() >= 2
-                        && matches!(args[args.len() - 1], Expr::Lit(Literal::Nat(0)))
+                        && matches!(args[args.len() - 1], Expr::Lit(Literal::Nat(n)) if *n == 0u64)
                     {
                         return replace_focused(state, vec![]);
                     }
                     if (hn == "Nat.lt" || hn == "LT.lt")
                         && args.len() >= 2
-                        && matches!(args[args.len() - 2], Expr::Lit(Literal::Nat(0)))
+                        && matches!(args[args.len() - 2], Expr::Lit(Literal::Nat(n)) if *n == 0u64)
                     {
                         let rhs = args[args.len() - 1];
                         let is_positive = eval_nat_expr(rhs).map(|v| v > 0).unwrap_or(false)
@@ -629,7 +641,7 @@ pub fn eval_tactic(
             }
             tactic_simp(state, &[]).or_else(|_| tactic_sorry(state))
         }
-        "linarith" | "nlinarith" => {
+        "linarith" => {
             if let Ok(s) = tactic_trivial(state) {
                 return Ok(s);
             }
@@ -643,6 +655,30 @@ pub fn eval_tactic(
                 return Ok(s);
             }
             if let Ok(s) = try_linarith_with_hyps(state) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
+        "nlinarith" => {
+            if let Ok(s) = tactic_trivial(state) {
+                return Ok(s);
+            }
+            if let Ok(s) = tactic_refl(state) {
+                return Ok(s);
+            }
+            if let Ok(s) = tactic_assumption(state) {
+                return Ok(s);
+            }
+            if let Ok(s) = try_close_numeric(state) {
+                return Ok(s);
+            }
+            // Try standard linear arithmetic first (handles linear goals).
+            if let Ok(s) = try_linarith_with_hyps(state) {
+                return Ok(s);
+            }
+            // Positivstellensatz-lite: augment with nonlinear atom nonnegativity facts,
+            // then retry the Farkas refutation search.
+            if let Ok(s) = try_nlinarith_with_positivstellensatz(state) {
                 return Ok(s);
             }
             tactic_sorry(state)
@@ -712,16 +748,16 @@ pub fn eval_tactic(
                 let swapped = if let Expr::App(f1, _) = &goal.target {
                     if let Expr::App(eq_ty, _lhs_orig) = f1.as_ref() {
                         Expr::App(
-                            Box::new(Expr::App(eq_ty.clone(), Box::new(rhs.clone()))),
-                            Box::new(lhs.clone()),
+                            Node::new(Expr::App(eq_ty.clone(), Node::new(rhs.clone()))),
+                            Node::new(lhs.clone()),
                         )
                     } else {
                         Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(Box::new(eq_c), Box::new(rhs.clone()))),
-                                Box::new(rhs.clone()),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(Node::new(eq_c), Node::new(rhs.clone()))),
+                                Node::new(rhs.clone()),
                             )),
-                            Box::new(lhs.clone()),
+                            Node::new(lhs.clone()),
                         )
                     }
                 } else {
@@ -747,11 +783,11 @@ pub fn eval_tactic(
             if let Expr::App(f1, rhs) = &goal.target {
                 if let Expr::App(eq_ty, lhs) = f1.as_ref() {
                     let goal1_target = Expr::App(
-                        Box::new(Expr::App(eq_ty.clone(), lhs.clone())),
-                        Box::new(mid_expr.clone()),
+                        Node::new(Expr::App(eq_ty.clone(), lhs.clone())),
+                        Node::new(mid_expr.clone()),
                     );
                     let goal2_target = Expr::App(
-                        Box::new(Expr::App(eq_ty.clone(), Box::new(mid_expr))),
+                        Node::new(Expr::App(eq_ty.clone(), Node::new(mid_expr))),
                         rhs.clone(),
                     );
                     let mut g1 = goal.clone();
@@ -778,10 +814,10 @@ pub fn eval_tactic(
                 if let (Expr::App(fl, al), Expr::App(fr, ar)) = (&lhs, &rhs) {
                     if fl == fr {
                         let sub_eq = Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                                    Box::new(*al.clone()),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                                    Node::new((**al).clone()),
                                 )),
                                 al.clone(),
                             )),
@@ -951,17 +987,17 @@ pub fn eval_tactic(
             let goal = get_focused_goal(state)?;
             if let Some((lhs, rhs)) = extract_eq_sides(&goal.target, true) {
                 let x_var = Expr::Const(Name::str(var_name), vec![]);
-                let new_lhs = Expr::App(Box::new(lhs), Box::new(x_var.clone()));
-                let new_rhs = Expr::App(Box::new(rhs), Box::new(x_var.clone()));
+                let new_lhs = Expr::App(Node::new(lhs), Node::new(x_var.clone()));
+                let new_rhs = Expr::App(Node::new(rhs), Node::new(x_var.clone()));
                 let eq_target = Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                            Box::new(new_lhs.clone()),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                            Node::new(new_lhs.clone()),
                         )),
-                        Box::new(new_lhs),
+                        Node::new(new_lhs),
                     )),
-                    Box::new(new_rhs),
+                    Node::new(new_rhs),
                 );
                 let mut new_goal = goal.clone();
                 new_goal.target = eq_target;
@@ -1016,14 +1052,14 @@ pub fn eval_tactic(
                     let a_expr = al[al.len() - 1].clone();
                     let b_expr = ar[ar.len() - 1].clone();
                     let new_eq = Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                                Box::new(a_expr.clone()),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                                Node::new(a_expr.clone()),
                             )),
-                            Box::new(a_expr),
+                            Node::new(a_expr),
                         )),
-                        Box::new(b_expr),
+                        Node::new(b_expr),
                     );
                     let mut new_goal = goal.clone();
                     new_goal.target = new_eq;
@@ -1124,6 +1160,12 @@ pub fn eval_tactic(
         }
         "squeeze_simp" => tactic_simp(state, &[]),
         "cc" | "congruence" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_cc(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            // Fallback: elab-local chain
             if let Ok(s) = tactic_refl(state) {
                 return Ok(s);
             }
@@ -1348,6 +1390,14 @@ pub fn eval_tactic(
             }
             tactic_sorry(state)
         }
+        "polyrith" => {
+            if let Ok(s) = crate::meta_bridge::try_meta_tactic(state, env, |bridge| {
+                oxilean_meta::tactic::tac_polyrith(&mut bridge.meta_state, &mut bridge.meta_ctx)
+            }) {
+                return Ok(s);
+            }
+            tactic_sorry(state)
+        }
         _ => Err(TacticError::UnknownTactic(tactic_name.to_string())),
     }
 }
@@ -1466,26 +1516,26 @@ pub(super) fn rewrite_in_expr(expr: &Expr, from: &Expr, to: &Expr) -> Expr {
     }
     match expr {
         Expr::App(f, a) => Expr::App(
-            Box::new(rewrite_in_expr(f, from, to)),
-            Box::new(rewrite_in_expr(a, from, to)),
+            Node::new(rewrite_in_expr(f, from, to)),
+            Node::new(rewrite_in_expr(a, from, to)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(rewrite_in_expr(ty, from, to)),
-            Box::new(rewrite_in_expr(body, from, to)),
+            Node::new(rewrite_in_expr(ty, from, to)),
+            Node::new(rewrite_in_expr(body, from, to)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(rewrite_in_expr(ty, from, to)),
-            Box::new(rewrite_in_expr(body, from, to)),
+            Node::new(rewrite_in_expr(ty, from, to)),
+            Node::new(rewrite_in_expr(body, from, to)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(rewrite_in_expr(ty, from, to)),
-            Box::new(rewrite_in_expr(val, from, to)),
-            Box::new(rewrite_in_expr(body, from, to)),
+            Node::new(rewrite_in_expr(ty, from, to)),
+            Node::new(rewrite_in_expr(val, from, to)),
+            Node::new(rewrite_in_expr(body, from, to)),
         ),
         _ => expr.clone(),
     }
@@ -1495,7 +1545,7 @@ pub(super) fn extract_iff_sides(expr: &Expr) -> Option<(Expr, Expr)> {
     if let Expr::App(f, b) = expr {
         if let Expr::App(iff, a) = f.as_ref() {
             if is_const_named(iff, "Iff") {
-                return Some((*a.clone(), *b.clone()));
+                return Some(((**a).clone(), (**b).clone()));
             }
         }
     }
@@ -1529,7 +1579,7 @@ fn parse_simple_expr(s: &str) -> Result<Expr, TacticError> {
         ));
     }
     if let Ok(n) = s.parse::<u64>() {
-        return Ok(Expr::Lit(Literal::Nat(n)));
+        return Ok(Expr::Lit(Literal::nat(n)));
     }
     if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
         return Ok(Expr::Lit(Literal::Str(s[1..s.len() - 1].to_string())));
@@ -1545,29 +1595,29 @@ pub(super) fn beta_reduce(expr: &Expr) -> Expr {
             if let Expr::Lam(_, _, _, body) = &f_red {
                 beta_reduce(&substitute_bvar_0(body, &arg_red))
             } else {
-                Expr::App(Box::new(f_red), Box::new(arg_red))
+                Expr::App(Node::new(f_red), Node::new(arg_red))
             }
         }
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(beta_reduce(ty)),
-            Box::new(beta_reduce(body)),
+            Node::new(beta_reduce(ty)),
+            Node::new(beta_reduce(body)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(beta_reduce(ty)),
-            Box::new(beta_reduce(body)),
+            Node::new(beta_reduce(ty)),
+            Node::new(beta_reduce(body)),
         ),
         Expr::Let(n, ty, val, body) => {
             let val_red = beta_reduce(val);
             let body_red = beta_reduce(body);
             Expr::Let(
                 n.clone(),
-                Box::new(beta_reduce(ty)),
-                Box::new(val_red),
-                Box::new(body_red),
+                Node::new(beta_reduce(ty)),
+                Node::new(val_red),
+                Node::new(body_red),
             )
         }
         _ => expr.clone(),
@@ -1589,26 +1639,26 @@ pub(super) fn subst_bvar(expr: &Expr, depth: u32, replacement: &Expr) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_bvar(f, depth, replacement)),
-            Box::new(subst_bvar(a, depth, replacement)),
+            Node::new(subst_bvar(f, depth, replacement)),
+            Node::new(subst_bvar(a, depth, replacement)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(subst_bvar(ty, depth, replacement)),
-            Box::new(subst_bvar(body, depth + 1, replacement)),
+            Node::new(subst_bvar(ty, depth, replacement)),
+            Node::new(subst_bvar(body, depth + 1, replacement)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(subst_bvar(ty, depth, replacement)),
-            Box::new(subst_bvar(body, depth + 1, replacement)),
+            Node::new(subst_bvar(ty, depth, replacement)),
+            Node::new(subst_bvar(body, depth + 1, replacement)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(subst_bvar(ty, depth, replacement)),
-            Box::new(subst_bvar(val, depth, replacement)),
-            Box::new(subst_bvar(body, depth + 1, replacement)),
+            Node::new(subst_bvar(ty, depth, replacement)),
+            Node::new(subst_bvar(val, depth, replacement)),
+            Node::new(subst_bvar(body, depth + 1, replacement)),
         ),
         _ => expr.clone(),
     }
@@ -1629,26 +1679,26 @@ fn lift_bvars_above(expr: &Expr, threshold: u32, amount: u32) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(lift_bvars_above(f, threshold, amount)),
-            Box::new(lift_bvars_above(a, threshold, amount)),
+            Node::new(lift_bvars_above(f, threshold, amount)),
+            Node::new(lift_bvars_above(a, threshold, amount)),
         ),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(lift_bvars_above(ty, threshold, amount)),
-            Box::new(lift_bvars_above(body, threshold + 1, amount)),
+            Node::new(lift_bvars_above(ty, threshold, amount)),
+            Node::new(lift_bvars_above(body, threshold + 1, amount)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(lift_bvars_above(ty, threshold, amount)),
-            Box::new(lift_bvars_above(body, threshold + 1, amount)),
+            Node::new(lift_bvars_above(ty, threshold, amount)),
+            Node::new(lift_bvars_above(body, threshold + 1, amount)),
         ),
         Expr::Let(n, ty, val, body) => Expr::Let(
             n.clone(),
-            Box::new(lift_bvars_above(ty, threshold, amount)),
-            Box::new(lift_bvars_above(val, threshold, amount)),
-            Box::new(lift_bvars_above(body, threshold + 1, amount)),
+            Node::new(lift_bvars_above(ty, threshold, amount)),
+            Node::new(lift_bvars_above(val, threshold, amount)),
+            Node::new(lift_bvars_above(body, threshold + 1, amount)),
         ),
         _ => expr.clone(),
     }
@@ -1660,7 +1710,7 @@ fn lift_bvars_above(expr: &Expr, threshold: u32, amount: u32) -> Expr {
 /// `HMul.hMul` likewise.
 pub(super) fn eval_nat_expr(expr: &Expr) -> Option<u64> {
     match expr {
-        Expr::Lit(Literal::Nat(n)) => Some(*n),
+        Expr::Lit(Literal::Nat(n)) => n.to_u64(),
         Expr::App(f, a) => {
             if let Expr::Const(name, _) = f.as_ref() {
                 let s = name.to_string();

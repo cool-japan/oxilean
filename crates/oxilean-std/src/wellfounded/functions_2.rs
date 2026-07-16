@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::functions::*;
@@ -191,8 +192,8 @@ mod tests {
         assert_eq!(
             wf,
             Expr::App(
-                Box::new(Expr::Const(Name::str("WellFounded"), vec![])),
-                Box::new(rel),
+                Node::new(Expr::Const(Name::str("WellFounded"), vec![])),
+                Node::new(rel),
             )
         );
     }
@@ -204,11 +205,11 @@ mod tests {
         assert_eq!(
             acc,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Acc"), vec![])),
-                    Box::new(rel),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Acc"), vec![])),
+                    Node::new(rel),
                 )),
-                Box::new(x),
+                Node::new(x),
             )
         );
     }
@@ -220,11 +221,11 @@ mod tests {
         assert_eq!(
             intro,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Acc.intro"), vec![])),
-                    Box::new(x),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Acc.intro"), vec![])),
+                    Node::new(x),
                 )),
-                Box::new(h),
+                Node::new(h),
             )
         );
     }
@@ -270,14 +271,14 @@ mod tests {
         assert_eq!(
             fix,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("WellFounded.fix"), vec![])),
-                        Box::new(wf),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("WellFounded.fix"), vec![])),
+                        Node::new(wf),
                     )),
-                    Box::new(f),
+                    Node::new(f),
                 )),
-                Box::new(a),
+                Node::new(a),
             )
         );
     }
@@ -288,8 +289,8 @@ mod tests {
         assert_eq!(
             m,
             Expr::App(
-                Box::new(Expr::Const(Name::str("Measure"), vec![])),
-                Box::new(f),
+                Node::new(Expr::Const(Name::str("Measure"), vec![])),
+                Node::new(f),
             )
         );
     }
@@ -301,11 +302,11 @@ mod tests {
         assert_eq!(
             inv,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("InvImage"), vec![])),
-                    Box::new(r),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("InvImage"), vec![])),
+                    Node::new(r),
                 )),
-                Box::new(f),
+                Node::new(f),
             )
         );
     }
@@ -317,11 +318,11 @@ mod tests {
         assert_eq!(
             lex,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
-                    Box::new(ra),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
+                    Node::new(ra),
                 )),
-                Box::new(rb),
+                Node::new(rb),
             )
         );
     }
@@ -333,11 +334,11 @@ mod tests {
         assert_eq!(
             sz,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("sizeOf"), vec![])),
-                    Box::new(ty),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("sizeOf"), vec![])),
+                    Node::new(ty),
                 )),
-                Box::new(a),
+                Node::new(a),
             )
         );
     }
@@ -349,11 +350,11 @@ mod tests {
         assert_eq!(
             ps,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("PSigma"), vec![])),
-                    Box::new(alpha),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("PSigma"), vec![])),
+                    Node::new(alpha),
                 )),
-                Box::new(beta),
+                Node::new(beta),
             )
         );
     }
@@ -365,11 +366,11 @@ mod tests {
         assert_eq!(
             mk,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("PSigma.mk"), vec![])),
-                    Box::new(fst),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("PSigma.mk"), vec![])),
+                    Node::new(fst),
                 )),
-                Box::new(snd),
+                Node::new(snd),
             )
         );
     }
@@ -382,14 +383,14 @@ mod tests {
         assert_eq!(
             dec,
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Decreasing"), vec![])),
-                        Box::new(rel),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Decreasing"), vec![])),
+                        Node::new(rel),
                     )),
-                    Box::new(x),
+                    Node::new(x),
                 )),
-                Box::new(y),
+                Node::new(y),
             )
         );
     }
@@ -478,10 +479,10 @@ pub fn add_ordinal_arithmetic(env: &mut Environment) {
         ty: arr(
             ord_ty(),
             Expr::App(
-                Box::new(Expr::Const(Name::str("List"), vec![])),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(Box::new(c("Prod")), Box::new(ord_ty()))),
-                    Box::new(nat_ty()),
+                Node::new(Expr::Const(Name::str("List"), vec![])),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(Node::new(c("Prod")), Node::new(ord_ty()))),
+                    Node::new(nat_ty()),
                 )),
             ),
         ),
@@ -496,36 +497,39 @@ pub fn add_ordinal_arithmetic(env: &mut Environment) {
             Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("P"),
-                Box::new(p_ty.clone()),
-                Box::new(arrow(
+                Node::new(p_ty.clone()),
+                Node::new(arrow(
                     Expr::Pi(
                         BinderInfo::Default,
                         Name::Anonymous,
-                        Box::new(ord_ty()),
-                        Box::new(arrow(
+                        Node::new(ord_ty()),
+                        Node::new(arrow(
                             Expr::Pi(
                                 BinderInfo::Default,
                                 Name::Anonymous,
-                                Box::new(ord_ty()),
-                                Box::new(arrow(
+                                Node::new(ord_ty()),
+                                Node::new(arrow(
                                     Expr::App(
-                                        Box::new(Expr::App(
-                                            Box::new(Expr::Const(Name::str("Ordinal.lt"), vec![])),
-                                            Box::new(Expr::BVar(0)),
+                                        Node::new(Expr::App(
+                                            Node::new(Expr::Const(Name::str("Ordinal.lt"), vec![])),
+                                            Node::new(Expr::BVar(0)),
                                         )),
-                                        Box::new(Expr::BVar(1)),
+                                        Node::new(Expr::BVar(1)),
                                     ),
-                                    Expr::App(Box::new(Expr::BVar(3)), Box::new(Expr::BVar(1))),
+                                    Expr::App(Node::new(Expr::BVar(3)), Node::new(Expr::BVar(1))),
                                 )),
                             ),
-                            Expr::App(Box::new(Expr::BVar(1)), Box::new(Expr::BVar(0))),
+                            Expr::App(Node::new(Expr::BVar(1)), Node::new(Expr::BVar(0))),
                         )),
                     ),
                     Expr::Pi(
                         BinderInfo::Default,
                         Name::Anonymous,
-                        Box::new(ord_ty()),
-                        Box::new(Expr::App(Box::new(Expr::BVar(1)), Box::new(Expr::BVar(0)))),
+                        Node::new(ord_ty()),
+                        Node::new(Expr::App(
+                            Node::new(Expr::BVar(1)),
+                            Node::new(Expr::BVar(0)),
+                        )),
                     ),
                 )),
             )

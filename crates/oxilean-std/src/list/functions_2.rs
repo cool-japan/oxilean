@@ -165,7 +165,7 @@ mod tests {
     }
     #[test]
     fn test_list_cons_expr() {
-        let head = Expr::Lit(Literal::Nat(1));
+        let head = Expr::Lit(Literal::nat(1));
         let tail = list_nil(nat_ty());
         let cons = list_cons(head, tail);
         assert!(matches!(cons, Expr::App(_, _)));
@@ -187,7 +187,7 @@ mod tests {
     #[test]
     fn test_list_foldr_expr() {
         let f = Expr::Const(Name::str("add"), vec![]);
-        let init = Expr::Lit(Literal::Nat(0));
+        let init = Expr::Lit(Literal::nat(0));
         let l = list_nil(nat_ty());
         let expr = list_foldr(f, init, l);
         assert!(matches!(expr, Expr::App(_, _)));
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn test_list_foldl_expr() {
         let f = Expr::Const(Name::str("add"), vec![]);
-        let init = Expr::Lit(Literal::Nat(0));
+        let init = Expr::Lit(Literal::nat(0));
         let l = list_nil(nat_ty());
         let expr = list_foldl(f, init, l);
         assert!(matches!(expr, Expr::App(_, _)));
@@ -233,22 +233,22 @@ mod tests {
     }
     #[test]
     fn test_list_take_expr() {
-        let n = Expr::Lit(Literal::Nat(3));
+        let n = Expr::Lit(Literal::nat(3));
         let l = list_nil(nat_ty());
         let expr = list_take(n, l);
         assert!(matches!(expr, Expr::App(_, _)));
     }
     #[test]
     fn test_list_drop_expr() {
-        let n = Expr::Lit(Literal::Nat(2));
+        let n = Expr::Lit(Literal::nat(2));
         let l = list_nil(nat_ty());
         let expr = list_drop(n, l);
         assert!(matches!(expr, Expr::App(_, _)));
     }
     #[test]
     fn test_list_replicate_expr() {
-        let n = Expr::Lit(Literal::Nat(5));
-        let x = Expr::Lit(Literal::Nat(42));
+        let n = Expr::Lit(Literal::nat(5));
+        let x = Expr::Lit(Literal::nat(42));
         let expr = list_replicate(n, x);
         assert!(matches!(expr, Expr::App(_, _)));
     }
@@ -260,7 +260,7 @@ mod tests {
     }
     #[test]
     fn test_list_range_expr() {
-        let n = Expr::Lit(Literal::Nat(10));
+        let n = Expr::Lit(Literal::nat(10));
         let expr = list_range(n);
         assert!(matches!(expr, Expr::App(_, _)));
     }
@@ -274,7 +274,7 @@ mod tests {
     }
     #[test]
     fn test_mk_list_from_vec_single() {
-        let l = mk_list_from_vec(nat_ty(), vec![Expr::Lit(Literal::Nat(1))]);
+        let l = mk_list_from_vec(nat_ty(), vec![Expr::Lit(Literal::nat(1))]);
         assert!(matches!(l, Expr::App(_, _)));
     }
     #[test]
@@ -282,16 +282,16 @@ mod tests {
         let l = mk_list_from_vec(
             nat_ty(),
             vec![
-                Expr::Lit(Literal::Nat(1)),
-                Expr::Lit(Literal::Nat(2)),
-                Expr::Lit(Literal::Nat(3)),
+                Expr::Lit(Literal::nat(1)),
+                Expr::Lit(Literal::nat(2)),
+                Expr::Lit(Literal::nat(3)),
             ],
         );
         assert!(matches!(l, Expr::App(_, _)));
         if let Expr::App(f, tail) = &l {
             if let Expr::App(cons_f, head) = f.as_ref() {
                 assert!(matches!(cons_f.as_ref(), Expr::Const(_, _)));
-                assert_eq!(**head, Expr::Lit(Literal::Nat(1)));
+                assert_eq!(**head, Expr::Lit(Literal::nat(1)));
             } else {
                 panic!("expected App(List.cons, head)");
             }
@@ -404,9 +404,9 @@ mod tests {
         let l = mk_list_from_vec(
             nat_ty(),
             vec![
-                Expr::Lit(Literal::Nat(1)),
-                Expr::Lit(Literal::Nat(2)),
-                Expr::Lit(Literal::Nat(3)),
+                Expr::Lit(Literal::nat(1)),
+                Expr::Lit(Literal::nat(2)),
+                Expr::Lit(Literal::nat(3)),
             ],
         );
         let rev = list_reverse(l);
@@ -416,8 +416,8 @@ mod tests {
     }
     #[test]
     fn test_list_append_two_lists() {
-        let l1 = mk_list_from_vec(nat_ty(), vec![Expr::Lit(Literal::Nat(1))]);
-        let l2 = mk_list_from_vec(nat_ty(), vec![Expr::Lit(Literal::Nat(2))]);
+        let l1 = mk_list_from_vec(nat_ty(), vec![Expr::Lit(Literal::nat(1))]);
+        let l2 = mk_list_from_vec(nat_ty(), vec![Expr::Lit(Literal::nat(2))]);
         let appended = list_append(l1, l2);
         assert!(matches!(appended, Expr::App(_, _)));
     }

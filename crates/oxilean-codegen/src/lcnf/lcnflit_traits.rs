@@ -15,6 +15,7 @@ impl fmt::Display for LcnfLit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LcnfLit::Nat(n) => write!(f, "{}", n),
+            LcnfLit::Int(i) => write!(f, "{}", i),
             LcnfLit::Str(s) => write!(f, "\"{}\"", s),
         }
     }

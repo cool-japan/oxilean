@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
 
 use std::collections::HashMap;
@@ -45,7 +46,7 @@ impl ExprBuilder {
     /// Build a natural number literal.
     pub fn nat_lit(n: u64) -> Self {
         Self {
-            expr: Expr::Lit(Literal::Nat(n)),
+            expr: Expr::Lit(Literal::nat(n)),
         }
     }
     /// Build a string literal.
@@ -57,7 +58,7 @@ impl ExprBuilder {
     /// Build `App(f, a)`.
     pub fn app(self, arg: ExprBuilder) -> Self {
         Self {
-            expr: Expr::App(Box::new(self.expr), Box::new(arg.expr)),
+            expr: Expr::App(Node::new(self.expr), Node::new(arg.expr)),
         }
     }
     /// Apply multiple arguments sequentially.
@@ -70,8 +71,8 @@ impl ExprBuilder {
             expr: Expr::Lam(
                 BinderInfo::Default,
                 Name::str(name.into()),
-                Box::new(ty.expr),
-                Box::new(body.expr),
+                Node::new(ty.expr),
+                Node::new(body.expr),
             ),
         }
     }
@@ -81,8 +82,8 @@ impl ExprBuilder {
             expr: Expr::Lam(
                 BinderInfo::Implicit,
                 Name::str(name.into()),
-                Box::new(ty.expr),
-                Box::new(body.expr),
+                Node::new(ty.expr),
+                Node::new(body.expr),
             ),
         }
     }
@@ -92,8 +93,8 @@ impl ExprBuilder {
             expr: Expr::Pi(
                 BinderInfo::Default,
                 Name::str(name.into()),
-                Box::new(ty.expr),
-                Box::new(body.expr),
+                Node::new(ty.expr),
+                Node::new(body.expr),
             ),
         }
     }
@@ -111,16 +112,16 @@ impl ExprBuilder {
         Self {
             expr: Expr::Let(
                 Name::str(name.into()),
-                Box::new(ty.expr),
-                Box::new(val.expr),
-                Box::new(body.expr),
+                Node::new(ty.expr),
+                Node::new(val.expr),
+                Node::new(body.expr),
             ),
         }
     }
     /// Build `Proj(struct_name, field_index, inner)`.
     pub fn proj(struct_name: impl Into<String>, index: u32, inner: ExprBuilder) -> Self {
         Self {
-            expr: Expr::Proj(Name::str(struct_name.into()), index, Box::new(inner.expr)),
+            expr: Expr::Proj(Name::str(struct_name.into()), index, Node::new(inner.expr)),
         }
     }
     /// Consume the builder and produce the expression.
@@ -303,7 +304,7 @@ impl QuoteBuilder {
         self.session.bind(name.clone(), ty.clone());
         let b = body_fn(self);
         self.session.env.pop();
-        Expr::Lam(binder_info, name, Box::new(ty), Box::new(b))
+        Expr::Lam(binder_info, name, Node::new(ty), Node::new(b))
     }
     /// Build a constant reference.
     pub fn konst(&self, name: Name) -> Expr {
@@ -315,7 +316,7 @@ impl QuoteBuilder {
     }
     /// Build an application.
     pub fn app(&self, f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     /// Build a sort at level zero.
     pub fn sort_zero(&self) -> Expr {

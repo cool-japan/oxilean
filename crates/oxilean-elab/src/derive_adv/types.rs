@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, FVarId, Level, Literal, Name};
 use std::collections::HashMap;
 
@@ -163,7 +164,7 @@ impl TypeInfoAdv {
         let mut result = self.type_expr_with_levels();
         for (i, _) in self.params.iter().enumerate() {
             let param_var = Expr::BVar((self.params.len() - 1 - i) as u32);
-            result = Expr::App(Box::new(result), Box::new(param_var));
+            result = Expr::App(Node::new(result), Node::new(param_var));
         }
         result
     }

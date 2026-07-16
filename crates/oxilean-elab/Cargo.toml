@@ -24,6 +24,7 @@ oxilean-parse = { workspace = true }
 lazy_static = "1.5"
 
 [dev-dependencies]
+oxilean-std = { workspace = true }
 
 [features]
 default = []

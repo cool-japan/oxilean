@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     BinderInfo, Declaration, Environment, Expr, InductiveEnv, InductiveType, IntroRule, Level, Name,
 };
@@ -16,36 +17,36 @@ pub fn register_vec_zip_axioms(env: &mut Environment) {
     let zip_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("n"),
-                Box::new(nat_ty.clone()),
-                Box::new(Expr::Pi(
+                Node::new(nat_ty.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("xs"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("Vec"), vec![])),
-                            Box::new(Expr::BVar(2)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("Vec"), vec![])),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::BVar(0)),
+                        Node::new(Expr::BVar(0)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("ys"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Vec"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Vec"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(1)),
+                            Node::new(Expr::BVar(1)),
                         )),
-                        Box::new(Expr::Const(Name::str("Unit"), vec![])),
+                        Node::new(Expr::Const(Name::str("Unit"), vec![])),
                     )),
                 )),
             )),
@@ -60,12 +61,12 @@ pub fn register_vec_zip_axioms(env: &mut Environment) {
     let zip_nil_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Const(Name::str("True"), vec![])),
+            Node::new(type1.clone()),
+            Node::new(Expr::Const(Name::str("True"), vec![])),
         )),
     );
     let zip_nil_decl = Declaration::Axiom {
@@ -77,16 +78,16 @@ pub fn register_vec_zip_axioms(env: &mut Environment) {
     let zip_length_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("n"),
-                Box::new(nat_ty.clone()),
-                Box::new(Expr::Const(Name::str("True"), vec![])),
+                Node::new(nat_ty.clone()),
+                Node::new(Expr::Const(Name::str("True"), vec![])),
             )),
         )),
     );
@@ -106,20 +107,20 @@ pub fn register_vec_unzip_axioms(env: &mut Environment) {
     let unzip_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("n"),
-                Box::new(nat_ty.clone()),
-                Box::new(Expr::Pi(
+                Node::new(nat_ty.clone()),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("xs"),
-                    Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                    Box::new(Expr::Const(Name::str("Unit"), vec![])),
+                    Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                    Node::new(Expr::Const(Name::str("Unit"), vec![])),
                 )),
             )),
         )),
@@ -133,16 +134,16 @@ pub fn register_vec_unzip_axioms(env: &mut Environment) {
     let zip_unzip_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("n"),
-                Box::new(nat_ty.clone()),
-                Box::new(Expr::Const(Name::str("True"), vec![])),
+                Node::new(nat_ty.clone()),
+                Node::new(Expr::Const(Name::str("True"), vec![])),
             )),
         )),
     );
@@ -162,38 +163,38 @@ pub fn register_vec_fold_axioms(env: &mut Environment) {
     let foldl_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_acc"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_x"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(Expr::BVar(3)),
+                        Node::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(3)),
                     )),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("init"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Implicit,
                         Name::str("n"),
-                        Box::new(nat_ty.clone()),
-                        Box::new(Expr::Pi(
+                        Node::new(nat_ty.clone()),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_xs"),
-                            Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                            Box::new(Expr::BVar(4)),
+                            Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                            Node::new(Expr::BVar(4)),
                         )),
                     )),
                 )),
@@ -209,12 +210,12 @@ pub fn register_vec_fold_axioms(env: &mut Environment) {
     let foldl_nil_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Const(Name::str("True"), vec![])),
+            Node::new(type1.clone()),
+            Node::new(Expr::Const(Name::str("True"), vec![])),
         )),
     );
     let foldl_nil_decl = Declaration::Axiom {
@@ -226,12 +227,12 @@ pub fn register_vec_fold_axioms(env: &mut Environment) {
     let foldl_cons_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Const(Name::str("True"), vec![])),
+            Node::new(type1.clone()),
+            Node::new(Expr::Const(Name::str("True"), vec![])),
         )),
     );
     let foldl_cons_decl = Declaration::Axiom {
@@ -243,28 +244,28 @@ pub fn register_vec_fold_axioms(env: &mut Environment) {
     let foldr_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_f"),
-                Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_init"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Implicit,
                         Name::str("n"),
-                        Box::new(nat_ty.clone()),
-                        Box::new(Expr::Pi(
+                        Node::new(nat_ty.clone()),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_xs"),
-                            Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                            Box::new(Expr::BVar(4)),
+                            Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                            Node::new(Expr::BVar(4)),
                         )),
                     )),
                 )),
@@ -287,25 +288,25 @@ pub fn register_vec_predicate_axioms(env: &mut Environment) {
     let all_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_p"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Const(Name::str("Bool"), vec![])),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_xs"),
-                    Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                    Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                    Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                    Node::new(Expr::Const(Name::str("Bool"), vec![])),
                 )),
             )),
         )),
@@ -319,25 +320,25 @@ pub fn register_vec_predicate_axioms(env: &mut Environment) {
     let any_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_p"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::Const(Name::str("Bool"), vec![])),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_xs"),
-                    Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                    Box::new(Expr::Const(Name::str("Bool"), vec![])),
+                    Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                    Node::new(Expr::Const(Name::str("Bool"), vec![])),
                 )),
             )),
         )),
@@ -351,12 +352,12 @@ pub fn register_vec_predicate_axioms(env: &mut Environment) {
     let all_true_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(Expr::Const(Name::str("True"), vec![])),
+            Node::new(nat_ty.clone()),
+            Node::new(Expr::Const(Name::str("True"), vec![])),
         )),
     );
     let all_true_decl = Declaration::Axiom {
@@ -375,28 +376,28 @@ pub fn register_vec_scan_axioms(env: &mut Environment) {
     let scanl_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_f"),
-                Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_init"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::Pi(
                         BinderInfo::Implicit,
                         Name::str("n"),
-                        Box::new(nat_ty.clone()),
-                        Box::new(Expr::Pi(
+                        Node::new(nat_ty.clone()),
+                        Node::new(Expr::Pi(
                             BinderInfo::Default,
                             Name::str("_xs"),
-                            Box::new(Expr::Const(Name::str("Unit"), vec![])),
-                            Box::new(Expr::Const(Name::str("Unit"), vec![])),
+                            Node::new(Expr::Const(Name::str("Unit"), vec![])),
+                            Node::new(Expr::Const(Name::str("Unit"), vec![])),
                         )),
                     )),
                 )),
@@ -412,16 +413,16 @@ pub fn register_vec_scan_axioms(env: &mut Environment) {
     let scanl_length_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("n"),
-                Box::new(nat_ty.clone()),
-                Box::new(Expr::Const(Name::str("True"), vec![])),
+                Node::new(nat_ty.clone()),
+                Node::new(Expr::Const(Name::str("True"), vec![])),
             )),
         )),
     );
@@ -441,21 +442,21 @@ pub fn register_vec_replicate_axioms(env: &mut Environment) {
     let replicate_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_x"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Vec"), vec![])),
-                        Box::new(Expr::BVar(2)),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Vec"), vec![])),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(1)),
                 )),
             )),
         )),
@@ -469,12 +470,12 @@ pub fn register_vec_replicate_axioms(env: &mut Environment) {
     let rep_zero_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("_x"),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::Const(Name::str("True"), vec![])),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("True"), vec![])),
         )),
     );
     let rep_zero_decl = Declaration::Axiom {
@@ -486,16 +487,16 @@ pub fn register_vec_replicate_axioms(env: &mut Environment) {
     let rep_succ_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("n"),
-            Box::new(nat_ty.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat_ty.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_x"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Const(Name::str("True"), vec![])),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Const(Name::str("True"), vec![])),
             )),
         )),
     );
@@ -508,29 +509,29 @@ pub fn register_vec_replicate_axioms(env: &mut Environment) {
     let map_rep_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_f"),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("_x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(Expr::BVar(2)),
+                    Node::new(Expr::BVar(1)),
+                    Node::new(Expr::BVar(2)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("n"),
-                    Box::new(nat_ty.clone()),
-                    Box::new(Expr::Pi(
+                    Node::new(nat_ty.clone()),
+                    Node::new(Expr::Pi(
                         BinderInfo::Default,
                         Name::str("_x"),
-                        Box::new(Expr::BVar(3)),
-                        Box::new(Expr::Const(Name::str("True"), vec![])),
+                        Node::new(Expr::BVar(3)),
+                        Node::new(Expr::Const(Name::str("True"), vec![])),
                     )),
                 )),
             )),

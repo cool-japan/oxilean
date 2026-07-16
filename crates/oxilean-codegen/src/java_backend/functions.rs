@@ -30,6 +30,7 @@ pub(super) fn boxed_to_ref(ty: &JavaType) -> std::string::String {
 pub(super) fn lcnf_type_to_java(ty: &LcnfType) -> JavaType {
     match ty {
         LcnfType::Nat => JavaType::Long,
+        LcnfType::Int => JavaType::Long,
         LcnfType::LcnfString => JavaType::String,
         LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => JavaType::Void,
         LcnfType::Object => JavaType::Object,

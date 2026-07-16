@@ -81,6 +81,13 @@ pub enum InvalidationReason {
     Missing,
     /// A forced rebuild was requested regardless of content or dependencies.
     ForceRebuild,
+    /// The oxilake.lock file changed (dependency versions were re-resolved).
+    LockfileChanged {
+        /// The lockfile hash observed previously (hex string).
+        prev_hash: String,
+        /// The lockfile hash observed now (hex string).
+        new_hash: String,
+    },
 }
 
 impl std::fmt::Display for InvalidationReason {
@@ -92,6 +99,12 @@ impl std::fmt::Display for InvalidationReason {
             }
             InvalidationReason::Missing => write!(f, "missing"),
             InvalidationReason::ForceRebuild => write!(f, "force_rebuild"),
+            InvalidationReason::LockfileChanged {
+                prev_hash,
+                new_hash,
+            } => {
+                write!(f, "lockfile_changed(prev={}, new={})", prev_hash, new_hash)
+            }
         }
     }
 }

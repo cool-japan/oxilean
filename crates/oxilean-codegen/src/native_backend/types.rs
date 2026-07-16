@@ -716,6 +716,14 @@ impl NativeBackend {
                     });
                     self.stats.instructions_generated += 1;
                 }
+                LcnfLit::Int(i) => {
+                    block.push_inst(NativeInst::LoadImm {
+                        dst,
+                        ty: NativeType::I64,
+                        value: *i,
+                    });
+                    self.stats.instructions_generated += 1;
+                }
                 LcnfLit::Str(s) => {
                     block.push_inst(NativeInst::Call {
                         dst: Some(dst),
@@ -823,6 +831,16 @@ impl NativeBackend {
                     self.stats.instructions_generated += 1;
                     NativeValue::Reg(r)
                 }
+                LcnfLit::Int(i) => {
+                    let r = self.alloc_vreg();
+                    block.push_inst(NativeInst::LoadImm {
+                        dst: r,
+                        ty: NativeType::I64,
+                        value: *i,
+                    });
+                    self.stats.instructions_generated += 1;
+                    NativeValue::Reg(r)
+                }
                 LcnfLit::Str(s) => {
                     let r = self.alloc_vreg();
                     block.push_inst(NativeInst::Call {
@@ -843,6 +861,7 @@ impl NativeBackend {
         match arg {
             LcnfArg::Var(id) => NativeValue::Reg(self.get_var_reg(*id)),
             LcnfArg::Lit(LcnfLit::Nat(n)) => NativeValue::Imm(*n as i64),
+            LcnfArg::Lit(LcnfLit::Int(i)) => NativeValue::Imm(*i),
             LcnfArg::Lit(LcnfLit::Str(s)) => NativeValue::StrRef(s.clone()),
             LcnfArg::Erased | LcnfArg::Type(_) => NativeValue::Imm(0),
         }

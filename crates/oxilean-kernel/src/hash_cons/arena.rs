@@ -1,8 +1,10 @@
 //! `HashConsArena` — deduplicated `Arena<Expr>`.
 
 use crate::arena::{Arena, Idx};
+use crate::Node;
 use crate::{BinderInfo, Expr, FVarId, Level, Literal, Name};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::key::ExprKey;
 use super::stats::HashConsStats;
@@ -146,28 +148,28 @@ impl HashConsArena {
     /// extra clones occur on a cache hit.
     pub fn mk_app(&mut self, f_expr: Expr, a_expr: Expr) -> Idx<Expr> {
         let key = ExprKey::app(f_expr.clone(), a_expr.clone());
-        let expr = Expr::App(Box::new(f_expr), Box::new(a_expr));
+        let expr = Expr::App(Node::new(f_expr), Node::new(a_expr));
         self.get_or_insert(key, expr)
     }
 
     /// Allocate (or deduplicate) `Expr::Lam(bi, name, dom, body)`.
     pub fn mk_lam(&mut self, bi: BinderInfo, name: Name, dom: Expr, body: Expr) -> Idx<Expr> {
         let key = ExprKey::lam(bi, name.clone(), dom.clone(), body.clone());
-        let expr = Expr::Lam(bi, name, Box::new(dom), Box::new(body));
+        let expr = Expr::Lam(bi, name, Node::new(dom), Node::new(body));
         self.get_or_insert(key, expr)
     }
 
     /// Allocate (or deduplicate) `Expr::Pi(bi, name, dom, cod)`.
     pub fn mk_pi(&mut self, bi: BinderInfo, name: Name, dom: Expr, cod: Expr) -> Idx<Expr> {
         let key = ExprKey::pi(bi, name.clone(), dom.clone(), cod.clone());
-        let expr = Expr::Pi(bi, name, Box::new(dom), Box::new(cod));
+        let expr = Expr::Pi(bi, name, Node::new(dom), Node::new(cod));
         self.get_or_insert(key, expr)
     }
 
     /// Allocate (or deduplicate) `Expr::Let(name, ty, val, body)`.
     pub fn mk_let(&mut self, name: Name, ty: Expr, val: Expr, body: Expr) -> Idx<Expr> {
         let key = ExprKey::let_(name.clone(), ty.clone(), val.clone(), body.clone());
-        let expr = Expr::Let(name, Box::new(ty), Box::new(val), Box::new(body));
+        let expr = Expr::Let(name, Node::new(ty), Node::new(val), Node::new(body));
         self.get_or_insert(key, expr)
     }
 
@@ -181,7 +183,7 @@ impl HashConsArena {
     /// Allocate (or deduplicate) `Expr::Proj(name, field_idx, struct_expr)`.
     pub fn mk_proj(&mut self, name: Name, field_idx: u32, struct_expr: Expr) -> Idx<Expr> {
         let key = ExprKey::proj(name.clone(), field_idx, struct_expr.clone());
-        let expr = Expr::Proj(name, field_idx, Box::new(struct_expr));
+        let expr = Expr::Proj(name, field_idx, Node::new(struct_expr));
         self.get_or_insert(key, expr)
     }
 }
@@ -334,8 +336,8 @@ mod tests {
     #[test]
     fn test_mk_lit_nat_deduplicates() {
         let mut hc = HashConsArena::new();
-        let i1 = hc.mk_lit(Literal::Nat(42));
-        let i2 = hc.mk_lit(Literal::Nat(42));
+        let i1 = hc.mk_lit(Literal::nat(42));
+        let i2 = hc.mk_lit(Literal::nat(42));
         assert_eq!(i1, i2);
     }
 
@@ -441,8 +443,8 @@ mod tests {
         let arr = Expr::Pi(
             BinderInfo::Default,
             Name::Anonymous,
-            Box::new(bv0.clone()),
-            Box::new(bv0.clone()),
+            Node::new(bv0.clone()),
+            Node::new(bv0.clone()),
         );
         let id_type_1 = hc.mk_pi(
             BinderInfo::Default,

@@ -6,6 +6,7 @@ use crate::context::ElabContext;
 use crate::derive::{ConstructorInfo, DerivableClass, Deriver, TypeInfo};
 use crate::elaborate::{elaborate_expr, elaborate_with_expected_type, ElabError};
 use crate::infer::TypeInferencer;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Environment, Expr, Level, Name};
 use oxilean_parse::{AttributeKind, Binder, Decl, Located, SurfaceExpr, WhereClause};
 
@@ -237,7 +238,7 @@ fn build_type_info(env: &Environment, type_name: &str) -> Option<TypeInfo> {
     let mut ty = &iv.common.ty;
     for _ in 0..iv.num_params {
         if let Expr::Pi(bi, param_name, param_ty, body) = ty {
-            params.push((param_name.clone(), *param_ty.clone(), *bi));
+            params.push((param_name.clone(), (**param_ty).clone(), *bi));
             ty = body;
         } else {
             break;
@@ -258,7 +259,7 @@ fn build_type_info(env: &Environment, type_name: &str) -> Option<TypeInfo> {
             let mut field_idx = 0u32;
             while field_idx < cv.num_fields {
                 if let Expr::Pi(_, field_name, field_ty, body) = ct {
-                    fields.push((field_name.clone(), *field_ty.clone()));
+                    fields.push((field_name.clone(), (**field_ty).clone()));
                     ct = body;
                     field_idx += 1;
                 } else {
@@ -314,8 +315,8 @@ fn elaborate_derive(
             }
             let instance_name = Name::str(format!("{}_{}", type_name, inst.to_lowercase()));
             let instance_ty = Expr::App(
-                Box::new(Expr::Const(Name::str(inst), vec![])),
-                Box::new(Expr::Const(Name::str(type_name), vec![])),
+                Node::new(Expr::Const(Name::str(inst), vec![])),
+                Node::new(Expr::Const(Name::str(type_name), vec![])),
             );
             return Ok(PendingDecl::Axiom {
                 name: instance_name,
@@ -468,8 +469,8 @@ fn elaborate_inductive(
         full_ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             pname,
-            Box::new(pty),
-            Box::new(full_ty),
+            Node::new(pty),
+            Node::new(full_ty),
         );
     }
     Ok(PendingDecl::Inductive {
@@ -580,8 +581,8 @@ fn elaborate_where_body(
     Ok(Expr::Lam(
         convert_binder_kind_local(&binder.info),
         Name::str(&binder.name),
-        Box::new(ty),
-        Box::new(inner),
+        Node::new(ty),
+        Node::new(inner),
     ))
 }
 /// Build a Pi type from binders and result type.
@@ -604,8 +605,8 @@ fn build_pi_from_binders(
         result = Expr::Pi(
             convert_binder_kind_local(&binder.info),
             Name::str(&binder.name),
-            Box::new(ty),
-            Box::new(result),
+            Node::new(ty),
+            Node::new(result),
         );
     }
     Ok(result)
@@ -742,7 +743,7 @@ mod tests {
         let pd = PendingDecl::Definition {
             name: Name::str("foo"),
             ty: Expr::Sort(Level::zero()),
-            val: Expr::Lit(oxilean_kernel::Literal::Nat(42)),
+            val: Expr::Lit(oxilean_kernel::Literal::nat(42)),
             attrs: vec![],
         };
         assert_eq!(pd.name(), &Name::str("foo"));
@@ -1157,8 +1158,8 @@ mod tests {
         let pi = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         assert!(validate_axiom_type(&pi).is_ok());
     }
@@ -1546,8 +1547,8 @@ mod elab_decl_extra_tests {
     #[test]
     fn test_expr_contains_sorry_nested() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("sorry"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("sorry"), vec![])),
         );
         assert!(expr_contains_sorry(&e));
     }

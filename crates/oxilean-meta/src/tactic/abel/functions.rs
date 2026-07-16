@@ -11,6 +11,7 @@
 use super::types::{AbelConfig, AbelNormalForm, AbelTerm};
 use crate::basic::MetaContext;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Literal, Name};
 
 // ---------------------------------------------------------------------------
@@ -40,11 +41,11 @@ fn extract_eq_sides(expr: &Expr) -> Option<(Expr, Expr)> {
         if let Expr::App(func2, lhs) = func.as_ref() {
             if let Expr::App(eq_expr, _ty) = func2.as_ref() {
                 if is_eq_const(eq_expr) {
-                    return Some((*lhs.clone(), *rhs.clone()));
+                    return Some(((**lhs).clone(), (**rhs).clone()));
                 }
             }
             if is_eq_const(func2) {
-                return Some((*lhs.clone(), *rhs.clone()));
+                return Some(((**lhs).clone(), (**rhs).clone()));
             }
         }
     }
@@ -81,7 +82,7 @@ fn atom_key(expr: &Expr) -> String {
 /// - Anything else → `Atom(expr)`
 pub fn expr_to_abel(expr: &Expr) -> AbelTerm {
     match expr {
-        Expr::Lit(Literal::Nat(0)) => AbelTerm::Zero,
+        Expr::Lit(Literal::Nat(n)) if n.is_zero() => AbelTerm::Zero,
         Expr::Const(name, _)
             if matches!(name.to_string().as_str(), "Nat.zero" | "Int.zero" | "zero") =>
         {
@@ -112,7 +113,7 @@ pub fn expr_to_abel(expr: &Expr) -> AbelTerm {
                         "HMul.hMul" | "Mul.mul" | "mul" => {
                             // Detect `k * expr` where `k` is a literal integer.
                             if let AbelTerm::Atom(Expr::Lit(Literal::Nat(n))) = &abel_lhs {
-                                let k = *n as i64;
+                                let k = n.to_u64().unwrap_or(u64::MAX) as i64;
                                 return AbelTerm::SMul(k, Box::new(abel_rhs));
                             }
                             // Otherwise treat as an opaque atom.
@@ -214,8 +215,8 @@ pub fn abel_to_expr(nf: &AbelNormalForm) -> Expr {
     for (coeff, atom) in it {
         let rhs = coeff_atom_to_expr(*coeff, atom);
         acc = Expr::App(
-            Box::new(Expr::App(Box::new(add_const.clone()), Box::new(acc))),
-            Box::new(rhs),
+            Node::new(Expr::App(Node::new(add_const.clone()), Node::new(acc))),
+            Node::new(rhs),
         );
     }
     acc
@@ -227,18 +228,18 @@ fn coeff_atom_to_expr(coeff: i64, atom: &Expr) -> Expr {
         1 => atom.clone(),
         -1 => {
             let neg = Expr::Const(Name::str("Neg.neg"), vec![]);
-            Expr::App(Box::new(neg), Box::new(atom.clone()))
+            Expr::App(Node::new(neg), Node::new(atom.clone()))
         }
         k => {
-            let lit = Expr::Lit(oxilean_kernel::Literal::Nat(k.unsigned_abs()));
+            let lit = Expr::Lit(oxilean_kernel::Literal::nat(k.unsigned_abs()));
             let mul = Expr::Const(Name::str("HMul.hMul"), vec![]);
             let scaled = Expr::App(
-                Box::new(Expr::App(Box::new(mul), Box::new(lit))),
-                Box::new(atom.clone()),
+                Node::new(Expr::App(Node::new(mul), Node::new(lit))),
+                Node::new(atom.clone()),
             );
             if k < 0 {
                 let neg = Expr::Const(Name::str("Neg.neg"), vec![]);
-                Expr::App(Box::new(neg), Box::new(scaled))
+                Expr::App(Node::new(neg), Node::new(scaled))
             } else {
                 scaled
             }
@@ -332,22 +333,28 @@ mod tests {
     }
 
     fn nat_lit(n: u64) -> Expr {
-        Expr::Lit(Literal::Nat(n))
+        Expr::Lit(Literal::nat(n))
     }
 
     fn add_expr(a: Expr, b: Expr) -> Expr {
         let add = Expr::Const(Name::str("HAdd.hAdd"), vec![]);
-        Expr::App(Box::new(Expr::App(Box::new(add), Box::new(a))), Box::new(b))
+        Expr::App(
+            Node::new(Expr::App(Node::new(add), Node::new(a))),
+            Node::new(b),
+        )
     }
 
     fn neg_expr(a: Expr) -> Expr {
         let neg = Expr::Const(Name::str("Neg.neg"), vec![]);
-        Expr::App(Box::new(neg), Box::new(a))
+        Expr::App(Node::new(neg), Node::new(a))
     }
 
     fn sub_expr(a: Expr, b: Expr) -> Expr {
         let sub = Expr::Const(Name::str("HSub.hSub"), vec![]);
-        Expr::App(Box::new(Expr::App(Box::new(sub), Box::new(a))), Box::new(b))
+        Expr::App(
+            Node::new(Expr::App(Node::new(sub), Node::new(a))),
+            Node::new(b),
+        )
     }
 
     #[test]

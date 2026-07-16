@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Expr, Level, Literal, Name};
 
 use super::types::{
@@ -295,7 +296,7 @@ mod tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn zero_lit() -> Expr {
-        Expr::Lit(Literal::Nat(0))
+        Expr::Lit(Literal::nat(0))
     }
     #[test]
     fn test_show_config_default() {
@@ -343,7 +344,7 @@ mod tests {
     }
     #[test]
     fn test_show_literal_nat() {
-        let lit = Literal::Nat(42);
+        let lit = Literal::nat(42);
         assert_eq!(show_literal(&lit), "42");
     }
     #[test]
@@ -364,14 +365,14 @@ mod tests {
     }
     #[test]
     fn test_show_expr_lit() {
-        let e = Expr::Lit(Literal::Nat(7));
+        let e = Expr::Lit(Literal::nat(7));
         assert_eq!(show_expr(&e), "7");
     }
     #[test]
     fn test_show_expr_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
         let a = Expr::Const(Name::str("a"), vec![]);
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let app = Expr::App(Node::new(f), Node::new(a));
         let s = show_expr(&app);
         assert!(s.contains("f"));
         assert!(s.contains("a"));
@@ -394,8 +395,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let s = show_expr(&lam);
         assert!(s.contains("fun"));
@@ -408,8 +409,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(dom),
-            Box::new(cod),
+            Node::new(dom),
+            Node::new(cod),
         );
         let s = show_expr(&pi);
         assert!(s.contains("→") || s.contains("->"));
@@ -421,8 +422,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(dom),
-            Box::new(cod),
+            Node::new(dom),
+            Node::new(cod),
         );
         let s = show_expr(&pi);
         assert!(s.contains("∀") || s.contains("forall"));
@@ -432,7 +433,12 @@ mod tests {
         let ty = nat_const();
         let val = zero_lit();
         let body = Expr::BVar(0);
-        let let_e = Expr::Let(Name::str("x"), Box::new(ty), Box::new(val), Box::new(body));
+        let let_e = Expr::Let(
+            Name::str("x"),
+            Node::new(ty),
+            Node::new(val),
+            Node::new(body),
+        );
         let s = show_expr(&let_e);
         assert!(s.contains("let"));
         assert!(s.contains("x"));
@@ -441,7 +447,7 @@ mod tests {
     fn test_show_expr_depth_limit() {
         let cfg = ShowConfig::default().with_depth(0);
         let e = Expr::Const(Name::str("Nat"), vec![]);
-        let app = Expr::App(Box::new(e.clone()), Box::new(e));
+        let app = Expr::App(Node::new(e.clone()), Node::new(e));
         let s = show_expr_cfg(&app, &cfg, 0);
         let _ = s;
     }
@@ -656,9 +662,9 @@ pub fn build_show_env(env: &mut oxilean_kernel::Environment) -> Result<(), Strin
         }
     };
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let show_of = |ty: Expr| -> Expr { app(cst("Show"), ty) };
@@ -670,12 +676,12 @@ pub fn build_show_env(env: &mut oxilean_kernel::Environment) -> Result<(), Strin
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("inst"),
-                Box::new(show_alpha),
-                Box::new(arr(Expr::BVar(1), string_ty)),
+                Node::new(show_alpha),
+                Node::new(arr(Expr::BVar(1), string_ty)),
             )),
         )
     };
@@ -693,12 +699,12 @@ pub fn build_show_env(env: &mut oxilean_kernel::Environment) -> Result<(), Strin
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("inst"),
-                Box::new(show_alpha),
-                Box::new(show_option_alpha),
+                Node::new(show_alpha),
+                Node::new(show_option_alpha),
             )),
         )
     };
@@ -710,12 +716,12 @@ pub fn build_show_env(env: &mut oxilean_kernel::Environment) -> Result<(), Strin
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("inst"),
-                Box::new(show_alpha),
-                Box::new(show_list_alpha),
+                Node::new(show_alpha),
+                Node::new(show_list_alpha),
             )),
         )
     };
@@ -729,20 +735,20 @@ pub fn build_show_env(env: &mut oxilean_kernel::Environment) -> Result<(), Strin
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 Bi::Implicit,
                 Name::str("β"),
-                Box::new(type1()),
-                Box::new(Expr::Pi(
+                Node::new(type1()),
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("instα"),
-                    Box::new(show_alpha),
-                    Box::new(Expr::Pi(
+                    Node::new(show_alpha),
+                    Node::new(Expr::Pi(
                         Bi::InstImplicit,
                         Name::str("instβ"),
-                        Box::new(show_beta),
-                        Box::new(show_prod),
+                        Node::new(show_beta),
+                        Node::new(show_prod),
                     )),
                 )),
             )),
@@ -830,19 +836,19 @@ pub(super) fn shw_ext_show_is_function_to_string(
     let ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             oxilean_kernel::BinderInfo::InstImplicit,
             Name::str("inst"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Show"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Show"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 oxilean_kernel::BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::BVar(1)),
-                Box::new(string_ty.clone()),
+                Node::new(Expr::BVar(1)),
+                Node::new(string_ty.clone()),
             )),
         )),
     );
@@ -863,8 +869,8 @@ pub(super) fn shw_ext_show_nat_decimal(
     let ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.natDecimal"),
@@ -880,8 +886,8 @@ pub(super) fn shw_ext_show_int_signed(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("i"),
-        Box::new(Expr::Const(Name::str("Int"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Int"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.intSigned"),
@@ -899,8 +905,8 @@ pub(super) fn shw_ext_show_bool_canonical(
     let ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("b"),
-        Box::new(Expr::Const(Name::str("Bool"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Bool"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.boolCanonical"),
@@ -918,8 +924,8 @@ pub(super) fn shw_ext_show_char_quoted(
     let ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("c"),
-        Box::new(Expr::Const(Name::str("Char"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Char"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.charQuoted"),
@@ -937,8 +943,8 @@ pub(super) fn shw_ext_show_float_decimal(
     let ty = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("f"),
-        Box::new(Expr::Const(Name::str("Float"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Float"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.floatDecimal"),
@@ -956,26 +962,26 @@ pub(super) fn shw_ext_show_list_bracketed(
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let alpha = Expr::BVar(0);
     let show_alpha = Expr::App(
-        Box::new(Expr::Const(Name::str("Show"), vec![])),
-        Box::new(alpha.clone()),
+        Node::new(Expr::Const(Name::str("Show"), vec![])),
+        Node::new(alpha.clone()),
     );
     let list_alpha = Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("List"), vec![])),
+        Node::new(alpha),
     );
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(show_alpha),
-            Box::new(Expr::Pi(
+            Node::new(show_alpha),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("_"),
-                Box::new(list_alpha),
-                Box::new(Expr::Const(Name::str("String"), vec![])),
+                Node::new(list_alpha),
+                Node::new(Expr::Const(Name::str("String"), vec![])),
             )),
         )),
     );
@@ -995,26 +1001,26 @@ pub(super) fn shw_ext_show_option_canonical(
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let alpha = Expr::BVar(0);
     let show_alpha = Expr::App(
-        Box::new(Expr::Const(Name::str("Show"), vec![])),
-        Box::new(alpha.clone()),
+        Node::new(Expr::Const(Name::str("Show"), vec![])),
+        Node::new(alpha.clone()),
     );
     let opt_alpha = Expr::App(
-        Box::new(Expr::Const(Name::str("Option"), vec![])),
-        Box::new(alpha),
+        Node::new(Expr::Const(Name::str("Option"), vec![])),
+        Node::new(alpha),
     );
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(show_alpha),
-            Box::new(Expr::Pi(
+            Node::new(show_alpha),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("_"),
-                Box::new(opt_alpha),
-                Box::new(Expr::Const(Name::str("String"), vec![])),
+                Node::new(opt_alpha),
+                Node::new(Expr::Const(Name::str("String"), vec![])),
             )),
         )),
     );
@@ -1033,36 +1039,36 @@ pub(super) fn shw_ext_show_pair_tuple(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("instα"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Show"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Show"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Pi(
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("instβ"),
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Show"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Show"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::Pi(
+                    Node::new(Expr::Pi(
                         Bi::Default,
                         Name::str("_"),
-                        Box::new(Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Prod"), vec![])),
-                                Box::new(Expr::BVar(3)),
+                        Node::new(Expr::App(
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Prod"), vec![])),
+                                Node::new(Expr::BVar(3)),
                             )),
-                            Box::new(Expr::BVar(2)),
+                            Node::new(Expr::BVar(2)),
                         )),
-                        Box::new(Expr::Const(Name::str("String"), vec![])),
+                        Node::new(Expr::Const(Name::str("String"), vec![])),
                     )),
                 )),
             )),
@@ -1085,22 +1091,22 @@ pub(super) fn shw_ext_show_either_tagged(
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("_"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Sum"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Sum"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Const(Name::str("String"), vec![])),
+                Node::new(Expr::Const(Name::str("String"), vec![])),
             )),
         )),
     );
@@ -1121,22 +1127,22 @@ pub(super) fn shw_ext_show_result_canonical(
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("ε"),
-            Box::new(type1),
-            Box::new(Expr::Pi(
+            Node::new(type1),
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("_"),
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Result"), vec![])),
-                        Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Result"), vec![])),
+                        Node::new(Expr::BVar(1)),
                     )),
-                    Box::new(Expr::BVar(0)),
+                    Node::new(Expr::BVar(0)),
                 )),
-                Box::new(Expr::Const(Name::str("String"), vec![])),
+                Node::new(Expr::Const(Name::str("String"), vec![])),
             )),
         )),
     );
@@ -1157,19 +1163,19 @@ pub(super) fn shw_ext_show_read_roundtrip(
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("instShow"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Show"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Show"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("x"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Const(Name::str("Prop"), vec![])),
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Const(Name::str("Prop"), vec![])),
             )),
         )),
     );
@@ -1199,8 +1205,8 @@ pub(super) fn shw_ext_pretty_doc_text(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("s"),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
-        Box::new(Expr::Const(Name::str("PrettyDoc"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("PrettyDoc"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("PrettyDoc.text"),
@@ -1219,12 +1225,12 @@ pub(super) fn shw_ext_pretty_doc_concat(
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("a"),
-        Box::new(doc()),
-        Box::new(Expr::Pi(
+        Node::new(doc()),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("b"),
-            Box::new(doc()),
-            Box::new(doc()),
+            Node::new(doc()),
+            Node::new(doc()),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1243,12 +1249,12 @@ pub(super) fn shw_ext_pretty_doc_nest(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("n"),
-        Box::new(nat()),
-        Box::new(Expr::Pi(
+        Node::new(nat()),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("d"),
-            Box::new(doc()),
-            Box::new(doc()),
+            Node::new(doc()),
+            Node::new(doc()),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1268,22 +1274,22 @@ pub(super) fn shw_ext_display_vs_debug(
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("display"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Show"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Show"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 Bi::Default,
                 Name::str("debug"),
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Show"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Show"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::Const(Name::str("Prop"), vec![])),
+                Node::new(Expr::Const(Name::str("Prop"), vec![])),
             )),
         )),
     );
@@ -1305,15 +1311,15 @@ pub(super) fn shw_ext_show_recursive_terminates(
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::Pi(
+        Node::new(type1),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Show"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Show"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(prop),
+            Node::new(prop),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1334,21 +1340,21 @@ pub(super) fn shw_ext_show_polymorphic_nat_trans(
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("F"),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("_"),
-            Box::new(type1.clone()),
-            Box::new(type1.clone()),
+            Node::new(type1.clone()),
+            Node::new(type1.clone()),
         )),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1.clone()),
-            Box::new(Expr::Pi(
+            Node::new(type1.clone()),
+            Node::new(Expr::Pi(
                 Bi::Implicit,
                 Name::str("β"),
-                Box::new(type1),
-                Box::new(prop),
+                Node::new(type1),
+                Node::new(prop),
             )),
         )),
     );
@@ -1396,8 +1402,8 @@ pub(super) fn shw_ext_shows_to_string(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("_"),
-        Box::new(show_s_ty),
-        Box::new(string_ty),
+        Node::new(show_s_ty),
+        Node::new(string_ty),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("ShowS.toString"),
@@ -1413,19 +1419,19 @@ pub(super) fn shw_ext_tabular_format(env: &mut oxilean_kernel::Environment) -> R
     let type1 = Expr::Sort(Level::succ(Level::zero()));
     let string_ty = Expr::Const(Name::str("String"), vec![]);
     let list_string = Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![])),
-        Box::new(string_ty.clone()),
+        Node::new(Expr::Const(Name::str("List"), vec![])),
+        Node::new(string_ty.clone()),
     );
     let list_list_string = Expr::App(
-        Box::new(Expr::Const(Name::str("List"), vec![])),
-        Box::new(list_string),
+        Node::new(Expr::Const(Name::str("List"), vec![])),
+        Node::new(list_string),
     );
     let _ = type1;
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("rows"),
-        Box::new(list_list_string),
-        Box::new(string_ty),
+        Node::new(list_list_string),
+        Node::new(string_ty),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.tabularFormat"),
@@ -1443,12 +1449,12 @@ pub(super) fn shw_ext_indented_format(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("indent"),
-        Box::new(nat_ty),
-        Box::new(Expr::Pi(
+        Node::new(nat_ty),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("s"),
-            Box::new(string_ty.clone()),
-            Box::new(string_ty),
+            Node::new(string_ty.clone()),
+            Node::new(string_ty),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1465,8 +1471,8 @@ pub(super) fn shw_ext_show_nat_binary(env: &mut oxilean_kernel::Environment) -> 
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.natBinary"),
@@ -1482,8 +1488,8 @@ pub(super) fn shw_ext_show_nat_hex(env: &mut oxilean_kernel::Environment) -> Res
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.natHex"),
@@ -1499,8 +1505,8 @@ pub(super) fn shw_ext_show_nat_octal(env: &mut oxilean_kernel::Environment) -> R
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("n"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.natOctal"),
@@ -1518,12 +1524,12 @@ pub(super) fn shw_ext_show_float_precision(
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("prec"),
-        Box::new(Expr::Const(Name::str("Nat"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Nat"), vec![])),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("f"),
-            Box::new(Expr::Const(Name::str("Float"), vec![])),
-            Box::new(Expr::Const(Name::str("String"), vec![])),
+            Node::new(Expr::Const(Name::str("Float"), vec![])),
+            Node::new(Expr::Const(Name::str("String"), vec![])),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1541,10 +1547,10 @@ pub(super) fn shw_ext_derive_show(env: &mut oxilean_kernel::Environment) -> Resu
     let ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1),
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Show"), vec![])),
-            Box::new(Expr::BVar(0)),
+        Node::new(type1),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Show"), vec![])),
+            Node::new(Expr::BVar(0)),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1564,12 +1570,12 @@ pub(super) fn shw_ext_show_diagnostic_with_location(
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("msg"),
-        Box::new(string_ty.clone()),
-        Box::new(Expr::Pi(
+        Node::new(string_ty.clone()),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("loc"),
-            Box::new(string_ty.clone()),
-            Box::new(string_ty),
+            Node::new(string_ty.clone()),
+            Node::new(string_ty),
         )),
     );
     match env.add(Declaration::Axiom {
@@ -1602,8 +1608,8 @@ pub(super) fn shw_ext_show_unit_canonical(
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("_"),
-        Box::new(Expr::Const(Name::str("Unit"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("Unit"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Show.unitCanonical"),
@@ -1648,8 +1654,8 @@ pub(super) fn shw_ext_display_no_quoting(
     let ty = Expr::Pi(
         Bi::Default,
         Name::str("s"),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
-        Box::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
+        Node::new(Expr::Const(Name::str("String"), vec![])),
     );
     match env.add(Declaration::Axiom {
         name: Name::str("Display.noQuoting"),

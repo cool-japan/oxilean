@@ -12,6 +12,7 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MetavarKind, MVAR_FVAR_OFFSET};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, FVarId, Level, Name};
 
 /// `cases h` — perform case analysis on a term.
@@ -174,7 +175,7 @@ pub(super) fn build_cases_on_term(induct_name: &Name, cases: &[CasesGoal]) -> Ex
     let mut expr = Expr::Const(rec_name, vec![Level::zero()]);
     for case in cases {
         let branch = mvar_to_fvar_expr(case.mvar_id);
-        expr = Expr::App(Box::new(expr), Box::new(branch));
+        expr = Expr::App(Node::new(expr), Node::new(branch));
     }
     expr
 }
@@ -184,7 +185,7 @@ pub(super) fn build_rec_term(induct_name: &Name, cases: &[InductionGoal]) -> Exp
     let mut expr = Expr::Const(rec_name, vec![Level::zero()]);
     for case in cases {
         let branch = mvar_to_fvar_expr(case.mvar_id);
-        expr = Expr::App(Box::new(expr), Box::new(branch));
+        expr = Expr::App(Node::new(expr), Node::new(branch));
     }
     expr
 }
@@ -476,8 +477,8 @@ mod extended_cases_tests {
     #[test]
     fn test_head_const_name_app() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("List"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("List"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         assert_eq!(head_const_name(&e), Some(Name::str("List")));
     }
@@ -494,11 +495,11 @@ mod extended_cases_tests {
     #[test]
     fn test_app_arg_count() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(Expr::Const(Name::str("a"), vec![])),
             )),
-            Box::new(Expr::Const(Name::str("b"), vec![])),
+            Node::new(Expr::Const(Name::str("b"), vec![])),
         );
         assert_eq!(app_arg_count(&e), 2);
     }
@@ -508,8 +509,8 @@ mod extended_cases_tests {
         let b = Expr::Const(Name::str("b"), vec![]);
         let f = Expr::Const(Name::str("f"), vec![]);
         let e = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a))),
-            Box::new(b),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a))),
+            Node::new(b),
         );
         let (head, args) = unfold_app(&e);
         assert!(matches!(head, Expr::Const(n, _) if n == & Name::str("f")));
@@ -518,8 +519,8 @@ mod extended_cases_tests {
     #[test]
     fn test_collect_const_names() {
         let e = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::Const(Name::str("a"), vec![])),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::Const(Name::str("a"), vec![])),
         );
         let names = collect_const_names(&e);
         assert!(names.contains(&Name::str("f")));
@@ -590,8 +591,8 @@ pub fn mk_pi(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("_"),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 /// Make a Lambda `fun x => body` with default binder info.
@@ -600,8 +601,8 @@ pub fn mk_lam(body: Expr) -> Expr {
     Expr::Lam(
         oxilean_kernel::BinderInfo::Default,
         Name::str("_"),
-        Box::new(Expr::Sort(Level::zero())),
-        Box::new(body),
+        Node::new(Expr::Sort(Level::zero())),
+        Node::new(body),
     )
 }
 /// Count distinct FVar ids in an expression.
@@ -688,16 +689,16 @@ mod extended_cases_tests2 {
     #[test]
     fn test_count_fvars() {
         let e = Expr::App(
-            Box::new(Expr::FVar(FVarId(1))),
-            Box::new(Expr::FVar(FVarId(2))),
+            Node::new(Expr::FVar(FVarId(1))),
+            Node::new(Expr::FVar(FVarId(2))),
         );
         assert_eq!(count_fvars(&e), 2);
     }
     #[test]
     fn test_count_fvars_duplicates() {
         let e = Expr::App(
-            Box::new(Expr::FVar(FVarId(1))),
-            Box::new(Expr::FVar(FVarId(1))),
+            Node::new(Expr::FVar(FVarId(1))),
+            Node::new(Expr::FVar(FVarId(1))),
         );
         assert_eq!(count_fvars(&e), 1);
     }

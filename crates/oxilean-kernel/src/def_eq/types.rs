@@ -4,13 +4,17 @@
 
 use super::functions::*;
 use crate::equiv_manager::EquivManager;
-use crate::expr_util::{get_app_args, get_app_fn, has_loose_bvar};
+use crate::expr_util::{
+    get_app_args, get_app_fn, get_app_fn_args, has_loose_bvar, has_loose_bvars, mk_app,
+};
 use crate::instantiate::instantiate_type_lparams;
 use crate::level;
 use crate::reduce::{Reducer, ReducibilityHint, TransparencyMode};
 use crate::subst::instantiate;
+use crate::Node;
 use crate::{Environment, Expr, Level};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// A tagged union for representing a simple two-case discriminated union.
 #[allow(dead_code)]
@@ -602,7 +606,7 @@ impl<T: Default + Clone + PartialEq> SparseVec<T> {
 /// A counter that can measure elapsed time between snapshots.
 #[allow(dead_code)]
 pub struct Stopwatch {
-    start: std::time::Instant,
+    start: crate::wall_clock::Instant,
     splits: Vec<f64>,
 }
 #[allow(dead_code)]
@@ -610,7 +614,7 @@ impl Stopwatch {
     /// Creates and starts a new stopwatch.
     pub fn start() -> Self {
         Self {
-            start: std::time::Instant::now(),
+            start: crate::wall_clock::Instant::now(),
             splits: Vec::new(),
         }
     }
@@ -932,7 +936,7 @@ pub struct TokenBucket {
     capacity: u64,
     tokens: u64,
     refill_per_ms: u64,
-    last_refill: std::time::Instant,
+    last_refill: crate::wall_clock::Instant,
 }
 #[allow(dead_code)]
 impl TokenBucket {
@@ -942,7 +946,7 @@ impl TokenBucket {
             capacity,
             tokens: capacity,
             refill_per_ms,
-            last_refill: std::time::Instant::now(),
+            last_refill: crate::wall_clock::Instant::now(),
         }
     }
     /// Attempts to consume `n` tokens.  Returns `true` on success.
@@ -956,7 +960,7 @@ impl TokenBucket {
         }
     }
     fn refill(&mut self) {
-        let now = std::time::Instant::now();
+        let now = crate::wall_clock::Instant::now();
         let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
         if elapsed_ms > 0 {
             let new_tokens = elapsed_ms * self.refill_per_ms;
@@ -1265,7 +1269,35 @@ pub struct DefEqChecker<'env> {
     cache: HashMap<(Expr, Expr), bool>,
     equiv_manager: EquivManager,
     proof_irrelevance: bool,
+    /// Domain types of the binders the checker has descended under
+    /// (outermost first). Entry `i` is expressed in the context of entries
+    /// `0..i`, exactly like a de Bruijn telescope. This lets
+    /// `Self::quick_infer_type` type loose bound variables, which the
+    /// type-*dependent* rules (structure eta, unit-like equality, proof
+    /// irrelevance) need when comparing open `Pi`/`Lam` bodies — Lean's
+    /// kernel gets the same information from its local context.
+    binder_types: Vec<Expr>,
+    /// Types of the free variables the surrounding `TypeChecker` has opened
+    /// (its local context), keyed by `FVarId`. This lets
+    /// `Self::quick_infer_type` type FVars, which one-sided eta expansion
+    /// (`eta_expand_one`) needs when a Pi-bound function is compared against
+    /// a lambda — e.g. Lean core's `funext`, where `f` must eta-expand to
+    /// match `fun x => extfunApp (Quot.mk eqv f) x`. Lean's kernel reads the
+    /// same information from its local context.
+    fvar_types: HashMap<u64, Expr>,
+    /// The next id for a local free variable minted by
+    /// [`Self::is_def_eq_under`] when opening a binder. Dispensed from a
+    /// dedicated high range ([`DEF_EQ_OPENED_FVAR_BASE`]) so ids never
+    /// collide with the surrounding `TypeChecker`'s (which are dispensed
+    /// sequentially from 0 — reaching this range would take 2^62 locals).
+    next_opened_fvar: u64,
 }
+/// Base id for binder-opening free variables minted by the def-eq checker.
+const DEF_EQ_OPENED_FVAR_BASE: u64 = 1 << 62;
+/// Maximum AST size (in nodes) of either side of a pair retained in the
+/// def-eq cache / equivalence manager. Oversized pairs are recomputed
+/// instead of retained; verdicts are unchanged.
+const DEF_EQ_CACHE_MAX_NODES: usize = 4096;
 impl<'env> DefEqChecker<'env> {
     /// Create a new definitional equality checker.
     pub fn new(env: &'env Environment) -> Self {
@@ -1275,7 +1307,30 @@ impl<'env> DefEqChecker<'env> {
             cache: HashMap::new(),
             equiv_manager: EquivManager::new(),
             proof_irrelevance: true,
+            binder_types: Vec::new(),
+            fvar_types: HashMap::new(),
+            next_opened_fvar: DEF_EQ_OPENED_FVAR_BASE,
         }
+    }
+    /// Record the type of a free variable opened by the surrounding
+    /// type checker, so `Self::quick_infer_type` can type it.
+    ///
+    /// `FVarId`s are dispensed monotonically by the `TypeChecker` and never
+    /// reused, so recorded types are stable for the checker's lifetime and
+    /// cached def-eq verdicts stay sound. Defensively, if a caller *does*
+    /// re-bind an id to a different type (only possible through the public
+    /// `TypeChecker::push_local`), the caches are invalidated.
+    pub fn record_fvar_type(&mut self, id: crate::FVarId, ty: Expr) {
+        if let Some(prev) = self.fvar_types.get(&id.0) {
+            if *prev != ty {
+                self.cache.clear();
+                self.equiv_manager.clear();
+            }
+        }
+        // Mirror into the reducer so K-like iota reduction can type recursor
+        // majors mentioning this free variable during WHNF.
+        self.reducer.record_fvar_type(id, ty.clone());
+        self.fvar_types.insert(id.0, ty);
     }
     /// Disable proof irrelevance for this checker.
     pub fn set_proof_irrelevance(&mut self, enabled: bool) {
@@ -1292,24 +1347,76 @@ impl<'env> DefEqChecker<'env> {
         if t == s {
             return true;
         }
-        if self.equiv_manager.is_equiv(t, s) {
-            return true;
-        }
-        if self.equiv_manager.is_failure(t, s) {
+        // Resource-fuel degradation (C16): with the budget exhausted only
+        // syntactic equality (above) is decided — `false` here is always
+        // conservative (never a wrong accept), and it breaks the
+        // unfold/whnf/compare loops that would otherwise keep growing
+        // terms. The caller reports the failure as a named resource limit.
+        if crate::fuel::is_exhausted() {
             return false;
         }
-        let key = (t.clone(), s.clone());
-        if let Some(&result) = self.cache.get(&key) {
-            return result;
+        // Context-dependence guard: for OPEN terms under binders the verdict
+        // can depend on the binder-type stack (structure eta / proof
+        // irrelevance type loose BVars via `quick_infer_type`), so only pairs
+        // that are closed — or compared at the top level, where loose BVars
+        // cannot be typed and the rules degrade to structural ones — may
+        // participate in the cache and the equivalence manager.
+        //
+        // Size guard: giant intermediates (multi-million-node reduction
+        // steps) are recomputed rather than retained — retaining every such
+        // pair is what turned Lean core's `Int.add_mul_ediv_right` into a
+        // multi-GiB peak (Init corpus, C16). Never changes a verdict.
+        let cacheable = (self.binder_types.is_empty()
+            || (!has_loose_bvars(t) && !has_loose_bvars(s)))
+            && crate::expr_util::expr_size_within(t, DEF_EQ_CACHE_MAX_NODES)
+            && crate::expr_util::expr_size_within(s, DEF_EQ_CACHE_MAX_NODES);
+        if cacheable {
+            if self.equiv_manager.is_equiv(t, s) {
+                return true;
+            }
+            if self.equiv_manager.is_failure(t, s) {
+                return false;
+            }
+            let key = (t.clone(), s.clone());
+            if let Some(&result) = self.cache.get(&key) {
+                return result;
+            }
         }
         let result = self.is_def_eq_core(t, s);
-        self.cache.insert(key, result);
-        if result {
-            self.equiv_manager.add_equiv(t, s);
-        } else {
-            self.equiv_manager.add_failure(t, s);
+        if cacheable {
+            self.cache.insert((t.clone(), s.clone()), result);
+            if result {
+                self.equiv_manager.add_equiv(t, s);
+            } else {
+                self.equiv_manager.add_failure(t, s);
+            }
         }
         result
+    }
+    /// Compare two binder bodies under a binder of domain type `dom` —
+    /// Lean's `isDefEqBinding`: the binder is *opened* with a fresh, typed
+    /// local free variable and the instantiated bodies are compared.
+    ///
+    /// Opening (rather than comparing the raw bodies with loose BVars under
+    /// a binder-type stack) keeps every subterm locally closed, so every
+    /// reduction step downstream can type what it needs *wherever the redex
+    /// sits*. The decisive case is K-like iota during WHNF: in Lean core's
+    /// `Std.IterStep.noConfusion` (new `ctorIdx`-based scheme, Lean ≥ 4.32)
+    /// the term `(Eq.rec … (Eq.symm … : 0 = ctorIdx t) …).PULift.0 it out`
+    /// is stuck unless the `Eq.rec` major — which mentions the Pi-bound
+    /// `it`/`out` — can be typed; with loose BVars it cannot be (at any
+    /// depth), and the declaration was wrongly rejected.
+    ///
+    /// The minted ids come from a dedicated high range and are never reused,
+    /// so recorded types are stable and the def-eq/whnf caches stay sound.
+    fn is_def_eq_under(&mut self, dom: &Expr, b1: &Expr, b2: &Expr) -> bool {
+        let id = crate::FVarId(self.next_opened_fvar);
+        self.next_opened_fvar += 1;
+        self.record_fvar_type(id, dom.clone());
+        let fv = Expr::FVar(id);
+        let b1_open = instantiate(b1, &fv);
+        let b2_open = instantiate(b2, &fv);
+        self.is_def_eq(&b1_open, &b2_open)
     }
     fn is_def_eq_core(&mut self, t: &Expr, s: &Expr) -> bool {
         let t_whnf = self.reducer.whnf_env(t, self.env);
@@ -1320,7 +1427,7 @@ impl<'env> DefEqChecker<'env> {
         if self.is_proof_irrelevant_eq(&t_whnf, &s_whnf) {
             return true;
         }
-        match (&t_whnf, &s_whnf) {
+        let matched = match (&t_whnf, &s_whnf) {
             (Expr::Sort(l1), Expr::Sort(l2)) => level::is_equivalent(l1, l2),
             (Expr::BVar(i1), Expr::BVar(i2)) => i1 == i2,
             (Expr::FVar(id1), Expr::FVar(id2)) => id1 == id2,
@@ -1339,13 +1446,15 @@ impl<'env> DefEqChecker<'env> {
                 self.is_def_eq(f1, f2) && self.is_def_eq(a1, a2)
             }
             (Expr::Lam(_, _, ty1, b1), Expr::Lam(_, _, ty2, b2)) => {
-                self.is_def_eq(ty1, ty2) && self.is_def_eq(b1, b2)
+                self.is_def_eq(ty1, ty2) && self.is_def_eq_under(ty1, b1, b2)
             }
             (Expr::Pi(_, _, ty1, b1), Expr::Pi(_, _, ty2, b2)) => {
-                self.is_def_eq(ty1, ty2) && self.is_def_eq(b1, b2)
+                self.is_def_eq(ty1, ty2) && self.is_def_eq_under(ty1, b1, b2)
             }
             (Expr::Let(_, ty1, v1, b1), Expr::Let(_, ty2, v2, b2)) => {
-                self.is_def_eq(ty1, ty2) && self.is_def_eq(v1, v2) && self.is_def_eq(b1, b2)
+                self.is_def_eq(ty1, ty2)
+                    && self.is_def_eq(v1, v2)
+                    && self.is_def_eq_under(ty1, b1, b2)
             }
             (Expr::Lit(l1), Expr::Lit(l2)) => l1 == l2,
             (Expr::Proj(n1, i1, e1), Expr::Proj(n2, i2, e2)) => {
@@ -1353,8 +1462,104 @@ impl<'env> DefEqChecker<'env> {
             }
             (Expr::Lam(_, _, _, _), _) => self.try_eta_lhs(&t_whnf, &s_whnf),
             (_, Expr::Lam(_, _, _, _)) => self.try_eta_rhs(&t_whnf, &s_whnf),
-            _ => self.try_lazy_delta(&t_whnf, &s_whnf),
+            // Literal ↔ constructor-form bridge (Lean's `natLitExt` /
+            // `strLitExt`): a `Nat`/`String` literal is defeq to its
+            // constructor-form denotation (`Nat.zero`/`Nat.succ …`,
+            // `String.mk (List Char)`). Only one side is a literal here (both
+            // were handled above). If the bridge applies it decides; otherwise
+            // fall through to lazy delta so a constant that *unfolds* to a
+            // constructor form is still reached.
+            _ => match self.try_lit_ext(&t_whnf, &s_whnf) {
+                Some(b) => b,
+                None => self.try_lazy_delta(&t_whnf, &s_whnf),
+            },
+        };
+        if matched {
+            return true;
         }
+        // K-like reduction that needs the *local* binder context to type the
+        // major premise: the Reducer's own K path (`to_ctor_when_k`) uses a
+        // fresh `TypeChecker` and cannot type loose bound variables, so e.g.
+        // `Eq.rec ... h` with `h` a Pi-bound hypothesis stays stuck there.
+        // Here the binder-type stack can type it (Lean's kernel has the same
+        // information via its local context).
+        if let Some(t_red) = self.try_k_whnf(&t_whnf) {
+            return self.is_def_eq(&t_red, &s_whnf);
+        }
+        if let Some(s_red) = self.try_k_whnf(&s_whnf) {
+            return self.is_def_eq(&t_whnf, &s_red);
+        }
+        // Lean kernel ordering (`isDefEqCore`): once the structural and
+        // lazy-delta paths have failed, try definitional eta for structures
+        // (`isDefEqEtaStruct`) in both orientations, then unit-like equality
+        // (`isDefEqUnitLike`). Proof irrelevance was already tried above,
+        // mirroring Lean's order, so Prop-valued structures are handled
+        // there first.
+        if self.try_eta_struct(&t_whnf, &s_whnf) || self.try_eta_struct(&s_whnf, &t_whnf) {
+            return true;
+        }
+        self.is_def_eq_unit_like(&t_whnf, &s_whnf)
+    }
+    /// K-like iota reduction driven by the *def-eq-local* typing context
+    /// (Lean `to_cnstr_when_K` executed with the kernel's local context).
+    ///
+    /// If `e` is a stuck application of a recursor with the K flag, type its
+    /// major premise via `Self::quick_infer_type` (which can see the binder
+    /// stack, unlike the Reducer's fresh `TypeChecker`), verify the major's
+    /// type is the K-inductive applied to its parameters/indices, and replace
+    /// the major with the canonical constructor application so iota can fire.
+    /// Returns the WHNF of the rewritten application, or `None` when anything
+    /// does not line up or no progress is made (never a wrong reduction).
+    fn try_k_whnf(&mut self, e: &Expr) -> Option<Expr> {
+        let (head, args) = get_app_fn_args(e);
+        let Expr::Const(rec_name, rec_levels) = head else {
+            return None;
+        };
+        let rec_val = self.env.get_recursor_val(rec_name)?.clone();
+        if !rec_val.k {
+            return None;
+        }
+        let major_idx = rec_val.get_major_idx() as usize;
+        if args.len() <= major_idx {
+            return None;
+        }
+        let major = args[major_idx].clone();
+        let major_ty = self.quick_infer_type(&major)?;
+        let major_ty = self.reducer.whnf_env(&major_ty, self.env);
+        let (ty_head, ty_args) = get_app_fn_args(&major_ty);
+        let Expr::Const(ind_name, ind_levels) = ty_head else {
+            return None;
+        };
+        if ind_name != rec_val.all.first()? {
+            return None;
+        }
+        let iv = self.env.get_inductive_val(ind_name)?.clone();
+        if ty_args.len() != (iv.num_params + iv.num_indices) as usize {
+            return None;
+        }
+        let ctor_name = iv.ctors.first()?.clone();
+        let params: Vec<Expr> = ty_args[..iv.num_params as usize]
+            .iter()
+            .map(|e| (*e).clone())
+            .collect();
+        let new_ctor = mk_app(Expr::Const(ctor_name, ind_levels.clone()), &params);
+        if new_ctor == major {
+            // Already canonical: the Reducer was stuck for a different
+            // reason; nothing to gain (and rewriting would not terminate).
+            return None;
+        }
+        let new_ty = self.quick_infer_type(&new_ctor)?;
+        if !self.is_def_eq(&major_ty, &new_ty) {
+            return None;
+        }
+        let mut new_args: Vec<Expr> = args.iter().map(|a| (*a).clone()).collect();
+        new_args[major_idx] = new_ctor;
+        let rebuilt = mk_app(Expr::Const(rec_name.clone(), rec_levels.clone()), &new_args);
+        let reduced = self.reducer.whnf_env(&rebuilt, self.env);
+        if reduced == *e {
+            return None;
+        }
+        Some(reduced)
     }
     /// Try lazy delta reduction: unfold one side at a time.
     ///
@@ -1394,6 +1599,179 @@ impl<'env> DefEqChecker<'env> {
                 false
             }
             (None, None) => false,
+        }
+    }
+    /// Literal ↔ constructor-form definitional-equality bridge — Lean's
+    /// `natLitExt?` / `strLitExt?`.
+    ///
+    /// Exactly one of `t` / `s` is a `Lit` (the both-literal case is decided
+    /// structurally before this is reached). A `Nat`/`String` literal is
+    /// definitionally equal to its constructor-form denotation:
+    ///
+    /// * `NatLit 0`  ≡ `Nat.zero`;
+    /// * `NatLit (n+1)` ≡ `Nat.succ e`  when `NatLit n ≡ e`;
+    /// * `StrLit s` ≡ `String.mk l`  when `l` is the `List Char` of `s`.
+    ///
+    /// Returns `Some(true)` / `Some(false)` when the bridge conclusively
+    /// decides, and `None` when it does not apply (the other side is neither
+    /// `Nat.zero`/`Nat.succ`/`String.mk`-headed nor a literal) — the caller
+    /// then falls through to lazy delta, so a *constant* that only unfolds to a
+    /// constructor form is still reached.
+    ///
+    /// Termination / no blow-up: the literal is **never** materialised into a
+    /// succ-tower. Instead the *constructor-form* side is peeled one layer at a
+    /// time and the literal is decremented (`pred`) each step, so the number of
+    /// steps is bounded by `min(literal, actual constructor depth)`. A large
+    /// literal against a shallow succ-tower (e.g. `10^9` vs `succ (FVar)`)
+    /// therefore stops after one layer with a fast mismatch, never eagerly
+    /// expanding the literal.
+    fn try_lit_ext(&mut self, t: &Expr, s: &Expr) -> Option<bool> {
+        match (t, s) {
+            (Expr::Lit(crate::Literal::Nat(n)), other)
+            | (other, Expr::Lit(crate::Literal::Nat(n))) => self.nat_lit_eq_term(n, other),
+            (Expr::Lit(crate::Literal::Str(str_lit)), other)
+            | (other, Expr::Lit(crate::Literal::Str(str_lit))) => {
+                self.str_lit_eq_term(str_lit, other)
+            }
+            _ => None,
+        }
+    }
+    /// Decide `NatLit n ≡ term` via Lean's `natLitExt?`. `term` is already in
+    /// WHNF and is *not* a `Nat` literal (that case is decided structurally).
+    fn nat_lit_eq_term(&mut self, n: &crate::bignat::BigNat, term: &Expr) -> Option<bool> {
+        let head = get_app_fn(term);
+        let head_name = match head {
+            Expr::Const(name, _) => name.to_string(),
+            // Non-constructor head (FVar, Sort, …): the bridge cannot decide;
+            // defer to lazy delta (which ultimately fails / stays stuck) so a
+            // mismatch is never reported as equal.
+            _ => return None,
+        };
+        if n.is_zero() {
+            // `NatLit 0`: equal iff the term is `Nat.zero`; a `Nat.succ …`
+            // head is a definite mismatch.
+            if head_name == "Nat.zero" {
+                Some(true)
+            } else if head_name == "Nat.succ" {
+                Some(false)
+            } else {
+                None
+            }
+        } else {
+            // `NatLit (n>0)`: equal iff the term is `Nat.succ e` with
+            // `NatLit (n-1) ≡ e`; a `Nat.zero` head is a definite mismatch.
+            match head_name.as_str() {
+                "Nat.succ" => {
+                    let args = get_app_args(term);
+                    // `Nat.succ` must be applied to exactly one argument.
+                    if args.len() != 1 {
+                        return None;
+                    }
+                    let pred_lit = Expr::Lit(crate::Literal::Nat(n.pred()));
+                    // Recurse through `is_def_eq`: the argument is re-WHNF'd
+                    // (idempotent, cheap) and the both-literal fast path or a
+                    // further succ-peel applies. Each step strictly decrements
+                    // the literal, bounding the recursion by the succ depth.
+                    Some(self.is_def_eq(&pred_lit, args[0]))
+                }
+                "Nat.zero" => Some(false),
+                _ => None,
+            }
+        }
+    }
+    /// Decide `StrLit s ≡ term` via Lean's `try_string_lit_expansion`
+    /// (type_checker.cpp, v4.32). `term` is already in WHNF-core form and is
+    /// *not* a `String` literal (that case is decided structurally).
+    ///
+    /// * **v4.32 model** (`String`'s constructor is `ofByteArray`): the
+    ///   extension fires exactly when `term` is an application headed by the
+    ///   `String.ofList` *function* — Lean checks `app_fn(s) == String.ofList`
+    ///   syntactically, before lazy delta unfolds it. The literal expands to
+    ///   `String.ofList <chars>` (`string_lit_to_constructor`), is WHNF'd,
+    ///   and the two sides go through full definitional equality.
+    /// * **Old model** (a one-field `String.mk : List Char → String`, e.g.
+    ///   the builtin env): the constructor-form list is peeled one
+    ///   `List.cons` layer at a time against `s.chars()` — bounded by the
+    ///   string length, never eagerly materialising the whole list on a
+    ///   length mismatch. Gated on `String.mk` really being the sole
+    ///   one-field constructor of `String` in this environment, so an
+    ///   unrelated definition of that name can never bridge.
+    fn str_lit_eq_term(&mut self, s: &str, term: &Expr) -> Option<bool> {
+        let (head, args) = crate::expr_util::get_app_fn_args(term);
+        let head_name = match head {
+            Expr::Const(name, _) => name.to_string(),
+            _ => return None,
+        };
+        if head_name == "String.ofList" && args.len() == 1 {
+            let expansion = crate::reduce::iota::str_lit_expansion(s, self.env)?;
+            let expansion_whnf = self.reducer.whnf_env(&expansion, self.env);
+            // Re-entry guard: with the real `String.ofList` the WHNF is a
+            // constructor application (or a stuck `ofList` application, when
+            // `ofList` is opaque in a synthetic env), never a literal. If an
+            // adversarial environment defines `ofList` so the expansion
+            // WHNF-folds back to a string literal, deciding here would
+            // recurse into this same bridge forever — decline instead and
+            // let lazy delta take over (safe incompleteness).
+            if matches!(expansion_whnf, Expr::Lit(crate::Literal::Str(_))) {
+                return None;
+            }
+            return Some(self.is_def_eq(&expansion_whnf, term));
+        }
+        if head_name == "String.mk" && args.len() == 1 {
+            let cv = self.env.get_constructor_val(match head {
+                Expr::Const(name, _) => name,
+                _ => return None,
+            })?;
+            if cv.induct.to_string() != "String" || cv.num_fields != 1 || cv.num_params != 0 {
+                return None;
+            }
+            return Some(self.char_list_eq_str(&s.chars().collect::<Vec<char>>(), args[0]));
+        }
+        None
+    }
+    /// Decide whether the `List Char` expression `list` denotes exactly the
+    /// characters `chars` (in order). Peels one `List.cons` per character; a
+    /// `List.nil` head must coincide with the end of `chars`. Bounded by
+    /// `chars.len()`.
+    ///
+    /// Constructor names are matched by their full dotted string
+    /// (`List.nil` / `List.cons` / `Char.ofNat`), which is identical for both
+    /// the flat and hierarchical naming styles a `String` literal can expand to
+    /// (see `reduce::iota::str_lit_to_ctor`), so the bridge is naming-style
+    /// agnostic without risking a collision with an unrelated `Foo.cons`.
+    fn char_list_eq_str(&mut self, chars: &[char], list: &Expr) -> bool {
+        let list_whnf = self.reducer.whnf_env(list, self.env);
+        let (head, args) = crate::expr_util::get_app_fn_args(&list_whnf);
+        let head_name = match head {
+            Expr::Const(name, _) => name.to_string(),
+            _ => return false,
+        };
+        match head_name.as_str() {
+            // `List.nil Char`: matches iff there are no characters left.
+            "List.nil" => chars.is_empty(),
+            // `List.cons Char c rest`: `Char` type arg, head char, tail list.
+            "List.cons" => {
+                if chars.is_empty() || args.len() != 3 {
+                    return false;
+                }
+                self.char_eq(chars[0], args[1]) && self.char_list_eq_str(&chars[1..], args[2])
+            }
+            _ => false,
+        }
+    }
+    /// Decide whether the WHNF'd expression `ch` denotes the character `c`,
+    /// i.e. `ch` is `Char.ofNat <code>` with `<code>` the Unicode scalar value
+    /// of `c`. The code is compared as a `Nat` literal via `is_def_eq`, so any
+    /// def-eq encoding of the same scalar value is accepted.
+    fn char_eq(&mut self, c: char, ch: &Expr) -> bool {
+        let ch_whnf = self.reducer.whnf_env(ch, self.env);
+        let (head, args) = crate::expr_util::get_app_fn_args(&ch_whnf);
+        match head {
+            Expr::Const(name, _) if name.to_string() == "Char.ofNat" && args.len() == 1 => {
+                let code = Expr::Lit(crate::Literal::Nat(crate::bignat::BigNat::from(c as u32)));
+                self.is_def_eq(&code, args[0])
+            }
+            _ => false,
         }
     }
     /// Get the reducibility hint for an expression head.
@@ -1479,13 +1857,42 @@ impl<'env> DefEqChecker<'env> {
                     None
                 }
             }
+            // A loose bound variable is typed from the binder-type stack the
+            // checker maintains while descending under binders. Entry types
+            // are expressed *outside* their binder, so the result is lifted
+            // past the binders in between (idx + 1 of them).
+            Expr::BVar(idx) => {
+                let i = *idx as usize;
+                let len = self.binder_types.len();
+                if i < len {
+                    let ty = self.binder_types[len - 1 - i].clone();
+                    Some(crate::expr_util::lift_loose_bvars(&ty, *idx + 1, 0))
+                } else {
+                    None
+                }
+            }
+            // A free variable is typed from the surrounding type checker's
+            // local context (recorded via [`Self::record_fvar_type`]). FVar
+            // types are closed with respect to the binder stack, so no
+            // lifting is needed.
+            Expr::FVar(id) => self.fvar_types.get(&id.0).cloned(),
             Expr::Lam(bi, name, dom, body) => {
-                let body_ty = self.quick_infer_type(body)?;
-                Some(Expr::Pi(*bi, name.clone(), dom.clone(), Box::new(body_ty)))
+                self.binder_types.push((**dom).clone());
+                let body_ty = self.quick_infer_type(body);
+                self.binder_types.pop();
+                Some(Expr::Pi(
+                    *bi,
+                    name.clone(),
+                    dom.clone(),
+                    Node::new(body_ty?),
+                ))
             }
             Expr::Pi(_, _, dom, cod) => {
                 let dom_ty = self.quick_infer_type(dom)?;
-                let cod_ty = self.quick_infer_type(cod)?;
+                self.binder_types.push((**dom).clone());
+                let cod_ty = self.quick_infer_type(cod);
+                self.binder_types.pop();
+                let cod_ty = cod_ty?;
                 let dom_whnf = self.reducer.whnf_env(&dom_ty, self.env);
                 let cod_whnf = self.reducer.whnf_env(&cod_ty, self.env);
                 match (dom_whnf, cod_whnf) {
@@ -1499,6 +1906,68 @@ impl<'env> DefEqChecker<'env> {
                 let body_subst = crate::subst::instantiate(body, val);
                 self.quick_infer_type(&body_subst)
             }
+            Expr::Proj(struct_name, idx, inner) => {
+                let inner_ty = self.quick_infer_type(inner)?;
+                self.quick_proj_type(struct_name, *idx, inner, &inner_ty)
+            }
+        }
+    }
+    /// Infer the type of `Proj(struct_name, idx, inner)` given `inner`'s type.
+    ///
+    /// Mirrors `TypeChecker::infer_proj_field_type`: instantiates the
+    /// constructor's type with the universe levels and inductive parameters
+    /// read off `inner`'s (whnf'd) type, substitutes earlier fields with
+    /// projections of `inner`, and returns the `idx`-th Pi domain. Returns
+    /// `None` whenever anything does not line up — this is a best-effort
+    /// helper; the full `TypeChecker` reports typed errors instead.
+    fn quick_proj_type(
+        &mut self,
+        struct_name: &crate::Name,
+        idx: u32,
+        inner: &Expr,
+        inner_ty: &Expr,
+    ) -> Option<Expr> {
+        if !self.env.is_structure_like(struct_name) {
+            return None;
+        }
+        let ind_val = self.env.get_inductive_val(struct_name)?.clone();
+        let ctor_name = ind_val.ctors.first()?.clone();
+        let ctor_val = self.env.get_constructor_val(&ctor_name)?.clone();
+        if idx >= ctor_val.num_fields {
+            return None;
+        }
+        let inner_ty_whnf = self.reducer.whnf_env(inner_ty, self.env);
+        let levels: Vec<Level> = match get_app_fn(&inner_ty_whnf) {
+            Expr::Const(name, lvls) if name == struct_name => lvls.clone(),
+            _ => return None,
+        };
+        let ty_args: Vec<Expr> = get_app_args(&inner_ty_whnf).into_iter().cloned().collect();
+        if ty_args.len() != ind_val.num_params as usize {
+            return None;
+        }
+        let level_params = &ind_val.common.level_params;
+        let mut cur_ty = if level_params.is_empty() || levels.is_empty() {
+            ctor_val.common.ty.clone()
+        } else {
+            instantiate_type_lparams(&ctor_val.common.ty, level_params, &levels)
+        };
+        for param in &ty_args {
+            match cur_ty {
+                Expr::Pi(_, _, _, body) => cur_ty = instantiate(&body, param),
+                _ => return None,
+            }
+        }
+        for j in 0..idx {
+            match cur_ty {
+                Expr::Pi(_, _, _, body) => {
+                    let field_val = Expr::Proj(struct_name.clone(), j, Node::new(inner.clone()));
+                    cur_ty = instantiate(&body, &field_val);
+                }
+                _ => return None,
+            }
+        }
+        match cur_ty {
+            Expr::Pi(_, _, dom, _) => Some((*dom).clone()),
             _ => None,
         }
     }
@@ -1520,7 +1989,10 @@ impl<'env> DefEqChecker<'env> {
             None => return false,
         };
         let ty_ty_t_whnf = self.reducer.whnf_env(&ty_ty_t, self.env);
-        if !matches!(& ty_ty_t_whnf, Expr::Sort(l) if l.is_zero()) {
+        // Prop test must be up to universe equivalence, not syntactic: a proof
+        // whose sort level is e.g. `imax(u, 0)` normalizes to `0` (Prop) but is
+        // not the literal `Zero`. Use the complete `is_equivalent` check.
+        if !matches!(&ty_ty_t_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::Zero)) {
             return false;
         }
         let ty_s = match self.quick_infer_type(s) {
@@ -1532,16 +2004,19 @@ impl<'env> DefEqChecker<'env> {
             None => return false,
         };
         let ty_ty_s_whnf = self.reducer.whnf_env(&ty_ty_s, self.env);
-        if !matches!(& ty_ty_s_whnf, Expr::Sort(l) if l.is_zero()) {
+        if !matches!(&ty_ty_s_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::Zero)) {
             return false;
         }
         let ty_t_whnf = self.reducer.whnf_env(&ty_t, self.env);
         let ty_s_whnf = self.reducer.whnf_env(&ty_s, self.env);
         self.is_def_eq(&ty_t_whnf, &ty_s_whnf)
     }
-    /// Try eta-expansion for left-side lambda.
+    /// Try function eta when the left side is a lambda and the right is not.
     ///
-    /// `λ x. f x` =?= `g` when `f` doesn't use `x`, then `f =?= g`
+    /// Fast path (contraction): `λ x. f x` =?= `g` when `f` doesn't use `x`,
+    /// then `f =?= g`. Fallback (Lean `tryEtaExpansionCore`): eta-expand the
+    /// non-lambda side by one binder from its Pi type and recurse, which
+    /// handles multi-binder telescopes such as `(fun x y => g x y) =?= g`.
     fn try_eta_lhs(&mut self, t: &Expr, s: &Expr) -> bool {
         if let Expr::Lam(_, _, _, body) = t {
             if let Expr::App(f, a) = body.as_ref() {
@@ -1549,14 +2024,21 @@ impl<'env> DefEqChecker<'env> {
                     if !has_loose_bvar(f, 0) {
                         let f_shifted =
                             crate::subst::instantiate(f, &Expr::FVar(crate::FVarId(u64::MAX)));
-                        return self.is_def_eq(&f_shifted, s);
+                        if self.is_def_eq(&f_shifted, s) {
+                            return true;
+                        }
                     }
                 }
             }
         }
+        if let Some(s_expanded) = self.eta_expand_one(s) {
+            return self.is_def_eq(t, &s_expanded);
+        }
         false
     }
-    /// Try eta-expansion for right-side lambda.
+    /// Try function eta when the right side is a lambda and the left is not.
+    ///
+    /// Symmetric to [`Self::try_eta_lhs`].
     fn try_eta_rhs(&mut self, t: &Expr, s: &Expr) -> bool {
         if let Expr::Lam(_, _, _, body) = s {
             if let Expr::App(f, a) = body.as_ref() {
@@ -1564,12 +2046,136 @@ impl<'env> DefEqChecker<'env> {
                     if !has_loose_bvar(f, 0) {
                         let f_shifted =
                             crate::subst::instantiate(f, &Expr::FVar(crate::FVarId(u64::MAX)));
-                        return self.is_def_eq(t, &f_shifted);
+                        if self.is_def_eq(t, &f_shifted) {
+                            return true;
+                        }
                     }
                 }
             }
         }
+        if let Some(t_expanded) = self.eta_expand_one(t) {
+            return self.is_def_eq(&t_expanded, s);
+        }
         false
+    }
+    /// Eta-expand a non-lambda expression by one binder (one step of Lean's
+    /// `etaExpand`).
+    ///
+    /// Given `s` whose inferred type whnf's to `Pi (a : d), b`, returns
+    /// `fun (a : d) => s a`, lifting loose bound variables in `s` under the
+    /// new binder. Returns `None` if `s` is a lambda or its type cannot be
+    /// determined to be a Pi.
+    fn eta_expand_one(&mut self, s: &Expr) -> Option<Expr> {
+        if matches!(s, Expr::Lam(_, _, _, _)) {
+            return None;
+        }
+        let s_ty = self.quick_infer_type(s)?;
+        let s_ty_whnf = self.reducer.whnf_env(&s_ty, self.env);
+        if let Expr::Pi(bi, name, dom, _) = s_ty_whnf {
+            let s_lifted = crate::expr_util::lift_loose_bvars(s, 1, 0);
+            Some(Expr::Lam(
+                bi,
+                name,
+                dom,
+                Node::new(Expr::App(Node::new(s_lifted), Node::new(Expr::BVar(0)))),
+            ))
+        } else {
+            None
+        }
+    }
+    /// Definitional eta for structures (Lean `isDefEqEtaStruct`).
+    ///
+    /// If `s` is a fully applied constructor application `S.mk ps fs` of a
+    /// structure-like inductive `S` (exactly one constructor, no indices,
+    /// not recursive) and `t` is not itself a constructor application, then
+    /// eta-expand `t` to `S.mk ps' t.0 ... t.(n-1)` — with parameters `ps'`
+    /// and universe levels read off `t`'s (whnf'd) type — and recurse.
+    /// Application congruence then compares the constructor levels, the
+    /// parameters, and each field `f_i` against `Proj(S, i, t)`, which
+    /// subsumes Lean's `isDefEq (inferType t) (inferType s)` gate.
+    ///
+    /// Only fires when `t`'s type whnf's to the structure type `S ps'`;
+    /// otherwise the pair is left for other rules (never a wrong result).
+    fn try_eta_struct(&mut self, t: &Expr, s: &Expr) -> bool {
+        let (ctor_name, ctor_val) = match get_app_fn(s) {
+            Expr::Const(name, _) => match self.env.get_constructor_val(name) {
+                Some(cv) => (name.clone(), cv.clone()),
+                None => return false,
+            },
+            _ => return false,
+        };
+        if get_app_args(s).len() != (ctor_val.num_params + ctor_val.num_fields) as usize {
+            return false;
+        }
+        if !self.env.is_structure_like(&ctor_val.induct) {
+            return false;
+        }
+        // Constructor-vs-constructor pairs are already handled by
+        // application congruence; expanding here would be redundant.
+        if let Expr::Const(t_head, _) = get_app_fn(t) {
+            if self.env.is_constructor(t_head) {
+                return false;
+            }
+        }
+        let t_ty = match self.quick_infer_type(t) {
+            Some(ty) => ty,
+            None => return false,
+        };
+        let t_ty_whnf = self.reducer.whnf_env(&t_ty, self.env);
+        let levels: Vec<Level> = match get_app_fn(&t_ty_whnf) {
+            Expr::Const(ind_name, lvls) if *ind_name == ctor_val.induct => lvls.clone(),
+            _ => return false,
+        };
+        let params: Vec<Expr> = get_app_args(&t_ty_whnf).into_iter().cloned().collect();
+        if params.len() != ctor_val.num_params as usize {
+            return false;
+        }
+        let mut expansion = Expr::Const(ctor_name, levels);
+        for param in params {
+            expansion = Expr::App(Node::new(expansion), Node::new(param));
+        }
+        for i in 0..ctor_val.num_fields {
+            let field = Expr::Proj(ctor_val.induct.clone(), i, Node::new(t.clone()));
+            expansion = Expr::App(Node::new(expansion), Node::new(field));
+        }
+        self.is_def_eq(s, &expansion)
+    }
+    /// Unit-like definitional equality (Lean `isDefEqUnitLike`).
+    ///
+    /// If `t`'s type whnf's to `S ps` where `S` is structure-like and its
+    /// single constructor has no fields beyond the parameters, then any two
+    /// elements of that type are definitionally equal: it suffices that the
+    /// types agree, i.e. `t : S ps` and `s`'s type is def-eq to `S ps`.
+    fn is_def_eq_unit_like(&mut self, t: &Expr, s: &Expr) -> bool {
+        let t_ty = match self.quick_infer_type(t) {
+            Some(ty) => ty,
+            None => return false,
+        };
+        let t_ty_whnf = self.reducer.whnf_env(&t_ty, self.env);
+        let ind_name = match get_app_fn(&t_ty_whnf) {
+            Expr::Const(name, _) => name.clone(),
+            _ => return false,
+        };
+        if !self.env.is_structure_like(&ind_name) {
+            return false;
+        }
+        let ctor_name = match self
+            .env
+            .get_inductive_val(&ind_name)
+            .and_then(|iv| iv.ctors.first())
+        {
+            Some(name) => name.clone(),
+            None => return false,
+        };
+        match self.env.get_constructor_val(&ctor_name) {
+            Some(cv) if cv.num_fields == 0 => {}
+            _ => return false,
+        }
+        let s_ty = match self.quick_infer_type(s) {
+            Some(ty) => ty,
+            None => return false,
+        };
+        self.is_def_eq(&t_ty_whnf, &s_ty)
     }
 }
 /// A simple key-value store backed by a sorted Vec for small maps.

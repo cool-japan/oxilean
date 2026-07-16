@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{
@@ -12,7 +13,7 @@ use super::types::{
 
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -27,11 +28,11 @@ pub fn app4(f: Expr, a: Expr, b: Expr, c: Expr, d: Expr) -> Expr {
     app(app3(f, a, b, c), d)
 }
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 #[allow(dead_code)]
 pub fn lam(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Lam(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Lam(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 pub fn cst(s: &str) -> Expr {
     Expr::Const(Name::str(s), vec![])
@@ -67,8 +68,8 @@ pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::Anonymous,
-        Box::new(a),
-        Box::new(b),
+        Node::new(a),
+        Node::new(b),
     )
 }
 pub fn add_axiom(

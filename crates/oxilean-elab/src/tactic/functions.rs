@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 
 use super::functions_2::{decompose_app_tactic, parse_numeric_comparison, subst_bvar};
@@ -46,8 +47,8 @@ pub fn tactic_intro(state: &TacticState, name: Name) -> TacticResult {
             let mut new_goal = goal.clone();
             new_goal.name = Name::str(format!("{}_intro", goal.name));
             new_goal.mvar_id = fresh_mvar_id();
-            new_goal.add_hypothesis(name, *domain.clone());
-            new_goal.target = *body.clone();
+            new_goal.add_hypothesis(name, (**domain).clone());
+            new_goal.target = (**body).clone();
             replace_focused(state, vec![new_goal])
         }
         _ => Err(TacticError::TypeMismatch(
@@ -78,11 +79,11 @@ pub fn tactic_apply(state: &TacticState, expr: Expr) -> TacticResult {
         match current {
             Expr::Pi(_bi, ref name, ref domain, ref body) => {
                 let mut sg = goal.clone();
-                sg.target = *domain.clone();
+                sg.target = (**domain).clone();
                 sg.name = Name::str(format!("apply_arg_{}_{}", arg_idx, name));
                 sg.mvar_id = fresh_mvar_id();
                 subgoals.push(sg);
-                let next = *body.clone();
+                let next = (**body).clone();
                 current = next;
                 arg_idx += 1;
                 if arg_idx > 20 {
@@ -257,11 +258,11 @@ pub fn tactic_constructor(state: &TacticState) -> TacticResult {
                 if let Expr::Const(name, _) = inner_f.as_ref() {
                     if name == &Name::str("And") {
                         let mut left_goal = goal.clone();
-                        left_goal.target = *lhs.clone();
+                        left_goal.target = (**lhs).clone();
                         left_goal.name = Name::str("and_left");
                         left_goal.mvar_id = fresh_mvar_id();
                         let mut right_goal = goal.clone();
-                        right_goal.target = *rhs.clone();
+                        right_goal.target = (**rhs).clone();
                         right_goal.name = Name::str("and_right");
                         right_goal.mvar_id = fresh_mvar_id();
                         return replace_focused(state, vec![left_goal, right_goal]);
@@ -273,8 +274,8 @@ pub fn tactic_constructor(state: &TacticState) -> TacticResult {
                         fwd_goal.target = Expr::Pi(
                             BinderInfo::Default,
                             Name::str("h"),
-                            Box::new(a.clone()),
-                            Box::new(b.clone()),
+                            Node::new(a.clone()),
+                            Node::new(b.clone()),
                         );
                         fwd_goal.name = Name::str("iff_mp");
                         fwd_goal.mvar_id = fresh_mvar_id();
@@ -283,8 +284,8 @@ pub fn tactic_constructor(state: &TacticState) -> TacticResult {
                         bwd_goal.target = Expr::Pi(
                             BinderInfo::Default,
                             Name::str("h"),
-                            Box::new(b.clone()),
-                            Box::new(a.clone()),
+                            Node::new(b.clone()),
+                            Node::new(a.clone()),
                         );
                         bwd_goal.name = Name::str("iff_mpr");
                         bwd_goal.mvar_id = fresh_mvar_id();
@@ -293,11 +294,11 @@ pub fn tactic_constructor(state: &TacticState) -> TacticResult {
                     }
                     if name == &Name::str("Prod") {
                         let mut fst_goal = goal.clone();
-                        fst_goal.target = *lhs.clone();
+                        fst_goal.target = (**lhs).clone();
                         fst_goal.name = Name::str("prod_fst");
                         fst_goal.mvar_id = fresh_mvar_id();
                         let mut snd_goal = goal.clone();
-                        snd_goal.target = *rhs.clone();
+                        snd_goal.target = (**rhs).clone();
                         snd_goal.name = Name::str("prod_snd");
                         snd_goal.mvar_id = fresh_mvar_id();
                         return replace_focused(state, vec![fst_goal, snd_goal]);
@@ -332,7 +333,7 @@ pub fn tactic_left(state: &TacticState) -> TacticResult {
             if let Expr::Const(name, _) = or_const.as_ref() {
                 if name == &Name::str("Or") {
                     let mut new_goal = goal.clone();
-                    new_goal.target = *lhs.clone();
+                    new_goal.target = (**lhs).clone();
                     new_goal.mvar_id = fresh_mvar_id();
                     return replace_focused(state, vec![new_goal]);
                 }
@@ -354,7 +355,7 @@ pub fn tactic_right(state: &TacticState) -> TacticResult {
             if let Expr::Const(name, _) = or_const.as_ref() {
                 if name == &Name::str("Or") {
                     let mut new_goal = goal.clone();
-                    new_goal.target = *rhs.clone();
+                    new_goal.target = (**rhs).clone();
                     new_goal.mvar_id = fresh_mvar_id();
                     return replace_focused(state, vec![new_goal]);
                 }
@@ -375,7 +376,7 @@ pub fn tactic_exists(state: &TacticState, witness: Expr) -> TacticResult {
     if let Expr::App(exists_const, predicate) = &goal.target {
         if let Expr::Const(name, _) = exists_const.as_ref() {
             if name == &Name::str("Exists") {
-                let new_target = Expr::App(Box::new(*predicate.clone()), Box::new(witness));
+                let new_target = Expr::App(Node::new((**predicate).clone()), Node::new(witness));
                 let mut new_goal = goal.clone();
                 new_goal.target = new_target;
                 new_goal.mvar_id = fresh_mvar_id();
@@ -458,8 +459,8 @@ pub fn tactic_revert(state: &TacticState, name: &Name) -> TacticResult {
     new_goal.target = Expr::Pi(
         BinderInfo::Default,
         name.clone(),
-        Box::new(hyp_ty),
-        Box::new(goal.target.clone()),
+        Node::new(hyp_ty),
+        Node::new(goal.target.clone()),
     );
     new_goal.mvar_id = fresh_mvar_id();
     replace_focused(state, vec![new_goal])
@@ -518,8 +519,8 @@ pub fn tactic_split(state: &TacticState) -> TacticResult {
                     fwd_goal.target = Expr::Pi(
                         oxilean_kernel::BinderInfo::Default,
                         Name::str("h"),
-                        Box::new(*a.clone()),
-                        Box::new(*b.clone()),
+                        Node::new((**a).clone()),
+                        Node::new((**b).clone()),
                     );
                     fwd_goal.name = Name::str("iff_fwd");
                     fwd_goal.mvar_id = fresh_mvar_id();
@@ -528,8 +529,8 @@ pub fn tactic_split(state: &TacticState) -> TacticResult {
                     bwd_goal.target = Expr::Pi(
                         oxilean_kernel::BinderInfo::Default,
                         Name::str("h"),
-                        Box::new(*b.clone()),
-                        Box::new(*a.clone()),
+                        Node::new((**b).clone()),
+                        Node::new((**a).clone()),
                     );
                     bwd_goal.name = Name::str("iff_bwd");
                     bwd_goal.mvar_id = fresh_mvar_id();
@@ -557,38 +558,38 @@ pub(super) fn analyze_type(ty: &Expr) -> TypeShape {
         Expr::App(f, b) => {
             if let Expr::Const(head_name, _) = f.as_ref() {
                 if head_name == &Name::str("Option") {
-                    return TypeShape::Option(*b.clone());
+                    return TypeShape::Option((**b).clone());
                 }
                 if head_name == &Name::str("List") {
-                    return TypeShape::List(*b.clone());
+                    return TypeShape::List((**b).clone());
                 }
             }
             if let Expr::App(ff, a) = f.as_ref() {
                 match ff.as_ref() {
                     Expr::Const(name, _) if name == &Name::str("And") => {
-                        return TypeShape::And(*a.clone(), *b.clone());
+                        return TypeShape::And((**a).clone(), (**b).clone());
                     }
                     Expr::Const(name, _) if name == &Name::str("Or") => {
-                        return TypeShape::Or(*a.clone(), *b.clone());
+                        return TypeShape::Or((**a).clone(), (**b).clone());
                     }
                     Expr::Const(name, _) if name == &Name::str("Iff") => {
-                        return TypeShape::Iff(*a.clone(), *b.clone());
+                        return TypeShape::Iff((**a).clone(), (**b).clone());
                     }
                     Expr::Const(name, _) if name == &Name::str("Exists") => {
-                        return TypeShape::Exists(*a.clone(), *b.clone());
+                        return TypeShape::Exists((**a).clone(), (**b).clone());
                     }
                     Expr::Const(name, _) if name == &Name::str("Prod") => {
-                        return TypeShape::Prod(*a.clone(), *b.clone());
+                        return TypeShape::Prod((**a).clone(), (**b).clone());
                     }
                     Expr::Const(name, _) if name == &Name::str("Sum") => {
-                        return TypeShape::Sum(*a.clone(), *b.clone());
+                        return TypeShape::Sum((**a).clone(), (**b).clone());
                     }
                     _ => {}
                 }
                 if let Expr::App(fff, ty_arg) = ff.as_ref() {
                     if let Expr::Const(name, _) = fff.as_ref() {
                         if name == &Name::str("Eq") {
-                            return TypeShape::Eq(*ty_arg.clone(), *a.clone(), *b.clone());
+                            return TypeShape::Eq((**ty_arg).clone(), (**a).clone(), (**b).clone());
                         }
                     }
                 }
@@ -652,7 +653,7 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             zero_goal.mvar_id = fresh_mvar_id();
             zero_goal.name = Name::str(format!("{}_zero", goal.name));
             remove_hypothesis(&mut zero_goal, hyp_name);
-            zero_goal.target = subst_bvar(&goal.target, 0, &Expr::Lit(Literal::Nat(0)));
+            zero_goal.target = subst_bvar(&goal.target, 0, &Expr::Lit(Literal::nat(0)));
             zero_goal.tag = Some("case zero".to_string());
             let nat_ty = Expr::Const(Name::str("Nat"), vec![]);
             let succ_fn = Expr::Const(Name::str("Nat.succ"), vec![]);
@@ -663,7 +664,7 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             remove_hypothesis(&mut succ_goal, hyp_name);
             succ_goal.add_hypothesis(pred_name.clone(), nat_ty);
             let pred_ref = Expr::BVar(0);
-            let succ_expr = Expr::App(Box::new(succ_fn), Box::new(pred_ref));
+            let succ_expr = Expr::App(Node::new(succ_fn), Node::new(pred_ref));
             succ_goal.target = subst_bvar(&goal.target, 0, &succ_expr);
             succ_goal.tag = Some("case succ".to_string());
             replace_focused(state, vec![zero_goal, succ_goal])
@@ -674,7 +675,7 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             new_goal.name = Name::str(format!("{}_exists", goal.name));
             remove_hypothesis(&mut new_goal, hyp_name);
             let witness_name = Name::str(format!("{}_witness", hyp_name));
-            let prop_ty = Expr::App(Box::new(pred), Box::new(Expr::BVar(0)));
+            let prop_ty = Expr::App(Node::new(pred), Node::new(Expr::BVar(0)));
             new_goal.add_hypothesis(witness_name, ty);
             new_goal.add_hypothesis(Name::str(format!("{}_prop", hyp_name)), prop_ty);
             replace_focused(state, vec![new_goal])
@@ -712,14 +713,14 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             let a_to_b = Expr::Pi(
                 BinderInfo::Default,
                 Name::Anonymous,
-                Box::new(a.clone()),
-                Box::new(b.clone()),
+                Node::new(a.clone()),
+                Node::new(b.clone()),
             );
             let b_to_a = Expr::Pi(
                 BinderInfo::Default,
                 Name::Anonymous,
-                Box::new(b.clone()),
-                Box::new(a.clone()),
+                Node::new(b.clone()),
+                Node::new(a.clone()),
             );
             new_goal.add_hypothesis(fwd_name, a_to_b);
             new_goal.add_hypothesis(bwd_name, b_to_a);
@@ -743,8 +744,8 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             remove_hypothesis(&mut some_goal, hyp_name);
             some_goal.add_hypothesis(val_name.clone(), elem_ty.clone());
             let some_val = Expr::App(
-                Box::new(Expr::Const(Name::str("Option.some"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Option.some"), vec![])),
+                Node::new(Expr::BVar(0)),
             );
             some_goal.target = subst_bvar(&goal.target, 0, &some_val);
             some_goal.tag = Some("case some".to_string());
@@ -759,8 +760,8 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             nil_goal.target = subst_bvar(&goal.target, 0, &nil_c);
             nil_goal.tag = Some("case nil".to_string());
             let list_ty = Expr::App(
-                Box::new(Expr::Const(Name::str("List"), vec![])),
-                Box::new(elem_ty.clone()),
+                Node::new(Expr::Const(Name::str("List"), vec![])),
+                Node::new(elem_ty.clone()),
             );
             let head_name = Name::str(format!("{}_head", hyp_name));
             let tail_name = Name::str(format!("{}_tail", hyp_name));
@@ -771,11 +772,11 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             cons_goal.add_hypothesis(head_name, elem_ty.clone());
             cons_goal.add_hypothesis(tail_name, list_ty);
             let cons_expr = Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("List.cons"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("List.cons"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
             );
             cons_goal.target = subst_bvar(&goal.target, 0, &cons_expr);
             cons_goal.tag = Some("case cons".to_string());
@@ -841,14 +842,14 @@ pub fn tactic_induction(state: &TacticState, hyp_name: &Name) -> TacticResult {
             let succ_fn = Expr::Const(Name::str("Nat.succ"), vec![]);
             let mut base = goal.clone();
             remove_hypothesis(&mut base, hyp_name);
-            let zero_target = subst_bvar(&goal.target, 0, &Expr::Lit(Literal::Nat(0)));
+            let zero_target = subst_bvar(&goal.target, 0, &Expr::Lit(Literal::nat(0)));
             let mut zero_goal = base.clone();
             zero_goal.mvar_id = fresh_mvar_id();
             zero_goal.name = Name::str(format!("{}_ind_zero", goal.name));
             zero_goal.target = zero_target.clone();
             zero_goal.tag = Some("case zero".to_string());
             let n_name = Name::str("n");
-            let succ_of_n = Expr::App(Box::new(succ_fn), Box::new(Expr::BVar(0)));
+            let succ_of_n = Expr::App(Node::new(succ_fn), Node::new(Expr::BVar(0)));
             let succ_target = subst_bvar(&goal.target, 0, &succ_of_n);
             let mut succ_goal = base;
             succ_goal.mvar_id = fresh_mvar_id();
@@ -861,8 +862,8 @@ pub fn tactic_induction(state: &TacticState, hyp_name: &Name) -> TacticResult {
         }
         TypeShape::List(elem_ty) => {
             let list_ty = Expr::App(
-                Box::new(Expr::Const(Name::str("List"), vec![])),
-                Box::new(elem_ty.clone()),
+                Node::new(Expr::Const(Name::str("List"), vec![])),
+                Node::new(elem_ty.clone()),
             );
             let nil_c = Expr::Const(Name::str("List.nil"), vec![]);
             let mut base = goal.clone();
@@ -876,11 +877,11 @@ pub fn tactic_induction(state: &TacticState, hyp_name: &Name) -> TacticResult {
             let head_name = Name::str("hd");
             let tail_name = Name::str("tl");
             let cons_expr = Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("List.cons"), vec![])),
-                    Box::new(Expr::BVar(1)),
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("List.cons"), vec![])),
+                    Node::new(Expr::BVar(1)),
                 )),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::BVar(0)),
             );
             let cons_target = subst_bvar(&goal.target, 0, &cons_expr);
             let ih_target = subst_bvar(&goal.target, 0, &Expr::BVar(0));
@@ -932,8 +933,8 @@ pub fn tactic_induction(state: &TacticState, hyp_name: &Name) -> TacticResult {
             none_goal.tag = Some("case none".to_string());
             let val_name = Name::str("val");
             let some_val = Expr::App(
-                Box::new(Expr::Const(Name::str("Option.some"), vec![])),
-                Box::new(Expr::BVar(0)),
+                Node::new(Expr::Const(Name::str("Option.some"), vec![])),
+                Node::new(Expr::BVar(0)),
             );
             let some_target = subst_bvar(&goal.target, 0, &some_val);
             let ih_target_opt = subst_bvar(&goal.target, 0, &Expr::BVar(0));
@@ -959,21 +960,21 @@ fn exprs_equal(a: &Expr, b: &Expr) -> bool {
 /// Build `Or a b` as an Expr.
 fn mk_or_expr_e(a: &Expr, b: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(a.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(a.clone()),
         )),
-        Box::new(b.clone()),
+        Node::new(b.clone()),
     )
 }
 /// Build `And a b` as an Expr.
 fn mk_and_expr_e(a: &Expr, b: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(a.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(a.clone()),
         )),
-        Box::new(b.clone()),
+        Node::new(b.clone()),
     )
 }
 /// Recursively push negations inward through logical connectives.
@@ -998,9 +999,9 @@ pub(super) fn push_negations(expr: &Expr) -> Expr {
                 if let Expr::App(and_c, a2) = and_f.as_ref() {
                     if is_const_named(and_c, "And") {
                         let not_a =
-                            Expr::App(Box::new(Expr::Const(not_name.clone(), vec![])), a2.clone());
+                            Expr::App(Node::new(Expr::Const(not_name.clone(), vec![])), a2.clone());
                         let not_b =
-                            Expr::App(Box::new(Expr::Const(not_name.clone(), vec![])), b.clone());
+                            Expr::App(Node::new(Expr::Const(not_name.clone(), vec![])), b.clone());
                         return mk_or_expr_e(&push_negations(&not_a), &push_negations(&not_b));
                     }
                 }
@@ -1009,28 +1010,28 @@ pub(super) fn push_negations(expr: &Expr) -> Expr {
                 if let Expr::App(or_c, a2) = or_f.as_ref() {
                     if is_const_named(or_c, "Or") {
                         let not_a =
-                            Expr::App(Box::new(Expr::Const(not_name.clone(), vec![])), a2.clone());
+                            Expr::App(Node::new(Expr::Const(not_name.clone(), vec![])), a2.clone());
                         let not_b =
-                            Expr::App(Box::new(Expr::Const(not_name.clone(), vec![])), b.clone());
+                            Expr::App(Node::new(Expr::Const(not_name.clone(), vec![])), b.clone());
                         return mk_and_expr_e(&push_negations(&not_a), &push_negations(&not_b));
                     }
                 }
             }
             if let Expr::Pi(bi, n, dom, body) = a.as_ref() {
                 let not_body = Expr::App(
-                    Box::new(Expr::Const(not_name.clone(), vec![])),
+                    Node::new(Expr::Const(not_name.clone(), vec![])),
                     body.clone(),
                 );
                 let lam = Expr::Lam(
                     *bi,
                     n.clone(),
                     dom.clone(),
-                    Box::new(push_negations(&not_body)),
+                    Node::new(push_negations(&not_body)),
                 );
                 let exists_c = Expr::Const(Name::str("Exists"), vec![]);
                 return Expr::App(
-                    Box::new(Expr::App(Box::new(exists_c), dom.clone())),
-                    Box::new(lam),
+                    Node::new(Expr::App(Node::new(exists_c), dom.clone())),
+                    Node::new(lam),
                 );
             }
             if let Expr::App(exists_app, pred_lam) = a.as_ref() {
@@ -1038,14 +1039,14 @@ pub(super) fn push_negations(expr: &Expr) -> Expr {
                     if is_const_named(exists_c, "Exists") {
                         if let Expr::Lam(bi, n, ty, body) = pred_lam.as_ref() {
                             let not_body = Expr::App(
-                                Box::new(Expr::Const(not_name.clone(), vec![])),
+                                Node::new(Expr::Const(not_name.clone(), vec![])),
                                 body.clone(),
                             );
                             return Expr::Pi(
                                 *bi,
                                 n.clone(),
                                 ty.clone(),
-                                Box::new(push_negations(&not_body)),
+                                Node::new(push_negations(&not_body)),
                             );
                         }
                     }
@@ -1059,76 +1060,76 @@ pub(super) fn push_negations(expr: &Expr) -> Expr {
                         let a_arg = args[args.len() - 2].clone();
                         let b_arg = args[args.len() - 1].clone();
                         return Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Nat.lt"), vec![])),
-                                Box::new(b_arg),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Nat.lt"), vec![])),
+                                Node::new(b_arg),
                             )),
-                            Box::new(a_arg),
+                            Node::new(a_arg),
                         );
                     }
                     if (hn == "Nat.lt" || hn == "LT.lt") && args.len() >= 2 {
                         let a_arg = args[args.len() - 2].clone();
                         let b_arg = args[args.len() - 1].clone();
                         return Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Nat.le"), vec![])),
-                                Box::new(b_arg),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Nat.le"), vec![])),
+                                Node::new(b_arg),
                             )),
-                            Box::new(a_arg),
+                            Node::new(a_arg),
                         );
                     }
                     if (hn == "GE.ge" || hn == "Nat.ge") && args.len() >= 2 {
                         let a_arg = args[args.len() - 2].clone();
                         let b_arg = args[args.len() - 1].clone();
                         return Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Nat.lt"), vec![])),
-                                Box::new(a_arg),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Nat.lt"), vec![])),
+                                Node::new(a_arg),
                             )),
-                            Box::new(b_arg),
+                            Node::new(b_arg),
                         );
                     }
                     if (hn == "GT.gt" || hn == "Nat.gt") && args.len() >= 2 {
                         let a_arg = args[args.len() - 2].clone();
                         let b_arg = args[args.len() - 1].clone();
                         return Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::Const(Name::str("Nat.le"), vec![])),
-                                Box::new(a_arg),
+                            Node::new(Expr::App(
+                                Node::new(Expr::Const(Name::str("Nat.le"), vec![])),
+                                Node::new(a_arg),
                             )),
-                            Box::new(b_arg),
+                            Node::new(b_arg),
                         );
                     }
                     if hn == "Ne" && args.len() >= 2 {
                         let a_arg = args[args.len() - 2].clone();
                         let b_arg = args[args.len() - 1].clone();
                         return Expr::App(
-                            Box::new(Expr::App(
-                                Box::new(Expr::App(
-                                    Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                                    Box::new(a_arg.clone()),
+                            Node::new(Expr::App(
+                                Node::new(Expr::App(
+                                    Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                                    Node::new(a_arg.clone()),
                                 )),
-                                Box::new(a_arg),
+                                Node::new(a_arg),
                             )),
-                            Box::new(b_arg),
+                            Node::new(b_arg),
                         );
                     }
                 }
             }
             expr.clone()
         }
-        Expr::App(f, a) => Expr::App(Box::new(push_negations(f)), Box::new(push_negations(a))),
+        Expr::App(f, a) => Expr::App(Node::new(push_negations(f)), Node::new(push_negations(a))),
         Expr::Lam(bi, n, ty, body) => Expr::Lam(
             *bi,
             n.clone(),
-            Box::new(push_negations(ty)),
-            Box::new(push_negations(body)),
+            Node::new(push_negations(ty)),
+            Node::new(push_negations(body)),
         ),
         Expr::Pi(bi, n, ty, body) => Expr::Pi(
             *bi,
             n.clone(),
-            Box::new(push_negations(ty)),
-            Box::new(push_negations(body)),
+            Node::new(push_negations(ty)),
+            Node::new(push_negations(body)),
         ),
         _ => expr.clone(),
     }
@@ -1151,8 +1152,8 @@ pub fn tactic_push_neg(state: &TacticState) -> TacticResult {
 pub fn tactic_by_contra(state: &TacticState, hyp_name: Name) -> TacticResult {
     let goal = get_focused_goal(state)?;
     let not_target = Expr::App(
-        Box::new(Expr::Const(Name::str("Not"), vec![])),
-        Box::new(goal.target.clone()),
+        Node::new(Expr::Const(Name::str("Not"), vec![])),
+        Node::new(goal.target.clone()),
     );
     let mut new_goal = goal.clone();
     new_goal.target = Expr::Const(Name::str("False"), vec![]);
@@ -1164,9 +1165,9 @@ pub fn tactic_by_contra(state: &TacticState, hyp_name: Name) -> TacticResult {
 pub fn tactic_contrapose(state: &TacticState) -> TacticResult {
     let goal = get_focused_goal(state)?;
     if let Expr::Pi(bi, name, a, b) = &goal.target {
-        let not_b = Expr::App(Box::new(Expr::Const(Name::str("Not"), vec![])), b.clone());
-        let not_a = Expr::App(Box::new(Expr::Const(Name::str("Not"), vec![])), a.clone());
-        let new_target = Expr::Pi(*bi, name.clone(), Box::new(not_b), Box::new(not_a));
+        let not_b = Expr::App(Node::new(Expr::Const(Name::str("Not"), vec![])), b.clone());
+        let not_a = Expr::App(Node::new(Expr::Const(Name::str("Not"), vec![])), a.clone());
+        let new_target = Expr::Pi(*bi, name.clone(), Node::new(not_b), Node::new(not_a));
         let mut new_goal = goal.clone();
         new_goal.target = new_target;
         new_goal.mvar_id = fresh_mvar_id();

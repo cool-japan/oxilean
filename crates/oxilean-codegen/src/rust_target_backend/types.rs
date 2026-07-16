@@ -933,6 +933,7 @@ impl RustTargetBackend {
     pub fn lcnf_to_rust_type(ty: &LcnfType) -> RustType {
         match ty {
             LcnfType::Nat => RustType::U64,
+            LcnfType::Int => RustType::Custom("i64".to_string()),
             LcnfType::LcnfString => RustType::RustString,
             LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => RustType::Unit,
             LcnfType::Object => RustType::Custom("Box<dyn std::any::Any>".to_string()),
@@ -955,6 +956,7 @@ impl RustTargetBackend {
     pub fn compile_lit(lit: &LcnfLit) -> RustExpr {
         match lit {
             LcnfLit::Nat(n) => RustExpr::Lit(RustLit::UInt(*n)),
+            LcnfLit::Int(i) => RustExpr::Lit(RustLit::Int(*i)),
             LcnfLit::Str(s) => RustExpr::Lit(RustLit::Str(s.clone())),
         }
     }

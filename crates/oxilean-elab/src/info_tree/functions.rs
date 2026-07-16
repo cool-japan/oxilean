@@ -520,7 +520,7 @@ mod tests {
         assert!(entry.val.is_none());
         assert!(format!("{}", entry).contains("h"));
         let let_entry =
-            LocalContextEntry::let_bound(Name::str("x"), mk_nat(), Expr::Lit(Literal::Nat(42)));
+            LocalContextEntry::let_bound(Name::str("x"), mk_nat(), Expr::Lit(Literal::nat(42)));
         assert!(let_entry.val.is_some());
         let auto_entry = LocalContextEntry::new(Name::str("_"), mk_nat()).with_auto();
         assert!(!auto_entry.is_user_name);

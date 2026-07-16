@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use std::hash::Hash;
 
 use super::oxihashset_type::OxiHashSet;
@@ -441,9 +442,9 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
         }
     };
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let nat_ty = || -> Expr { cst("Nat") };
@@ -455,15 +456,15 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(hashset_of(Expr::BVar(0))),
+        Node::new(type1()),
+        Node::new(hashset_of(Expr::BVar(0))),
     );
     add("HashSet.empty", empty_ty)?;
     let insert_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
         )),
@@ -472,8 +473,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let contains_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(Expr::BVar(1), bool_ty()),
         )),
@@ -482,8 +483,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let erase_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(Expr::BVar(1), hashset_of(Expr::BVar(2))),
         )),
@@ -492,36 +493,36 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let size_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(hashset_of(Expr::BVar(0)), nat_ty())),
+        Node::new(type1()),
+        Node::new(arr(hashset_of(Expr::BVar(0)), nat_ty())),
     );
     add("HashSet.size", size_ty)?;
     let is_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(hashset_of(Expr::BVar(0)), bool_ty())),
+        Node::new(type1()),
+        Node::new(arr(hashset_of(Expr::BVar(0)), bool_ty())),
     );
     add("HashSet.isEmpty", is_empty_ty)?;
     let to_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(hashset_of(Expr::BVar(0)), list_of(Expr::BVar(1)))),
+        Node::new(type1()),
+        Node::new(arr(hashset_of(Expr::BVar(0)), list_of(Expr::BVar(1)))),
     );
     add("HashSet.toList", to_list_ty)?;
     let of_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(list_of(Expr::BVar(0)), hashset_of(Expr::BVar(1)))),
+        Node::new(type1()),
+        Node::new(arr(list_of(Expr::BVar(0)), hashset_of(Expr::BVar(1)))),
     );
     add("HashSet.ofList", of_list_ty)?;
     let union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
         )),
@@ -530,8 +531,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let inter_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
         )),
@@ -540,8 +541,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let sdiff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
         )),
@@ -550,8 +551,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let subset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(hashset_of(Expr::BVar(1)), bool_ty()),
         )),
@@ -560,8 +561,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let filter_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
         )),
@@ -570,12 +571,12 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let fold_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 arr(Expr::BVar(0), arr(Expr::BVar(1), Expr::BVar(2))),
                 arr(Expr::BVar(3), arr(hashset_of(Expr::BVar(4)), Expr::BVar(5))),
             )),
@@ -585,8 +586,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let any_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(hashset_of(Expr::BVar(1)), bool_ty()),
         )),
@@ -595,8 +596,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let all_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(hashset_of(Expr::BVar(1)), bool_ty()),
         )),
@@ -605,8 +606,8 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let find_first_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(hashset_of(Expr::BVar(1)), option_of(Expr::BVar(2))),
         )),
@@ -735,24 +736,24 @@ pub fn hs_ext_finite_set_type(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let is_finite_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(hashset_of(Expr::BVar(0)), cst("Prop"))),
+        Node::new(type1()),
+        Node::new(arr(hashset_of(Expr::BVar(0)), cst("Prop"))),
     );
     add("HashSet.isFinite", is_finite_ty)?;
     let as_finite_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(hashset_of(Expr::BVar(0)), type1())),
+        Node::new(type1()),
+        Node::new(arr(hashset_of(Expr::BVar(0)), type1())),
     );
     add("HashSet.asFiniteSubset", as_finite_ty)?;
     Ok(())
@@ -762,9 +763,9 @@ pub fn hs_ext_membership_axioms(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -773,15 +774,15 @@ pub fn hs_ext_membership_axioms(
     let mem_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(Expr::BVar(0), arr(hashset_of(Expr::BVar(1)), prop()))),
+        Node::new(type1()),
+        Node::new(arr(Expr::BVar(0), arr(hashset_of(Expr::BVar(1)), prop()))),
     );
     add("HashSet.mem", mem_ty)?;
     let mem_iff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 Expr::BVar(1),
@@ -805,8 +806,8 @@ pub fn hs_ext_membership_axioms(
     let not_mem_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 app(app(cst("HashSet.mem"), Expr::BVar(1)), cst("HashSet.empty")),
@@ -822,9 +823,9 @@ pub fn hs_ext_insert_delete_axioms(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let _prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -832,8 +833,8 @@ pub fn hs_ext_insert_delete_axioms(
     let mem_insert_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 Expr::BVar(1),
@@ -860,8 +861,8 @@ pub fn hs_ext_insert_delete_axioms(
     let mem_erase_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 Expr::BVar(1),
@@ -894,8 +895,8 @@ pub fn hs_ext_insert_delete_axioms(
     let insert_insert_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -916,8 +917,8 @@ pub fn hs_ext_insert_delete_axioms(
     let erase_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             app(
                 app(
@@ -935,8 +936,8 @@ pub fn hs_ext_insert_delete_axioms(
     let insert_erase_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -960,8 +961,8 @@ pub fn hs_ext_insert_delete_axioms(
     let size_insert_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -991,8 +992,8 @@ pub fn hs_ext_insert_delete_axioms(
     let size_erase_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1029,17 +1030,17 @@ pub fn hs_ext_union_laws(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let union_comm_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1057,8 +1058,8 @@ pub fn hs_ext_union_laws(
     let union_assoc_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1088,8 +1089,8 @@ pub fn hs_ext_union_laws(
     let union_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1107,8 +1108,8 @@ pub fn hs_ext_union_laws(
     let empty_union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1126,8 +1127,8 @@ pub fn hs_ext_union_laws(
     let union_self_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1142,8 +1143,8 @@ pub fn hs_ext_union_laws(
     let mem_union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1177,17 +1178,17 @@ pub fn hs_ext_intersection_laws(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let inter_comm_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1205,8 +1206,8 @@ pub fn hs_ext_intersection_laws(
     let inter_assoc_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1236,8 +1237,8 @@ pub fn hs_ext_intersection_laws(
     let inter_self_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1252,8 +1253,8 @@ pub fn hs_ext_intersection_laws(
     let inter_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1271,8 +1272,8 @@ pub fn hs_ext_intersection_laws(
     let mem_inter_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1302,8 +1303,8 @@ pub fn hs_ext_intersection_laws(
     let union_distrib_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1337,9 +1338,9 @@ pub fn hs_ext_difference_laws(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1347,8 +1348,8 @@ pub fn hs_ext_difference_laws(
     let mem_sdiff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1381,8 +1382,8 @@ pub fn hs_ext_difference_laws(
     let sdiff_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1400,8 +1401,8 @@ pub fn hs_ext_difference_laws(
     let empty_sdiff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1419,8 +1420,8 @@ pub fn hs_ext_difference_laws(
     let sdiff_self_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1436,8 +1437,8 @@ pub fn hs_ext_difference_laws(
     let sdiff_union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1468,17 +1469,17 @@ pub fn hs_ext_subset_partial_order(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let subset_refl_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(app(cst("HashSet.subset"), Expr::BVar(0)), Expr::BVar(0)),
         )),
@@ -1487,8 +1488,8 @@ pub fn hs_ext_subset_partial_order(
     let subset_trans_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1509,8 +1510,8 @@ pub fn hs_ext_subset_partial_order(
     let subset_antisymm_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1528,8 +1529,8 @@ pub fn hs_ext_subset_partial_order(
     let empty_subset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(cst("HashSet.subset"), cst("HashSet.empty")),
@@ -1541,8 +1542,8 @@ pub fn hs_ext_subset_partial_order(
     let subset_union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1557,8 +1558,8 @@ pub fn hs_ext_subset_partial_order(
     let inter_subset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1581,9 +1582,9 @@ pub fn hs_ext_power_set_axioms(
     use super::functions::*;
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let nat_ty = || -> Expr { cst("Nat") };
@@ -1591,8 +1592,8 @@ pub fn hs_ext_power_set_axioms(
     let powerset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             hashset_of(hashset_of(Expr::BVar(1))),
         )),
@@ -1601,8 +1602,8 @@ pub fn hs_ext_power_set_axioms(
     let mem_powerset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -1623,8 +1624,8 @@ pub fn hs_ext_power_set_axioms(
     let card_powerset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -1645,8 +1646,8 @@ pub fn hs_ext_power_set_axioms(
     let cantor_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(cst("Nat.lt"), app(cst("HashSet.size"), Expr::BVar(0))),

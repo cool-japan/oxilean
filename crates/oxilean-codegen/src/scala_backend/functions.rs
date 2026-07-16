@@ -19,6 +19,7 @@ use super::types::{
 pub fn lcnf_type_to_scala(ty: &LcnfType) -> ScalaType {
     match ty {
         LcnfType::Nat => ScalaType::Long,
+        LcnfType::Int => ScalaType::Long,
         LcnfType::LcnfString => ScalaType::ScalaString,
         LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => ScalaType::Unit,
         LcnfType::Object => ScalaType::Any,

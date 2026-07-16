@@ -4,6 +4,7 @@
 
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Level, Name};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -185,8 +186,8 @@ pub(super) fn build_motive_placeholder(
         body = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             binder_name,
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(body),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(body),
         );
     }
     body
@@ -209,27 +210,27 @@ pub(super) fn lift_bvars_at(expr: &Expr, amount: u32, cutoff: u32) -> Expr {
         Expr::App(f, a) => {
             let f2 = lift_bvars_at(f, amount, cutoff);
             let a2 = lift_bvars_at(a, amount, cutoff);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = lift_bvars_at(ty, amount, cutoff);
             let body2 = lift_bvars_at(body, amount, cutoff + 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = lift_bvars_at(ty, amount, cutoff);
             let body2 = lift_bvars_at(body, amount, cutoff + 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = lift_bvars_at(ty, amount, cutoff);
             let val2 = lift_bvars_at(val, amount, cutoff);
             let body2 = lift_bvars_at(body, amount, cutoff + 1);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         Expr::Proj(n, i, e) => {
             let e2 = lift_bvars_at(e, amount, cutoff);
-            Expr::Proj(n.clone(), *i, Box::new(e2))
+            Expr::Proj(n.clone(), *i, Node::new(e2))
         }
     }
 }
@@ -293,8 +294,8 @@ pub fn tac_generalize(
         current_ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             name.clone(),
-            Box::new(expr_ty),
-            Box::new(abstracted),
+            Node::new(expr_ty),
+            Node::new(abstracted),
         );
         reverted_names.push(name.clone());
         hyp_positions.insert(name.clone(), i);
@@ -306,7 +307,7 @@ pub fn tac_generalize(
         ctx.mk_fresh_expr_mvar(current_ty.clone(), MetavarKind::Natural);
     let mut proof = new_goal_expr;
     for (expr, _name) in &generalized_exprs {
-        proof = Expr::App(Box::new(proof), Box::new(expr.clone()));
+        proof = Expr::App(Node::new(proof), Node::new(expr.clone()));
     }
     ctx.assign_mvar(goal, proof);
     state.replace_goal(vec![new_goal_id]);
@@ -391,12 +392,12 @@ pub(super) fn perform_single_revert(
     let new_target = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         hyp_name.clone(),
-        Box::new(hyp_ty),
-        Box::new(abstracted_target),
+        Node::new(hyp_ty),
+        Node::new(abstracted_target),
     );
     let (new_id, new_expr) = ctx.mk_fresh_expr_mvar(new_target, MetavarKind::Natural);
     let hyp_expr = Expr::Const(hyp_name.clone(), vec![]);
-    let proof = Expr::App(Box::new(new_expr), Box::new(hyp_expr));
+    let proof = Expr::App(Node::new(new_expr), Node::new(hyp_expr));
     ctx.assign_mvar(goal, proof);
     ctx.clear_local(hyp_name);
     state.replace_goal(vec![new_id]);
@@ -538,16 +539,16 @@ pub(super) fn apply_recursor(
                 ctx.mk_fresh_expr_mvar(Expr::Sort(Level::zero()), MetavarKind::Synthetic);
             placeholder
         };
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(param_arg));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(param_arg));
     }
     for motive in &scheme.motives {
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(motive.clone()));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(motive.clone()));
     }
     for mp in &scheme.minor_premises {
         let minor_type = build_minor_premise_type(mp, &goal_ty, scheme);
         let (minor_id, minor_placeholder) =
             ctx.mk_fresh_expr_mvar(minor_type, MetavarKind::Natural);
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(minor_placeholder));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(minor_placeholder));
         new_goal_ids.push(minor_id);
     }
     for i in 0..scheme.num_indices {
@@ -558,9 +559,9 @@ pub(super) fn apply_recursor(
                 ctx.mk_fresh_expr_mvar(Expr::Sort(Level::zero()), MetavarKind::Synthetic);
             placeholder
         };
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(index_arg));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(index_arg));
     }
-    rec_expr = Expr::App(Box::new(rec_expr), Box::new(target.clone()));
+    rec_expr = Expr::App(Node::new(rec_expr), Node::new(target.clone()));
     ctx.assign_mvar(goal, rec_expr);
     state.replace_goal(new_goal_ids.clone());
     Ok(new_goal_ids)
@@ -581,8 +582,8 @@ pub(super) fn build_minor_premise_type(
         result_ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             ih_name,
-            Box::new(goal_ty.clone()),
-            Box::new(result_ty),
+            Node::new(goal_ty.clone()),
+            Node::new(result_ty),
         );
     }
     for i in (0..mp.num_fields).rev() {
@@ -594,8 +595,8 @@ pub(super) fn build_minor_premise_type(
         result_ty = Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             field_name,
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(result_ty),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(result_ty),
         );
     }
     result_ty
@@ -704,20 +705,20 @@ pub(super) fn tac_mutual_induction_impl(
             let (_, p) = ctx.mk_fresh_expr_mvar(Expr::Sort(Level::zero()), MetavarKind::Synthetic);
             p
         };
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(param));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(param));
     }
     for motive in &combined_scheme.motives {
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(motive.clone()));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(motive.clone()));
     }
     for mp in &combined_scheme.minor_premises {
         let minor_type = build_minor_premise_type(mp, &goal_ty, &combined_scheme);
         let (minor_id, minor_placeholder) =
             ctx.mk_fresh_expr_mvar(minor_type, MetavarKind::Natural);
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(minor_placeholder));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(minor_placeholder));
         new_goal_ids.push(minor_id);
     }
     for target in targets {
-        rec_expr = Expr::App(Box::new(rec_expr), Box::new(target.clone()));
+        rec_expr = Expr::App(Node::new(rec_expr), Node::new(target.clone()));
     }
     ctx.assign_mvar(goal, rec_expr);
     state.replace_goal(new_goal_ids.clone());
@@ -842,12 +843,12 @@ pub(super) fn tac_wf_induction_impl(
     let step_type = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("x"),
-        Box::new(target_ty.clone()),
-        Box::new(Expr::Pi(
+        Node::new(target_ty.clone()),
+        Node::new(Expr::Pi(
             oxilean_kernel::BinderInfo::Default,
             ih_name.clone(),
-            Box::new(ih_type.clone()),
-            Box::new(goal_ty.clone()),
+            Node::new(ih_type.clone()),
+            Node::new(goal_ty.clone()),
         )),
     );
     let (step_goal_id, step_goal_placeholder) =
@@ -860,28 +861,28 @@ pub(super) fn tac_wf_induction_impl(
         .unwrap_or_else(|| Expr::Const(Name::str("WellFounded.wf"), vec![]));
     let effective_rel = if let Some(ref measure) = config.measure {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("InvImage"), vec![Level::zero()])),
-                Box::new(rel.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("InvImage"), vec![Level::zero()])),
+                Node::new(rel.clone()),
             )),
-            Box::new(measure.clone()),
+            Node::new(measure.clone()),
         )
     } else {
         rel.clone()
     };
     let mut fix_expr = Expr::Const(wf_fix_name, vec![Level::zero()]);
-    fix_expr = Expr::App(Box::new(fix_expr), Box::new(target_ty.clone()));
-    fix_expr = Expr::App(Box::new(fix_expr), Box::new(effective_rel));
-    fix_expr = Expr::App(Box::new(fix_expr), Box::new(wf_proof));
+    fix_expr = Expr::App(Node::new(fix_expr), Node::new(target_ty.clone()));
+    fix_expr = Expr::App(Node::new(fix_expr), Node::new(effective_rel));
+    fix_expr = Expr::App(Node::new(fix_expr), Node::new(wf_proof));
     let motive = Expr::Lam(
         oxilean_kernel::BinderInfo::Default,
         Name::str("x"),
-        Box::new(target_ty),
-        Box::new(goal_ty),
+        Node::new(target_ty),
+        Node::new(goal_ty),
     );
-    fix_expr = Expr::App(Box::new(fix_expr), Box::new(motive));
-    fix_expr = Expr::App(Box::new(fix_expr), Box::new(step_goal_placeholder));
-    fix_expr = Expr::App(Box::new(fix_expr), Box::new(target));
+    fix_expr = Expr::App(Node::new(fix_expr), Node::new(motive));
+    fix_expr = Expr::App(Node::new(fix_expr), Node::new(step_goal_placeholder));
+    fix_expr = Expr::App(Node::new(fix_expr), Node::new(target));
     ctx.assign_mvar(goal, fix_expr);
     state.replace_goal(vec![step_goal_id]);
     Ok(vec![step_goal_id])
@@ -890,21 +891,21 @@ pub(super) fn tac_wf_induction_impl(
 /// `forall (y : T), rel y x -> P y`
 pub(super) fn build_wf_ih_type(target_ty: &Expr, rel: &Expr, goal_ty: &Expr) -> Expr {
     let rel_applied = Expr::App(
-        Box::new(Expr::App(Box::new(rel.clone()), Box::new(Expr::BVar(0)))),
-        Box::new(Expr::BVar(2)),
+        Node::new(Expr::App(Node::new(rel.clone()), Node::new(Expr::BVar(0)))),
+        Node::new(Expr::BVar(2)),
     );
     let goal_for_y = goal_ty.clone();
     let inner = Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("h_lt"),
-        Box::new(rel_applied),
-        Box::new(goal_for_y),
+        Node::new(rel_applied),
+        Node::new(goal_for_y),
     );
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
         Name::str("y"),
-        Box::new(target_ty.clone()),
-        Box::new(inner),
+        Node::new(target_ty.clone()),
+        Node::new(inner),
     )
 }
 /// Attempt to automatically find a well-founded relation for the target type.
@@ -983,7 +984,7 @@ pub(super) fn rename_pi_binders_impl(ty: &Expr, names: &[(usize, Name)], idx: us
                 .map(|(_, n)| n.clone())
                 .unwrap_or_else(|| old_name.clone());
             let new_body = rename_pi_binders_impl(body, names, idx + 1);
-            Expr::Pi(*bi, new_name, domain.clone(), Box::new(new_body))
+            Expr::Pi(*bi, new_name, domain.clone(), Node::new(new_body))
         }
         _ => ty.clone(),
     }
@@ -1335,27 +1336,27 @@ pub(super) fn abstract_expr_impl(expr: &Expr, target: &Expr, depth: u32) -> Expr
         Expr::App(f, a) => {
             let f2 = abstract_expr_impl(f, target, depth);
             let a2 = abstract_expr_impl(a, target, depth);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = abstract_expr_impl(ty, target, depth);
             let body2 = abstract_expr_impl(body, target, depth + 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = abstract_expr_impl(ty, target, depth);
             let body2 = abstract_expr_impl(body, target, depth + 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = abstract_expr_impl(ty, target, depth);
             let val2 = abstract_expr_impl(val, target, depth);
             let body2 = abstract_expr_impl(body, target, depth + 1);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         Expr::Proj(n, i, e) => {
             let e2 = abstract_expr_impl(e, target, depth);
-            Expr::Proj(n.clone(), *i, Box::new(e2))
+            Expr::Proj(n.clone(), *i, Node::new(e2))
         }
     }
 }
@@ -1372,27 +1373,27 @@ pub(super) fn abstract_name_in_type_impl(expr: &Expr, name: &Name, depth: u32) -
         Expr::App(f, a) => {
             let f2 = abstract_name_in_type_impl(f, name, depth);
             let a2 = abstract_name_in_type_impl(a, name, depth);
-            Expr::App(Box::new(f2), Box::new(a2))
+            Expr::App(Node::new(f2), Node::new(a2))
         }
         Expr::Lam(bi, n, ty, body) => {
             let ty2 = abstract_name_in_type_impl(ty, name, depth);
             let body2 = abstract_name_in_type_impl(body, name, depth + 1);
-            Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Pi(bi, n, ty, body) => {
             let ty2 = abstract_name_in_type_impl(ty, name, depth);
             let body2 = abstract_name_in_type_impl(body, name, depth + 1);
-            Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+            Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
         }
         Expr::Let(n, ty, val, body) => {
             let ty2 = abstract_name_in_type_impl(ty, name, depth);
             let val2 = abstract_name_in_type_impl(val, name, depth);
             let body2 = abstract_name_in_type_impl(body, name, depth + 1);
-            Expr::Let(n.clone(), Box::new(ty2), Box::new(val2), Box::new(body2))
+            Expr::Let(n.clone(), Node::new(ty2), Node::new(val2), Node::new(body2))
         }
         Expr::Proj(n, i, e) => {
             let e2 = abstract_name_in_type_impl(e, name, depth);
-            Expr::Proj(n.clone(), *i, Box::new(e2))
+            Expr::Proj(n.clone(), *i, Node::new(e2))
         }
     }
 }
@@ -1446,7 +1447,7 @@ pub(super) fn infer_expr_type_simple(expr: &Expr, ctx: &MetaContext) -> Expr {
         }
         Expr::Lam(bi, name, dom, body) => {
             let body_ty = infer_expr_type_simple(body, ctx);
-            Expr::Pi(*bi, name.clone(), dom.clone(), Box::new(body_ty))
+            Expr::Pi(*bi, name.clone(), dom.clone(), Node::new(body_ty))
         }
         _ => expr.clone(),
     }

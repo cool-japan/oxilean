@@ -5,6 +5,7 @@
 use super::functions::*;
 use crate::basic::MetaContext;
 use crate::tactic::state::{TacticResult, TacticState};
+use oxilean_kernel::Node;
 use oxilean_kernel::{Expr, Name};
 
 /// A database of rewrite hints.
@@ -86,17 +87,17 @@ impl MatchResult {
             Expr::App(f, a) => {
                 let f2 = self.apply_to(f);
                 let a2 = self.apply_to(a);
-                Expr::App(Box::new(f2), Box::new(a2))
+                Expr::App(Node::new(f2), Node::new(a2))
             }
             Expr::Lam(bi, n, ty, body) => {
                 let ty2 = self.apply_to(ty);
                 let body2 = self.apply_to(body);
-                Expr::Lam(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+                Expr::Lam(*bi, n.clone(), Node::new(ty2), Node::new(body2))
             }
             Expr::Pi(bi, n, ty, body) => {
                 let ty2 = self.apply_to(ty);
                 let body2 = self.apply_to(body);
-                Expr::Pi(*bi, n.clone(), Box::new(ty2), Box::new(body2))
+                Expr::Pi(*bi, n.clone(), Node::new(ty2), Node::new(body2))
             }
             other => other.clone(),
         }
@@ -464,9 +465,9 @@ impl EqualityInfo {
                         Name::str("Eq")
                     ) {
                         return Some(EqualityInfo {
-                            ty: *alpha.clone(),
-                            lhs: *lhs.clone(),
-                            rhs: *rhs.clone(),
+                            ty: (**alpha).clone(),
+                            lhs: (**lhs).clone(),
+                            rhs: (**rhs).clone(),
                         });
                     }
                 }

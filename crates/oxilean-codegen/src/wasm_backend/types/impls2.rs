@@ -444,6 +444,7 @@ impl WasmBackend {
     pub(crate) fn lcnf_type_to_wasm(ty: &LcnfType) -> WasmType {
         match ty {
             LcnfType::Nat => WasmType::I64,
+            LcnfType::Int => WasmType::I64,
             LcnfType::Erased | LcnfType::Irrelevant | LcnfType::Unit => WasmType::I32,
             LcnfType::LcnfString => WasmType::I32,
             LcnfType::Fun(_, _) => WasmType::I32,
@@ -506,6 +507,7 @@ impl WasmBackend {
         match arg {
             LcnfArg::Var(id) => vec![WasmInstr::LocalGet(format!("x{}", id.0))],
             LcnfArg::Lit(LcnfLit::Nat(n)) => vec![WasmInstr::I64Const(*n as i64)],
+            LcnfArg::Lit(LcnfLit::Int(i)) => vec![WasmInstr::I64Const(*i)],
             LcnfArg::Lit(LcnfLit::Str(_)) => vec![WasmInstr::I32Const(0)],
             LcnfArg::Erased => vec![WasmInstr::I32Const(0)],
             LcnfArg::Type(_) => vec![WasmInstr::I32Const(0)],
@@ -520,6 +522,7 @@ impl WasmBackend {
         match val {
             LcnfLetValue::Lit(lit) => match lit {
                 LcnfLit::Nat(n) => vec![WasmInstr::I64Const(*n as i64)],
+                LcnfLit::Int(i) => vec![WasmInstr::I64Const(*i)],
                 LcnfLit::Str(_) => vec![WasmInstr::I32Const(0)],
             },
             LcnfLetValue::FVar(id) => vec![WasmInstr::LocalGet(format!("x{}", id.0))],

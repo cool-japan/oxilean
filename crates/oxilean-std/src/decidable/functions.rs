@@ -6,6 +6,7 @@ use super::types::{
     BoolReflect, DecidableCounter, Decision, DecisionChain, DecisionTable, EqDecision, FiniteSet,
     FnPred, Interval, LeDecision, NamedDecision, Not,
 };
+use oxilean_kernel::Node;
 
 /// A type whose truth value is decidable.
 ///
@@ -504,9 +505,9 @@ pub fn build_decidable_env(env: &mut oxilean_kernel::Environment) -> Result<(), 
         }
     };
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -517,15 +518,15 @@ pub fn build_decidable_env(env: &mut oxilean_kernel::Environment) -> Result<(), 
     let is_true_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(arr(Expr::BVar(0), dec_of(Expr::BVar(1)))),
+        Node::new(prop()),
+        Node::new(arr(Expr::BVar(0), dec_of(Expr::BVar(1)))),
     );
     add("Decidable.isTrue", is_true_ty)?;
     let is_false_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(arr(arr(Expr::BVar(0), cst("False")), dec_of(Expr::BVar(1)))),
+        Node::new(prop()),
+        Node::new(arr(arr(Expr::BVar(0), cst("False")), dec_of(Expr::BVar(1)))),
     );
     add("Decidable.isFalse", is_false_ty)?;
     add("instDecidableTrue", dec_of(cst("True")))?;
@@ -533,32 +534,32 @@ pub fn build_decidable_env(env: &mut oxilean_kernel::Environment) -> Result<(), 
     let inst_dec_not_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_of(Expr::BVar(0))),
-            Box::new(dec_of(app(cst("Not"), Expr::BVar(1)))),
+            Node::new(dec_of(Expr::BVar(0))),
+            Node::new(dec_of(app(cst("Not"), Expr::BVar(1)))),
         )),
     );
     add("instDecidableNot", inst_dec_not_ty)?;
     let inst_dec_and_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("dp"),
-                Box::new(dec_of(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(dec_of(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("dq"),
-                    Box::new(dec_of(Expr::BVar(1))),
-                    Box::new(dec_of(app(app(cst("And"), Expr::BVar(3)), Expr::BVar(2)))),
+                    Node::new(dec_of(Expr::BVar(1))),
+                    Node::new(dec_of(app(app(cst("And"), Expr::BVar(3)), Expr::BVar(2)))),
                 )),
             )),
         )),
@@ -567,20 +568,20 @@ pub fn build_decidable_env(env: &mut oxilean_kernel::Environment) -> Result<(), 
     let inst_dec_or_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("dp"),
-                Box::new(dec_of(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(dec_of(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("dq"),
-                    Box::new(dec_of(Expr::BVar(1))),
-                    Box::new(dec_of(app(app(cst("Or"), Expr::BVar(3)), Expr::BVar(2)))),
+                    Node::new(dec_of(Expr::BVar(1))),
+                    Node::new(dec_of(app(app(cst("Or"), Expr::BVar(3)), Expr::BVar(2)))),
                 )),
             )),
         )),
@@ -595,24 +596,24 @@ pub fn build_decidable_env(env: &mut oxilean_kernel::Environment) -> Result<(), 
     let inst_dec_eq_opt_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_eq_of(Expr::BVar(0))),
-            Box::new(dec_eq_of(app(cst("Option"), Expr::BVar(1)))),
+            Node::new(dec_eq_of(Expr::BVar(0))),
+            Node::new(dec_eq_of(app(cst("Option"), Expr::BVar(1)))),
         )),
     );
     add("instDecidableEqOption", inst_dec_eq_opt_ty)?;
     let inst_dec_eq_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_eq_of(Expr::BVar(0))),
-            Box::new(dec_eq_of(app(cst("List"), Expr::BVar(1)))),
+            Node::new(dec_eq_of(Expr::BVar(0))),
+            Node::new(dec_eq_of(app(cst("List"), Expr::BVar(1)))),
         )),
     );
     add("instDecidableEqList", inst_dec_eq_list_ty)?;
@@ -817,9 +818,9 @@ pub fn dcs_ext_decidable_typeclass(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -827,24 +828,24 @@ pub fn dcs_ext_decidable_typeclass(
     let decide_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_of(Expr::BVar(0))),
-            Box::new(cst("Bool")),
+            Node::new(dec_of(Expr::BVar(0))),
+            Node::new(cst("Bool")),
         )),
     );
     add("Decidable.decide", decide_ty)?;
     let decide_iff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_of(Expr::BVar(0))),
-            Box::new(app(
+            Node::new(dec_of(Expr::BVar(0))),
+            Node::new(app(
                 app(
                     cst("Iff"),
                     app(
@@ -860,12 +861,12 @@ pub fn dcs_ext_decidable_typeclass(
     let by_contra_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_of(Expr::BVar(0))),
-            Box::new(arr(
+            Node::new(dec_of(Expr::BVar(0))),
+            Node::new(arr(
                 arr(arr(Expr::BVar(1), cst("False")), cst("False")),
                 Expr::BVar(1),
             )),
@@ -875,12 +876,12 @@ pub fn dcs_ext_decidable_typeclass(
     let em_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_of(Expr::BVar(0))),
-            Box::new(app(
+            Node::new(dec_of(Expr::BVar(0))),
+            Node::new(app(
                 app(cst("Or"), Expr::BVar(1)),
                 arr(Expr::BVar(1), cst("False")),
             )),
@@ -895,9 +896,9 @@ pub fn dcs_ext_logical_connective_closure(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -905,20 +906,20 @@ pub fn dcs_ext_logical_connective_closure(
     let dec_implies_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("hp"),
-                Box::new(dec_of(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(dec_of(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("hq"),
-                    Box::new(dec_of(Expr::BVar(1))),
-                    Box::new(dec_of(arr(Expr::BVar(3), Expr::BVar(2)))),
+                    Node::new(dec_of(Expr::BVar(1))),
+                    Node::new(dec_of(arr(Expr::BVar(3), Expr::BVar(2)))),
                 )),
             )),
         )),
@@ -927,20 +928,20 @@ pub fn dcs_ext_logical_connective_closure(
     let dec_iff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(Expr::Pi(
+            Node::new(prop()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("hp"),
-                Box::new(dec_of(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(dec_of(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("hq"),
-                    Box::new(dec_of(Expr::BVar(1))),
-                    Box::new(dec_of(app(app(cst("Iff"), Expr::BVar(3)), Expr::BVar(2)))),
+                    Node::new(dec_of(Expr::BVar(1))),
+                    Node::new(dec_of(app(app(cst("Iff"), Expr::BVar(3)), Expr::BVar(2)))),
                 )),
             )),
         )),
@@ -949,12 +950,12 @@ pub fn dcs_ext_logical_connective_closure(
     let dec_and_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(arr(
+            Node::new(prop()),
+            Node::new(arr(
                 dec_of(Expr::BVar(1)),
                 arr(
                     dec_of(Expr::BVar(1)),
@@ -967,12 +968,12 @@ pub fn dcs_ext_logical_connective_closure(
     let dec_or_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(arr(
+            Node::new(prop()),
+            Node::new(arr(
                 dec_of(Expr::BVar(1)),
                 arr(
                     dec_of(Expr::BVar(1)),
@@ -985,8 +986,8 @@ pub fn dcs_ext_logical_connective_closure(
     let dec_not_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(arr(
+        Node::new(prop()),
+        Node::new(arr(
             dec_of(Expr::BVar(0)),
             dec_of(arr(Expr::BVar(1), cst("False"))),
         )),
@@ -1000,9 +1001,9 @@ pub fn dcs_ext_decidable_eq_basic(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -1047,52 +1048,52 @@ pub fn dcs_ext_decidable_eq_compound(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let _arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_eq_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableEq"), Expr::BVar(0))),
-            Box::new(app(cst("DecidableEq"), app(cst("List"), Expr::BVar(1)))),
+            Node::new(app(cst("DecidableEq"), Expr::BVar(0))),
+            Node::new(app(cst("DecidableEq"), app(cst("List"), Expr::BVar(1)))),
         )),
     );
     add("instDecidableEqList", dec_eq_list_ty)?;
     let dec_eq_opt_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableEq"), Expr::BVar(0))),
-            Box::new(app(cst("DecidableEq"), app(cst("Option"), Expr::BVar(1)))),
+            Node::new(app(cst("DecidableEq"), Expr::BVar(0))),
+            Node::new(app(cst("DecidableEq"), app(cst("Option"), Expr::BVar(1)))),
         )),
     );
     add("instDecidableEqOption", dec_eq_opt_ty)?;
     let dec_eq_prod_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("ha"),
-                Box::new(app(cst("DecidableEq"), Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(app(cst("DecidableEq"), Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("hb"),
-                    Box::new(app(cst("DecidableEq"), Expr::BVar(1))),
-                    Box::new(app(
+                    Node::new(app(cst("DecidableEq"), Expr::BVar(1))),
+                    Node::new(app(
                         cst("DecidableEq"),
                         app(app(cst("Prod"), Expr::BVar(3)), Expr::BVar(2)),
                     )),
@@ -1104,20 +1105,20 @@ pub fn dcs_ext_decidable_eq_compound(
     let dec_eq_sum_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(Expr::Pi(
+            Node::new(type1()),
+            Node::new(Expr::Pi(
                 Bi::InstImplicit,
                 Name::str("ha"),
-                Box::new(app(cst("DecidableEq"), Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(app(cst("DecidableEq"), Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     Bi::InstImplicit,
                     Name::str("hb"),
-                    Box::new(app(cst("DecidableEq"), Expr::BVar(1))),
-                    Box::new(app(
+                    Node::new(app(cst("DecidableEq"), Expr::BVar(1))),
+                    Node::new(app(
                         cst("DecidableEq"),
                         app(app(cst("Sum"), Expr::BVar(3)), Expr::BVar(2)),
                     )),
@@ -1133,9 +1134,9 @@ pub fn dcs_ext_linear_ordering(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -1167,36 +1168,36 @@ pub fn dcs_ext_linear_ordering(
     let compare_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableLinearOrder"), Expr::BVar(0))),
-            Box::new(arr(Expr::BVar(1), arr(Expr::BVar(2), cst("Ordering")))),
+            Node::new(app(cst("DecidableLinearOrder"), Expr::BVar(0))),
+            Node::new(arr(Expr::BVar(1), arr(Expr::BVar(2), cst("Ordering")))),
         )),
     );
     add("Decidable.compare", compare_ty)?;
     let min_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableLinearOrder"), Expr::BVar(0))),
-            Box::new(arr(Expr::BVar(1), arr(Expr::BVar(2), Expr::BVar(3)))),
+            Node::new(app(cst("DecidableLinearOrder"), Expr::BVar(0))),
+            Node::new(arr(Expr::BVar(1), arr(Expr::BVar(2), Expr::BVar(3)))),
         )),
     );
     add("Decidable.min", min_ty)?;
     let max_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableLinearOrder"), Expr::BVar(0))),
-            Box::new(arr(Expr::BVar(1), arr(Expr::BVar(2), Expr::BVar(3)))),
+            Node::new(app(cst("DecidableLinearOrder"), Expr::BVar(0))),
+            Node::new(arr(Expr::BVar(1), arr(Expr::BVar(2), Expr::BVar(3)))),
         )),
     );
     add("Decidable.max", max_ty)?;
@@ -1207,9 +1208,9 @@ pub fn dcs_ext_bounded_quantifiers(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1218,20 +1219,20 @@ pub fn dcs_ext_bounded_quantifiers(
     let forall_finset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(app(cst("DecidableEq"), Expr::BVar(0))),
-            Box::new(arr(
+            Node::new(app(cst("DecidableEq"), Expr::BVar(0))),
+            Node::new(arr(
                 arr(Expr::BVar(1), prop()),
                 arr(
                     app(cst("Finset"), Expr::BVar(2)),
                     dec_of(Expr::Pi(
                         Bi::Default,
                         Name::str("x"),
-                        Box::new(Expr::BVar(2)),
-                        Box::new(arr(
+                        Node::new(Expr::BVar(2)),
+                        Node::new(arr(
                             app(app(cst("Finset.mem"), Expr::BVar(0)), Expr::BVar(2)),
                             app(Expr::BVar(2), Expr::BVar(0)),
                         )),
@@ -1244,8 +1245,8 @@ pub fn dcs_ext_bounded_quantifiers(
     let exists_finset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), prop()),
             arr(
                 app(cst("Finset"), Expr::BVar(1)),
@@ -1267,8 +1268,8 @@ pub fn dcs_ext_bounded_quantifiers(
             dec_of(Expr::Pi(
                 Bi::Default,
                 Name::str("i"),
-                Box::new(cst("Nat")),
-                Box::new(arr(
+                Node::new(cst("Nat")),
+                Node::new(arr(
                     app(app(cst("Nat.lt"), Expr::BVar(0)), Expr::BVar(2)),
                     app(
                         app(cst("Eq"), app(Expr::BVar(1), Expr::BVar(0))),
@@ -1306,9 +1307,9 @@ pub fn dcs_ext_lem_boolean_reflection(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1317,8 +1318,8 @@ pub fn dcs_ext_lem_boolean_reflection(
     let lem_dec_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(arr(
+        Node::new(prop()),
+        Node::new(arr(
             dec_of(Expr::BVar(0)),
             app(
                 app(cst("Or"), Expr::BVar(1)),
@@ -1330,12 +1331,12 @@ pub fn dcs_ext_lem_boolean_reflection(
     let reflect_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_of(Expr::BVar(0))),
-            Box::new(arr(
+            Node::new(dec_of(Expr::BVar(0))),
+            Node::new(arr(
                 bool_ty(),
                 app(
                     app(
@@ -1351,12 +1352,12 @@ pub fn dcs_ext_lem_boolean_reflection(
     let decide_reflect_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::InstImplicit,
             Name::str("inst"),
-            Box::new(dec_of(Expr::BVar(0))),
-            Box::new(app(
+            Node::new(dec_of(Expr::BVar(0))),
+            Node::new(app(
                 app(
                     cst("Iff"),
                     app(
@@ -1372,15 +1373,15 @@ pub fn dcs_ext_lem_boolean_reflection(
     let prop_decidable_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(dec_of(Expr::BVar(0))),
+        Node::new(prop()),
+        Node::new(dec_of(Expr::BVar(0))),
     );
     add("Classical.propDecidable", prop_decidable_ty)?;
     let classical_em_ty = Expr::Pi(
         Bi::Default,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(app(
+        Node::new(prop()),
+        Node::new(app(
             app(cst("Or"), Expr::BVar(0)),
             arr(Expr::BVar(0), cst("False")),
         )),
@@ -1394,9 +1395,9 @@ pub fn dcs_ext_semi_decidability(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1405,8 +1406,8 @@ pub fn dcs_ext_semi_decidability(
     let to_semi_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(arr(
+        Node::new(prop()),
+        Node::new(arr(
             dec_of(Expr::BVar(0)),
             app(cst("SemiDecidable"), Expr::BVar(1)),
         )),
@@ -1415,12 +1416,12 @@ pub fn dcs_ext_semi_decidability(
     let semi_and_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(arr(
+            Node::new(prop()),
+            Node::new(arr(
                 app(cst("SemiDecidable"), Expr::BVar(1)),
                 arr(
                     app(cst("SemiDecidable"), Expr::BVar(1)),
@@ -1436,12 +1437,12 @@ pub fn dcs_ext_semi_decidability(
     let semi_or_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(Expr::Pi(
+        Node::new(prop()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("q"),
-            Box::new(prop()),
-            Box::new(arr(
+            Node::new(prop()),
+            Node::new(arr(
                 app(cst("SemiDecidable"), Expr::BVar(1)),
                 arr(
                     app(cst("SemiDecidable"), Expr::BVar(1)),
@@ -1457,8 +1458,8 @@ pub fn dcs_ext_semi_decidability(
     let semi_nn_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(prop()),
-        Box::new(arr(
+        Node::new(prop()),
+        Node::new(arr(
             app(cst("SemiDecidable"), Expr::BVar(0)),
             app(
                 cst("SemiDecidable"),
@@ -1474,9 +1475,9 @@ pub fn dcs_ext_undecidability_halting(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1492,12 +1493,12 @@ pub fn dcs_ext_undecidability_halting(
     let semi_dec_halting_ty = Expr::Pi(
         Bi::Default,
         Name::str("p"),
-        Box::new(arr(cst("Nat"), app(cst("Option"), cst("Nat")))),
-        Box::new(Expr::Pi(
+        Node::new(arr(cst("Nat"), app(cst("Option"), cst("Nat")))),
+        Node::new(Expr::Pi(
             Bi::Default,
             Name::str("n"),
-            Box::new(cst("Nat")),
-            Box::new(app(
+            Node::new(cst("Nat")),
+            Node::new(app(
                 cst("SemiDecidable"),
                 app(app(cst("HaltingProblem"), Expr::BVar(1)), Expr::BVar(0)),
             )),
@@ -1513,9 +1514,9 @@ pub fn dcs_ext_presburger_arithmetic(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1572,9 +1573,9 @@ pub fn dcs_ext_dpll_procedure(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -1625,9 +1626,9 @@ pub fn dcs_ext_constructive_markov(
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     use std::fmt;
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1635,8 +1636,8 @@ pub fn dcs_ext_constructive_markov(
     let markov_ty = Expr::Pi(
         Bi::Default,
         Name::str("p"),
-        Box::new(arr(cst("Nat"), cst("Bool"))),
-        Box::new(arr(
+        Node::new(arr(cst("Nat"), cst("Bool"))),
+        Node::new(arr(
             arr(
                 arr(
                     app(
@@ -1664,8 +1665,8 @@ pub fn dcs_ext_constructive_markov(
     let church_ty = Expr::Pi(
         Bi::Default,
         Name::str("f"),
-        Box::new(arr(cst("Nat"), cst("Nat"))),
-        Box::new(app(
+        Node::new(arr(cst("Nat"), cst("Nat"))),
+        Node::new(app(
             app(cst("Exists"), cst("Nat")),
             app(app(cst("Computes"), Expr::BVar(0)), Expr::BVar(1)),
         )),
@@ -1674,16 +1675,16 @@ pub fn dcs_ext_constructive_markov(
     let cons_dec_finite_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             app(cst("Finset"), Expr::BVar(0)),
             arr(
                 arr(Expr::BVar(1), prop()),
                 dec_of(Expr::Pi(
                     Bi::Default,
                     Name::str("x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(arr(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(arr(
                         app(app(cst("Finset.mem"), Expr::BVar(0)), Expr::BVar(2)),
                         app(Expr::BVar(2), Expr::BVar(0)),
                     )),
@@ -1695,8 +1696,8 @@ pub fn dcs_ext_constructive_markov(
     let witness_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("p"),
-        Box::new(arr(cst("Nat"), prop())),
-        Box::new(arr(
+        Node::new(arr(cst("Nat"), prop())),
+        Node::new(arr(
             app(
                 app(cst("Exists"), cst("Nat")),
                 app(Expr::BVar(1), Expr::BVar(0)),

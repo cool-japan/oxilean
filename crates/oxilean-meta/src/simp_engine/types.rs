@@ -4,6 +4,7 @@
 
 use super::functions::*;
 use crate::discr_tree::DiscrTree;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 use std::collections::{HashMap, HashSet};
 
@@ -476,11 +477,11 @@ impl SimpEngine {
         let Expr::Const(head_name, _) = head else {
             return false;
         };
-        let nat_args: Vec<u64> = args
+        let nat_args: Vec<&oxilean_kernel::BigNat> = args
             .iter()
             .filter_map(|a| {
                 if let Expr::Lit(Literal::Nat(n)) = a {
-                    Some(*n)
+                    Some(n)
                 } else {
                     None
                 }
@@ -548,11 +549,11 @@ impl SimpEngine {
         ctx.pop_position();
         if f_result.changed || arg_result.changed {
             self.stats.record_congruence();
-            let new_app = Expr::App(Box::new(f_result.new_expr), Box::new(arg_result.new_expr));
+            let new_app = Expr::App(Node::new(f_result.new_expr), Node::new(arg_result.new_expr));
             let proof = Expr::Const(Name::str("cong_app"), vec![]);
             return SimpResult::changed(new_app, proof, ctx.rewrite_count);
         }
-        SimpResult::unchanged(Expr::App(Box::new(f.clone()), Box::new(arg.clone())))
+        SimpResult::unchanged(Expr::App(Node::new(f.clone()), Node::new(arg.clone())))
     }
     /// Simplify a lambda expression.
     fn simp_lambda(&mut self, ctx: &mut SimpContext, body_ty: &Expr, body: &Expr) -> SimpResult {
@@ -569,8 +570,8 @@ impl SimpEngine {
                 Expr::Lam(
                     BinderInfo::Default,
                     Name::str("x"),
-                    Box::new(ty_result.new_expr),
-                    Box::new(body_result.new_expr),
+                    Node::new(ty_result.new_expr),
+                    Node::new(body_result.new_expr),
                 ),
                 proof,
                 ctx.rewrite_count,
@@ -579,8 +580,8 @@ impl SimpEngine {
         SimpResult::unchanged(Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(body_ty.clone()),
-            Box::new(body.clone()),
+            Node::new(body_ty.clone()),
+            Node::new(body.clone()),
         ))
     }
     /// Simplify a pi expression.
@@ -598,8 +599,8 @@ impl SimpEngine {
                 Expr::Pi(
                     BinderInfo::Default,
                     Name::str("x"),
-                    Box::new(param_result.new_expr),
-                    Box::new(ret_result.new_expr),
+                    Node::new(param_result.new_expr),
+                    Node::new(ret_result.new_expr),
                 ),
                 proof,
                 ctx.rewrite_count,
@@ -608,8 +609,8 @@ impl SimpEngine {
         SimpResult::unchanged(Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(param_ty.clone()),
-            Box::new(ret_ty.clone()),
+            Node::new(param_ty.clone()),
+            Node::new(ret_ty.clone()),
         ))
     }
     /// Simplify a let expression.
@@ -626,9 +627,9 @@ impl SimpEngine {
             return SimpResult::changed(
                 Expr::Let(
                     Name::str("x"),
-                    Box::new(Expr::Const(Name::str("unit_ty"), vec![])),
-                    Box::new(val_result.new_expr),
-                    Box::new(body_result.new_expr),
+                    Node::new(Expr::Const(Name::str("unit_ty"), vec![])),
+                    Node::new(val_result.new_expr),
+                    Node::new(body_result.new_expr),
                 ),
                 proof,
                 ctx.rewrite_count,
@@ -636,9 +637,9 @@ impl SimpEngine {
         }
         SimpResult::unchanged(Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("unit_ty"), vec![])),
-            Box::new(val.clone()),
-            Box::new(body.clone()),
+            Node::new(Expr::Const(Name::str("unit_ty"), vec![])),
+            Node::new(val.clone()),
+            Node::new(body.clone()),
         ))
     }
     /// Normalize numeric operations through constant folding.
@@ -651,7 +652,7 @@ impl SimpEngine {
         if (head_str == "Nat.succ" || head_str == "Nat.successor") && args.len() == 1 {
             if let Expr::Lit(Literal::Nat(n)) = args[0] {
                 return Some(SimpResult::changed(
-                    Expr::Lit(Literal::Nat(n + 1)),
+                    Expr::Lit(Literal::Nat(n.succ())),
                     Expr::Const(Name::str("Nat.succ_norm"), vec![]),
                     1,
                 ));
@@ -667,31 +668,13 @@ impl SimpEngine {
         let (Expr::Lit(Literal::Nat(lhs)), Expr::Lit(Literal::Nat(rhs))) = (a, b) else {
             return None;
         };
-        let result: Option<u64> = match head_str.as_str() {
-            "Nat.add" | "HAdd.hAdd" => Some(lhs + rhs),
-            "Nat.mul" | "HMul.hMul" => Some(lhs * rhs),
-            "Nat.sub" | "HSub.hSub" => Some(lhs.saturating_sub(*rhs)),
-            "Nat.div" | "HDiv.hDiv" => {
-                if *rhs == 0 {
-                    Some(0)
-                } else {
-                    Some(lhs / rhs)
-                }
-            }
-            "Nat.mod" | "HMod.hMod" => {
-                if *rhs == 0 {
-                    Some(*lhs)
-                } else {
-                    Some(lhs % rhs)
-                }
-            }
-            "Nat.pow" | "HPow.hPow" => {
-                if *rhs <= 32 {
-                    Some(lhs.saturating_pow(*rhs as u32))
-                } else {
-                    None
-                }
-            }
+        let result: Option<oxilean_kernel::BigNat> = match head_str.as_str() {
+            "Nat.add" | "HAdd.hAdd" => Some(lhs.add(rhs)),
+            "Nat.mul" | "HMul.hMul" => Some(lhs.mul(rhs)),
+            "Nat.sub" | "HSub.hSub" => Some(lhs.sub(rhs)),
+            "Nat.div" | "HDiv.hDiv" => Some(lhs.div(rhs)),
+            "Nat.mod" | "HMod.hMod" => Some(lhs.rem(rhs)),
+            "Nat.pow" | "HPow.hPow" => lhs.pow(rhs),
             _ => None,
         };
         result.map(|v| {

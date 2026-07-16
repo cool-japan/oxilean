@@ -4,6 +4,7 @@
 
 use crate::context::ElabContext;
 use crate::metavar::MetaVarContext;
+use oxilean_kernel::Node;
 use oxilean_kernel::{alpha_equiv, const_name, expr_head, BinderInfo, Expr, FVarId, Name};
 
 use super::types::{
@@ -109,7 +110,7 @@ pub fn insert_implicits_for_app(
         if let Expr::Pi(_, _, _, cod) = &ty {
             ty = oxilean_kernel::instantiate(cod, &val);
         }
-        expr = Expr::App(Box::new(expr), Box::new(val));
+        expr = Expr::App(Node::new(expr), Node::new(val));
     }
     (expr, ty)
 }
@@ -257,7 +258,7 @@ pub fn strip_n_explicit(ty: &Expr, n: usize) -> Expr {
                 if matches!(bi, BinderInfo::Default | BinderInfo::StrictImplicit) {
                     stripped += 1;
                 }
-                current = *cod;
+                current = (*cod).clone();
             }
             other => return other,
         }
@@ -270,7 +271,7 @@ mod tests {
     use crate::implicit::*;
     use oxilean_kernel::{BinderInfo, Environment, Level, Name};
     fn make_pi(bi: BinderInfo, name: &str, dom: Expr, cod: Expr) -> Expr {
-        Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(cod))
+        Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(cod))
     }
     fn type0() -> Expr {
         Expr::Sort(Level::succ(Level::zero()))
@@ -446,7 +447,7 @@ pub fn insert_all_implicits(
         if let Expr::Pi(_, _, _, cod) = &ty {
             ty = oxilean_kernel::instantiate(cod, val);
         }
-        expr = Expr::App(Box::new(expr), Box::new(val.clone()));
+        expr = Expr::App(Node::new(expr), Node::new(val.clone()));
     }
     ImplicitInsertResult {
         expr,
@@ -503,7 +504,7 @@ mod implicit_extra_tests {
         Expr::Sort(Level::succ(Level::zero()))
     }
     fn make_pi(bi: BinderInfo, name: &str, dom: Expr, cod: Expr) -> Expr {
-        Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(cod))
+        Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(cod))
     }
     #[test]
     fn test_insert_all_implicits() {
@@ -553,12 +554,12 @@ mod implicit_extra_tests {
     #[test]
     fn test_count_likely_implicit_args() {
         let inner = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::FVar(FVarId(1_000_001))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::FVar(FVarId(1_000_001))),
         );
         let outer = Expr::App(
-            Box::new(inner),
-            Box::new(Expr::Const(Name::str("x"), vec![])),
+            Node::new(inner),
+            Node::new(Expr::Const(Name::str("x"), vec![])),
         );
         assert_eq!(count_likely_implicit_args(&outer), 1);
     }
@@ -618,8 +619,8 @@ mod implicit_final_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(type0()),
-            Box::new(type0()),
+            Node::new(type0()),
+            Node::new(type0()),
         );
         assert!(!has_trailing_implicits(&pi));
     }
@@ -628,12 +629,12 @@ mod implicit_final_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(type0()),
-            Box::new(Expr::Pi(
+            Node::new(type0()),
+            Node::new(Expr::Pi(
                 BinderInfo::Implicit,
                 Name::str("y"),
-                Box::new(type0()),
-                Box::new(type0()),
+                Node::new(type0()),
+                Node::new(type0()),
             )),
         );
         assert!(has_trailing_implicits(&pi));
@@ -667,7 +668,7 @@ mod extra_implicit_tests {
         Expr::Sort(Level::succ(Level::zero()))
     }
     fn make_pi(bi: BinderInfo, name: &str, dom: Expr, cod: Expr) -> Expr {
-        Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(cod))
+        Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(cod))
     }
     #[test]
     fn test_pending_implicit_queue_basic() {
@@ -824,7 +825,7 @@ pub fn run_implicit_pipeline(
                 inserted.push(InsertedImplicit::new(name.to_string(), meta_id, mode));
                 stats.record_insertion(mode);
                 ty = oxilean_kernel::instantiate(cod, &meta_expr);
-                expr = Expr::App(Box::new(expr), Box::new(meta_expr));
+                expr = Expr::App(Node::new(expr), Node::new(meta_expr));
                 count += 1;
                 if mode == ImplicitMode::TypeClass {
                     if infer_implicit(ctx, &(**dom).clone()).is_some() {
@@ -854,7 +855,7 @@ pub fn eta_expand_implicits(metas: &mut MetaVarContext, f: Expr, fun_type: &Expr
     for arg in &implicit_args {
         let meta_id = metas.fresh(arg.ty.clone());
         let meta_expr = Expr::FVar(FVarId(1_000_000 + meta_id));
-        result = Expr::App(Box::new(result), Box::new(meta_expr));
+        result = Expr::App(Node::new(result), Node::new(meta_expr));
     }
     (result, rest_ty)
 }
@@ -985,26 +986,26 @@ pub fn replace_meta_placeholders(expr: &Expr, replacement: &Expr) -> Expr {
     match expr {
         Expr::FVar(FVarId(id)) if *id >= 1_000_000 => replacement.clone(),
         Expr::App(f, a) => Expr::App(
-            Box::new(replace_meta_placeholders(f, replacement)),
-            Box::new(replace_meta_placeholders(a, replacement)),
+            Node::new(replace_meta_placeholders(f, replacement)),
+            Node::new(replace_meta_placeholders(a, replacement)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(replace_meta_placeholders(ty, replacement)),
-            Box::new(replace_meta_placeholders(body, replacement)),
+            Node::new(replace_meta_placeholders(ty, replacement)),
+            Node::new(replace_meta_placeholders(body, replacement)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(replace_meta_placeholders(ty, replacement)),
-            Box::new(replace_meta_placeholders(body, replacement)),
+            Node::new(replace_meta_placeholders(ty, replacement)),
+            Node::new(replace_meta_placeholders(body, replacement)),
         ),
         Expr::Let(name, ty, val, body) => Expr::Let(
             name.clone(),
-            Box::new(replace_meta_placeholders(ty, replacement)),
-            Box::new(replace_meta_placeholders(val, replacement)),
-            Box::new(replace_meta_placeholders(body, replacement)),
+            Node::new(replace_meta_placeholders(ty, replacement)),
+            Node::new(replace_meta_placeholders(val, replacement)),
+            Node::new(replace_meta_placeholders(body, replacement)),
         ),
         _ => expr.clone(),
     }
@@ -1016,20 +1017,20 @@ pub fn normalise_implicit_pass(expr: &Expr, default_val: &Expr) -> (Expr, usize)
         Expr::App(f, a) if is_meta_placeholder(a) => {
             let (f2, n) = normalise_implicit_pass(f, default_val);
             (
-                Expr::App(Box::new(f2), Box::new(default_val.clone())),
+                Expr::App(Node::new(f2), Node::new(default_val.clone())),
                 n + 1,
             )
         }
         Expr::App(f, a) => {
             let (f2, n1) = normalise_implicit_pass(f, default_val);
             let (a2, n2) = normalise_implicit_pass(a, default_val);
-            (Expr::App(Box::new(f2), Box::new(a2)), n1 + n2)
+            (Expr::App(Node::new(f2), Node::new(a2)), n1 + n2)
         }
         Expr::Lam(bi, name, ty, body) => {
             let (ty2, n1) = normalise_implicit_pass(ty, default_val);
             let (body2, n2) = normalise_implicit_pass(body, default_val);
             (
-                Expr::Lam(*bi, name.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Lam(*bi, name.clone(), Node::new(ty2), Node::new(body2)),
                 n1 + n2,
             )
         }
@@ -1037,7 +1038,7 @@ pub fn normalise_implicit_pass(expr: &Expr, default_val: &Expr) -> (Expr, usize)
             let (ty2, n1) = normalise_implicit_pass(ty, default_val);
             let (body2, n2) = normalise_implicit_pass(body, default_val);
             (
-                Expr::Pi(*bi, name.clone(), Box::new(ty2), Box::new(body2)),
+                Expr::Pi(*bi, name.clone(), Node::new(ty2), Node::new(body2)),
                 n1 + n2,
             )
         }
@@ -1078,10 +1079,10 @@ pub fn reorder_implicits_to_front(ty: &Expr) -> Expr {
     let ret = current.clone();
     let mut result = ret;
     for (bi, name, dom) in explicits.into_iter().rev() {
-        result = Expr::Pi(bi, name, Box::new(dom), Box::new(result));
+        result = Expr::Pi(bi, name, Node::new(dom), Node::new(result));
     }
     for (bi, name, dom) in implicits.into_iter().rev() {
-        result = Expr::Pi(bi, name, Box::new(dom), Box::new(result));
+        result = Expr::Pi(bi, name, Node::new(dom), Node::new(result));
     }
     result
 }
@@ -1102,7 +1103,7 @@ mod pipeline_tests {
         Expr::Sort(Level::succ(Level::zero()))
     }
     fn make_pi(bi: BinderInfo, name: &str, dom: Expr, cod: Expr) -> Expr {
-        Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(cod))
+        Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(cod))
     }
     #[test]
     fn test_pipeline_config_default() {
@@ -1450,8 +1451,8 @@ mod pipeline_tests {
     #[test]
     fn test_strip_implicit_apps_strips_meta() {
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::FVar(FVarId(1_000_005))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::FVar(FVarId(1_000_005))),
         );
         let stripped = strip_implicit_apps(&expr);
         assert!(matches!(stripped, Expr::Const(_, _)));
@@ -1459,11 +1460,11 @@ mod pipeline_tests {
     #[test]
     fn test_count_app_spine() {
         let e = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(type0()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(type0()),
             )),
-            Box::new(type0()),
+            Node::new(type0()),
         );
         assert_eq!(count_app_spine(&e), 2);
     }
@@ -1471,8 +1472,8 @@ mod pipeline_tests {
     fn test_normalise_implicit_pass_substitutes() {
         let default_val = Expr::Const(Name::str("default"), vec![]);
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::FVar(FVarId(1_000_002))),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::FVar(FVarId(1_000_002))),
         );
         let (result, n) = normalise_implicit_pass(&expr, &default_val);
         assert_eq!(n, 1);

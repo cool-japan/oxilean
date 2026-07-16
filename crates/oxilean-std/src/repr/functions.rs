@@ -3,11 +3,12 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 #![allow(clippy::items_after_test_module)]
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 #[allow(dead_code)]
 pub fn app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub fn app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -23,11 +24,11 @@ pub fn app4(f: Expr, a: Expr, b: Expr, c: Expr, d: Expr) -> Expr {
 }
 #[allow(dead_code)]
 pub fn pi(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Pi(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Pi(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 #[allow(dead_code)]
 pub fn lam(bi: BinderInfo, name: &str, dom: Expr, body: Expr) -> Expr {
-    Expr::Lam(bi, Name::str(name), Box::new(dom), Box::new(body))
+    Expr::Lam(bi, Name::str(name), Node::new(dom), Node::new(body))
 }
 #[allow(dead_code)]
 pub fn cst(s: &str) -> Expr {
@@ -651,7 +652,7 @@ mod tests {
     }
     #[test]
     fn test_mk_format_nest() {
-        let n = Expr::Lit(Literal::Nat(2));
+        let n = Expr::Lit(Literal::nat(2));
         let doc = mk_format_nil();
         let e = mk_format_nest(n, doc);
         if let Expr::App(f, _) = &e {
@@ -803,7 +804,7 @@ mod tests {
     #[test]
     fn test_mk_repr_prec() {
         let val = cst("x");
-        let prec = Expr::Lit(Literal::Nat(0));
+        let prec = Expr::Lit(Literal::nat(0));
         let e = mk_repr_prec(val, prec);
         if let Expr::App(f, _) = &e {
             if let Expr::App(g, _) = f.as_ref() {
@@ -928,7 +929,7 @@ mod tests {
     }
     #[test]
     fn test_mk_format_prettywidth() {
-        let w = Expr::Lit(Literal::Nat(80));
+        let w = Expr::Lit(Literal::nat(80));
         let e = mk_format_prettywidth(w, mk_format_nil());
         if let Expr::App(f, _) = &e {
             if let Expr::App(g, _) = f.as_ref() {
@@ -943,7 +944,7 @@ mod tests {
     #[test]
     fn test_mk_add_app_paren() {
         let doc = mk_format_nil();
-        let prec = Expr::Lit(Literal::Nat(MAX_PREC));
+        let prec = Expr::Lit(Literal::nat(MAX_PREC));
         let e = mk_add_app_paren(doc, prec);
         if let Expr::App(f, _) = &e {
             if let Expr::App(g, _) = f.as_ref() {
@@ -1022,7 +1023,7 @@ mod tests {
 }
 #[allow(dead_code)]
 pub fn rpr_ext_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 #[allow(dead_code)]
 pub fn rpr_ext_app2(f: Expr, a: Expr, b: Expr) -> Expr {
@@ -1057,8 +1058,8 @@ pub fn rpr_ext_pi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 #[allow(dead_code)]
@@ -1066,8 +1067,8 @@ pub fn rpr_ext_arrow(dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 #[allow(dead_code)]

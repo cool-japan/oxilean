@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, KernelError, Name};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, EquivClassSystem, FocusStack, LabelSet, NonEmptyVec, PathBuf, QuotLiftCache,
@@ -73,32 +75,11 @@ pub fn is_eq_relation(rel: &Expr) -> bool {
         _ => false,
     }
 }
-/// Reduce Quot.lift f h (Quot.mk a) to f a.
-pub fn reduce_quot_lift(args: &[Expr]) -> Option<Expr> {
-    if args.len() < 3 {
-        return None;
-    }
-    match &args[2] {
-        Expr::App(head, a) => {
-            if let Expr::Const(name, _) = head.as_ref() {
-                if *name == Name::str("Quot.mk") {
-                    return Some(Expr::App(Box::new(args[0].clone()), a.clone()));
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-/// Try to reduce a Quot expression.
-pub fn try_reduce_quot(head: &Expr, args: &[Expr]) -> Option<Expr> {
-    if let Expr::Const(name, _) = head {
-        if *name == Name::str("Quot.lift") {
-            return reduce_quot_lift(args);
-        }
-    }
-    None
-}
+// REMOVED (unsound): `reduce_quot_lift` / `try_reduce_quot` modelled
+// `Quot.lift` with 3 explicit args and `Quot.mk` with 1 arg, matched a
+// hard-coded single-atom `Name::str("Quot.mk")` (never equal to a hierarchical
+// export name), and dropped over-application. The correct, kernel-driven
+// quotient iota lives in `Reducer::try_reduce_quot` (`reduce/types.rs`).
 /// Check if an expression is a Quot.mk application.
 pub fn is_quot_mk(expr: &Expr) -> bool {
     match expr {
@@ -181,43 +162,22 @@ fn is_propositional_motive(motive: &Expr) -> bool {
         _ => false,
     }
 }
-/// Check whether `Quot.mk rel a = Quot.mk rel b` holds.
-///
-/// In Lean's quotient type theory, `Quot.mk r a = Quot.mk r b` iff `r a b`.
-/// This function performs a structural check:
-/// 1. If `a == b` (syntactic equality), reflexivity gives `r a a`, so they are equal.
-/// 2. If `rel` is the identity/Eq relation, equality requires `a == b`.
-/// 3. If `rel` applied to both arguments reduces structurally to `True`, accept.
-/// 4. Otherwise, check whether `App(App(rel, a), b)` is syntactically the same
-///    as `App(App(rel, b), a)` *and* `rel` is symmetric by name.
-pub fn quot_eq(rel: &Expr, a: &Expr, b: &Expr) -> bool {
-    if a == b {
-        return true;
-    }
-    if is_eq_relation(rel) {
-        return a == b;
-    }
-    let rel_a_b = Expr::App(
-        Box::new(Expr::App(Box::new(rel.clone()), Box::new(a.clone()))),
-        Box::new(b.clone()),
-    );
-    let rel_b_a = Expr::App(
-        Box::new(Expr::App(Box::new(rel.clone()), Box::new(b.clone()))),
-        Box::new(a.clone()),
-    );
-    rel_a_b == rel_b_a
-}
+// REMOVED (unsound): `quot_eq` claimed to decide `Quot.mk r a = Quot.mk r b` by
+// testing whether `r a b` is *syntactically* equal to `r b a` — which is not a
+// valid kernel judgment. Quotient equality is decided on the def-eq path via
+// the `Quot.lift` computation rule (and, at the Setoid layer, `Quot.sound` as a
+// separate axiom); there is no sound purely-structural shortcut.
 /// Build a proof of Quot.mk a = Quot.mk b from r a b.
 pub fn build_quot_sound(quot_ty: &QuotientType, a: Expr, b: Expr, rel_proof: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(quot_ty.sound_const()), Box::new(a))),
-                Box::new(b),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(quot_ty.sound_const()), Node::new(a))),
+                Node::new(b),
             )),
-            Box::new(rel_proof),
+            Node::new(rel_proof),
         )),
-        Box::new(quot_ty.base_type.clone()),
+        Node::new(quot_ty.base_type.clone()),
     )
 }
 #[cfg(test)]
@@ -244,33 +204,20 @@ mod tests {
         let applied = qt.mk_apply(mk_const("zero"));
         assert!(matches!(applied, Expr::App(_, _)));
     }
-    #[test]
-    fn test_quot_lift_reduction() {
-        let f = mk_const("f");
-        let h = mk_const("h");
-        let forty_two = mk_const("42");
-        let mk_42 = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(forty_two.clone()));
-        let result = reduce_quot_lift(&[f.clone(), h, mk_42]);
-        assert!(result.is_some());
-        assert_eq!(
-            result.expect("result should be valid"),
-            Expr::App(Box::new(f), Box::new(forty_two))
-        );
-    }
-    #[test]
-    fn test_quot_lift_too_few_args() {
-        assert!(reduce_quot_lift(&[mk_const("f"), mk_const("h")]).is_none());
-    }
+    // NOTE: tests for the removed toy `reduce_quot_lift` (3-arg lift, 1-arg mk,
+    // single-atom name matching) were deleted with the function. The sound
+    // `Quot.lift` computation rule is exercised end-to-end in
+    // `tests/quotient_reduction.rs`.
     #[test]
     fn test_is_quot_mk() {
-        let mk_expr = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("a")));
+        let mk_expr = Expr::App(Node::new(mk_const("Quot.mk")), Node::new(mk_const("a")));
         assert!(is_quot_mk(&mk_expr));
         assert!(!is_quot_mk(&mk_const("Nat")));
     }
     #[test]
     fn test_quot_mk_arg() {
         let a = mk_const("a");
-        let mk_expr = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(a.clone()));
+        let mk_expr = Expr::App(Node::new(mk_const("Quot.mk")), Node::new(a.clone()));
         assert_eq!(quot_mk_arg(&mk_expr), Some(&a));
     }
     #[test]
@@ -279,12 +226,12 @@ mod tests {
         let rel = Expr::Pi(
             BinderInfo::Default,
             Name::str("a"),
-            Box::new(nat.clone()),
-            Box::new(Expr::Pi(
+            Node::new(nat.clone()),
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("b"),
-                Box::new(nat),
-                Box::new(Expr::Sort(Level::zero())),
+                Node::new(nat),
+                Node::new(Expr::Sort(Level::zero())),
             )),
         );
         assert!(check_equivalence_relation(&rel).is_ok());
@@ -293,8 +240,8 @@ mod tests {
     fn test_is_eq_relation() {
         assert!(is_eq_relation(&mk_const("Eq")));
         assert!(is_eq_relation(&Expr::App(
-            Box::new(mk_const("Eq")),
-            Box::new(mk_const("Nat"))
+            Node::new(mk_const("Eq")),
+            Node::new(mk_const("Nat"))
         )));
         assert!(!is_eq_relation(&mk_const("Nat")));
     }
@@ -314,58 +261,38 @@ mod tests {
         assert!(kernel.find_by_base(&mk_const("Int")).is_none());
     }
     #[test]
-    fn test_quotient_kernel_reduce() {
+    fn test_quotient_kernel_reduce_is_retired() {
+        // The toy `QuotientKernel::reduce` is retired (always `None`); sound
+        // iota-reduction lives in the kernel `Reducer`.
         let kernel = QuotientKernel::new();
-        let mk_a = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("a")));
+        let mk_a = Expr::App(Node::new(mk_const("Quot.mk")), Node::new(mk_const("a")));
         let result = kernel.reduce(
             &mk_const("Quot.lift"),
             &[mk_const("f"), mk_const("h"), mk_a],
         );
-        assert!(result.is_some());
+        assert!(result.is_none());
     }
-    #[test]
-    fn test_quot_eq_reflexive() {
-        let a = mk_const("a");
-        let rel = mk_const("MyRel");
-        assert!(quot_eq(&rel, &a, &a));
-    }
-    #[test]
-    fn test_quot_eq_eq_relation_same() {
-        let a = mk_const("a");
-        assert!(quot_eq(&mk_const("Eq"), &a, &a));
-    }
-    #[test]
-    fn test_quot_eq_eq_relation_different() {
-        let a = mk_const("a");
-        let b = mk_const("b");
-        assert!(!quot_eq(&mk_const("Eq"), &a, &b));
-    }
-    #[test]
-    fn test_quot_eq_symmetric_relation() {
-        let a = mk_const("a");
-        let b = mk_const("b");
-        let rel = mk_const("MyRel");
-        assert!(!quot_eq(&rel, &a, &b));
-    }
+    // NOTE: tests for the removed toy `quot_eq` (which bogusly decided quotient
+    // equality by syntactic `r a b` vs `r b a`) were deleted with the function.
     #[test]
     fn test_is_quot_type_expr_valid() {
         let quot_nat_eq = Expr::App(
-            Box::new(Expr::App(
-                Box::new(mk_const("Quot")),
-                Box::new(mk_const("Nat")),
+            Node::new(Expr::App(
+                Node::new(mk_const("Quot")),
+                Node::new(mk_const("Nat")),
             )),
-            Box::new(mk_const("Eq")),
+            Node::new(mk_const("Eq")),
         );
         assert!(is_quot_type_expr(&quot_nat_eq));
     }
     #[test]
     fn test_is_quot_type_expr_not_quot() {
         let not_quot = Expr::App(
-            Box::new(Expr::App(
-                Box::new(mk_const("List")),
-                Box::new(mk_const("Nat")),
+            Node::new(Expr::App(
+                Node::new(mk_const("List")),
+                Node::new(mk_const("Nat")),
             )),
-            Box::new(mk_const("Eq")),
+            Node::new(mk_const("Eq")),
         );
         assert!(!is_quot_type_expr(&not_quot));
     }
@@ -397,8 +324,8 @@ mod tests {
         let lam_motive = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(nat),
-            Box::new(prop),
+            Node::new(nat),
+            Node::new(prop),
         );
         assert!(check_quot_usage(QuotUsageKind::Ind, &lam_motive).is_ok());
     }
@@ -406,63 +333,34 @@ mod tests {
     fn test_quotient_kernel_is_quot_type_structural() {
         let kernel = QuotientKernel::new();
         let quot_nat_eq = Expr::App(
-            Box::new(Expr::App(
-                Box::new(mk_const("Quot")),
-                Box::new(mk_const("Nat")),
+            Node::new(Expr::App(
+                Node::new(mk_const("Quot")),
+                Node::new(mk_const("Nat")),
             )),
-            Box::new(mk_const("Eq")),
+            Node::new(mk_const("Eq")),
         );
         assert!(kernel.is_quot_type(&quot_nat_eq));
     }
 }
-/// Try to reduce `Quot.ind h (Quot.mk a)` to `h a`.
-pub fn reduce_quot_ind(args: &[Expr]) -> Option<Expr> {
-    if args.len() < 2 {
-        return None;
-    }
-    match &args[1] {
-        Expr::App(head, a) => {
-            if let Expr::Const(name, _) = head.as_ref() {
-                if *name == Name::str("Quot.mk") {
-                    return Some(Expr::App(Box::new(args[0].clone()), a.clone()));
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-/// Try to reduce either `Quot.lift` or `Quot.ind`.
-pub fn try_reduce_quot_full(head: &Expr, args: &[Expr]) -> Option<(Expr, QuotReductionKind)> {
-    if let Expr::Const(name, _) = head {
-        if *name == Name::str("Quot.lift") {
-            return reduce_quot_lift(args).map(|e| (e, QuotReductionKind::Lift));
-        }
-        if *name == Name::str("Quot.ind") {
-            return reduce_quot_ind(args).map(|e| (e, QuotReductionKind::Ind));
-        }
-    }
-    None
-}
+// REMOVED (unsound): `reduce_quot_ind` / `try_reduce_quot_full` modelled
+// `Quot.ind` with 2 args (`args[1]` as the `Quot.mk` term) and matched a
+// hard-coded single-atom `Quot.mk` name. The correct `Quot.ind` iota (5 args,
+// major premise at index 4, minor at index 3, WHNF + over-application handling)
+// lives in `Reducer::try_reduce_quot` (`reduce/types.rs`).
 /// Check whether two Quot.mk applications are definitionally equal given `r a b`.
 ///
 /// In general this requires a proof; here we simply check syntactic equality.
 pub fn quot_mk_def_eq(a: &Expr, b: &Expr) -> bool {
     a == b
 }
-/// Apply `Quot.lift f h` to all elements of a list and collect results.
+/// Apply a function `f` to all elements of a list and collect the `f item`
+/// applications. (Formerly routed through the removed toy `reduce_quot_lift`;
+/// the computation rule `Quot.lift f h (Quot.mk r item) ≡ f item` yields exactly
+/// `f item`, so this is the direct form.)
 pub fn lift_map(f: &Expr, items: &[Expr]) -> Vec<Expr> {
     items
         .iter()
-        .map(|item| {
-            let mk = Expr::App(
-                Box::new(Expr::Const(Name::str("Quot.mk"), vec![])),
-                Box::new(item.clone()),
-            );
-            let args = [f.clone(), Expr::Const(Name::str("_"), vec![]), mk];
-            reduce_quot_lift(&args)
-                .unwrap_or_else(|| Expr::App(Box::new(f.clone()), Box::new(item.clone())))
-        })
+        .map(|item| Expr::App(Node::new(f.clone()), Node::new(item.clone())))
         .collect()
 }
 /// Collect all `Quot.mk` subexpressions from an expression tree.
@@ -566,28 +464,10 @@ mod extended_tests {
         sys.merge(&a, &b);
         assert!(sys.same_class(&a, &b));
     }
-    #[test]
-    fn test_reduce_quot_ind() {
-        let h = mk_const("h");
-        let a = mk_const("a");
-        let mk_a = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(a.clone()));
-        let result = reduce_quot_ind(&[h.clone(), mk_a]);
-        assert!(result.is_some());
-        assert_eq!(
-            result.expect("result should be valid"),
-            Expr::App(Box::new(h), Box::new(a))
-        );
-    }
-    #[test]
-    fn test_try_reduce_quot_full_lift() {
-        let f = mk_const("f");
-        let h = mk_const("h");
-        let mk_a = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("a")));
-        let (result, kind) = try_reduce_quot_full(&mk_const("Quot.lift"), &[f, h, mk_a])
-            .expect("value should be present");
-        assert_eq!(kind, QuotReductionKind::Lift);
-        assert!(matches!(result, Expr::App(..)));
-    }
+    // NOTE: tests for the removed toy `reduce_quot_ind` / `try_reduce_quot_full`
+    // (wrong 2-arg ind model, single-atom name matching) were deleted with the
+    // functions. The sound `Quot.ind` iota (exact arity 5) is exercised in
+    // `tests/quotient_reduction.rs`.
     #[test]
     fn test_quotient_builder() {
         let qt = QuotientBuilder::new()
@@ -604,15 +484,15 @@ mod extended_tests {
     }
     #[test]
     fn test_collect_quot_mk() {
-        let mk_a = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("a")));
-        let mk_b = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("b")));
-        let expr = Expr::App(Box::new(mk_a.clone()), Box::new(mk_b.clone()));
+        let mk_a = Expr::App(Node::new(mk_const("Quot.mk")), Node::new(mk_const("a")));
+        let mk_b = Expr::App(Node::new(mk_const("Quot.mk")), Node::new(mk_const("b")));
+        let expr = Expr::App(Node::new(mk_a.clone()), Node::new(mk_b.clone()));
         let collected = collect_quot_mk(&expr);
         assert_eq!(collected.len(), 2);
     }
     #[test]
     fn test_count_quot_mk() {
-        let mk_a = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("a")));
+        let mk_a = Expr::App(Node::new(mk_const("Quot.mk")), Node::new(mk_const("a")));
         assert_eq!(count_quot_mk(&mk_a), 1);
         assert_eq!(count_quot_mk(&mk_const("other")), 0);
     }
@@ -630,7 +510,7 @@ mod extended_tests {
     }
     #[test]
     fn test_contains_quot_lift() {
-        let lift = Expr::App(Box::new(mk_const("Quot.lift")), Box::new(mk_const("f")));
+        let lift = Expr::App(Node::new(mk_const("Quot.lift")), Node::new(mk_const("f")));
         assert!(contains_quot_lift(&lift));
         assert!(!contains_quot_lift(&mk_const("Nat")));
     }
@@ -663,11 +543,11 @@ mod extended_tests {
             base_type: Expr::Sort(Level::zero()),
             relation: mk_const("Eq"),
             quot_type: Expr::App(
-                Box::new(Expr::App(
-                    Box::new(mk_const("Quot")),
-                    Box::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::App(
+                    Node::new(mk_const("Quot")),
+                    Node::new(Expr::Sort(Level::zero())),
                 )),
-                Box::new(mk_const("Eq")),
+                Node::new(mk_const("Eq")),
             ),
         };
         assert!(!validate_quotient_type(&qt));
@@ -678,30 +558,31 @@ mod extended_tests {
             base_type: mk_const("Nat"),
             relation: Expr::Sort(Level::zero()),
             quot_type: Expr::App(
-                Box::new(Expr::App(
-                    Box::new(mk_const("Quot")),
-                    Box::new(mk_const("Nat")),
+                Node::new(Expr::App(
+                    Node::new(mk_const("Quot")),
+                    Node::new(mk_const("Nat")),
                 )),
-                Box::new(Expr::Sort(Level::zero())),
+                Node::new(Expr::Sort(Level::zero())),
             ),
         };
         assert!(!validate_quotient_type(&qt));
     }
     #[test]
     fn test_validate_quotient_type_with_app_relation() {
-        let rel = Expr::App(Box::new(mk_const("Eq")), Box::new(mk_const("Nat")));
+        let rel = Expr::App(Node::new(mk_const("Eq")), Node::new(mk_const("Nat")));
         let qt = QuotientType::new(mk_const("Nat"), rel);
         assert!(validate_quotient_type(&qt));
     }
 }
 /// Collect application arguments into a flat list: `(f a b c)` → `[f, a, b, c]`.
+#[allow(dead_code)]
 pub(super) fn collect_args(expr: &Expr) -> Vec<Expr> {
     let mut args = Vec::new();
     let mut current = expr;
     loop {
         match current {
             Expr::App(f, a) => {
-                args.push(*a.clone());
+                args.push((**a).clone());
                 current = f;
             }
             _ => {
@@ -753,7 +634,7 @@ mod more_tests {
     }
     #[test]
     fn test_quot_stats_mk() {
-        let mk_a = Expr::App(Box::new(mk_const("Quot.mk")), Box::new(mk_const("a")));
+        let mk_a = Expr::App(Node::new(mk_const("Quot.mk")), Node::new(mk_const("a")));
         let stats = QuotStats::compute(&mk_a);
         assert_eq!(stats.mk_count, 1);
         assert!(stats.has_quot());
@@ -773,13 +654,13 @@ mod more_tests {
     #[test]
     fn test_is_identity_relation() {
         assert!(is_identity_relation(&mk_const("Eq")));
-        let app = Expr::App(Box::new(mk_const("Eq")), Box::new(mk_const("Nat")));
+        let app = Expr::App(Node::new(mk_const("Eq")), Node::new(mk_const("Nat")));
         assert!(is_identity_relation(&app));
     }
     #[test]
     fn test_is_quot_sound() {
         assert!(is_quot_sound(&mk_const("Quot.sound")));
-        let app = Expr::App(Box::new(mk_const("Quot.sound")), Box::new(mk_const("h")));
+        let app = Expr::App(Node::new(mk_const("Quot.sound")), Node::new(mk_const("h")));
         assert!(is_quot_sound(&app));
         assert!(!is_quot_sound(&mk_const("Nat")));
     }
@@ -800,8 +681,8 @@ mod more_tests {
         let a = mk_const("a");
         let b = mk_const("b");
         let expr = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let args = collect_args(&expr);
         assert_eq!(args[0], f);
@@ -815,7 +696,7 @@ pub(super) fn collect_args_norm(expr: &Expr) -> Vec<Expr> {
     loop {
         match current {
             Expr::App(f, a) => {
-                args.push(*a.clone());
+                args.push((**a).clone());
                 current = f;
             }
             _ => {
@@ -888,33 +769,33 @@ pub fn extract_quot_lift_args(expr: &Expr) -> Option<(Expr, Expr, Expr)> {
 #[allow(dead_code)]
 pub fn build_quot_type(alpha: Expr, r: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Quot"), vec![])),
-            Box::new(alpha),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Quot"), vec![])),
+            Node::new(alpha),
         )),
-        Box::new(r),
+        Node::new(r),
     )
 }
 /// Build `Quot.mk a`.
 #[allow(dead_code)]
 pub fn build_quot_mk(a: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Quot.mk"), vec![])),
-        Box::new(a),
+        Node::new(Expr::Const(Name::str("Quot.mk"), vec![])),
+        Node::new(a),
     )
 }
 /// Build `Quot.lift f h q`.
 #[allow(dead_code)]
 pub fn build_quot_lift(f: Expr, h: Expr, q: Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Quot.lift"), vec![])),
-                Box::new(f),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Quot.lift"), vec![])),
+                Node::new(f),
             )),
-            Box::new(h),
+            Node::new(h),
         )),
-        Box::new(q),
+        Node::new(q),
     )
 }
 /// Check whether a list of expressions are all `Quot.mk` applications.
@@ -1173,7 +1054,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

@@ -5,6 +5,7 @@
 use super::functions::*;
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::whnf::MetaWhnf;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, ConstantInfo, Expr, Level, Name};
 
 /// A builder pattern for InferType.
@@ -478,8 +479,8 @@ impl MetaInferType {
         Ok(Expr::Pi(
             info,
             name.clone(),
-            Box::new(ty.clone()),
-            Box::new(pi_body),
+            Node::new(ty.clone()),
+            Node::new(pi_body),
         ))
     }
     /// Infer the type of a Pi type.
@@ -589,7 +590,7 @@ impl MetaInferType {
             match cur_ty {
                 Expr::Pi(_, _, _, body) => {
                     let field_val =
-                        Expr::Proj(ind_val.common.name.clone(), j, Box::new(inner.clone()));
+                        Expr::Proj(ind_val.common.name.clone(), j, Node::new(inner.clone()));
                     cur_ty = oxilean_kernel::instantiate(&body, &field_val);
                 }
                 _ => {
@@ -600,7 +601,7 @@ impl MetaInferType {
             }
         }
         match cur_ty {
-            Expr::Pi(_, _, dom, _) => Ok(*dom),
+            Expr::Pi(_, _, dom, _) => Ok((*dom).clone()),
             _ => {
                 let proj_ty = Expr::Sort(Level::zero());
                 let (_, mvar) = ctx.mk_fresh_expr_mvar(proj_ty, MetavarKind::Natural);

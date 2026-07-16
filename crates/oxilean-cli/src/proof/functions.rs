@@ -119,7 +119,7 @@ mod tests {
     fn test_check_proof_not_found() {
         let env = Environment::new();
         let checker = ProofChecker::new(&env);
-        let proof = Expr::Lit(Literal::Nat(42));
+        let proof = Expr::Lit(Literal::nat(42));
         let result = checker.check_proof(&Name::str("nonexistent"), &proof);
         assert!(result.is_err());
     }

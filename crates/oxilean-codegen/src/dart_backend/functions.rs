@@ -17,6 +17,7 @@ use std::fmt;
 pub(super) fn lcnf_type_to_dart(ty: &LcnfType) -> DartType {
     match ty {
         LcnfType::Nat => DartType::DtInt,
+        LcnfType::Int => DartType::DtInt,
         LcnfType::LcnfString => DartType::DtString,
         LcnfType::Unit => DartType::DtVoid,
         LcnfType::Erased | LcnfType::Irrelevant => DartType::DtDynamic,

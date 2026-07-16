@@ -18,6 +18,7 @@ use super::types::{
 pub(super) fn type_suffix(ty: &LcnfType) -> String {
     match ty {
         LcnfType::Nat => "nat".to_string(),
+        LcnfType::Int => "int".to_string(),
         LcnfType::Object => "obj".to_string(),
         LcnfType::Unit => "unit".to_string(),
         LcnfType::Erased => "e".to_string(),
@@ -85,6 +86,7 @@ pub(super) fn find_spec_sites_inner(
                                     if let Some(lit) = extended_consts.get(v) {
                                         match lit {
                                             LcnfLit::Nat(n) => SpecConstArg::Nat(*n),
+                                            LcnfLit::Int(_) => SpecConstArg::Unknown,
                                             LcnfLit::Str(s) => SpecConstArg::Str(s.clone()),
                                         }
                                     } else {
@@ -171,6 +173,7 @@ pub(super) fn find_spec_sites_inner(
                                 if let Some(lit) = known_constants.get(v) {
                                     match lit {
                                         LcnfLit::Nat(n) => SpecConstArg::Nat(*n),
+                                        LcnfLit::Int(_) => SpecConstArg::Unknown,
                                         LcnfLit::Str(s) => SpecConstArg::Str(s.clone()),
                                     }
                                 } else {

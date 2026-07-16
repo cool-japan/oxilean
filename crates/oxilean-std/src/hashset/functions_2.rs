@@ -3,15 +3,16 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 
 fn hs_ext_cardinality_axioms(
     add: &mut impl FnMut(&str, oxilean_kernel::Expr) -> Result<(), String>,
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let nat_ty = || -> Expr { cst("Nat") };
@@ -19,8 +20,8 @@ fn hs_ext_cardinality_axioms(
     let card_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(app(
+        Node::new(type1()),
+        Node::new(app(
             app(cst("Eq"), app(cst("HashSet.size"), cst("HashSet.empty"))),
             cst("Nat.zero"),
         )),
@@ -29,8 +30,8 @@ fn hs_ext_cardinality_axioms(
     let card_singleton_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             app(
                 app(
@@ -51,8 +52,8 @@ fn hs_ext_cardinality_axioms(
     let inclusion_exclusion_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -89,8 +90,8 @@ fn hs_ext_cardinality_axioms(
     let disjoint_card_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -127,17 +128,17 @@ fn hs_ext_boolean_algebra(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let compl_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
         )),
@@ -146,8 +147,8 @@ fn hs_ext_boolean_algebra(
     let demorgan1_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -180,8 +181,8 @@ fn hs_ext_boolean_algebra(
     let demorgan2_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -214,8 +215,8 @@ fn hs_ext_boolean_algebra(
     let compl_compl_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -239,8 +240,8 @@ fn hs_ext_boolean_algebra(
     let union_compl_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -261,8 +262,8 @@ fn hs_ext_boolean_algebra(
     let inter_compl_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -287,9 +288,9 @@ fn hs_ext_list_conversion(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let list_of = |ty: Expr| -> Expr { app(cst("List"), ty) };
@@ -297,22 +298,22 @@ fn hs_ext_list_conversion(
     let to_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(hashset_of(Expr::BVar(0)), list_of(Expr::BVar(1)))),
+        Node::new(type1()),
+        Node::new(arr(hashset_of(Expr::BVar(0)), list_of(Expr::BVar(1)))),
     );
     add("HashSet.toList", to_list_ty)?;
     let from_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(list_of(Expr::BVar(0)), hashset_of(Expr::BVar(1)))),
+        Node::new(type1()),
+        Node::new(arr(list_of(Expr::BVar(0)), hashset_of(Expr::BVar(1)))),
     );
     add("HashSet.fromList", from_list_ty)?;
     let from_to_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(
@@ -330,8 +331,8 @@ fn hs_ext_list_conversion(
     let mem_from_list_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 list_of(Expr::BVar(1)),
@@ -352,8 +353,8 @@ fn hs_ext_list_conversion(
     let card_length_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(cst("Eq"), app(cst("HashSet.size"), Expr::BVar(0))),
@@ -372,9 +373,9 @@ fn hs_ext_extensionality(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -382,8 +383,8 @@ fn hs_ext_extensionality(
     let ext_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -391,8 +392,8 @@ fn hs_ext_extensionality(
                     Expr::Pi(
                         Bi::Default,
                         Name::str("x"),
-                        Box::new(Expr::BVar(0)),
-                        Box::new(app(
+                        Node::new(Expr::BVar(0)),
+                        Node::new(app(
                             app(
                                 cst("Iff"),
                                 app(app(cst("HashSet.mem"), Expr::BVar(0)), Expr::BVar(3)),
@@ -409,8 +410,8 @@ fn hs_ext_extensionality(
     let ext_iff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -422,8 +423,8 @@ fn hs_ext_extensionality(
                     Expr::Pi(
                         Bi::Default,
                         Name::str("x"),
-                        Box::new(Expr::BVar(0)),
-                        Box::new(app(
+                        Node::new(Expr::BVar(0)),
+                        Node::new(app(
                             app(
                                 cst("Iff"),
                                 app(app(cst("HashSet.mem"), Expr::BVar(0)), Expr::BVar(3)),
@@ -444,9 +445,9 @@ fn hs_ext_map_filter_axioms(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let bool_ty = || -> Expr { cst("Bool") };
@@ -454,12 +455,12 @@ fn hs_ext_map_filter_axioms(
     let image_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 arr(Expr::BVar(1), Expr::BVar(0)),
                 arr(hashset_of(Expr::BVar(2)), hashset_of(Expr::BVar(1))),
             )),
@@ -469,12 +470,12 @@ fn hs_ext_map_filter_axioms(
     let mem_image_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 arr(Expr::BVar(1), Expr::BVar(0)),
                 arr(
                     hashset_of(Expr::BVar(2)),
@@ -502,8 +503,8 @@ fn hs_ext_map_filter_axioms(
     let filter_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
         )),
@@ -512,8 +513,8 @@ fn hs_ext_map_filter_axioms(
     let mem_filter_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -546,8 +547,8 @@ fn hs_ext_map_filter_axioms(
     let filter_subset_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -569,9 +570,9 @@ fn hs_ext_partition_fold(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let bool_ty = || -> Expr { cst("Bool") };
@@ -579,8 +580,8 @@ fn hs_ext_partition_fold(
     let partition_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -595,8 +596,8 @@ fn hs_ext_partition_fold(
     let partition_union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             arr(Expr::BVar(0), bool_ty()),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -629,12 +630,12 @@ fn hs_ext_partition_fold(
     let fold_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 arr(Expr::BVar(0), arr(Expr::BVar(2), Expr::BVar(1))),
                 arr(Expr::BVar(1), arr(hashset_of(Expr::BVar(3)), Expr::BVar(2))),
             )),
@@ -644,12 +645,12 @@ fn hs_ext_partition_fold(
     let fold_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 arr(Expr::BVar(0), arr(Expr::BVar(2), Expr::BVar(1))),
                 arr(
                     Expr::BVar(1),
@@ -675,17 +676,17 @@ fn hs_ext_disjointness_covering(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let disjoint_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(hashset_of(Expr::BVar(1)), cst("Prop")),
         )),
@@ -694,8 +695,8 @@ fn hs_ext_disjointness_covering(
     let disjoint_iff_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -719,8 +720,8 @@ fn hs_ext_disjointness_covering(
     let disjoint_symm_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -735,8 +736,8 @@ fn hs_ext_disjointness_covering(
     let covering_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(hashset_of(Expr::BVar(0))),
             arr(hashset_of(Expr::BVar(1)), cst("Prop")),
         )),
@@ -745,8 +746,8 @@ fn hs_ext_disjointness_covering(
     let disj_empty_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             app(
                 app(cst("HashSet.Disjoint"), cst("HashSet.empty")),
@@ -762,17 +763,17 @@ fn hs_ext_lattice_axioms(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let join_union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -790,8 +791,8 @@ fn hs_ext_lattice_axioms(
     let meet_inter_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -809,8 +810,8 @@ fn hs_ext_lattice_axioms(
     let le_join_left_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -825,8 +826,8 @@ fn hs_ext_lattice_axioms(
     let meet_le_left_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -844,8 +845,8 @@ fn hs_ext_lattice_axioms(
     let absorb_union_inter_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -866,8 +867,8 @@ fn hs_ext_lattice_axioms(
     let absorb_inter_union_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             hashset_of(Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
@@ -892,21 +893,21 @@ fn hs_ext_cartesian_product(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
     let product_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(1)),
                 arr(
                     hashset_of(Expr::BVar(1)),
@@ -919,12 +920,12 @@ fn hs_ext_cartesian_product(
     let card_product_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(1)),
                 arr(
                     hashset_of(Expr::BVar(1)),
@@ -949,12 +950,12 @@ fn hs_ext_cartesian_product(
     let mem_product_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(Expr::Pi(
+        Node::new(type1()),
+        Node::new(Expr::Pi(
             Bi::Implicit,
             Name::str("β"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(1)),
                 arr(
                     hashset_of(Expr::BVar(1)),
@@ -998,9 +999,9 @@ fn hs_ext_bloom_filter_axioms(
 ) -> Result<(), String> {
     use oxilean_kernel::{BinderInfo as Bi, Expr, Level, Name};
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let bool_ty = || -> Expr { cst("Bool") };
@@ -1010,8 +1011,8 @@ fn hs_ext_bloom_filter_axioms(
     let bf_insert_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             Expr::BVar(0),
             arr(
                 app(cst("BloomFilter"), Expr::BVar(1)),
@@ -1023,8 +1024,8 @@ fn hs_ext_bloom_filter_axioms(
     let bf_query_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             app(cst("BloomFilter"), Expr::BVar(0)),
             arr(Expr::BVar(1), bool_ty()),
         )),
@@ -1033,16 +1034,16 @@ fn hs_ext_bloom_filter_axioms(
     let no_fn_ty = Expr::Pi(
         Bi::Implicit,
         Name::str("α"),
-        Box::new(type1()),
-        Box::new(arr(
+        Node::new(type1()),
+        Node::new(arr(
             app(cst("BloomFilter"), Expr::BVar(0)),
             arr(
                 hashset_of(Expr::BVar(1)),
                 Expr::Pi(
                     Bi::Default,
                     Name::str("x"),
-                    Box::new(Expr::BVar(1)),
-                    Box::new(arr(
+                    Node::new(Expr::BVar(1)),
+                    Node::new(arr(
                         app(app(cst("HashSet.mem"), Expr::BVar(0)), Expr::BVar(2)),
                         app(
                             app(
@@ -1072,9 +1073,9 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         });
     };
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
-    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Box::new(f), Box::new(a)) };
+    let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Box::new(a), Box::new(b))
+        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
@@ -1083,8 +1084,8 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(0)),
                 arr(hashset_of(Expr::BVar(1)), cst("Prop")),
             )),
@@ -1095,8 +1096,8 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(0)),
                 arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
             )),
@@ -1107,8 +1108,8 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(0)),
                 arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
             )),
@@ -1119,8 +1120,8 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(0)),
                 arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
             )),
@@ -1131,8 +1132,8 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(hashset_of(Expr::BVar(0)), cst("Nat"))),
+            Node::new(type1()),
+            Node::new(arr(hashset_of(Expr::BVar(0)), cst("Nat"))),
         ),
     );
     add(
@@ -1140,8 +1141,8 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(0)),
                 arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
             )),
@@ -1152,8 +1153,8 @@ pub fn register_hashset_extended_axioms(env: &mut oxilean_kernel::Environment) {
         Expr::Pi(
             Bi::Implicit,
             Name::str("α"),
-            Box::new(type1()),
-            Box::new(arr(
+            Node::new(type1()),
+            Node::new(arr(
                 hashset_of(Expr::BVar(0)),
                 arr(hashset_of(Expr::BVar(1)), hashset_of(Expr::BVar(2))),
             )),

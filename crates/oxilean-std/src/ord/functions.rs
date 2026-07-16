@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 use super::types::{OrdResult, Permutation, SortedMap, SortedSet};
@@ -28,8 +29,8 @@ pub fn build_ord_env(env: &mut Environment) -> Result<(), String> {
     let ord_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(type2.clone()),
+        Node::new(type1.clone()),
+        Node::new(type2.clone()),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Ord"),
@@ -40,23 +41,23 @@ pub fn build_ord_env(env: &mut Environment) -> Result<(), String> {
     let compare_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Ord"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Ord"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::Const(Name::str("Ordering"), vec![])),
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::Const(Name::str("Ordering"), vec![])),
                 )),
             )),
         )),
@@ -75,8 +76,8 @@ pub fn build_ord_env(env: &mut Environment) -> Result<(), String> {
     let swap_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("o"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str("Ordering.swap"),
@@ -87,12 +88,12 @@ pub fn build_ord_env(env: &mut Environment) -> Result<(), String> {
     let then_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("o1"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Pi(
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("o2"),
-            Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-            Box::new(Expr::Const(Name::str("Ordering"), vec![])),
+            Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+            Node::new(Expr::Const(Name::str("Ordering"), vec![])),
         )),
     );
     env.add(Declaration::Axiom {
@@ -108,8 +109,8 @@ pub fn add_ordering_predicate(env: &mut Environment, name: &str) -> Result<(), S
     let ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("o"),
-        Box::new(Expr::Const(Name::str("Ordering"), vec![])),
-        Box::new(Expr::Const(Name::str("Bool"), vec![])),
+        Node::new(Expr::Const(Name::str("Ordering"), vec![])),
+        Node::new(Expr::Const(Name::str("Bool"), vec![])),
     );
     env.add(Declaration::Axiom {
         name: Name::str(name),
@@ -572,23 +573,23 @@ pub fn build_ord_min(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Ord"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Ord"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::BVar(3)),
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::BVar(3)),
                 )),
             )),
         )),
@@ -607,23 +608,23 @@ pub fn build_ord_max(env: &mut Environment) -> Result<(), String> {
     let ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("α"),
-        Box::new(type1.clone()),
-        Box::new(Expr::Pi(
+        Node::new(type1.clone()),
+        Node::new(Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Ord"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Ord"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Pi(
+            Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Box::new(Expr::BVar(1)),
-                Box::new(Expr::Pi(
+                Node::new(Expr::BVar(1)),
+                Node::new(Expr::Pi(
                     BinderInfo::Default,
                     Name::str("b"),
-                    Box::new(Expr::BVar(2)),
-                    Box::new(Expr::BVar(3)),
+                    Node::new(Expr::BVar(2)),
+                    Node::new(Expr::BVar(3)),
                 )),
             )),
         )),
@@ -763,28 +764,28 @@ pub fn ord_e_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(dom),
-        Box::new(cod),
+        Node::new(dom),
+        Node::new(cod),
     )
 }
 pub fn ord_e_pi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn ord_e_ipi(name: &str, dom: Expr, body: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Implicit,
         Name::str(name),
-        Box::new(dom),
-        Box::new(body),
+        Node::new(dom),
+        Node::new(body),
     )
 }
 pub fn ord_e_app(f: Expr, a: Expr) -> Expr {
-    Expr::App(Box::new(f), Box::new(a))
+    Expr::App(Node::new(f), Node::new(a))
 }
 pub fn ord_e_app2(f: Expr, a: Expr, b: Expr) -> Expr {
     ord_e_app(ord_e_app(f, a), b)
@@ -843,12 +844,12 @@ pub fn axiom_monotone_map_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_type1()),
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_type1()),
                 )),
             ),
         ),
@@ -889,12 +890,12 @@ pub fn axiom_galois_connection_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_pi(
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_pi(
                         "l",
                         ord_e_arrow(Expr::BVar(3), Expr::BVar(2)),
                         ord_e_pi("r", ord_e_arrow(Expr::BVar(3), Expr::BVar(4)), ord_e_prop()),
@@ -920,8 +921,8 @@ pub fn axiom_fixpoint_exists_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "f",
                 ord_e_arrow(Expr::BVar(1), Expr::BVar(1)),
                 ord_e_prop(),
@@ -937,11 +938,11 @@ pub fn axiom_knaster_tarski_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_app(
+            Node::new(ord_e_app(
                 Expr::Const(Name::str("CompleteLattice"), vec![]),
                 Expr::BVar(0),
             )),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_pi(
                 "f",
                 ord_e_arrow(Expr::BVar(1), Expr::BVar(1)),
                 Expr::BVar(2),
@@ -964,12 +965,12 @@ pub fn axiom_scott_continuous_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_pi(
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_pi(
                         "f",
                         ord_e_arrow(Expr::BVar(3), Expr::BVar(2)),
                         ord_e_prop(),
@@ -1040,8 +1041,8 @@ pub fn axiom_lazy_eval_ord_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "a",
                 ord_e_app(Expr::Const(Name::str("Thunk"), vec![]), Expr::BVar(1)),
                 ord_e_pi(
@@ -1080,8 +1081,8 @@ pub fn axiom_btree_invariant_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "t",
                 ord_e_app(Expr::Const(Name::str("BTree"), vec![]), Expr::BVar(1)),
                 ord_e_prop(),
@@ -1097,8 +1098,8 @@ pub fn axiom_red_black_balance_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "t",
                 ord_e_app(Expr::Const(Name::str("RBTree"), vec![]), Expr::BVar(1)),
                 ord_e_prop(),
@@ -1114,8 +1115,8 @@ pub fn axiom_well_founded_lt_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_app(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_app(
                 Expr::Const(Name::str("WellFounded"), vec![]),
                 Expr::Const(Name::str("LT.lt"), vec![]),
             )),
@@ -1130,8 +1131,8 @@ pub fn axiom_antisymm_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "a",
                 Expr::BVar(1),
                 ord_e_pi(
@@ -1159,8 +1160,8 @@ pub fn axiom_transitivity_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "a",
                 Expr::BVar(1),
                 ord_e_pi(
@@ -1192,8 +1193,8 @@ pub fn axiom_totality_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "a",
                 Expr::BVar(1),
                 ord_e_pi(
@@ -1217,8 +1218,8 @@ pub fn axiom_reflexivity_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "a",
                 Expr::BVar(1),
                 ord_e_prop_app2("LE.le", Expr::BVar(0), Expr::BVar(0)),
@@ -1237,12 +1238,12 @@ pub fn axiom_monotone_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_pi(
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_pi(
                         "f",
                         ord_e_arrow(Expr::BVar(3), Expr::BVar(2)),
                         ord_e_prop(),
@@ -1263,12 +1264,12 @@ pub fn axiom_strict_mono_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_pi(
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_pi(
                         "f",
                         ord_e_arrow(Expr::BVar(3), Expr::BVar(2)),
                         ord_e_prop(),
@@ -1290,11 +1291,11 @@ pub fn axiom_complete_lattice_ssup_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_app(
+            Node::new(ord_e_app(
                 Expr::Const(Name::str("CompleteLattice"), vec![]),
                 Expr::BVar(0),
             )),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_pi(
                 "S",
                 ord_e_app(Expr::Const(Name::str("Set"), vec![]), Expr::BVar(1)),
                 Expr::BVar(2),
@@ -1310,11 +1311,11 @@ pub fn axiom_complete_lattice_sinf_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_app(
+            Node::new(ord_e_app(
                 Expr::Const(Name::str("CompleteLattice"), vec![]),
                 Expr::BVar(0),
             )),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_pi(
                 "S",
                 ord_e_app(Expr::Const(Name::str("Set"), vec![]), Expr::BVar(1)),
                 Expr::BVar(2),
@@ -1330,8 +1331,8 @@ pub fn axiom_upper_bound_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "S",
                 ord_e_app(Expr::Const(Name::str("Set"), vec![]), Expr::BVar(1)),
                 ord_e_pi("x", Expr::BVar(2), ord_e_prop()),
@@ -1347,8 +1348,8 @@ pub fn axiom_lower_bound_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "S",
                 ord_e_app(Expr::Const(Name::str("Set"), vec![]), Expr::BVar(1)),
                 ord_e_pi("x", Expr::BVar(2), ord_e_prop()),
@@ -1364,8 +1365,8 @@ pub fn axiom_is_lub_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "S",
                 ord_e_app(Expr::Const(Name::str("Set"), vec![]), Expr::BVar(1)),
                 ord_e_pi("x", Expr::BVar(2), ord_e_prop()),
@@ -1381,8 +1382,8 @@ pub fn axiom_is_glb_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "S",
                 ord_e_app(Expr::Const(Name::str("Set"), vec![]), Expr::BVar(1)),
                 ord_e_pi("x", Expr::BVar(2), ord_e_prop()),
@@ -1401,12 +1402,12 @@ pub fn axiom_order_iso_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_type1()),
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_type1()),
                 )),
             ),
         ),
@@ -1423,12 +1424,12 @@ pub fn axiom_order_embedding_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_type1()),
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_type1()),
                 )),
             ),
         ),
@@ -1442,8 +1443,8 @@ pub fn axiom_antichain_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "S",
                 ord_e_app(Expr::Const(Name::str("Set"), vec![]), Expr::BVar(1)),
                 ord_e_prop(),
@@ -1467,8 +1468,8 @@ pub fn axiom_compare_eq_iff_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "a",
                 Expr::BVar(1),
                 ord_e_pi(
@@ -1499,8 +1500,8 @@ pub fn axiom_compare_swap_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_pi(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_pi(
                 "a",
                 Expr::BVar(1),
                 ord_e_pi(
@@ -1546,12 +1547,12 @@ pub fn axiom_prod_ord_ty() -> Expr {
             Expr::Pi(
                 BinderInfo::InstImplicit,
                 Name::str("_"),
-                Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                Box::new(Expr::Pi(
+                Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                Node::new(Expr::Pi(
                     BinderInfo::InstImplicit,
                     Name::str("_"),
-                    Box::new(ord_e_ord_inst(Expr::BVar(1))),
-                    Box::new(ord_e_ord_inst(ord_e_app2(
+                    Node::new(ord_e_ord_inst(Expr::BVar(1))),
+                    Node::new(ord_e_ord_inst(ord_e_app2(
                         Expr::Const(Name::str("Prod"), vec![]),
                         Expr::BVar(3),
                         Expr::BVar(2),
@@ -1569,8 +1570,8 @@ pub fn axiom_list_ord_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_ord_inst(ord_e_app(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_ord_inst(ord_e_app(
                 Expr::Const(Name::str("List"), vec![]),
                 Expr::BVar(1),
             ))),
@@ -1585,8 +1586,8 @@ pub fn axiom_option_ord_ty() -> Expr {
         Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("_"),
-            Box::new(ord_e_ord_inst(Expr::BVar(0))),
-            Box::new(ord_e_ord_inst(ord_e_app(
+            Node::new(ord_e_ord_inst(Expr::BVar(0))),
+            Node::new(ord_e_ord_inst(ord_e_app(
                 Expr::Const(Name::str("Option"), vec![]),
                 Expr::BVar(1),
             ))),

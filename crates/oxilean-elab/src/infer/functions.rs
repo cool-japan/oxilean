@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::context::ElabContext;
+use oxilean_kernel::Node;
 use oxilean_kernel::{
     instantiate, instantiate_level_params, ConstantInfo, Expr, Level, Name, Reducer,
 };
@@ -221,31 +222,31 @@ fn subst_meta_expr(expr: &Expr, id: MetaVarId, val: &Expr) -> Expr {
             }
         }
         Expr::App(f, a) => Expr::App(
-            Box::new(subst_meta_expr(f, id, val)),
-            Box::new(subst_meta_expr(a, id, val)),
+            Node::new(subst_meta_expr(f, id, val)),
+            Node::new(subst_meta_expr(a, id, val)),
         ),
         Expr::Lam(bi, name, ty, body) => Expr::Lam(
             *bi,
             name.clone(),
-            Box::new(subst_meta_expr(ty, id, val)),
-            Box::new(subst_meta_expr(body, id, val)),
+            Node::new(subst_meta_expr(ty, id, val)),
+            Node::new(subst_meta_expr(body, id, val)),
         ),
         Expr::Pi(bi, name, ty, body) => Expr::Pi(
             *bi,
             name.clone(),
-            Box::new(subst_meta_expr(ty, id, val)),
-            Box::new(subst_meta_expr(body, id, val)),
+            Node::new(subst_meta_expr(ty, id, val)),
+            Node::new(subst_meta_expr(body, id, val)),
         ),
         Expr::Let(name, ty, v, body) => Expr::Let(
             name.clone(),
-            Box::new(subst_meta_expr(ty, id, val)),
-            Box::new(subst_meta_expr(v, id, val)),
-            Box::new(subst_meta_expr(body, id, val)),
+            Node::new(subst_meta_expr(ty, id, val)),
+            Node::new(subst_meta_expr(v, id, val)),
+            Node::new(subst_meta_expr(body, id, val)),
         ),
         Expr::Proj(name, idx, inner) => Expr::Proj(
             name.clone(),
             *idx,
-            Box::new(subst_meta_expr(inner, id, val)),
+            Node::new(subst_meta_expr(inner, id, val)),
         ),
         _ => expr.clone(),
     }
@@ -294,7 +295,7 @@ mod extended_infer_tests {
     }
     #[test]
     fn test_infer_literal_type_nat() {
-        let ty = infer_literal_type(&Literal::Nat(42));
+        let ty = infer_literal_type(&Literal::nat(42));
         assert!(matches!(ty, Expr::Const(n, _) if n == Name::str("Nat")));
     }
     #[test]
@@ -621,9 +622,10 @@ mod infer_extended_tests2 {
         assert_eq!(all.len(), 10);
         let bvar_rule = TypeInferenceRule::BVar;
         assert!(bvar_rule.applicable_to(&Expr::BVar(0)));
-        assert!(
-            !bvar_rule.applicable_to(&Expr::App(Box::new(Expr::BVar(0)), Box::new(Expr::BVar(1))))
-        );
+        assert!(!bvar_rule.applicable_to(&Expr::App(
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(1))
+        )));
     }
     #[test]
     fn test_infer_rule_stats() {

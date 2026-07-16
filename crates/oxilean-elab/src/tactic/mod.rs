@@ -1,5 +1,8 @@
 //! Auto-generated module structure
 
+/// Omega proof-term reconstruction from certificates.
+pub mod proof_recon;
+
 pub mod functions;
 pub mod functions_2;
 pub mod functions_3;
@@ -12,6 +15,10 @@ pub mod types;
 pub mod decide_enhanced;
 /// `norm_cast` tactic — normalises coercions in goals and hypotheses.
 pub mod norm_cast;
+
+/// Integration tests for the tactic dispatcher.
+#[cfg(test)]
+pub mod dispatcher_tests;
 
 // Re-export all types
 pub use functions::*;

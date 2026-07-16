@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Environment, Expr, Level, Name};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -198,24 +199,24 @@ pub fn build_fix_term(
     let motive = Expr::Lam(
         BinderInfo::Default,
         Name::str("_"),
-        Box::new(rec_param_ty.clone()),
-        Box::new(ret_type.clone()),
+        Node::new(rec_param_ty.clone()),
+        Node::new(ret_type.clone()),
     );
-    let app = Expr::App(Box::new(rec_const), Box::new(motive));
+    let app = Expr::App(Node::new(rec_const), Node::new(motive));
     let step = Expr::Lam(
         BinderInfo::Default,
         Name::str("n"),
-        Box::new(rec_param_ty.clone()),
-        Box::new(Expr::Lam(
+        Node::new(rec_param_ty.clone()),
+        Node::new(Expr::Lam(
             BinderInfo::Default,
             Name::str("ih"),
-            Box::new(ret_type.clone()),
-            Box::new(body.clone()),
+            Node::new(ret_type.clone()),
+            Node::new(body.clone()),
         )),
     );
-    let app_with_step = Expr::App(Box::new(app), Box::new(step));
+    let app_with_step = Expr::App(Node::new(app), Node::new(step));
     let rec_param_expr = Expr::BVar((n_params - 1 - rec_param_idx) as u32);
-    Expr::App(Box::new(app_with_step), Box::new(rec_param_expr))
+    Expr::App(Node::new(app_with_step), Node::new(rec_param_expr))
 }
 /// Build a generic fix combinator when no specific recursor is available.
 fn build_generic_fix(
@@ -231,8 +232,8 @@ fn build_generic_fix(
         functional = Expr::Lam(
             BinderInfo::Default,
             param_name.clone(),
-            Box::new(param_ty.clone()),
-            Box::new(functional),
+            Node::new(param_ty.clone()),
+            Node::new(functional),
         );
         let _ = i;
     }
@@ -240,11 +241,11 @@ fn build_generic_fix(
     functional = Expr::Lam(
         BinderInfo::Default,
         name.clone(),
-        Box::new(self_type),
-        Box::new(functional),
+        Node::new(self_type),
+        Node::new(functional),
     );
     let _ = rec_param_idx;
-    Expr::App(Box::new(fix_const), Box::new(functional))
+    Expr::App(Node::new(fix_const), Node::new(functional))
 }
 /// Build a function type from parameters and return type.
 ///
@@ -255,8 +256,8 @@ fn build_function_type(params: &[(Name, Expr)], ret_type: &Expr) -> Expr {
         result = Expr::Pi(
             BinderInfo::Default,
             param_name.clone(),
-            Box::new(param_ty.clone()),
-            Box::new(result),
+            Node::new(param_ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -295,29 +296,29 @@ pub fn tactic_like_termination_proof(
             continue;
         }
         let call_measure = if call.args.len() == 1 {
-            Expr::App(Box::new(measure.clone()), Box::new(call.args[0].clone()))
+            Expr::App(Node::new(measure.clone()), Node::new(call.args[0].clone()))
         } else {
             let mut m = measure.clone();
             for arg in &call.args {
-                m = Expr::App(Box::new(m), Box::new(arg.clone()));
+                m = Expr::App(Node::new(m), Node::new(arg.clone()));
             }
             m
         };
         let caller_measure = if params.len() == 1 {
-            Expr::App(Box::new(measure.clone()), Box::new(Expr::BVar(0)))
+            Expr::App(Node::new(measure.clone()), Node::new(Expr::BVar(0)))
         } else {
             let mut m = measure.clone();
             for (j, _) in params.iter().enumerate() {
-                m = Expr::App(Box::new(m), Box::new(Expr::BVar(j as u32)));
+                m = Expr::App(Node::new(m), Node::new(Expr::BVar(j as u32)));
             }
             m
         };
         let goal = Expr::App(
-            Box::new(Expr::App(
-                Box::new(relation.clone()),
-                Box::new(call_measure),
+            Node::new(Expr::App(
+                Node::new(relation.clone()),
+                Node::new(call_measure),
             )),
-            Box::new(caller_measure),
+            Node::new(caller_measure),
         );
         let mut obligation = ProofObligation::new(
             format!(
@@ -342,8 +343,8 @@ pub fn wrap_with_params(params: &[(Name, Expr)], body: &Expr) -> Expr {
         result = Expr::Lam(
             BinderInfo::Default,
             param_name.clone(),
-            Box::new(param_ty.clone()),
-            Box::new(result),
+            Node::new(param_ty.clone()),
+            Node::new(result),
         );
     }
     result
@@ -387,8 +388,8 @@ mod tests {
     #[allow(dead_code)]
     fn mk_nat_succ(e: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(e),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(e),
         )
     }
     #[allow(dead_code)]
@@ -396,7 +397,7 @@ mod tests {
         Expr::Const(Name::str("Nat.zero"), vec![])
     }
     fn mk_app(f: Expr, a: Expr) -> Expr {
-        Expr::App(Box::new(f), Box::new(a))
+        Expr::App(Node::new(f), Node::new(a))
     }
     #[test]
     fn test_recursion_kind_display() {
@@ -429,7 +430,7 @@ mod tests {
     }
     #[test]
     fn test_find_no_recursive_calls() {
-        let body = Expr::Lit(Literal::Nat(42));
+        let body = Expr::Lit(Literal::nat(42));
         let names: HashSet<Name> = [Name::str("f")].into_iter().collect();
         let calls = find_recursive_calls(&body, &names);
         assert!(calls.is_empty());
@@ -459,7 +460,7 @@ mod tests {
         let proj = Expr::Proj(
             Name::str("field"),
             0,
-            Box::new(Expr::Const(Name::str("n"), vec![])),
+            Node::new(Expr::Const(Name::str("n"), vec![])),
         );
         assert!(check_structural_decrease(&Name::str("n"), &proj));
     }
@@ -467,7 +468,7 @@ mod tests {
     fn test_structural_decrease_literal_fails() {
         assert!(!check_structural_decrease(
             &Name::str("n"),
-            &Expr::Lit(Literal::Nat(5))
+            &Expr::Lit(Literal::nat(5))
         ));
     }
     #[test]
@@ -475,7 +476,7 @@ mod tests {
         let env = Environment::new();
         let mut checker = TerminationChecker::with_defaults(&env);
         let params = vec![(Name::str("n"), mk_nat())];
-        let body = Expr::Lit(Literal::Nat(0));
+        let body = Expr::Lit(Literal::nat(0));
         let result = checker.check(&Name::str("f"), &params, &body, &env);
         assert!(result.is_ok());
         let result = result.expect("test operation should succeed");
@@ -512,7 +513,7 @@ mod tests {
         let nat_lt_wf = Expr::Const(Name::str("Nat.lt.wf"), vec![]);
         let nat_type = mk_nat();
         let order = WellFoundedOrder::new(nat_lt, nat_lt_wf, nat_type);
-        let body = Expr::Lit(Literal::Nat(0));
+        let body = Expr::Lit(Literal::nat(0));
         let fix = order.build_wf_fix(&body, &Name::str("n"));
         assert!(matches!(fix, Expr::App(_, _)));
     }
@@ -522,13 +523,13 @@ mod tests {
         group.add_function(
             Name::str("even"),
             mk_nat(),
-            Expr::Lit(Literal::Nat(0)),
+            Expr::Lit(Literal::nat(0)),
             vec![(Name::str("n"), mk_nat())],
         );
         group.add_function(
             Name::str("odd"),
             mk_nat(),
-            Expr::Lit(Literal::Nat(1)),
+            Expr::Lit(Literal::nat(1)),
             vec![(Name::str("n"), mk_nat())],
         );
         assert_eq!(group.size(), 2);
@@ -541,13 +542,13 @@ mod tests {
         group.add_function(
             Name::str("even"),
             mk_nat(),
-            Expr::Lit(Literal::Nat(0)),
+            Expr::Lit(Literal::nat(0)),
             vec![(Name::str("n"), mk_nat())],
         );
         group.add_function(
             Name::str("odd"),
             mk_nat(),
-            Expr::Lit(Literal::Nat(1)),
+            Expr::Lit(Literal::nat(1)),
             vec![(Name::str("n"), mk_nat())],
         );
         group.record_decrease(0, 1, vec![ArgDecrease::Decreasing]);
@@ -561,7 +562,7 @@ mod tests {
         group.add_function(
             Name::str("f"),
             mk_nat(),
-            Expr::Lit(Literal::Nat(0)),
+            Expr::Lit(Literal::nat(0)),
             vec![(Name::str("n"), mk_nat())],
         );
         group.record_decrease(0, 0, vec![ArgDecrease::Decreasing]);
@@ -633,7 +634,7 @@ mod tests {
     #[test]
     fn test_build_fix_term_invalid_idx() {
         let params = vec![(Name::str("n"), mk_nat())];
-        let body = Expr::Lit(Literal::Nat(0));
+        let body = Expr::Lit(Literal::nat(0));
         let ret_type = mk_nat();
         let fix = build_fix_term(&Name::str("f"), &params, &body, 5, &ret_type);
         assert_eq!(fix, body);
@@ -664,7 +665,7 @@ mod tests {
     }
     #[test]
     fn test_recursion_detector_non_recursive() {
-        let body = Expr::Lit(Literal::Nat(42));
+        let body = Expr::Lit(Literal::nat(42));
         assert!(!RecursionDetector::is_recursive(&Name::str("f"), &body));
     }
     #[test]
@@ -682,7 +683,7 @@ mod tests {
     #[test]
     fn test_wrap_with_params() {
         let params = vec![(Name::str("a"), mk_nat()), (Name::str("b"), mk_nat())];
-        let body = Expr::Lit(Literal::Nat(0));
+        let body = Expr::Lit(Literal::nat(0));
         let wrapped = wrap_with_params(&params, &body);
         assert!(matches!(wrapped, Expr::Lam(_, _, _, _)));
     }
@@ -691,27 +692,27 @@ mod tests {
         let body = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_nat()),
-            Box::new(Expr::Lam(
+            Node::new(mk_nat()),
+            Node::new(Expr::Lam(
                 BinderInfo::Default,
                 Name::str("y"),
-                Box::new(mk_nat()),
-                Box::new(Expr::Lit(Literal::Nat(0))),
+                Node::new(mk_nat()),
+                Node::new(Expr::Lit(Literal::nat(0))),
             )),
         );
         let (params, inner) = unwrap_lambdas(&body);
         assert_eq!(params.len(), 2);
         assert_eq!(params[0].0, Name::str("x"));
         assert_eq!(params[1].0, Name::str("y"));
-        assert!(matches!(inner, Expr::Lit(Literal::Nat(0))));
+        assert!(matches!(inner, Expr::Lit(Literal::Nat(n)) if *n == 0u64));
     }
     #[test]
     fn test_unwrap_pis() {
         let ty = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(mk_nat()),
-            Box::new(mk_nat()),
+            Node::new(mk_nat()),
+            Node::new(mk_nat()),
         );
         let (params, ret) = unwrap_pis(&ty);
         assert_eq!(params.len(), 1);
@@ -723,7 +724,7 @@ mod tests {
         let env = Environment::new();
         let mut analyzer = PreDefAnalyzer::new(&env);
         let params = vec![(Name::str("n"), mk_nat())];
-        let body = Expr::Lit(Literal::Nat(0));
+        let body = Expr::Lit(Literal::nat(0));
         let ret_type = mk_nat();
         let result = analyzer.analyze(&Name::str("f"), &params, &body, &ret_type);
         assert!(result.is_ok());
@@ -753,13 +754,13 @@ mod tests {
         group.add_function(
             Name::str("even"),
             mk_nat(),
-            Expr::Lit(Literal::Nat(0)),
+            Expr::Lit(Literal::nat(0)),
             vec![(Name::str("n"), mk_nat())],
         );
         group.add_function(
             Name::str("odd"),
             mk_nat(),
-            Expr::Lit(Literal::Nat(1)),
+            Expr::Lit(Literal::nat(1)),
             vec![(Name::str("n"), mk_nat())],
         );
         group.record_decrease(0, 1, vec![ArgDecrease::Decreasing]);
@@ -774,7 +775,7 @@ mod tests {
     #[test]
     fn test_tactic_termination_proof_no_calls() {
         let params = vec![(Name::str("n"), mk_nat())];
-        let body = Expr::Lit(Literal::Nat(0));
+        let body = Expr::Lit(Literal::nat(0));
         let measure = Expr::Const(Name::str("id"), vec![]);
         let relation = Expr::Const(Name::str("Nat.lt"), vec![]);
         let domain_type = mk_nat();
@@ -826,7 +827,7 @@ mod tests {
         let env = Environment::new();
         let mut checker = TerminationChecker::with_defaults(&env);
         let params: Vec<(Name, Expr)> = vec![];
-        let body = Expr::Lit(Literal::Nat(0));
+        let body = Expr::Lit(Literal::nat(0));
         let result = checker.check(&Name::str("f"), &params, &body, &env);
         assert!(result.is_ok());
     }
@@ -834,13 +835,13 @@ mod tests {
     fn test_deeply_nested_body() {
         let env = Environment::new();
         let mut checker = TerminationChecker::with_defaults(&env);
-        let mut body: Expr = Expr::Lit(Literal::Nat(0));
+        let mut body: Expr = Expr::Lit(Literal::nat(0));
         for _ in 0..10 {
             body = Expr::Let(
                 Name::str("tmp"),
-                Box::new(mk_nat()),
-                Box::new(body.clone()),
-                Box::new(body),
+                Node::new(mk_nat()),
+                Node::new(body.clone()),
+                Node::new(body),
             );
         }
         let params = vec![(Name::str("n"), mk_nat())];

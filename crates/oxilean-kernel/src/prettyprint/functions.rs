@@ -2,7 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{BinderInfo, Expr, Level, Name};
+use std::rc::Rc;
 
 use super::types::{
     AnnotationTable, BiMap, ColorScheme, DiagMeta, Doc, DocBuilder, EscapeHelper, EventCounter,
@@ -121,14 +123,14 @@ mod tests {
     }
     #[test]
     fn test_print_lit() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         assert_eq!(print_expr(&expr), "42");
     }
     #[test]
     fn test_print_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app = Expr::App(Node::new(f), Node::new(a));
         let output = print_expr(&app);
         assert!(output.contains("f"));
         assert!(output.contains("1"));
@@ -140,8 +142,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let output = print_expr(&lam);
         assert!(output.contains("λ"));
@@ -154,8 +156,8 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let output = print_expr_ascii(&lam);
         assert!(output.contains("fun"));
@@ -167,8 +169,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let output = print_expr(&pi);
         assert!(output.contains("→"));
@@ -180,8 +182,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let output = print_expr(&pi);
         assert!(output.contains("∀"));
@@ -194,8 +196,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let output = print_expr(&pi);
         assert!(output.contains("{"));
@@ -208,8 +210,8 @@ mod tests {
         let pi = Expr::Pi(
             BinderInfo::InstImplicit,
             Name::str("m"),
-            Box::new(ty),
-            Box::new(body),
+            Node::new(ty),
+            Node::new(body),
         );
         let output = print_expr(&pi);
         assert!(output.contains("["));
@@ -437,8 +439,8 @@ mod extra_prettyprint_tests {
     #[test]
     fn test_expr_to_doc_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app = Expr::App(Node::new(f), Node::new(a));
         let d = expr_to_doc(&app);
         let s = d.render(80);
         assert!(s.contains("f"));
@@ -452,9 +454,12 @@ mod extra_prettyprint_tests {
     #[test]
     fn test_expr_summary_app() {
         let f = Expr::Const(Name::str("g"), vec![]);
-        let a = Expr::Lit(Literal::Nat(5));
-        let b = Expr::Lit(Literal::Nat(6));
-        let app = Expr::App(Box::new(Expr::App(Box::new(f), Box::new(a))), Box::new(b));
+        let a = Expr::Lit(Literal::nat(5));
+        let b = Expr::Lit(Literal::nat(6));
+        let app = Expr::App(
+            Node::new(Expr::App(Node::new(f), Node::new(a))),
+            Node::new(b),
+        );
         let s = expr_summary(&app);
         assert!(s.contains("2 args"));
         assert!(s.contains("g"));
@@ -464,8 +469,8 @@ mod extra_prettyprint_tests {
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("_"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         let s = expr_summary(&pi);
         assert!(s.contains("->"));
@@ -474,9 +479,9 @@ mod extra_prettyprint_tests {
     fn test_expr_summary_let() {
         let e = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
         let s = expr_summary(&e);
         assert!(s.contains("x"));
@@ -507,7 +512,7 @@ mod extra_prettyprint_tests {
     }
     #[test]
     fn test_colorize_lit_contains_number() {
-        let e = Expr::Lit(crate::Literal::Nat(42));
+        let e = Expr::Lit(crate::Literal::nat(42));
         let c = colorize(&e);
         assert!(c.contains("42"));
     }
@@ -515,9 +520,9 @@ mod extra_prettyprint_tests {
     fn test_print_expr_let() {
         let e = Expr::Let(
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Lit(crate::Literal::Nat(1))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Lit(crate::Literal::nat(1))),
+            Node::new(Expr::BVar(0)),
         );
         let s = print_expr(&e);
         assert!(s.contains("let"));
@@ -525,7 +530,7 @@ mod extra_prettyprint_tests {
     }
     #[test]
     fn test_print_expr_proj() {
-        let e = Expr::Proj(Name::str("Prod"), 0, Box::new(Expr::BVar(0)));
+        let e = Expr::Proj(Name::str("Prod"), 0, Node::new(Expr::BVar(0)));
         let s = print_expr(&e);
         assert!(s.contains("Prod"));
     }

@@ -827,19 +827,21 @@ pub(super) fn monomial_cmp(a: &Monomial, b: &Monomial) -> std::cmp::Ordering {
     }
     std::cmp::Ordering::Equal
 }
-/// Return the index of the leading monomial (highest by `monomial_cmp`) in `p`.
+/// Return the index of the leading monomial (highest-degree, first by `monomial_cmp`) in `p`.
+///
+/// `canonicalize` sorts terms with `sort_unstable_by(monomial_cmp)`.  Since
+/// `monomial_cmp(high_degree, low_degree) = Ordering::Less`, the **highest-degree**
+/// term ends up at index 0 after sorting.  We therefore return `Some(0)`.
+///
+/// This corrects a previous implementation that traversed the term list looking
+/// for the "maximum" under `monomial_cmp`, which instead found the *lowest*-degree
+/// term (the constant) and caused polynomial division to diverge on multi-term
+/// generators.
 pub(super) fn leading_monomial(p: &Polynomial) -> Option<usize> {
     if p.terms.is_empty() {
         return None;
     }
-    let mut best = 0usize;
-    for i in 1..p.terms.len() {
-        if monomial_cmp(&p.terms[i], &p.terms[best]) == std::cmp::Ordering::Less {
-        } else {
-            best = i;
-        }
-    }
-    Some(best)
+    Some(0)
 }
 /// Return `true` iff `divisor` (non-zero coefficient) divides `dividend`:
 /// every variable exponent in `divisor` is `<=` that in `dividend`, and

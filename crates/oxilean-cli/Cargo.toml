@@ -21,6 +21,8 @@ path = "src/main.rs"
 oxilean-kernel = { workspace = true }
 oxilean-parse = { workspace = true }
 oxilean-elab = { workspace = true }
+oxilean-lint = { workspace = true }
+oxilean-std = { workspace = true }
 
 [dev-dependencies]
 

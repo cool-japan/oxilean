@@ -3,8 +3,10 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::reduce::{Reducer, ReducibilityHint, TransparencyMode};
+use crate::Node;
 use crate::{Environment, Expr};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::types::{
     BatchDefEqChecker, ConfigNode, DecisionNode, DefEqChecker, DefEqConfig, DefEqStats, Either2,
@@ -26,7 +28,7 @@ mod tests {
     use crate::{BinderInfo, Declaration, Level, Literal, Name, ReducibilityHint};
     #[test]
     fn test_reflexivity() {
-        let expr = Expr::Lit(Literal::Nat(42));
+        let expr = Expr::Lit(Literal::nat(42));
         assert!(is_def_eq_simple(&expr, &expr));
     }
     #[test]
@@ -34,17 +36,17 @@ mod tests {
         let lam = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
-        let arg = Expr::Lit(Literal::Nat(42));
-        let app = Expr::App(Box::new(lam), Box::new(arg.clone()));
+        let arg = Expr::Lit(Literal::nat(42));
+        let app = Expr::App(Node::new(lam), Node::new(arg.clone()));
         assert!(is_def_eq_simple(&app, &arg));
     }
     #[test]
     fn test_delta_reduction() {
         let mut env = Environment::new();
-        let forty_two = Expr::Lit(Literal::Nat(42));
+        let forty_two = Expr::Lit(Literal::nat(42));
         env.add(Declaration::Definition {
             name: Name::str("answer"),
             univ_params: vec![],
@@ -71,14 +73,14 @@ mod tests {
     }
     #[test]
     fn test_not_equal() {
-        let n1 = Expr::Lit(Literal::Nat(1));
-        let n2 = Expr::Lit(Literal::Nat(2));
+        let n1 = Expr::Lit(Literal::nat(1));
+        let n2 = Expr::Lit(Literal::nat(2));
         assert!(!is_def_eq_simple(&n1, &n2));
     }
     #[test]
     fn test_lazy_delta() {
         let mut env = Environment::new();
-        let val = Expr::Lit(Literal::Nat(42));
+        let val = Expr::Lit(Literal::nat(42));
         env.add(Declaration::Definition {
             name: Name::str("a"),
             univ_params: vec![],
@@ -103,9 +105,9 @@ mod tests {
     #[test]
     fn test_app_equality() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(Literal::Nat(1));
-        let app1 = Expr::App(Box::new(f.clone()), Box::new(a.clone()));
-        let app2 = Expr::App(Box::new(f), Box::new(a));
+        let a = Expr::Lit(Literal::nat(1));
+        let app1 = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let app2 = Expr::App(Node::new(f), Node::new(a));
         assert!(is_def_eq_simple(&app1, &app2));
     }
     #[test]
@@ -113,14 +115,14 @@ mod tests {
         let pi1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         let pi2 = Expr::Pi(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::Sort(Level::zero())),
         );
         assert!(is_def_eq_simple(&pi1, &pi2));
     }
@@ -181,9 +183,9 @@ mod extended_def_eq_tests {
     use crate::{BinderInfo, Level, Literal, Name};
     #[test]
     fn test_syntactic_eq_lit() {
-        let a = Expr::Lit(Literal::Nat(5));
-        let b = Expr::Lit(Literal::Nat(5));
-        let c = Expr::Lit(Literal::Nat(6));
+        let a = Expr::Lit(Literal::nat(5));
+        let b = Expr::Lit(Literal::nat(5));
+        let c = Expr::Lit(Literal::nat(6));
         assert!(syntactic_eq(&a, &b));
         assert!(!syntactic_eq(&a, &c));
     }
@@ -204,9 +206,9 @@ mod extended_def_eq_tests {
     fn test_batch_checker_basic() {
         let env = Environment::new();
         let mut batch = BatchDefEqChecker::new(&env);
-        let a = Expr::Lit(Literal::Nat(1));
-        let b = Expr::Lit(Literal::Nat(1));
-        let c = Expr::Lit(Literal::Nat(2));
+        let a = Expr::Lit(Literal::nat(1));
+        let b = Expr::Lit(Literal::nat(1));
+        let c = Expr::Lit(Literal::nat(2));
         assert!(batch.check(&a, &b));
         assert!(!batch.check(&a, &c));
     }
@@ -215,8 +217,8 @@ mod extended_def_eq_tests {
         let env = Environment::new();
         let mut batch = BatchDefEqChecker::new(&env);
         let pairs = vec![
-            (Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(1))),
-            (Expr::Lit(Literal::Nat(2)), Expr::Lit(Literal::Nat(2))),
+            (Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(1))),
+            (Expr::Lit(Literal::nat(2)), Expr::Lit(Literal::nat(2))),
         ];
         assert!(batch.check_all(&pairs));
     }
@@ -225,8 +227,8 @@ mod extended_def_eq_tests {
         let env = Environment::new();
         let mut batch = BatchDefEqChecker::new(&env);
         let pairs = vec![
-            (Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(1))),
-            (Expr::Lit(Literal::Nat(2)), Expr::Lit(Literal::Nat(3))),
+            (Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(1))),
+            (Expr::Lit(Literal::nat(2)), Expr::Lit(Literal::nat(3))),
         ];
         assert!(!batch.check_all(&pairs));
     }
@@ -235,9 +237,9 @@ mod extended_def_eq_tests {
         let env = Environment::new();
         let mut batch = BatchDefEqChecker::new(&env);
         let pairs = vec![
-            (Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(1))),
-            (Expr::Lit(Literal::Nat(2)), Expr::Lit(Literal::Nat(3))),
-            (Expr::Lit(Literal::Nat(4)), Expr::Lit(Literal::Nat(4))),
+            (Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(1))),
+            (Expr::Lit(Literal::nat(2)), Expr::Lit(Literal::nat(3))),
+            (Expr::Lit(Literal::nat(4)), Expr::Lit(Literal::nat(4))),
         ];
         assert_eq!(batch.count_equal(&pairs), 2);
     }
@@ -273,24 +275,24 @@ mod extended_def_eq_tests {
     fn test_is_def_eq_args_equal() {
         let env = Environment::new();
         let mut checker = DefEqChecker::new(&env);
-        let args1 = vec![Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))];
-        let args2 = vec![Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))];
+        let args1 = vec![Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))];
+        let args2 = vec![Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))];
         assert!(is_def_eq_args(&args1, &args2, &mut checker));
     }
     #[test]
     fn test_is_def_eq_args_different_lengths() {
         let env = Environment::new();
         let mut checker = DefEqChecker::new(&env);
-        let args1 = vec![Expr::Lit(Literal::Nat(1))];
-        let args2 = vec![Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))];
+        let args1 = vec![Expr::Lit(Literal::nat(1))];
+        let args2 = vec![Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))];
         assert!(!is_def_eq_args(&args1, &args2, &mut checker));
     }
     #[test]
     fn test_syntactic_eq_app() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let x = Expr::Lit(Literal::Nat(1));
-        let app1 = Expr::App(Box::new(f.clone()), Box::new(x.clone()));
-        let app2 = Expr::App(Box::new(f), Box::new(x));
+        let x = Expr::Lit(Literal::nat(1));
+        let app1 = Expr::App(Node::new(f.clone()), Node::new(x.clone()));
+        let app2 = Expr::App(Node::new(f), Node::new(x));
         assert!(syntactic_eq(&app1, &app2));
     }
     #[test]
@@ -299,14 +301,14 @@ mod extended_def_eq_tests {
         let pi1 = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(ty.clone()),
-            Box::new(ty.clone()),
+            Node::new(ty.clone()),
+            Node::new(ty.clone()),
         );
         let pi2 = Expr::Pi(
             BinderInfo::Default,
             Name::str("y"),
-            Box::new(ty.clone()),
-            Box::new(ty),
+            Node::new(ty.clone()),
+            Node::new(ty),
         );
         assert!(syntactic_eq(&pi1, &pi2));
     }
@@ -315,8 +317,8 @@ mod extended_def_eq_tests {
         let env = Environment::new();
         let mut batch = BatchDefEqChecker::new(&env);
         let pairs = vec![
-            (Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))),
-            (Expr::Lit(Literal::Nat(3)), Expr::Lit(Literal::Nat(3))),
+            (Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))),
+            (Expr::Lit(Literal::nat(3)), Expr::Lit(Literal::nat(3))),
         ];
         assert!(batch.check_any(&pairs));
     }
@@ -767,7 +769,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

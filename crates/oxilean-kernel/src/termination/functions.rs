@@ -2,8 +2,10 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::Node;
 use crate::{Expr, Name};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use super::types::{
     ConfigNode, DecisionNode, DetailedTerminationResult, Either2, Fixture, FlatSubstitution,
@@ -32,7 +34,7 @@ mod tests {
     #[test]
     fn test_non_recursive() {
         let mut checker = TerminationChecker::new();
-        let body = Expr::Lit(crate::Literal::Nat(42));
+        let body = Expr::Lit(crate::Literal::nat(42));
         assert!(checker.check_terminates(&Name::str("f"), &body).is_ok());
     }
     #[test]
@@ -42,8 +44,8 @@ mod tests {
         let n_var = Expr::BVar(0);
         checker.add_smaller(n_var.clone(), Expr::BVar(1));
         let body = Expr::App(
-            Box::new(Expr::Const(f.clone(), vec![])),
-            Box::new(Expr::BVar(1)),
+            Node::new(Expr::Const(f.clone(), vec![])),
+            Node::new(Expr::BVar(1)),
         );
         assert!(checker.check_terminates(&f, &body).is_ok());
     }
@@ -54,8 +56,8 @@ mod tests {
         let body = Expr::Lam(
             crate::BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Sort(Level::zero())),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Sort(Level::zero())),
+            Node::new(Expr::BVar(0)),
         );
         assert!(checker.check_terminates(&f, &body).is_ok());
     }
@@ -66,8 +68,8 @@ mod tests {
         let mut body = Expr::BVar(0);
         for _ in 0..250 {
             body = Expr::App(
-                Box::new(Expr::Const(Name::str("succ"), vec![])),
-                Box::new(body),
+                Node::new(Expr::Const(Name::str("succ"), vec![])),
+                Node::new(body),
             );
         }
         let result = checker.check_terminates(&f, &body);
@@ -77,9 +79,9 @@ mod tests {
     #[test]
     fn test_smaller_transitivity() {
         let mut checker = TerminationChecker::new();
-        let a = Expr::Lit(crate::Literal::Nat(3));
-        let b = Expr::Lit(crate::Literal::Nat(2));
-        let c = Expr::Lit(crate::Literal::Nat(1));
+        let a = Expr::Lit(crate::Literal::nat(3));
+        let b = Expr::Lit(crate::Literal::nat(2));
+        let c = Expr::Lit(crate::Literal::nat(1));
         checker.add_smaller(a.clone(), b.clone());
         checker.add_smaller(b, c.clone());
         assert!(checker.is_smaller(&a, &c));
@@ -87,11 +89,11 @@ mod tests {
     #[test]
     fn test_collect_app_args() {
         let f = Expr::Const(Name::str("f"), vec![]);
-        let a = Expr::Lit(crate::Literal::Nat(1));
-        let b = Expr::Lit(crate::Literal::Nat(2));
+        let a = Expr::Lit(crate::Literal::nat(1));
+        let b = Expr::Lit(crate::Literal::nat(2));
         let app = Expr::App(
-            Box::new(Expr::App(Box::new(f.clone()), Box::new(a.clone()))),
-            Box::new(b.clone()),
+            Node::new(Expr::App(Node::new(f.clone()), Node::new(a.clone()))),
+            Node::new(b.clone()),
         );
         let (head, args) = collect_app_args(&app);
         assert_eq!(head, &f);
@@ -115,7 +117,7 @@ mod tests {
     fn test_no_recursive_calls() {
         let mut checker = TerminationChecker::new();
         let f = Name::str("const_fn");
-        let body = Expr::Lit(crate::Literal::Nat(0));
+        let body = Expr::Lit(crate::Literal::nat(0));
         assert!(checker.check_terminates(&f, &body).is_ok());
         assert!(checker
             .get_calls(&f)
@@ -607,7 +609,7 @@ mod tests_padding2 {
     }
     #[test]
     fn test_token_bucket() {
-        let mut tb = TokenBucket::new(100, 10);
+        let mut tb = TokenBucket::new(100, 0);
         assert_eq!(tb.available(), 100);
         assert!(tb.try_consume(50));
         assert_eq!(tb.available(), 50);

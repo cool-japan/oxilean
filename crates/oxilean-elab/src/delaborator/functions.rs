@@ -2,7 +2,8 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
-use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Name};
+use oxilean_kernel::Node;
+use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Literal, Name};
 use oxilean_parse::{Binder, BinderKind, Located, Span, SurfaceExpr};
 use std::collections::{HashMap, HashSet};
 
@@ -128,7 +129,7 @@ mod tests {
     #[test]
     fn test_delab_nat_literal() {
         let env = Environment::new();
-        let expr = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let expr = Expr::Lit(oxilean_kernel::Literal::nat(42));
         let result = delab_to_string(&env, &expr);
         assert_eq!(result, "42");
     }
@@ -161,11 +162,11 @@ mod tests {
     }
     #[test]
     fn test_abbreviation_nat() {
-        let zero = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+        let zero = Expr::Lit(oxilean_kernel::Literal::nat(0));
         assert_eq!(AbbreviationDetector::try_nat_literal(&zero), Some(0));
         let one = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat").append_str("succ"), vec![])),
-            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("Nat").append_str("succ"), vec![])),
+            Node::new(Expr::Lit(oxilean_kernel::Literal::nat(0))),
         );
         assert_eq!(AbbreviationDetector::try_nat_literal(&one), Some(1));
     }
@@ -326,7 +327,7 @@ mod extra_tests {
         };
         let f = Expr::Const(Name::str("f"), vec![]);
         let arg = Expr::Const(Name::str("x"), vec![]);
-        let expr = Expr::App(Box::new(f), Box::new(arg));
+        let expr = Expr::App(Node::new(f), Node::new(arg));
         let result = delab_to_string_with_config(&e, &expr, cfg);
         assert!(result.contains("f"));
         assert!(result.contains("x"));
@@ -337,8 +338,8 @@ mod extra_tests {
         let expr = Expr::Lam(
             BinderInfo::Default,
             Name::str("x"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         let result = delab_to_string(&e, &expr);
         assert!(result.contains("fun"));
@@ -348,9 +349,9 @@ mod extra_tests {
         let e = env();
         let expr = Expr::Let(
             Name::str("v"),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(5))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Lit(oxilean_kernel::Literal::nat(5))),
+            Node::new(Expr::BVar(0)),
         );
         let result = delab_to_string(&e, &expr);
         assert!(result.contains("let"));
@@ -362,7 +363,7 @@ mod extra_tests {
         let expr = Expr::Proj(
             Name::str("Prod"),
             0,
-            Box::new(Expr::Const(Name::str("p"), vec![])),
+            Node::new(Expr::Const(Name::str("p"), vec![])),
         );
         let result = delab_to_string(&e, &expr);
         assert!(result.contains("Prod"));
@@ -370,8 +371,8 @@ mod extra_tests {
     #[test]
     fn test_has_loose_bvar_in_app() {
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("f"), vec![])),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("f"), vec![])),
+            Node::new(Expr::BVar(0)),
         );
         assert!(has_loose_bvar(&expr, 0));
         assert!(!has_loose_bvar(&expr, 1));
@@ -385,7 +386,7 @@ mod extra_tests {
         let e = env();
         let name = Name::str("myDef");
         let ty = Expr::Const(Name::str("Nat"), vec![]);
-        let val = Expr::Lit(oxilean_kernel::Literal::Nat(0));
+        let val = Expr::Lit(oxilean_kernel::Literal::nat(0));
         let decl = DeclDelaborator::delab_definition(&e, &name, &ty, &val, &[]);
         if let oxilean_parse::Decl::Definition { name, .. } = &decl.value {
             assert_eq!(name, "myDef");
@@ -440,10 +441,10 @@ mod extra_tests {
     #[test]
     fn test_collect_app_args_two_args() {
         let f = Expr::App(
-            Box::new(Expr::Const(Name::str("g"), vec![])),
-            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(1))),
+            Node::new(Expr::Const(Name::str("g"), vec![])),
+            Node::new(Expr::Lit(oxilean_kernel::Literal::nat(1))),
         );
-        let arg = Expr::Lit(oxilean_kernel::Literal::Nat(2));
+        let arg = Expr::Lit(oxilean_kernel::Literal::nat(2));
         let (head, args) = collect_app_args(&f, &arg);
         assert!(matches!(head, Expr::Const(..)));
         assert_eq!(args.len(), 2);
@@ -600,7 +601,7 @@ pub fn level_to_string(level: &Level) -> String {
 pub fn decode_nat_numeral(expr: &Expr) -> Option<u64> {
     match expr {
         Expr::Const(n, _) if n.to_string() == "Nat.zero" => Some(0),
-        Expr::Lit(oxilean_kernel::Literal::Nat(n)) => Some(*n),
+        Expr::Lit(Literal::Nat(n)) => n.to_u64(),
         Expr::App(f, arg) => {
             if let Expr::Const(n, _) = f.as_ref() {
                 if n.to_string() == "Nat.succ" {
@@ -884,7 +885,9 @@ pub fn print_binders(binders: &[Binder], _opts: &PrintOptionsExt) -> String {
 #[allow(dead_code)]
 pub fn delab_literal(lit: &oxilean_kernel::Literal) -> SurfaceExpr {
     match lit {
-        oxilean_kernel::Literal::Nat(n) => SurfaceExpr::Lit(oxilean_parse::Literal::Nat(*n)),
+        Literal::Nat(n) => {
+            SurfaceExpr::Lit(oxilean_parse::Literal::Nat(n.to_u64().unwrap_or(u64::MAX)))
+        }
         oxilean_kernel::Literal::Str(s) => {
             SurfaceExpr::Lit(oxilean_parse::Literal::String(s.clone()))
         }
@@ -953,8 +956,8 @@ mod delab_extended_tests {
     }
     fn succ(e: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::Const(Name::str("Nat.succ"), vec![])),
-            Box::new(e),
+            Node::new(Expr::Const(Name::str("Nat.succ"), vec![])),
+            Node::new(e),
         )
     }
     #[test]
@@ -996,7 +999,7 @@ mod delab_extended_tests {
     }
     #[test]
     fn test_decode_nat_numeral_lit() {
-        let expr = Expr::Lit(oxilean_kernel::Literal::Nat(42));
+        let expr = Expr::Lit(oxilean_kernel::Literal::nat(42));
         assert_eq!(decode_nat_numeral(&expr), Some(42));
     }
     #[test]
@@ -1038,7 +1041,7 @@ mod delab_extended_tests {
     }
     #[test]
     fn test_kernel_expr_size() {
-        let expr = Expr::App(Box::new(nat_const()), Box::new(zero()));
+        let expr = Expr::App(Node::new(nat_const()), Node::new(zero()));
         assert_eq!(kernel_expr_size(&expr), 3);
     }
     #[test]
@@ -1050,7 +1053,7 @@ mod delab_extended_tests {
     }
     #[test]
     fn test_collect_const_names() {
-        let expr = Expr::App(Box::new(nat_const()), Box::new(zero()));
+        let expr = Expr::App(Node::new(nat_const()), Node::new(zero()));
         let names = collect_const_names(&expr);
         assert_eq!(names.len(), 2);
     }
@@ -1058,8 +1061,8 @@ mod delab_extended_tests {
     fn test_count_const_occurrences() {
         let n = Name::str("Nat");
         let expr = Expr::App(
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
-            Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
+            Node::new(Expr::Const(Name::str("Nat"), vec![])),
         );
         assert_eq!(count_const_occurrences(&expr, &n), 2);
     }
@@ -1165,7 +1168,7 @@ mod delab_extended_tests {
     fn test_contextual_delaborator_lit() {
         let e = env();
         let mut delab = ContextualDelaborator::new(&e, DelabConfig::default());
-        let lit = Expr::Lit(oxilean_kernel::Literal::Nat(7));
+        let lit = Expr::Lit(oxilean_kernel::Literal::nat(7));
         let result = delab.delab(&lit);
         assert!(matches!(
             result,
@@ -1221,7 +1224,7 @@ mod delab_extended_tests {
     }
     #[test]
     fn test_delab_literal_nat() {
-        let lit = oxilean_kernel::Literal::Nat(5);
+        let lit = oxilean_kernel::Literal::nat(5);
         let result = delab_literal(&lit);
         assert!(matches!(
             result,

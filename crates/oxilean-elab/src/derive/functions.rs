@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Expr, Literal, Name};
 
 use super::types::{
@@ -17,14 +18,14 @@ pub type CustomDeriverFn =
 #[allow(dead_code)]
 pub fn mk_field_comparison(field_ty: &Expr, lhs: &Expr, rhs: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("BEq.beq"), vec![])),
-                Box::new(field_ty.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("BEq.beq"), vec![])),
+                Node::new(field_ty.clone()),
             )),
-            Box::new(lhs.clone()),
+            Node::new(lhs.clone()),
         )),
-        Box::new(rhs.clone()),
+        Node::new(rhs.clone()),
     )
 }
 /// Chain expressions with `and`: `a && b && c ...`.
@@ -38,11 +39,11 @@ pub fn mk_and_chain(exprs: &[Expr]) -> Expr {
     let mut result = exprs[0].clone();
     for e in &exprs[1..] {
         result = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("and"), vec![])),
-                Box::new(result),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("and"), vec![])),
+                Node::new(result),
             )),
-            Box::new(e.clone()),
+            Node::new(e.clone()),
         );
     }
     result
@@ -54,8 +55,8 @@ pub fn mk_and_chain(exprs: &[Expr]) -> Expr {
 pub fn mk_hash_combine(exprs: &[Expr]) -> Expr {
     if exprs.is_empty() {
         return Expr::App(
-            Box::new(Expr::Const(Name::str("hash"), vec![])),
-            Box::new(Expr::Lit(Literal::Nat(0))),
+            Node::new(Expr::Const(Name::str("hash"), vec![])),
+            Node::new(Expr::Lit(Literal::nat(0))),
         );
     }
     if exprs.len() == 1 {
@@ -68,11 +69,11 @@ pub fn mk_hash_combine(exprs: &[Expr]) -> Expr {
         .clone();
     for e in exprs[..exprs.len() - 1].iter().rev() {
         result = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("mixHash"), vec![])),
-                Box::new(e.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("mixHash"), vec![])),
+                Node::new(e.clone()),
             )),
-            Box::new(result),
+            Node::new(result),
         );
     }
     result
@@ -85,18 +86,18 @@ pub fn mk_repr_string(ctor_name: &Name, field_reprs: &[Expr]) -> Expr {
     let mut result = Expr::Lit(Literal::Str(format!("{}", ctor_name)));
     for field_repr in field_reprs {
         result = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("String.append"), vec![])),
-                Box::new(result),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("String.append"), vec![])),
+                Node::new(result),
             )),
-            Box::new(Expr::Lit(Literal::Str(" ".to_string()))),
+            Node::new(Expr::Lit(Literal::Str(" ".to_string()))),
         );
         result = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("String.append"), vec![])),
-                Box::new(result),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("String.append"), vec![])),
+                Node::new(result),
             )),
-            Box::new(field_repr.clone()),
+            Node::new(field_repr.clone()),
         );
     }
     result
@@ -155,7 +156,7 @@ pub fn build_match_body(arms: &[Expr]) -> Expr {
     }
     let mut result: Expr = Expr::Const(Name::str("casesOn"), vec![]);
     for arm in arms {
-        result = Expr::App(Box::new(result), Box::new(arm.clone()));
+        result = Expr::App(Node::new(result), Node::new(arm.clone()));
     }
     result
 }
@@ -163,8 +164,8 @@ pub fn build_match_body(arms: &[Expr]) -> Expr {
 pub fn mk_decidable_and_chain(exprs: &[Expr]) -> Expr {
     if exprs.is_empty() {
         return Expr::App(
-            Box::new(Expr::Const(Name::str("Decidable.isTrue"), vec![])),
-            Box::new(Expr::Const(Name::str("rfl"), vec![])),
+            Node::new(Expr::Const(Name::str("Decidable.isTrue"), vec![])),
+            Node::new(Expr::Const(Name::str("rfl"), vec![])),
         );
     }
     if exprs.len() == 1 {
@@ -173,11 +174,11 @@ pub fn mk_decidable_and_chain(exprs: &[Expr]) -> Expr {
     let mut result = exprs[0].clone();
     for e in &exprs[1..] {
         result = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Decidable.and"), vec![])),
-                Box::new(result),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Decidable.and"), vec![])),
+                Node::new(result),
             )),
-            Box::new(e.clone()),
+            Node::new(e.clone()),
         );
     }
     result
@@ -193,14 +194,14 @@ pub fn mk_lex_field_compare(fields: &[(Name, Expr)]) -> Expr {
         .enumerate()
         .map(|(i, (_, field_ty))| {
             Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Ord.compare"), vec![])),
-                        Box::new(field_ty.clone()),
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Ord.compare"), vec![])),
+                        Node::new(field_ty.clone()),
                     )),
-                    Box::new(mk_lhs_field_var(i)),
+                    Node::new(mk_lhs_field_var(i)),
                 )),
-                Box::new(mk_rhs_field_var(i)),
+                Node::new(mk_rhs_field_var(i)),
             )
         })
         .collect();
@@ -213,11 +214,11 @@ pub fn mk_lex_field_compare(fields: &[(Name, Expr)]) -> Expr {
     let mut result = comparisons[comparisons.len() - 1].clone();
     for c in comparisons[..comparisons.len() - 1].iter().rev() {
         result = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("compareOrdering"), vec![])),
-                Box::new(c.clone()),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("compareOrdering"), vec![])),
+                Node::new(c.clone()),
             )),
-            Box::new(result),
+            Node::new(result),
         );
     }
     result
@@ -774,14 +775,18 @@ mod tests {
 /// Create a projection expression for the n-th field of a constructor application.
 #[allow(dead_code)]
 pub fn mk_field_proj(expr: &Expr, field_idx: usize, field_name: &Name) -> Expr {
-    Expr::Proj(field_name.clone(), field_idx as u32, Box::new(expr.clone()))
+    Expr::Proj(
+        field_name.clone(),
+        field_idx as u32,
+        Node::new(expr.clone()),
+    )
 }
 /// Create a constructor application from a name and a list of argument expressions.
 #[allow(dead_code)]
 pub fn mk_ctor_app(ctor_name: &Name, args: &[Expr]) -> Expr {
     let mut result: Expr = Expr::Const(ctor_name.clone(), vec![]);
     for arg in args {
-        result = Expr::App(Box::new(result), Box::new(arg.clone()));
+        result = Expr::App(Node::new(result), Node::new(arg.clone()));
     }
     result
 }
@@ -789,52 +794,52 @@ pub fn mk_ctor_app(ctor_name: &Name, args: &[Expr]) -> Expr {
 #[allow(dead_code)]
 pub fn mk_eq_prop(ty: &Expr, lhs: &Expr, rhs: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Eq"), vec![])),
-                Box::new(ty.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Eq"), vec![])),
+                Node::new(ty.clone()),
             )),
-            Box::new(lhs.clone()),
+            Node::new(lhs.clone()),
         )),
-        Box::new(rhs.clone()),
+        Node::new(rhs.clone()),
     )
 }
 /// Create a `Ne` proposition: `a ≠ b`.
 #[allow(dead_code)]
 pub fn mk_ne_prop(ty: &Expr, lhs: &Expr, rhs: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Ne"), vec![])),
-        Box::new(mk_eq_prop(ty, lhs, rhs)),
+        Node::new(Expr::Const(Name::str("Ne"), vec![])),
+        Node::new(mk_eq_prop(ty, lhs, rhs)),
     )
 }
 /// Create an `And` type: `A ∧ B`.
 #[allow(dead_code)]
 pub fn mk_and_type(a: &Expr, b: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("And"), vec![])),
-            Box::new(a.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("And"), vec![])),
+            Node::new(a.clone()),
         )),
-        Box::new(b.clone()),
+        Node::new(b.clone()),
     )
 }
 /// Create an `Or` type: `A ∨ B`.
 #[allow(dead_code)]
 pub fn mk_or_type(a: &Expr, b: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::App(
-            Box::new(Expr::Const(Name::str("Or"), vec![])),
-            Box::new(a.clone()),
+        Node::new(Expr::App(
+            Node::new(Expr::Const(Name::str("Or"), vec![])),
+            Node::new(a.clone()),
         )),
-        Box::new(b.clone()),
+        Node::new(b.clone()),
     )
 }
 /// Create a `Not` type: `¬ A`.
 #[allow(dead_code)]
 pub fn mk_not_type(a: &Expr) -> Expr {
     Expr::App(
-        Box::new(Expr::Const(Name::str("Not"), vec![])),
-        Box::new(a.clone()),
+        Node::new(Expr::Const(Name::str("Not"), vec![])),
+        Node::new(a.clone()),
     )
 }
 /// Create a Pi type: `∀ (x : A), B`.
@@ -843,8 +848,8 @@ pub fn mk_pi_type(binder: BinderInfo, name: &Name, domain: &Expr, body: &Expr) -
     Expr::Pi(
         binder,
         name.clone(),
-        Box::new(domain.clone()),
-        Box::new(body.clone()),
+        Node::new(domain.clone()),
+        Node::new(body.clone()),
     )
 }
 /// Build a chain of Pi types from a list of `(name, domain)` pairs.
@@ -854,8 +859,8 @@ pub fn mk_pi_chain(binders: &[(Name, Expr)], body: &Expr) -> Expr {
         Expr::Pi(
             BinderInfo::Default,
             n.clone(),
-            Box::new(ty.clone()),
-            Box::new(acc),
+            Node::new(ty.clone()),
+            Node::new(acc),
         )
     })
 }
@@ -866,8 +871,8 @@ pub fn mk_lam_chain(binders: &[(Name, Expr)], body: &Expr) -> Expr {
         Expr::Lam(
             BinderInfo::Default,
             n.clone(),
-            Box::new(ty.clone()),
-            Box::new(acc),
+            Node::new(ty.clone()),
+            Node::new(acc),
         )
     })
 }
@@ -1075,7 +1080,7 @@ mod extended_tests {
         let deriver = StructuralEqDeriver::new();
         let ti = simple_color();
         let expr = deriver.ctor_count_expr(&ti);
-        assert!(matches!(expr, Expr::Lit(Literal::Nat(3))));
+        assert!(matches!(expr, Expr::Lit(Literal::Nat(ref n)) if *n == 3u64));
     }
     #[test]
     fn test_instance_namer_default() {
@@ -1092,7 +1097,7 @@ mod extended_tests {
     #[test]
     fn test_mk_ctor_app() {
         let name = Name::str("Pair.mk");
-        let args = vec![Expr::Lit(Literal::Nat(1)), Expr::Lit(Literal::Nat(2))];
+        let args = vec![Expr::Lit(Literal::nat(1)), Expr::Lit(Literal::nat(2))];
         let result = mk_ctor_app(&name, &args);
         assert!(matches!(result, Expr::App(_, _)));
     }

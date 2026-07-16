@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
+use oxilean_kernel::Node;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
 /// Sigma-type measure: `f : α → Nat` witnesses well-foundedness of `(<) ∘ f`.
@@ -96,22 +97,22 @@ impl WfRelBuilder {
     #[allow(dead_code)]
     pub fn inv_image(r: Expr, f: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("InvImage"), vec![])),
-                Box::new(r),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("InvImage"), vec![])),
+                Node::new(r),
             )),
-            Box::new(f),
+            Node::new(f),
         )
     }
     /// Build `Prod.Lex r s`: lexicographic product of relations.
     #[allow(dead_code)]
     pub fn prod_lex(r: Expr, s: Expr) -> Expr {
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
-                Box::new(r),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Prod.Lex"), vec![])),
+                Node::new(r),
             )),
-            Box::new(s),
+            Node::new(s),
         )
     }
     /// The standard `Nat.lt` well-founded relation.

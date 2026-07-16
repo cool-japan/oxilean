@@ -17,6 +17,7 @@ use std::fmt;
 pub(super) fn lcnf_type_to_ruby(ty: &LcnfType) -> RubyType {
     match ty {
         LcnfType::Nat => RubyType::Integer,
+        LcnfType::Int => RubyType::Integer,
         LcnfType::LcnfString => RubyType::String,
         LcnfType::Unit | LcnfType::Erased | LcnfType::Irrelevant => RubyType::Nil,
         LcnfType::Object => RubyType::Object("Object".to_string()),

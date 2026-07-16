@@ -16,6 +16,7 @@ use super::types::{
 pub(super) fn lcnf_type_to_native(ty: &LcnfType) -> NativeType {
     match ty {
         LcnfType::Nat => NativeType::I64,
+        LcnfType::Int => NativeType::I64,
         LcnfType::LcnfString => NativeType::Ptr,
         LcnfType::Object => NativeType::Ptr,
         LcnfType::Var(_) => NativeType::Ptr,
