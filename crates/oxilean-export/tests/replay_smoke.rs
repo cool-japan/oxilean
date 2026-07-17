@@ -120,6 +120,41 @@ fn tree_forest_mutual_inductive_checked() {
 }
 
 #[test]
+fn syntax_nested_inductive_all_checked() {
+    // The real Lean core `Lean.Syntax` bundle — Array-then-List double nesting
+    // (`numNested = 2`), exported recursors `Lean.Syntax.rec` / `.rec_1` (Array)
+    // / `.rec_2` (List), 3 motives / 7 minors — plus its transitive
+    // dependencies. Every declaration verifies: the nested-to-mutual derivation
+    // reproduces Lean's exact exported recursors up to def-eq.
+    assert_split("Syntax", 269, 0, 0);
+
+    let file = read_str(&fixture("Syntax")).unwrap_or_else(|e| panic!("parse: {e}"));
+    let mut replayer = Replayer::new().unwrap_or_else(|e| panic!("replayer: {e}"));
+    for d in &file.decls {
+        let entry = replayer.replay(d);
+        assert!(
+            entry.outcome.is_checked(),
+            "{}: {:?}",
+            entry.name,
+            entry.outcome
+        );
+    }
+    let env = replayer.env();
+    let syntax = Name::from_str("Lean").append_str("Syntax");
+    let iv = env
+        .get_inductive_val(&syntax)
+        .expect("Lean.Syntax must be installed as an inductive");
+    assert_eq!(iv.num_nested, 2, "Lean.Syntax carries numNested = 2");
+    for suffix in ["rec", "rec_1", "rec_2"] {
+        assert!(
+            env.get_recursor_val(&syntax.clone().append_str(suffix))
+                .is_some(),
+            "Lean.Syntax.{suffix} must be installed (kernel-verified nested recursor)"
+        );
+    }
+}
+
+#[test]
 fn tree_forest_full_mutual_defs_checked() {
     // 30 defs (mutual Tree.size/Forest.size chain) + 7 inductive bundles.
     assert_split("Tree_Forest_full", 37, 0, 0);
@@ -460,6 +495,86 @@ fn kernel_detected_nested_inductive_is_named_unsupported() {
             feature: NESTED_INDUCTIVES
         },
         "kernel-detected nesting is unsupported, not rejected"
+    );
+}
+
+#[test]
+fn flagged_nested_inductive_with_matching_recursors_checks() {
+    // `inductive NestedT | mk : List NestedT → NestedT`, flagged nested, with the
+    // kernel-derived (restored) recursors supplied as the export would carry
+    // them: the nested-aware replay path specializes, derives, restores, matches
+    // every exported recursor by def-eq, and verifies to Checked.
+    use oxilean_kernel::{
+        check_and_derive_family_nested, restore_nested, ConstantInfo, InductiveSpec, RecursorVal,
+    };
+    let env = builtin_env();
+    let t = Expr::Const(Name::str("NestedT"), vec![]);
+    let list_t = Expr::App(
+        Node::new(Expr::Const(Name::str("List"), vec![Level::zero()])),
+        Node::new(t.clone()),
+    );
+    let mk_ty = Expr::Pi(
+        BinderInfo::Default,
+        Name::str("l"),
+        Node::new(list_t),
+        Node::new(t.clone()),
+    );
+
+    // Recursors the export would carry (kernel-derived, restored over real List).
+    let spec = InductiveSpec::new(
+        Name::str("NestedT"),
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![(Name::str("NestedT.mk"), mk_ty.clone())],
+    );
+    let (raw, exp) = check_and_derive_family_nested(&env, &[], 0, &[spec]).expect("derive");
+    let restored = restore_nested(raw, &exp.expect("nested"));
+    let recs: Vec<RecursorVal> = restored
+        .recursors
+        .iter()
+        .filter_map(|ci| match ci {
+            ConstantInfo::Recursor(rv) => Some(rv.clone()),
+            _ => None,
+        })
+        .collect();
+
+    let bundle = ExportDecl::Inductive(InductiveBundle {
+        types: vec![InductiveVal {
+            common: ConstantVal {
+                name: Name::str("NestedT"),
+                level_params: vec![],
+                ty: Expr::Sort(Level::succ(Level::zero())),
+            },
+            num_params: 0,
+            num_indices: 0,
+            all: vec![Name::str("NestedT")],
+            ctors: vec![Name::str("NestedT.mk")],
+            num_nested: 1,
+            is_rec: true,
+            is_unsafe: false,
+            is_reflexive: false,
+            is_prop: false,
+        }],
+        ctors: vec![ConstructorVal {
+            common: ConstantVal {
+                name: Name::str("NestedT.mk"),
+                level_params: vec![],
+                ty: mk_ty,
+            },
+            induct: Name::str("NestedT"),
+            cidx: 0,
+            num_params: 0,
+            num_fields: 1,
+            is_unsafe: false,
+        }],
+        recs,
+    });
+
+    let mut env = env;
+    let entry = replay_decl(&mut env, &bundle);
+    assert!(
+        entry.outcome.is_checked(),
+        "a valid nested inductive with matching recursors must verify: {:?}",
+        entry.outcome
     );
 }
 

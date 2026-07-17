@@ -259,7 +259,7 @@ fn close(binders: &[Binder], body: &Expr, lam: bool, bi_override: Option<BinderI
 // Small syntactic helpers.
 // ---------------------------------------------------------------------------
 
-fn has_const_occ(e: &Expr, names: &[Name]) -> bool {
+pub(crate) fn has_const_occ(e: &Expr, names: &[Name]) -> bool {
     match e {
         Expr::Const(n, _) => names.contains(n),
         Expr::BVar(_) | Expr::FVar(_) | Expr::Sort(_) | Expr::Lit(_) => false,
@@ -1461,7 +1461,11 @@ pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result
     )))
 }
 
-fn recursor_matches(tc: &mut TypeChecker<'_>, d: &RecursorVal, rv: &RecursorVal) -> bool {
+pub(crate) fn recursor_matches(
+    tc: &mut TypeChecker<'_>,
+    d: &RecursorVal,
+    rv: &RecursorVal,
+) -> bool {
     if d.common.level_params.len() != rv.common.level_params.len() {
         return false;
     }

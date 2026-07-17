@@ -385,8 +385,9 @@ pub use export::{
     ModuleCache,
 };
 pub use inductive::{
-    add_inductive_family, check_and_derive_family, check_inductive, derive_family_unchecked,
-    reduce_recursor, DerivedFamily, InductiveEnv, InductiveSpec, InductiveType, IntroRule,
+    add_inductive_family, check_and_derive_family, check_and_derive_family_nested, check_inductive,
+    derive_family_unchecked, reduce_recursor, restore_nested, verify_nested_bundle, DerivedFamily,
+    InductiveEnv, InductiveSpec, InductiveType, IntroRule,
 };
 pub use match_compile::{
     CompileResult, ConstructorInfo as MatchConstructorInfo, DecisionTree, MatchArm, MatchCompiler,

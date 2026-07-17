@@ -611,18 +611,15 @@ fn validate_quot_sound_axiom(env: &Environment, av: &AxiomVal) -> Option<String>
 /// (`verify_recursor_val`) and a mismatch is a rejection, never a silent
 /// substitution.
 ///
-/// Nested inductives (either flagged by the exporter via `num_nested` or
-/// detected by the kernel's positivity check as
+/// Nested inductives (exporter-flagged `num_nested > 0`) are specialized into
+/// an auxiliary mutual family, derived, and their recursors restored over the
+/// real container; every exported recursor is then re-verified by def-eq
+/// (`verify_nested_bundle`). Shapes this stage cannot un-nest (and any nesting
+/// the kernel's positivity check surfaces as
 /// `KernelError::UnsupportedNestedInductive`) are reported as the named
 /// unsupported feature [`NESTED_INDUCTIVES`].
 #[allow(clippy::result_large_err)] // KernelError is large; replay is not a hot error path
 fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(), SeamFailure> {
-    // Named unsupported: nested inductives. The exporter flag gives the
-    // earliest classification; the kernel's positivity check independently
-    // catches unflagged nesting below (never a wrong accept).
-    if b.types.iter().any(|t| t.num_nested > 0) {
-        return Err(SeamFailure::Unsupported(NESTED_INDUCTIVES));
-    }
     let first = b
         .types
         .first()
@@ -660,6 +657,21 @@ fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(
             t.common.ty.clone(),
             ctors,
         ));
+    }
+    // Nested inductives (exporter-flagged `num_nested > 0`): specialize into an
+    // auxiliary mutual family, derive, restore the recursors over the real
+    // container, and require every EXPORTED recursor to def-eq the kernel's
+    // re-derivation (`verify_nested_bundle`). A shape this stage cannot un-nest
+    // surfaces as `UnsupportedNestedInductive` → the named unsupported feature.
+    if b.types.iter().any(|t| t.num_nested > 0) {
+        let family =
+            oxilean_kernel::verify_nested_bundle(env, &lparams, num_params, &specs, &b.recs)
+                .map_err(map_inductive_kernel_error)?;
+        for ci in family.into_constant_infos() {
+            env.add_constant(ci)
+                .map_err(|e| SeamFailure::Reason(e.to_string()))?;
+        }
+        return Ok(());
     }
     // Atomicity pre-check: fully check + derive the family against the current
     // environment WITHOUT modifying it. A bundle that fails here installs
