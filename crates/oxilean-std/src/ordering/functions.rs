@@ -753,7 +753,7 @@ mod ordered_table_tests {
 pub fn ord_ext_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )

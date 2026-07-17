@@ -56,7 +56,7 @@ pub fn elab_level_str(s: &str) -> Level {
         let num_part = s[plus_pos + 1..].trim();
         if !name_part.is_empty() {
             if let Ok(n) = num_part.parse::<u32>() {
-                let mut l = Level::Param(Name::str(name_part));
+                let mut l = Level::param(Name::str(name_part));
                 for _ in 0..n {
                     l = Level::succ(l);
                 }
@@ -82,7 +82,7 @@ pub fn elab_level_str(s: &str) -> Level {
         .all(|c| c.is_alphanumeric() || c == '_' || c == '\'')
         && !s.is_empty()
     {
-        return Level::Param(Name::str(s));
+        return Level::param(Name::str(s));
     }
     Level::zero()
 }

@@ -712,13 +712,13 @@ pub fn tactic_cases(state: &TacticState, hyp_name: &Name) -> TacticResult {
             let bwd_name = Name::str(format!("{}_bwd", hyp_name));
             let a_to_b = Expr::Pi(
                 BinderInfo::Default,
-                Name::Anonymous,
+                Name::anonymous(),
                 Node::new(a.clone()),
                 Node::new(b.clone()),
             );
             let b_to_a = Expr::Pi(
                 BinderInfo::Default,
-                Name::Anonymous,
+                Name::anonymous(),
                 Node::new(b.clone()),
                 Node::new(a.clone()),
             );

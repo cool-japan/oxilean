@@ -492,7 +492,7 @@ pub fn add_ordinal_arithmetic(env: &mut Environment) {
         name: Name::str("Ordinal.transfiniteInduction"),
         univ_params: vec![Name::str("u")],
         ty: {
-            let sort_u = Expr::Sort(Level::Param(Name::str("u")));
+            let sort_u = Expr::Sort(Level::param(Name::str("u")));
             let p_ty = arrow(ord_ty(), sort_u.clone());
             Expr::Pi(
                 BinderInfo::Implicit,
@@ -501,12 +501,12 @@ pub fn add_ordinal_arithmetic(env: &mut Environment) {
                 Node::new(arrow(
                     Expr::Pi(
                         BinderInfo::Default,
-                        Name::Anonymous,
+                        Name::anonymous(),
                         Node::new(ord_ty()),
                         Node::new(arrow(
                             Expr::Pi(
                                 BinderInfo::Default,
-                                Name::Anonymous,
+                                Name::anonymous(),
                                 Node::new(ord_ty()),
                                 Node::new(arrow(
                                     Expr::App(
@@ -524,7 +524,7 @@ pub fn add_ordinal_arithmetic(env: &mut Environment) {
                     ),
                     Expr::Pi(
                         BinderInfo::Default,
-                        Name::Anonymous,
+                        Name::anonymous(),
                         Node::new(ord_ty()),
                         Node::new(Expr::App(
                             Node::new(Expr::BVar(1)),

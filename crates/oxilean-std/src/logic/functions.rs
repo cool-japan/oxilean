@@ -34,10 +34,10 @@ pub fn prop() -> Expr {
     Expr::Sort(Level::zero())
 }
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 pub fn sort_v() -> Expr {
-    Expr::Sort(Level::Param(Name::str("v")))
+    Expr::Sort(Level::param(Name::str("v")))
 }
 pub fn bvar(n: u32) -> Expr {
     Expr::BVar(n)
@@ -297,7 +297,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                     BinderInfo::Default,
                     "h",
                     app(bvar(1), bvar(0)),
-                    app(cst_u("Exists", vec![Level::Param(Name::str("u"))]), bvar(2)),
+                    app(cst_u("Exists", vec![Level::param(Name::str("u"))]), bvar(2)),
                 ),
             ),
         ),
@@ -324,7 +324,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
             "a",
             bvar(0),
             app2(
-                cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                cst_u("Eq", vec![Level::param(Name::str("u"))]),
                 bvar(0),
                 bvar(0),
             ),
@@ -347,12 +347,12 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                     BinderInfo::Default,
                     "h",
                     app2(
-                        cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                        cst_u("Eq", vec![Level::param(Name::str("u"))]),
                         bvar(1),
                         bvar(0),
                     ),
                     app2(
-                        cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                        cst_u("Eq", vec![Level::param(Name::str("u"))]),
                         bvar(1),
                         bvar(2),
                     ),
@@ -381,7 +381,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                         BinderInfo::Default,
                         "h1",
                         app2(
-                            cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Eq", vec![Level::param(Name::str("u"))]),
                             bvar(2),
                             bvar(1),
                         ),
@@ -389,12 +389,12 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                             BinderInfo::Default,
                             "h2",
                             app2(
-                                cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                 bvar(2),
                                 bvar(1),
                             ),
                             app2(
-                                cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                 bvar(4),
                                 bvar(2),
                             ),
@@ -425,7 +425,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                         BinderInfo::Default,
                         "h",
                         app2(
-                            cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Eq", vec![Level::param(Name::str("u"))]),
                             bvar(2),
                             bvar(1),
                         ),
@@ -460,7 +460,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                         BinderInfo::Default,
                         "_",
                         app2(
-                            cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Eq", vec![Level::param(Name::str("u"))]),
                             bvar(2),
                             bvar(0),
                         ),
@@ -474,7 +474,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                         bvar(0),
                         bvar(1),
                         app(
-                            cst_u("Eq.refl", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Eq.refl", vec![Level::param(Name::str("u"))]),
                             bvar(1),
                         ),
                     ),
@@ -486,7 +486,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                             BinderInfo::Default,
                             "h",
                             app2(
-                                cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                 bvar(3),
                                 bvar(0),
                             ),
@@ -529,7 +529,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
             "a",
             bvar(0),
             app4(
-                cst_u("HEq", vec![Level::Param(Name::str("u"))]),
+                cst_u("HEq", vec![Level::param(Name::str("u"))]),
                 bvar(0),
                 bvar(0),
                 bvar(0),
@@ -550,7 +550,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                 BinderInfo::Default,
                 "h",
                 app2(
-                    cst_u("Eq", vec![Level::succ(Level::Param(Name::str("u")))]),
+                    cst_u("Eq", vec![Level::succ(Level::param(Name::str("u")))]),
                     bvar(1),
                     bvar(0),
                 ),
@@ -587,7 +587,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                                 BinderInfo::Default,
                                 "hfg",
                                 app2(
-                                    cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                    cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                     bvar(3),
                                     bvar(2),
                                 ),
@@ -595,12 +595,12 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                                     BinderInfo::Default,
                                     "hab",
                                     app2(
-                                        cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                        cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                         bvar(2),
                                         bvar(1),
                                     ),
                                     app2(
-                                        cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                        cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                         app(bvar(5), bvar(3)),
                                         app(bvar(4), bvar(2)),
                                     ),
@@ -637,12 +637,12 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                             BinderInfo::Default,
                             "h",
                             app2(
-                                cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                 bvar(2),
                                 bvar(1),
                             ),
                             app2(
-                                cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                 app(bvar(1), bvar(3)),
                                 app(bvar(1), bvar(2)),
                             ),
@@ -673,7 +673,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                         BinderInfo::Default,
                         "h",
                         app2(
-                            cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Eq", vec![Level::param(Name::str("u"))]),
                             bvar(1),
                             bvar(0),
                         ),
@@ -682,7 +682,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                             "a",
                             bvar(4),
                             app2(
-                                cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                                cst_u("Eq", vec![Level::param(Name::str("u"))]),
                                 app(bvar(3), bvar(0)),
                                 app(bvar(2), bvar(0)),
                             ),
@@ -717,13 +717,13 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                             "a",
                             bvar(3),
                             app2(
-                                cst_u("Eq", vec![Level::Param(Name::str("v"))]),
+                                cst_u("Eq", vec![Level::param(Name::str("v"))]),
                                 app(bvar(2), bvar(0)),
                                 app(bvar(1), bvar(0)),
                             ),
                         ),
                         app2(
-                            cst_u("Eq", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Eq", vec![Level::param(Name::str("u"))]),
                             bvar(2),
                             bvar(1),
                         ),
@@ -770,7 +770,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
             "a",
             bvar(0),
             app(
-                cst_u("Nonempty", vec![Level::Param(Name::str("u"))]),
+                cst_u("Nonempty", vec![Level::param(Name::str("u"))]),
                 bvar(1),
             ),
         ),
@@ -796,7 +796,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
             BinderInfo::Default,
             "h",
             app(
-                cst_u("Nonempty", vec![Level::Param(Name::str("u"))]),
+                cst_u("Nonempty", vec![Level::param(Name::str("u"))]),
                 bvar(0),
             ),
             bvar(1),
@@ -1118,7 +1118,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                 app2(
                     cst("Iff"),
                     app(
-                        cst_u("Exists", vec![Level::Param(Name::str("u"))]),
+                        cst_u("Exists", vec![Level::param(Name::str("u"))]),
                         pi(
                             BinderInfo::Default,
                             "x",
@@ -1129,11 +1129,11 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                     app2(
                         cst("Or"),
                         app(
-                            cst_u("Exists", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Exists", vec![Level::param(Name::str("u"))]),
                             pi(BinderInfo::Default, "x", bvar(3), app(bvar(2), bvar(0))),
                         ),
                         app(
-                            cst_u("Exists", vec![Level::Param(Name::str("u"))]),
+                            cst_u("Exists", vec![Level::param(Name::str("u"))]),
                             pi(BinderInfo::Default, "x", bvar(3), app(bvar(1), bvar(0))),
                         ),
                     ),
@@ -1154,7 +1154,7 @@ pub fn build_logic_env(env: &mut Environment) -> Result<(), String> {
                 cst("Or"),
                 pi(BinderInfo::Default, "x", bvar(1), app(bvar(1), bvar(0))),
                 app(
-                    cst_u("Exists", vec![Level::Param(Name::str("u"))]),
+                    cst_u("Exists", vec![Level::param(Name::str("u"))]),
                     pi(
                         BinderInfo::Default,
                         "x",

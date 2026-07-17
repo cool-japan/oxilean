@@ -43,7 +43,7 @@ impl MvarCounter {
 /// with the real term once the trace is verified by the elaborator.
 fn proof_placeholder(tactic: &AutoTactic) -> Expr {
     let name = Name::str(format!("__search_{}", tactic.display_name()));
-    Expr::Const(name, vec![Level::Zero])
+    Expr::Const(name, vec![Level::zero()])
 }
 
 /// Apply `tactic` to the focused goal of `node`, returning the outcome.
@@ -172,7 +172,7 @@ fn build_result(node: SearchNode, stats: &SearchStats) -> ProofSearchResult {
     // Use the last partial proof term, or produce a trivial placeholder.
     let proof_term = node.partial_proof.unwrap_or_else(|| {
         let name = Name::str("__search_trivial");
-        Expr::Const(name, vec![Level::Zero])
+        Expr::Const(name, vec![Level::zero()])
     });
 
     ProofSearchResult {

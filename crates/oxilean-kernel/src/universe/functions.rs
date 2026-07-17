@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::level;
-use crate::{Level, Name};
+use crate::{Level, LevelView, Name};
 use std::collections::{HashMap, HashSet};
 
 use super::types::{
@@ -90,8 +90,8 @@ mod tests {
         let mut checker = UnivChecker::new();
         let m = checker.fresh_level_mvar();
         let one = Level::succ(Level::zero());
-        if let Level::MVar(id) = &m {
-            checker.assign_mvar(*id, one.clone());
+        if let LevelView::MVar(id) = m.view() {
+            checker.assign_mvar(id, one.clone());
         }
         checker.add_constraint(UnivConstraint::Eq(m, one));
         assert!(checker.check().is_ok());
@@ -103,8 +103,8 @@ mod tests {
         let two = Level::succ(Level::succ(Level::zero()));
         checker.add_constraint(UnivConstraint::Eq(m.clone(), two.clone()));
         assert!(checker.solve_simple());
-        if let Level::MVar(id) = &m {
-            assert_eq!(checker.get_mvar_assignment(id), Some(&two));
+        if let LevelView::MVar(id) = m.view() {
+            assert_eq!(checker.get_mvar_assignment(&id), Some(&two));
         }
     }
     #[test]
@@ -125,8 +125,8 @@ mod tests {
         let mut checker = UnivChecker::new();
         checker.add_constraint(UnivConstraint::Eq(Level::zero(), Level::zero()));
         let m = checker.fresh_level_mvar();
-        if let Level::MVar(id) = &m {
-            checker.assign_mvar(*id, Level::zero());
+        if let LevelView::MVar(id) = m.view() {
+            checker.assign_mvar(id, Level::zero());
         }
         checker.clear();
         assert_eq!(checker.all_constraints().len(), 0);
@@ -154,15 +154,15 @@ pub fn pi_type_level(domain: &Level, codomain: &Level) -> Level {
 }
 /// Convert a concrete level to a natural number.
 pub fn level_to_nat(l: &Level) -> Option<u32> {
-    match l {
-        Level::Zero => Some(0),
-        Level::Succ(inner) => level_to_nat(inner).map(|n| n + 1),
-        Level::Max(a, b) => {
+    match l.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(inner) => level_to_nat(inner).map(|n| n + 1),
+        LevelView::Max(a, b) => {
             let a_n = level_to_nat(a)?;
             let b_n = level_to_nat(b)?;
             Some(a_n.max(b_n))
         }
-        Level::IMax(a, b) => {
+        LevelView::IMax(a, b) => {
             let b_n = level_to_nat(b)?;
             if b_n == 0 {
                 Some(0)
@@ -171,7 +171,7 @@ pub fn level_to_nat(l: &Level) -> Option<u32> {
                 Some(a_n.max(b_n))
             }
         }
-        Level::Param(_) | Level::MVar(_) => None,
+        LevelView::Param(_) | LevelView::MVar(_) => None,
     }
 }
 /// Prop = Sort 0.
@@ -192,9 +192,9 @@ pub fn is_prop_level(l: &Level) -> bool {
 }
 /// Count succ constructors in a concrete level.
 pub fn count_succs(l: &Level) -> Option<u32> {
-    match l {
-        Level::Zero => Some(0),
-        Level::Succ(inner) => count_succs(inner).map(|n| n + 1),
+    match l.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(inner) => count_succs(inner).map(|n| n + 1),
         _ => None,
     }
 }
@@ -203,8 +203,8 @@ pub fn peel_succs(l: &Level, n: u32) -> Option<Level> {
     if n == 0 {
         return Some(l.clone());
     }
-    match l {
-        Level::Succ(inner) => peel_succs(inner, n - 1),
+    match l.view() {
+        LevelView::Succ(inner) => peel_succs(inner, n - 1),
         _ => None,
     }
 }
@@ -225,54 +225,52 @@ pub fn collect_level_params(l: &Level) -> Vec<Name> {
     result
 }
 fn collect_level_params_impl(l: &Level, params: &mut std::collections::HashSet<Name>) {
-    match l {
-        Level::Param(name) => {
+    match l.view() {
+        LevelView::Param(name) => {
             params.insert(name.clone());
         }
-        Level::Succ(inner) => collect_level_params_impl(inner, params),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Succ(inner) => collect_level_params_impl(inner, params),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_params_impl(a, params);
             collect_level_params_impl(b, params);
         }
-        Level::Zero | Level::MVar(_) => {}
+        LevelView::Zero | LevelView::MVar(_) => {}
     }
 }
 /// Substitute a universe parameter.
 pub fn substitute_level_param(l: &Level, param_name: &Name, replacement: &Level) -> Level {
-    match l {
-        Level::Param(name) if name == param_name => replacement.clone(),
-        Level::Succ(inner) => Level::succ(substitute_level_param(inner, param_name, replacement)),
-        Level::Max(a, b) => Level::max(
+    match l.view() {
+        LevelView::Param(name) if name == param_name => replacement.clone(),
+        LevelView::Succ(inner) => {
+            Level::succ(substitute_level_param(inner, param_name, replacement))
+        }
+        LevelView::Max(a, b) => Level::max(
             substitute_level_param(a, param_name, replacement),
             substitute_level_param(b, param_name, replacement),
         ),
-        Level::IMax(a, b) => Level::imax(
+        LevelView::IMax(a, b) => Level::imax(
             substitute_level_param(a, param_name, replacement),
             substitute_level_param(b, param_name, replacement),
         ),
-        Level::Zero | Level::Param(_) | Level::MVar(_) => l.clone(),
+        LevelView::Zero | LevelView::Param(_) | LevelView::MVar(_) => l.clone(),
     }
 }
 /// Format a level as a string.
 pub fn format_level(l: &Level) -> String {
-    match l {
-        Level::Zero => "0".to_string(),
-        Level::Succ(_) => {
+    match l.view() {
+        LevelView::Zero => "0".to_string(),
+        LevelView::Succ(inner) => {
             if let Some(n) = count_succs(l) {
                 if n <= 4 {
                     return n.to_string();
                 }
             }
-            if let Level::Succ(inner) = l {
-                format!("succ({})", format_level(inner))
-            } else {
-                "?".to_string()
-            }
+            format!("succ({})", format_level(inner))
         }
-        Level::Max(a, b) => format!("max({}, {})", format_level(a), format_level(b)),
-        Level::IMax(a, b) => format!("imax({}, {})", format_level(a), format_level(b)),
-        Level::Param(name) => format!("{}", name),
-        Level::MVar(id) => format!("?u{}", id.0),
+        LevelView::Max(a, b) => format!("max({}, {})", format_level(a), format_level(b)),
+        LevelView::IMax(a, b) => format!("imax({}, {})", format_level(a), format_level(b)),
+        LevelView::Param(name) => format!("{}", name),
+        LevelView::MVar(id) => format!("?u{}", id.0),
     }
 }
 /// Parse a simple level from string.
@@ -296,19 +294,19 @@ pub fn parse_level_str(s: &str) -> Option<Level> {
     }
 }
 pub(super) fn collect_nf_comps(l: &Level, offset: u32, comps: &mut Vec<(Option<Name>, u32)>) {
-    match l {
-        Level::Zero => comps.push((None, offset)),
-        Level::Param(name) => comps.push((Some(name.clone()), offset)),
-        Level::Succ(inner) => collect_nf_comps(inner, offset + 1, comps),
-        Level::Max(a, b) => {
+    match l.view() {
+        LevelView::Zero => comps.push((None, offset)),
+        LevelView::Param(name) => comps.push((Some(name.clone()), offset)),
+        LevelView::Succ(inner) => collect_nf_comps(inner, offset + 1, comps),
+        LevelView::Max(a, b) => {
             collect_nf_comps(a, offset, comps);
             collect_nf_comps(b, offset, comps);
         }
-        Level::IMax(a, b) => {
+        LevelView::IMax(a, b) => {
             collect_nf_comps(a, offset, comps);
             collect_nf_comps(b, offset, comps);
         }
-        Level::MVar(_) => {}
+        LevelView::MVar(_) => {}
     }
 }
 #[cfg(test)]
@@ -438,25 +436,22 @@ pub fn level_max_many(levels: &[Level]) -> Level {
 /// Check whether a level is *structurally* a max-expression.
 #[allow(dead_code)]
 pub fn is_max_level(l: &Level) -> bool {
-    matches!(l, Level::Max(_, _))
+    matches!(l.view(), LevelView::Max(_, _))
 }
 /// Check whether a level is *structurally* an imax-expression.
 #[allow(dead_code)]
 pub fn is_imax_level(l: &Level) -> bool {
-    matches!(l, Level::IMax(_, _))
+    matches!(l.view(), LevelView::IMax(_, _))
 }
 /// Return the depth of nesting of `Succ` constructors.
 ///
 /// `count_succs(succ(succ(zero))) == 2`
 #[allow(dead_code)]
 pub fn count_succ_depth(l: &Level) -> u32 {
-    let mut depth = 0u32;
-    let mut cur = l;
-    while let Level::Succ(inner) = cur {
-        depth += 1;
-        cur = inner;
+    match l.view() {
+        LevelView::Succ(inner) => 1 + count_succ_depth(inner),
+        _ => 0,
     }
-    depth
 }
 /// Compute the `n`-th successor of a level.
 ///
@@ -475,17 +470,17 @@ pub fn eval_closed_level(l: &Level) -> Option<u32> {
 /// Check whether two levels have the same structural shape (ignoring parameters).
 #[allow(dead_code)]
 pub fn same_level_shape(l1: &Level, l2: &Level) -> bool {
-    match (l1, l2) {
-        (Level::Zero, Level::Zero) => true,
-        (Level::Succ(a), Level::Succ(b)) => same_level_shape(a, b),
-        (Level::Max(a1, b1), Level::Max(a2, b2)) => {
+    match (l1.view(), l2.view()) {
+        (LevelView::Zero, LevelView::Zero) => true,
+        (LevelView::Succ(a), LevelView::Succ(b)) => same_level_shape(a, b),
+        (LevelView::Max(a1, b1), LevelView::Max(a2, b2)) => {
             same_level_shape(a1, a2) && same_level_shape(b1, b2)
         }
-        (Level::IMax(a1, b1), Level::IMax(a2, b2)) => {
+        (LevelView::IMax(a1, b1), LevelView::IMax(a2, b2)) => {
             same_level_shape(a1, a2) && same_level_shape(b1, b2)
         }
-        (Level::Param(_), Level::Param(_)) => true,
-        (Level::MVar(_), Level::MVar(_)) => true,
+        (LevelView::Param(_), LevelView::Param(_)) => true,
+        (LevelView::MVar(_), LevelView::MVar(_)) => true,
         _ => false,
     }
 }

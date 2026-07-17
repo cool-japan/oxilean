@@ -7,7 +7,7 @@ use std::fmt;
 use std::fmt::Write as FmtWrite;
 
 use super::functions::*;
-use crate::{BinderInfo, Expr, Level, Name};
+use crate::{BinderInfo, Expr, Level, LevelView, Name};
 
 /// Pretty printer for kernel expressions.
 pub struct ExprPrinter {
@@ -227,8 +227,8 @@ impl ExprPrinter {
     }
     /// Print a sort expression with smart level display.
     fn print_sort(&mut self, level: &Level) -> fmt::Result {
-        match level {
-            Level::Zero => write!(self.buffer, "Prop"),
+        match level.view() {
+            LevelView::Zero => write!(self.buffer, "Prop"),
             _ => {
                 if let Some(n) = level_to_nat(level) {
                     if n == 1 {
@@ -244,9 +244,9 @@ impl ExprPrinter {
         }
     }
     pub(super) fn print_level(&mut self, level: &Level) -> fmt::Result {
-        match level {
-            Level::Zero => write!(self.buffer, "0"),
-            Level::Succ(_) => {
+        match level.view() {
+            LevelView::Zero => write!(self.buffer, "0"),
+            LevelView::Succ(_) => {
                 if let Some(n) = level_to_nat(level) {
                     write!(self.buffer, "{}", n)
                 } else {
@@ -261,22 +261,22 @@ impl ExprPrinter {
                     }
                 }
             }
-            Level::Max(l1, l2) => {
+            LevelView::Max(l1, l2) => {
                 write!(self.buffer, "max(")?;
                 self.print_level(l1)?;
                 write!(self.buffer, ", ")?;
                 self.print_level(l2)?;
                 write!(self.buffer, ")")
             }
-            Level::IMax(l1, l2) => {
+            LevelView::IMax(l1, l2) => {
                 write!(self.buffer, "imax(")?;
                 self.print_level(l1)?;
                 write!(self.buffer, ", ")?;
                 self.print_level(l2)?;
                 write!(self.buffer, ")")
             }
-            Level::Param(name) => self.print_name(name),
-            Level::MVar(id) => write!(self.buffer, "?u_{}", id.0),
+            LevelView::Param(name) => self.print_name(name),
+            LevelView::MVar(id) => write!(self.buffer, "?u_{}", id.0),
         }
     }
     fn print_name(&mut self, name: &Name) -> fmt::Result {

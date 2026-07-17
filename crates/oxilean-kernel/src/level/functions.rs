@@ -6,9 +6,9 @@ use crate::Name;
 
 use super::types::{
     ConfigNode, ConstraintSet, DecisionNode, Either2, Fixture, FlatSubstitution, FocusStack,
-    LabelSet, Level, LevelConstraint, LevelMVarId, MinHeap, NonEmptyVec, PathBuf, PrefixCounter,
-    RewriteRule, RewriteRuleSet, SimpleDag, SlidingSum, SmallMap, SparseVec, StackCalc,
-    StatSummary, Stopwatch, StringPool, TokenBucket, TransformStat, TransitiveClosure,
+    LabelSet, Level, LevelConstraint, LevelMVarId, LevelView, MinHeap, NonEmptyVec, PathBuf,
+    PrefixCounter, RewriteRule, RewriteRuleSet, SimpleDag, SlidingSum, SmallMap, SparseVec,
+    StackCalc, StatSummary, Stopwatch, StringPool, TokenBucket, TransformStat, TransitiveClosure,
     VersionedRecord, WindowIterator, WriteOnce,
 };
 
@@ -16,8 +16,8 @@ use super::types::{
 ///
 /// Strips all Succ wrappers. E.g., `succ(succ(param u))` -> `(param u, 2)`.
 pub fn to_offset(l: &Level) -> (&Level, u32) {
-    match l {
-        Level::Succ(inner) => {
+    match l.view() {
+        LevelView::Succ(inner) => {
             let (base, k) = to_offset(inner);
             (base, k + 1)
         }
@@ -34,8 +34,8 @@ pub(super) fn from_offset(base: Level, offset: u32) -> Level {
 }
 /// Collect all arguments of a nested max expression into a flat list.
 pub(super) fn push_max_args(l: &Level, args: &mut Vec<Level>) {
-    match l {
-        Level::Max(l1, l2) => {
+    match l.view() {
+        LevelView::Max(l1, l2) => {
             push_max_args(l1, args);
             push_max_args(l2, args);
         }
@@ -49,13 +49,13 @@ pub(super) fn is_norm_lt(l1: &Level, l2: &Level) -> bool {
     let (b1, k1) = to_offset(l1);
     let (b2, k2) = to_offset(l2);
     fn kind_ord(l: &Level) -> u8 {
-        match l {
-            Level::Zero => 0,
-            Level::Param(_) => 1,
-            Level::MVar(_) => 2,
-            Level::Max(_, _) => 3,
-            Level::IMax(_, _) => 4,
-            Level::Succ(_) => 5,
+        match l.view() {
+            LevelView::Zero => 0,
+            LevelView::Param(_) => 1,
+            LevelView::MVar(_) => 2,
+            LevelView::Max(_, _) => 3,
+            LevelView::IMax(_, _) => 4,
+            LevelView::Succ(_) => 5,
         }
     }
     let k1_ord = kind_ord(b1);
@@ -63,8 +63,8 @@ pub(super) fn is_norm_lt(l1: &Level, l2: &Level) -> bool {
     if k1_ord != k2_ord {
         return k1_ord < k2_ord;
     }
-    match (b1, b2) {
-        (Level::Param(n1), Level::Param(n2)) => {
+    match (b1.view(), b2.view()) {
+        (LevelView::Param(n1), LevelView::Param(n2)) => {
             // Structural name comparison (see `order::name_cmp`): a genuine
             // total order, avoiding the `to_string()` comparator-inconsistency
             // panic risk and the per-comparison allocation.
@@ -74,12 +74,12 @@ pub(super) fn is_norm_lt(l1: &Level, l2: &Level) -> bool {
                 std::cmp::Ordering::Equal => {}
             }
         }
-        (Level::MVar(m1), Level::MVar(m2)) if m1.0 != m2.0 => {
+        (LevelView::MVar(m1), LevelView::MVar(m2)) if m1.0 != m2.0 => {
             return m1.0 < m2.0;
         }
-        (Level::MVar(_), Level::MVar(_)) => {}
-        (Level::Max(a1, a2), Level::Max(b1_inner, b2_inner))
-        | (Level::IMax(a1, a2), Level::IMax(b1_inner, b2_inner)) => {
+        (LevelView::MVar(_), LevelView::MVar(_)) => {}
+        (LevelView::Max(a1, a2), LevelView::Max(b1_inner, b2_inner))
+        | (LevelView::IMax(a1, a2), LevelView::IMax(b1_inner, b2_inner)) => {
             if a1 != b1_inner {
                 return is_norm_lt(a1, b1_inner);
             }
@@ -101,15 +101,15 @@ pub(super) fn is_norm_lt(l1: &Level, l2: &Level) -> bool {
 /// 5. Remove subsumed explicit levels
 pub fn normalize(l: &Level) -> Level {
     let (base, k) = to_offset(l);
-    match base {
-        Level::Zero | Level::Param(_) | Level::MVar(_) => l.clone(),
-        Level::Succ(_) => l.clone(),
-        Level::IMax(l1, l2) => {
+    match base.view() {
+        LevelView::Zero | LevelView::Param(_) | LevelView::MVar(_) => l.clone(),
+        LevelView::Succ(_) => l.clone(),
+        LevelView::IMax(l1, l2) => {
             let l1_norm = normalize(l1);
             let l2_norm = normalize(l2);
             if l2_norm.is_zero() {
                 // imax(_, 0) = 0; with offset: Succ^k(0)
-                return from_offset(Level::Zero, k);
+                return from_offset(Level::zero(), k);
             }
             if l2_norm.is_not_zero() {
                 // imax(u, v) = max(u, v) when v != 0.
@@ -143,7 +143,7 @@ pub fn normalize(l: &Level) -> Level {
             }
             from_offset(Level::imax(l1_norm, l2_norm), k)
         }
-        Level::Max(_, _) => {
+        LevelView::Max(_, _) => {
             let mut args = Vec::new();
             push_max_args(base, &mut args);
             // Normalize each argument.  A component such as Succ(Max(…)) may
@@ -200,7 +200,7 @@ pub fn normalize(l: &Level) -> Level {
                     .iter()
                     .filter_map(|a| {
                         let (b, k) = to_offset(a);
-                        if matches!(b, Level::Zero) {
+                        if matches!(b.view(), LevelView::Zero) {
                             None
                         } else {
                             Some(k)
@@ -212,12 +212,12 @@ pub fn normalize(l: &Level) -> Level {
                         let (b, k) = to_offset(a);
                         // Keep everything except a numeral arg subsumed by the
                         // bound. A numeral arg has base `Zero`.
-                        !(matches!(b, Level::Zero) && k <= bound)
+                        !(matches!(b.view(), LevelView::Zero) && k <= bound)
                     });
                 }
             }
             if merged.is_empty() {
-                Level::Zero
+                Level::zero()
             } else if merged.len() == 1 {
                 merged
                     .into_iter()
@@ -268,8 +268,8 @@ pub fn instantiate_level(level: &Level, param_names: &[Name], levels: &[Level]) 
     if param_names.is_empty() {
         return level.clone();
     }
-    match level {
-        Level::Param(name) => {
+    match level.view() {
+        LevelView::Param(name) => {
             for (i, pn) in param_names.iter().enumerate() {
                 if pn == name {
                     if let Some(l) = levels.get(i) {
@@ -279,48 +279,48 @@ pub fn instantiate_level(level: &Level, param_names: &[Name], levels: &[Level]) 
             }
             level.clone()
         }
-        Level::Succ(l) => Level::succ(instantiate_level(l, param_names, levels)),
-        Level::Max(l1, l2) => Level::max(
+        LevelView::Succ(l) => Level::succ(instantiate_level(l, param_names, levels)),
+        LevelView::Max(l1, l2) => Level::max(
             instantiate_level(l1, param_names, levels),
             instantiate_level(l2, param_names, levels),
         ),
-        Level::IMax(l1, l2) => Level::imax(
+        LevelView::IMax(l1, l2) => Level::imax(
             instantiate_level(l1, param_names, levels),
             instantiate_level(l2, param_names, levels),
         ),
-        Level::Zero | Level::MVar(_) => level.clone(),
+        LevelView::Zero | LevelView::MVar(_) => level.clone(),
     }
 }
 /// Collect all parameter names used in a level.
 pub fn collect_level_params(l: &Level, params: &mut Vec<Name>) {
-    match l {
-        Level::Param(name) => {
+    match l.view() {
+        LevelView::Param(name) => {
             if !params.contains(name) {
                 params.push(name.clone());
             }
         }
-        Level::Succ(l) => collect_level_params(l, params),
-        Level::Max(l1, l2) | Level::IMax(l1, l2) => {
+        LevelView::Succ(l) => collect_level_params(l, params),
+        LevelView::Max(l1, l2) | LevelView::IMax(l1, l2) => {
             collect_level_params(l1, params);
             collect_level_params(l2, params);
         }
-        Level::Zero | Level::MVar(_) => {}
+        LevelView::Zero | LevelView::MVar(_) => {}
     }
 }
 /// Collect all metavariable IDs used in a level.
 pub fn collect_level_mvars(l: &Level, mvars: &mut Vec<LevelMVarId>) {
-    match l {
-        Level::MVar(id) => {
-            if !mvars.contains(id) {
-                mvars.push(*id);
+    match l.view() {
+        LevelView::MVar(id) => {
+            if !mvars.contains(&id) {
+                mvars.push(id);
             }
         }
-        Level::Succ(l) => collect_level_mvars(l, mvars),
-        Level::Max(l1, l2) | Level::IMax(l1, l2) => {
+        LevelView::Succ(l) => collect_level_mvars(l, mvars),
+        LevelView::Max(l1, l2) | LevelView::IMax(l1, l2) => {
             collect_level_mvars(l1, mvars);
             collect_level_mvars(l2, mvars);
         }
-        Level::Zero | Level::Param(_) => {}
+        LevelView::Zero | LevelView::Param(_) => {}
     }
 }
 /// Replace level metavariables using a substitution function.
@@ -328,24 +328,24 @@ pub fn instantiate_level_mvars(
     level: &Level,
     subst: &dyn Fn(LevelMVarId) -> Option<Level>,
 ) -> Level {
-    match level {
-        Level::MVar(id) => {
-            if let Some(l) = subst(*id) {
+    match level.view() {
+        LevelView::MVar(id) => {
+            if let Some(l) = subst(id) {
                 instantiate_level_mvars(&l, subst)
             } else {
                 level.clone()
             }
         }
-        Level::Succ(l) => Level::succ(instantiate_level_mvars(l, subst)),
-        Level::Max(l1, l2) => Level::max(
+        LevelView::Succ(l) => Level::succ(instantiate_level_mvars(l, subst)),
+        LevelView::Max(l1, l2) => Level::max(
             instantiate_level_mvars(l1, subst),
             instantiate_level_mvars(l2, subst),
         ),
-        Level::IMax(l1, l2) => Level::imax(
+        LevelView::IMax(l1, l2) => Level::imax(
             instantiate_level_mvars(l1, subst),
             instantiate_level_mvars(l2, subst),
         ),
-        Level::Zero | Level::Param(_) => level.clone(),
+        LevelView::Zero | LevelView::Param(_) => level.clone(),
     }
 }
 #[cfg(test)]
@@ -543,7 +543,7 @@ mod tests {
 #[allow(dead_code)]
 pub fn level_min(l1: &Level, l2: &Level) -> Level {
     if l1.is_zero() || l2.is_zero() {
-        return Level::Zero;
+        return Level::zero();
     }
     if is_leq(l1, l2) {
         return l1.clone();
@@ -551,7 +551,7 @@ pub fn level_min(l1: &Level, l2: &Level) -> Level {
     if is_leq(l2, l1) {
         return l2.clone();
     }
-    Level::Zero
+    Level::zero()
 }
 /// Create `max(max(l1, l2), l3)` and normalize.
 #[allow(dead_code)]
@@ -578,7 +578,7 @@ pub fn type_level(n: u32) -> Level {
 /// Returns true for `succ(anything)`.
 #[allow(dead_code)]
 pub fn is_definitely_succ(l: &Level) -> bool {
-    matches!(l, Level::Succ(_))
+    matches!(l.view(), LevelView::Succ(_))
 }
 /// Collect all levels appearing in a `Vec<Level>`, deduplicating by structural equality.
 #[allow(dead_code)]
@@ -678,8 +678,8 @@ pub fn flatten_max(l: &Level) -> Vec<(Level, u32)> {
     result
 }
 pub(super) fn push_flat(l: &Level, acc: &mut Vec<(Level, u32)>) {
-    match l {
-        Level::Max(l1, l2) => {
+    match l.view() {
+        LevelView::Max(l1, l2) => {
             push_flat(l1, acc);
             push_flat(l2, acc);
         }
@@ -717,7 +717,7 @@ pub fn eval_ground_level(l: &Level) -> Option<u32> {
 pub fn max_of_slice(levels: &[Level]) -> Level {
     let mut iter = levels.iter();
     match iter.next() {
-        None => Level::Zero,
+        None => Level::zero(),
         Some(first) => iter.fold(first.clone(), |acc, l| Level::max(acc, l.clone())),
     }
 }
@@ -728,22 +728,27 @@ pub fn max_of_slice(levels: &[Level]) -> Level {
 pub fn imax_fold(levels: &[Level]) -> Level {
     let mut iter = levels.iter();
     match iter.next() {
-        None => Level::Zero,
+        None => Level::zero(),
         Some(first) => iter.fold(first.clone(), |acc, l| Level::imax(acc, l.clone())),
     }
 }
 /// Level of `Prop` (= 0).
+///
+/// A function rather than a `const` since [`Level`] is now `Rc`-backed (Stage F)
+/// and its zero is heap-allocated; `Level::zero()` is the canonical constructor.
 #[allow(dead_code)]
-pub const PROP_LEVEL: Level = Level::Zero;
+pub fn prop_level() -> Level {
+    Level::zero()
+}
 /// Level of `Type 0` (= 1).
 #[allow(dead_code)]
 pub fn type0_level() -> Level {
-    Level::succ(Level::Zero)
+    Level::succ(Level::zero())
 }
 /// Level of `Type 1` (= 2).
 #[allow(dead_code)]
 pub fn type1_level() -> Level {
-    Level::succ(Level::succ(Level::Zero))
+    Level::succ(Level::succ(Level::zero()))
 }
 #[cfg(test)]
 mod extra2_level_tests {

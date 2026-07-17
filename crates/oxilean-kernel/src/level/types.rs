@@ -5,6 +5,7 @@
 use crate::Name;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::functions::{is_equivalent, is_leq};
 
@@ -1081,114 +1082,157 @@ impl SimpleDag {
 ///
 /// Levels form expressions over zero, successor, max, imax, parameters,
 /// and metavariables.
+///
+/// Structural sharing (wave5 Stage F): `Level` is a newtype over `Rc<LevelKind>`,
+/// so cloning a whole level — e.g. every element of the `Vec<Level>` a `Const`
+/// carries — is an O(1) refcount bump, and sub-levels are shared by pointer.
+/// `PartialEq`/`Hash` delegate to the `Rc` (pointer-equality short-circuit, then
+/// structural fallback), so equality stays exactly structural. Match on the
+/// outermost node through [`Level::view`].
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Level {
+pub struct Level(Rc<LevelKind>);
+
+/// The node kind behind a [`Level`]. Private: construct through [`Level`]'s
+/// constructors and inspect through [`Level::view`] and the accessor methods.
+#[derive(PartialEq, Eq, Hash, Debug)]
+enum LevelKind {
     /// Level 0 (Prop).
     Zero,
     /// Successor: u + 1.
-    Succ(Box<Level>),
+    Succ(Level),
     /// Maximum of two levels: max(u, v).
-    Max(Box<Level>, Box<Level>),
+    Max(Level, Level),
     /// Impredicative maximum: imax(u, v).
     ///
     /// Semantics: imax(u, v) = 0 if v = 0, else max(u, v).
     /// This ensures Prop -> Prop : Prop (impredicativity).
-    IMax(Box<Level>, Box<Level>),
+    IMax(Level, Level),
     /// Universe parameter (for polymorphism).
     Param(Name),
     /// Universe metavariable (for unification).
     MVar(LevelMVarId),
 }
+
+/// A borrowed view of a [`Level`]'s outermost node, for pattern matching.
+///
+/// Obtained from [`Level::view`]; mirrors the former public `Level` enum shape.
+pub enum LevelView<'a> {
+    /// Level 0 (Prop).
+    Zero,
+    /// Successor: u + 1.
+    Succ(&'a Level),
+    /// Maximum of two levels: max(u, v).
+    Max(&'a Level, &'a Level),
+    /// Impredicative maximum: imax(u, v).
+    IMax(&'a Level, &'a Level),
+    /// Universe parameter (for polymorphism).
+    Param(&'a Name),
+    /// Universe metavariable (for unification).
+    MVar(LevelMVarId),
+}
+
 impl Level {
+    /// Borrow this level's outermost node for matching. O(1).
+    #[inline]
+    pub fn view(&self) -> LevelView<'_> {
+        match &*self.0 {
+            LevelKind::Zero => LevelView::Zero,
+            LevelKind::Succ(l) => LevelView::Succ(l),
+            LevelKind::Max(a, b) => LevelView::Max(a, b),
+            LevelKind::IMax(a, b) => LevelView::IMax(a, b),
+            LevelKind::Param(n) => LevelView::Param(n),
+            LevelKind::MVar(id) => LevelView::MVar(*id),
+        }
+    }
     /// Create Zero level.
     pub fn zero() -> Self {
-        Level::Zero
+        Level(Rc::new(LevelKind::Zero))
     }
     /// Create a successor level.
     pub fn succ(l: Level) -> Self {
-        Level::Succ(Box::new(l))
+        Level(Rc::new(LevelKind::Succ(l)))
     }
     /// Create a max level.
     pub fn max(l1: Level, l2: Level) -> Self {
-        Level::Max(Box::new(l1), Box::new(l2))
+        Level(Rc::new(LevelKind::Max(l1, l2)))
     }
     /// Create an imax level.
     pub fn imax(l1: Level, l2: Level) -> Self {
-        Level::IMax(Box::new(l1), Box::new(l2))
+        Level(Rc::new(LevelKind::IMax(l1, l2)))
     }
     /// Create a parameter level.
     pub fn param(name: Name) -> Self {
-        Level::Param(name)
+        Level(Rc::new(LevelKind::Param(name)))
     }
     /// Create a level metavariable.
     pub fn mvar(id: LevelMVarId) -> Self {
-        Level::MVar(id)
+        Level(Rc::new(LevelKind::MVar(id)))
     }
     /// Check if this is Zero.
     pub fn is_zero(&self) -> bool {
-        matches!(self, Level::Zero)
+        matches!(&*self.0, LevelKind::Zero)
     }
     /// Check if this is a parameter.
     pub fn is_param(&self) -> bool {
-        matches!(self, Level::Param(_))
+        matches!(&*self.0, LevelKind::Param(_))
     }
     /// Check if this is a metavariable.
     pub fn is_mvar(&self) -> bool {
-        matches!(self, Level::MVar(_))
+        matches!(&*self.0, LevelKind::MVar(_))
     }
     /// Check if this is a successor.
     pub fn is_succ(&self) -> bool {
-        matches!(self, Level::Succ(_))
+        matches!(&*self.0, LevelKind::Succ(_))
     }
     /// Check if this is a max.
     pub fn is_max(&self) -> bool {
-        matches!(self, Level::Max(_, _))
+        matches!(&*self.0, LevelKind::Max(_, _))
     }
     /// Check if this is an imax.
     pub fn is_imax(&self) -> bool {
-        matches!(self, Level::IMax(_, _))
+        matches!(&*self.0, LevelKind::IMax(_, _))
     }
     /// Check if this level is definitely not zero.
     ///
     /// Returns true if we can statically determine this is >= 1.
     pub fn is_not_zero(&self) -> bool {
-        match self {
-            Level::Zero => false,
-            Level::Succ(_) => true,
-            Level::Max(l1, l2) => l1.is_not_zero() || l2.is_not_zero(),
-            Level::IMax(_, l2) => l2.is_not_zero(),
-            Level::Param(_) | Level::MVar(_) => false,
+        match &*self.0 {
+            LevelKind::Zero => false,
+            LevelKind::Succ(_) => true,
+            LevelKind::Max(l1, l2) => l1.is_not_zero() || l2.is_not_zero(),
+            LevelKind::IMax(_, l2) => l2.is_not_zero(),
+            LevelKind::Param(_) | LevelKind::MVar(_) => false,
         }
     }
     /// Check if this level contains any metavariables.
     pub fn has_mvar(&self) -> bool {
-        match self {
-            Level::MVar(_) => true,
-            Level::Succ(l) => l.has_mvar(),
-            Level::Max(l1, l2) | Level::IMax(l1, l2) => l1.has_mvar() || l2.has_mvar(),
-            Level::Zero | Level::Param(_) => false,
+        match &*self.0 {
+            LevelKind::MVar(_) => true,
+            LevelKind::Succ(l) => l.has_mvar(),
+            LevelKind::Max(l1, l2) | LevelKind::IMax(l1, l2) => l1.has_mvar() || l2.has_mvar(),
+            LevelKind::Zero | LevelKind::Param(_) => false,
         }
     }
     /// Check if this level contains any parameters.
     pub fn has_param(&self) -> bool {
-        match self {
-            Level::Param(_) => true,
-            Level::Succ(l) => l.has_param(),
-            Level::Max(l1, l2) | Level::IMax(l1, l2) => l1.has_param() || l2.has_param(),
-            Level::Zero | Level::MVar(_) => false,
+        match &*self.0 {
+            LevelKind::Param(_) => true,
+            LevelKind::Succ(l) => l.has_param(),
+            LevelKind::Max(l1, l2) | LevelKind::IMax(l1, l2) => l1.has_param() || l2.has_param(),
+            LevelKind::Zero | LevelKind::MVar(_) => false,
         }
     }
     /// Get the depth (nesting) of this level expression.
     pub fn depth(&self) -> usize {
-        match self {
-            Level::Zero | Level::Param(_) | Level::MVar(_) => 0,
-            Level::Succ(l) => 1 + l.depth(),
-            Level::Max(l1, l2) | Level::IMax(l1, l2) => 1 + l1.depth().max(l2.depth()),
+        match &*self.0 {
+            LevelKind::Zero | LevelKind::Param(_) | LevelKind::MVar(_) => 0,
+            LevelKind::Succ(l) => 1 + l.depth(),
+            LevelKind::Max(l1, l2) | LevelKind::IMax(l1, l2) => 1 + l1.depth().max(l2.depth()),
         }
     }
     /// Create a numeric level `succ^n(zero)`.
     pub fn from_nat(n: u32) -> Self {
-        let mut l = Level::Zero;
+        let mut l = Level::zero();
         for _ in 0..n {
             l = Level::succ(l);
         }
@@ -1198,9 +1242,9 @@ impl Level {
     ///
     /// Returns `Some(n)` if this is `succ^n(zero)`, `None` otherwise.
     pub fn to_nat(&self) -> Option<u32> {
-        match self {
-            Level::Zero => Some(0),
-            Level::Succ(l) => l.to_nat().map(|n| n + 1),
+        match &*self.0 {
+            LevelKind::Zero => Some(0),
+            LevelKind::Succ(l) => l.to_nat().map(|n| n + 1),
             _ => None,
         }
     }

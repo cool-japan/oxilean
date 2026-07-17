@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::rc::Rc;
 
 /// A clock that measures elapsed time in a loop.
 #[allow(dead_code)]
@@ -174,26 +175,29 @@ impl<V: Clone> NameTrie<V> {
     }
     /// Insert a name-value pair into the trie.
     pub fn insert(&mut self, name: &Name, value: V) {
-        match name {
-            Name::Anonymous => {
+        match name.view() {
+            NameView::Anonymous => {
                 self.value = Some(value);
             }
-            Name::Str(parent, s) => {
-                let child = if let Some(idx) = self.string_children.iter().position(|(k, _)| k == s)
+            NameView::Str(parent, s) => {
+                let child = if let Some(idx) = self
+                    .string_children
+                    .iter()
+                    .position(|(k, _)| k.as_str() == s)
                 {
                     &mut self.string_children[idx].1
                 } else {
-                    self.string_children.push((s.clone(), NameTrie::new()));
+                    self.string_children.push((s.to_string(), NameTrie::new()));
                     let last = self.string_children.len() - 1;
                     &mut self.string_children[last].1
                 };
                 child.insert(parent, value);
             }
-            Name::Num(parent, n) => {
-                let child = if let Some(idx) = self.num_children.iter().position(|(k, _)| k == n) {
+            NameView::Num(parent, n) => {
+                let child = if let Some(idx) = self.num_children.iter().position(|(k, _)| *k == n) {
                     &mut self.num_children[idx].1
                 } else {
-                    self.num_children.push((*n, NameTrie::new()));
+                    self.num_children.push((n, NameTrie::new()));
                     let last = self.num_children.len() - 1;
                     &mut self.num_children[last].1
                 };
@@ -203,21 +207,21 @@ impl<V: Clone> NameTrie<V> {
     }
     /// Look up a name in the trie.
     pub fn lookup(&self, name: &Name) -> Option<&V> {
-        match name {
-            Name::Anonymous => self.value.as_ref(),
-            Name::Str(parent, s) => {
+        match name.view() {
+            NameView::Anonymous => self.value.as_ref(),
+            NameView::Str(parent, s) => {
                 let child = self
                     .string_children
                     .iter()
-                    .find(|(k, _)| k == s)
+                    .find(|(k, _)| k.as_str() == s)
                     .map(|(_, v)| v)?;
                 child.lookup(parent)
             }
-            Name::Num(parent, n) => {
+            NameView::Num(parent, n) => {
                 let child = self
                     .num_children
                     .iter()
-                    .find(|(k, _)| k == n)
+                    .find(|(k, _)| *k == n)
                     .map(|(_, v)| v)?;
                 child.lookup(parent)
             }
@@ -237,7 +241,7 @@ impl<V: Clone> NameTrie<V> {
     /// Collect all (name, value) pairs in the trie.
     pub fn to_vec(&self) -> Vec<(Name, V)> {
         let mut result = Vec::new();
-        self.collect_all(Name::Anonymous, &mut result);
+        self.collect_all(Name::anonymous(), &mut result);
         result
     }
     fn collect_all(&self, prefix: Name, result: &mut Vec<(Name, V)>) {
@@ -704,35 +708,90 @@ impl<A: std::hash::Hash + Eq + Clone, B: std::hash::Hash + Eq + Clone> BiMap<A, 
 }
 /// A hierarchical name.
 ///
-/// Names are used to identify constants, inductives, and other declarations.
-/// They form a tree structure: `Nat.add.comm` is represented as
-/// `Str(Str(Str(Anonymous, "Nat"), "add"), "comm")`.
+/// Names identify constants, inductives, and other declarations. They form a
+/// tree: `Nat.add.comm` is `Str(Str(Str(Anonymous, "Nat"), "add"), "comm")`.
+///
+/// Structural sharing (wave5 Stage F): `Name` is a newtype over `Rc<NameKind>`,
+/// so cloning a whole name — e.g. the name held by every `Const` referencing a
+/// constant — is an O(1) refcount bump, not a deep copy of the component chain.
+/// The parent link inside `NameKind` is itself a `Name`, so a name shares its
+/// entire prefix with any longer name built on it: at Mathlib scale (millions of
+/// recurring names and prefixes) residency is proportional to the number of
+/// *distinct* names, not to how many times each is referenced. `PartialEq`/`Hash`
+/// delegate to the `Rc` — std's `Rc` short-circuits on pointer equality before
+/// falling back to structural comparison, so equality stays exactly structural.
+///
+/// Match on the outermost component through [`Name::view`]: a
+/// `match name.view() { NameView::Str(parent, s) => .. }` reads like the former
+/// `match name { Name::Str(parent, s) => .. }`.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
-pub enum Name {
+pub struct Name(Rc<NameKind>);
+
+/// The component kind behind a [`Name`]. Private: construct through [`Name`]'s
+/// constructors and inspect through [`Name::view`] and the accessor methods.
+#[derive(PartialEq, Eq, Hash, Debug, Default)]
+enum NameKind {
     /// The anonymous (root) name.
     #[default]
     Anonymous,
     /// A string component: parent name + string.
-    Str(Box<Name>, String),
+    Str(Name, String),
     /// A numeric component: parent name + number.
-    Num(Box<Name>, u64),
+    Num(Name, u64),
 }
+
+/// A borrowed view of a [`Name`]'s outermost component, for pattern matching.
+///
+/// Obtained from [`Name::view`]; mirrors the former public `Name` enum shape.
+pub enum NameView<'a> {
+    /// The anonymous (root) name.
+    Anonymous,
+    /// A string component: parent name + string.
+    Str(&'a Name, &'a str),
+    /// A numeric component: parent name + number.
+    Num(&'a Name, u64),
+}
+
 impl Name {
+    /// Borrow this name's outermost component for matching. O(1).
+    #[inline]
+    pub fn view(&self) -> NameView<'_> {
+        match &*self.0 {
+            NameKind::Anonymous => NameView::Anonymous,
+            NameKind::Str(parent, s) => NameView::Str(parent, s.as_str()),
+            NameKind::Num(parent, n) => NameView::Num(parent, *n),
+        }
+    }
+    /// The anonymous (root) name.
+    #[inline]
+    pub fn anonymous() -> Name {
+        Name(Rc::new(NameKind::Anonymous))
+    }
+    /// Construct `parent.s` (string component). O(1) — shares `parent`.
+    #[inline]
+    pub fn mk_str(parent: Name, s: impl Into<String>) -> Name {
+        Name(Rc::new(NameKind::Str(parent, s.into())))
+    }
+    /// Construct `parent.n` (numeric component). O(1) — shares `parent`.
+    #[inline]
+    pub fn mk_num(parent: Name, n: u64) -> Name {
+        Name(Rc::new(NameKind::Num(parent, n)))
+    }
     /// Create a simple string name (no parent).
     pub fn str(s: impl Into<String>) -> Self {
-        Name::Str(Box::new(Name::Anonymous), s.into())
+        Name::mk_str(Name::anonymous(), s)
     }
     /// Append a string component to this name.
     pub fn append_str(self, s: impl Into<String>) -> Self {
-        Name::Str(Box::new(self), s.into())
+        Name::mk_str(self, s)
     }
     /// Append a numeric component to this name.
     pub fn append_num(self, n: u64) -> Self {
-        Name::Num(Box::new(self), n)
+        Name::mk_num(self, n)
     }
     /// Check if this is the anonymous name.
     pub fn is_anonymous(&self) -> bool {
-        matches!(self, Name::Anonymous)
+        matches!(&*self.0, NameKind::Anonymous)
     }
     /// Create a `Name` from a dot-separated string.
     ///
@@ -742,7 +801,7 @@ impl Name {
     pub fn from_str(s: &str) -> Self {
         let mut parts = s.split('.');
         let first = match parts.next() {
-            None | Some("") => return Name::Anonymous,
+            None | Some("") => return Name::anonymous(),
             Some(f) => f,
         };
         let mut name = Name::str(first);
@@ -763,50 +822,50 @@ impl Name {
     /// `Anonymous` has depth 0, `Name::str("Nat")` has depth 1,
     /// `Name::str("Nat").append_str("add")` has depth 2.
     pub fn depth(&self) -> usize {
-        match self {
-            Name::Anonymous => 0,
-            Name::Str(parent, _) | Name::Num(parent, _) => 1 + parent.depth(),
+        match &*self.0 {
+            NameKind::Anonymous => 0,
+            NameKind::Str(parent, _) | NameKind::Num(parent, _) => 1 + parent.depth(),
         }
     }
     /// Return the last string component of this name, if any.
     ///
     /// For `Nat.add`, returns `Some("add")`.
     pub fn last_str(&self) -> Option<&str> {
-        match self {
-            Name::Anonymous => None,
-            Name::Str(_, s) => Some(s.as_str()),
-            Name::Num(parent, _) => parent.last_str(),
+        match &*self.0 {
+            NameKind::Anonymous => None,
+            NameKind::Str(_, s) => Some(s.as_str()),
+            NameKind::Num(parent, _) => parent.last_str(),
         }
     }
     /// Return the last numeric component, if any.
     pub fn last_num(&self) -> Option<u64> {
-        match self {
-            Name::Num(_, n) => Some(*n),
-            Name::Str(parent, _) => parent.last_num(),
-            Name::Anonymous => None,
+        match &*self.0 {
+            NameKind::Num(_, n) => Some(*n),
+            NameKind::Str(parent, _) => parent.last_num(),
+            NameKind::Anonymous => None,
         }
     }
     /// Return the root (top-level) component as a string.
     ///
     /// For `Nat.add.comm`, returns `"Nat"`.
     pub fn root(&self) -> Option<&str> {
-        match self {
-            Name::Anonymous => None,
-            Name::Str(parent, s) => {
+        match &*self.0 {
+            NameKind::Anonymous => None,
+            NameKind::Str(parent, s) => {
                 if parent.is_anonymous() {
                     Some(s.as_str())
                 } else {
                     parent.root()
                 }
             }
-            Name::Num(parent, _) => parent.root(),
+            NameKind::Num(parent, _) => parent.root(),
         }
     }
     /// Return the parent name (prefix with last component removed).
     pub fn prefix(&self) -> Name {
-        match self {
-            Name::Anonymous => Name::Anonymous,
-            Name::Str(parent, _) | Name::Num(parent, _) => *parent.clone(),
+        match &*self.0 {
+            NameKind::Anonymous => Name::anonymous(),
+            NameKind::Str(parent, _) | NameKind::Num(parent, _) => parent.clone(),
         }
     }
     /// Check whether this name has `prefix` as a (strict) prefix.
@@ -816,17 +875,16 @@ impl Name {
         if self == prefix {
             return false;
         }
-        let mut current = self;
+        let mut current = self.clone();
         loop {
-            match current {
-                Name::Anonymous => return false,
-                Name::Str(parent, _) | Name::Num(parent, _) => {
-                    if parent.as_ref() == prefix {
-                        return true;
-                    }
-                    current = parent;
-                }
+            let parent = match &*current.0 {
+                NameKind::Anonymous => return false,
+                NameKind::Str(parent, _) | NameKind::Num(parent, _) => parent.clone(),
+            };
+            if &parent == prefix {
+                return true;
             }
+            current = parent;
         }
     }
     /// Collect all components from root to leaf.
@@ -834,19 +892,20 @@ impl Name {
     /// Returns a vector of `(is_num, string_or_num)` pairs.
     pub fn components(&self) -> Vec<String> {
         let mut comps = Vec::new();
-        let mut current = self;
+        let mut current = self.clone();
         loop {
-            match current {
-                Name::Anonymous => break,
-                Name::Str(parent, s) => {
+            let parent = match &*current.0 {
+                NameKind::Anonymous => break,
+                NameKind::Str(parent, s) => {
                     comps.push(s.clone());
-                    current = parent;
+                    parent.clone()
                 }
-                Name::Num(parent, n) => {
+                NameKind::Num(parent, n) => {
                     comps.push(n.to_string());
-                    current = parent;
+                    parent.clone()
                 }
-            }
+            };
+            current = parent;
         }
         comps.reverse();
         comps
@@ -855,7 +914,7 @@ impl Name {
     ///
     /// Numeric strings are converted to `Num` components.
     pub fn from_components(comps: &[String]) -> Self {
-        let mut name = Name::Anonymous;
+        let mut name = Name::anonymous();
         for comp in comps {
             if let Ok(n) = comp.parse::<u64>() {
                 name = name.append_num(n);
@@ -869,10 +928,11 @@ impl Name {
     ///
     /// If the name ends in a numeric component, appends `new_last` instead.
     pub fn replace_last(self, new_last: impl Into<String>) -> Self {
-        match self {
-            Name::Anonymous => Name::str(new_last),
-            Name::Str(parent, _) => Name::Str(parent, new_last.into()),
-            Name::Num(parent, _) => Name::Str(parent, new_last.into()),
+        match &*self.0 {
+            NameKind::Anonymous => Name::str(new_last),
+            NameKind::Str(parent, _) | NameKind::Num(parent, _) => {
+                Name::mk_str(parent.clone(), new_last)
+            }
         }
     }
     /// Produce a "fresh" version of this name by appending a suffix number.
@@ -921,11 +981,11 @@ impl Name {
     }
     /// Check whether this name is a string name (last component is a string).
     pub fn is_str_name(&self) -> bool {
-        matches!(self, Name::Str(_, _))
+        matches!(&*self.0, NameKind::Str(_, _))
     }
     /// Check whether this name is a numeric name (last component is a number).
     pub fn is_num_name(&self) -> bool {
-        matches!(self, Name::Num(_, _))
+        matches!(&*self.0, NameKind::Num(_, _))
     }
 }
 /// A bidirectional mapping between names and numeric IDs.

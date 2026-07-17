@@ -1162,7 +1162,7 @@ pub fn ch_ext_prod_ty(a: Expr, b: Expr) -> Expr {
 pub fn ch_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(dom),
         Node::new(cod),
     )

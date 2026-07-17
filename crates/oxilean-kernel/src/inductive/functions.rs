@@ -367,7 +367,7 @@ pub fn is_enum_inductive(ind: &InductiveType) -> bool {
 /// Return the recursor name for a given inductive type name.
 #[allow(dead_code)]
 pub fn recursor_name(ind_name: &Name) -> Name {
-    Name::Str(Box::new(ind_name.clone()), "rec".to_string())
+    Name::mk_str(ind_name.clone(), "rec".to_string())
 }
 #[cfg(test)]
 mod extra_tests {
@@ -444,7 +444,7 @@ mod extra_tests {
     fn test_recursor_name() {
         let n = Name::str("Nat");
         let r = recursor_name(&n);
-        assert_eq!(r, Name::Str(Box::new(Name::str("Nat")), "rec".to_string()));
+        assert_eq!(r, Name::mk_str(Name::str("Nat"), "rec".to_string()));
     }
     #[test]
     fn test_is_prop_flag() {

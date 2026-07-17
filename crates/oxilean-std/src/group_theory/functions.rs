@@ -50,7 +50,7 @@ pub fn type2() -> Expr {
 }
 #[allow(dead_code)]
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 pub fn bvar(n: u32) -> Expr {
     Expr::BVar(n)
@@ -58,7 +58,7 @@ pub fn bvar(n: u32) -> Expr {
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )

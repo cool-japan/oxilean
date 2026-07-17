@@ -289,7 +289,7 @@ mod tests {
     }
     #[test]
     fn test_mk_type_level_param() {
-        let u = Level::Param(Name::str("u"));
+        let u = Level::param(Name::str("u"));
         let e = mk_type(u.clone());
         if let Expr::Sort(l) = &e {
             assert_eq!(*l, Level::succ(u));

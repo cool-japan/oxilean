@@ -430,11 +430,11 @@ mod tests {
     use crate::{Expr, Level, Name};
 
     fn prop() -> Expr {
-        Expr::Sort(Level::Zero)
+        Expr::Sort(Level::zero())
     }
 
     fn type0() -> Expr {
-        Expr::Sort(Level::succ(Level::Zero))
+        Expr::Sort(Level::succ(Level::zero()))
     }
 
     fn const_expr(name: &str) -> Expr {

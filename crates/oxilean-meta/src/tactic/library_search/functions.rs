@@ -12,7 +12,7 @@ use crate::def_eq::{MetaDefEq, UnificationResult};
 use crate::discr_tree::DiscrTree;
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
 use oxilean_kernel::Node;
-use oxilean_kernel::{Expr, Level, Name};
+use oxilean_kernel::{Expr, Level, LevelView, Name, NameView};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 pub(super) fn strip_leading_pis_local(ty: &Expr) -> Expr {
@@ -487,14 +487,14 @@ pub(super) fn freshen_levels_in_expr(expr: &Expr, levels: &[Level], _depth: u32)
 }
 /// Replace `Level::Param` with the corresponding fresh level.
 pub(super) fn freshen_level(level: &Level, fresh: &[Level]) -> Level {
-    match level {
-        Level::Param(name) => {
+    match level.view() {
+        LevelView::Param(name) => {
             let idx = param_name_to_index(name, fresh.len());
             fresh[idx].clone()
         }
-        Level::Succ(inner) => Level::succ(freshen_level(inner, fresh)),
-        Level::Max(l, r) => Level::max(freshen_level(l, fresh), freshen_level(r, fresh)),
-        Level::IMax(l, r) => Level::imax(freshen_level(l, fresh), freshen_level(r, fresh)),
+        LevelView::Succ(inner) => Level::succ(freshen_level(inner, fresh)),
+        LevelView::Max(l, r) => Level::max(freshen_level(l, fresh), freshen_level(r, fresh)),
+        LevelView::IMax(l, r) => Level::imax(freshen_level(l, fresh), freshen_level(r, fresh)),
         _ => level.clone(),
     }
 }
@@ -596,7 +596,7 @@ pub(super) fn format_expr_short(expr: &Expr) -> String {
         Expr::Const(name, _) => format!("{}", name),
         Expr::BVar(n) => format!("?_{}", n),
         Expr::FVar(fid) => format!("fvar_{}", fid.0),
-        Expr::Sort(Level::Zero) => "Prop".to_string(),
+        Expr::Sort(l) if matches!(l.view(), LevelView::Zero) => "Prop".to_string(),
         Expr::Sort(_) => "Sort _".to_string(),
         Expr::Lit(lit) => format!("{}", lit),
         Expr::App(f, a) => {
@@ -994,27 +994,27 @@ pub(super) fn expr_depth(expr: &Expr) -> usize {
 /// Extract the last component of a hierarchical name as a string.
 #[allow(dead_code)]
 pub(super) fn name_last_component(name: &Name) -> String {
-    match name {
-        Name::Anonymous => "_".to_string(),
-        Name::Str(_, s) => s.clone(),
-        Name::Num(_, n) => format!("{}", n),
+    match name.view() {
+        NameView::Anonymous => "_".to_string(),
+        NameView::Str(_, s) => s.to_string(),
+        NameView::Num(_, n) => format!("{}", n),
     }
 }
 /// Check if a name is a sibling of another (same parent).
 #[allow(dead_code)]
 pub(super) fn names_are_siblings(a: &Name, b: &Name) -> bool {
-    match (a, b) {
-        (Name::Str(pa, _), Name::Str(pb, _)) => pa == pb,
-        (Name::Num(pa, _), Name::Num(pb, _)) => pa == pb,
+    match (a.view(), b.view()) {
+        (NameView::Str(pa, _), NameView::Str(pb, _)) => pa == pb,
+        (NameView::Num(pa, _), NameView::Num(pb, _)) => pa == pb,
         _ => false,
     }
 }
 /// Get the parent name.
 #[allow(dead_code)]
 pub(super) fn name_parent(name: &Name) -> &Name {
-    match name {
-        Name::Str(parent, _) | Name::Num(parent, _) => parent,
-        Name::Anonymous => &Name::Anonymous,
+    match name.view() {
+        NameView::Str(parent, _) | NameView::Num(parent, _) => parent,
+        NameView::Anonymous => name,
     }
 }
 /// Find the last top-level `->` in a type string (not inside parentheses).

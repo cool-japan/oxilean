@@ -28,7 +28,7 @@ use crate::declaration::{ConstantInfo, InductiveVal, RecursorRule, RecursorVal};
 use crate::expr_util::{get_app_fn_args, mk_app, replace_expr};
 use crate::instantiate::instantiate_type_lparams;
 use crate::subst::instantiate;
-use crate::{Environment, Expr, KernelError, Level, Name, TypeChecker};
+use crate::{Environment, Expr, KernelError, Level, Name, NameView, TypeChecker};
 
 /// A nested occurrence `C Ds Is`: a family-being-defined type appears inside the
 /// arguments of an already-declared foreign inductive `C`.
@@ -169,8 +169,8 @@ fn lookup_ctor(env: &Environment, name: &Name) -> Option<(Expr, Vec<Name>)> {
 }
 
 fn last_component(name: &Name) -> String {
-    match name {
-        Name::Str(_, s) => s.clone(),
+    match name.view() {
+        NameView::Str(_, s) => s.to_string(),
         _ => "ctor".to_string(),
     }
 }
@@ -239,7 +239,7 @@ fn scan(env: &Environment, all_family: &[Name], e: &Expr) -> Result<Option<Found
                     let fam_in_index = args.iter().skip(np).any(|a| has_const_occ(a, all_family));
                     if fam_in_index {
                         return Err(KernelError::UnsupportedNestedInductive(
-                            all_family.first().cloned().unwrap_or(Name::Anonymous),
+                            all_family.first().cloned().unwrap_or(Name::anonymous()),
                         ));
                     }
                     if fam_in_param {
@@ -332,10 +332,7 @@ pub fn specialize(
             _ => return Ok(None),
         };
 
-        let aux_name = Name::Str(
-            Box::new(orig_names[0].clone()),
-            format!("_nested_{}", aux_count),
-        );
+        let aux_name = Name::mk_str(orig_names[0].clone(), format!("_nested_{}", aux_count));
         aux_count += 1;
         let c_levels = f.levels.clone();
         let as_args = f.as_args.clone();
@@ -363,7 +360,7 @@ pub fn specialize(
             let t = instantiate_type_lparams(&cty, &clp, &c_levels);
             let t = instantiate_leading(&t, &as_args);
             let t = replace_container_app(&t, &f.container, &c_levels, &as_args, np, &aux_name);
-            let aux_cn = Name::Str(Box::new(aux_name.clone()), last_component(cn));
+            let aux_cn = Name::mk_str(aux_name.clone(), last_component(cn));
             aux_ctors.push((aux_cn.clone(), t));
             ctor_name_map.push((aux_cn, cn.clone()));
         }
@@ -374,8 +371,8 @@ pub fn specialize(
             container_levels: c_levels.clone(),
             params: as_args.clone(),
             aux_ctors: ctor_name_map,
-            aux_rec: Name::Str(Box::new(aux_name.clone()), "rec".to_string()),
-            container_rec: Name::Str(Box::new(f.container.clone()), "rec".to_string()),
+            aux_rec: Name::mk_str(aux_name.clone(), "rec".to_string()),
+            container_rec: Name::mk_str(f.container.clone(), "rec".to_string()),
         });
 
         all_family.push(aux_name.clone());
@@ -626,7 +623,7 @@ pub fn verify_nested_bundle(
             specs
                 .first()
                 .map(|s| s.name.clone())
-                .unwrap_or(Name::Anonymous),
+                .unwrap_or(Name::anonymous()),
         ));
     };
     let restored = restore(raw, &exp);
@@ -1109,9 +1106,9 @@ mod tests {
             .filter_map(|ci| match ci {
                 ConstantInfo::Recursor(rv) => {
                     let exported = if rule_ctor_set(rv).contains(&Name::str("NestedT.mk")) {
-                        Name::Str(Box::new(Name::str("NestedT")), "rec".to_string())
+                        Name::mk_str(Name::str("NestedT"), "rec".to_string())
                     } else {
-                        Name::Str(Box::new(Name::str("NestedT")), "rec_1".to_string())
+                        Name::mk_str(Name::str("NestedT"), "rec_1".to_string())
                     };
                     Some((rv.common.name.clone(), exported))
                 }
@@ -1144,14 +1141,8 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert!(names.contains(&Name::Str(
-            Box::new(Name::str("NestedT")),
-            "rec".to_string()
-        )));
-        assert!(names.contains(&Name::Str(
-            Box::new(Name::str("NestedT")),
-            "rec_1".to_string()
-        )));
+        assert!(names.contains(&Name::mk_str(Name::str("NestedT"), "rec".to_string())));
+        assert!(names.contains(&Name::mk_str(Name::str("NestedT"), "rec_1".to_string())));
     }
 
     #[test]

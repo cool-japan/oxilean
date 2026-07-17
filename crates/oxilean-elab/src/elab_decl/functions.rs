@@ -102,7 +102,7 @@ pub fn elaborate_decl(env: &Environment, decl: &Decl) -> Result<PendingDecl, Dec
             let first_name = &names[0];
             Ok(PendingDecl::Axiom {
                 name: Name::str(first_name),
-                ty: Expr::Sort(Level::succ(Level::Param(Name::str(first_name)))),
+                ty: Expr::Sort(Level::succ(Level::param(Name::str(first_name)))),
                 attrs: vec![],
             })
         }
@@ -142,7 +142,7 @@ pub fn elaborate_decl(env: &Environment, decl: &Decl) -> Result<PendingDecl, Dec
             }
             let sort_level = if max_field_level == Level::zero() {
                 if let Some(first_param) = univ_params.first() {
-                    Level::Param(Name::str(first_param))
+                    Level::param(Name::str(first_param))
                 } else {
                     Level::succ(Level::zero())
                 }

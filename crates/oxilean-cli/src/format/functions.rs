@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_kernel::Node;
-use oxilean_kernel::{print_expr, BinderInfo, Expr, Level, Literal, Name};
+use oxilean_kernel::{print_expr, BinderInfo, Expr, Level, LevelView, Literal, Name};
 
 use super::types::{
     Alignment, AlignmentStyle, ColumnSpec, Comment, Doc, FormatDiff, FormatOnSaveConfig,
@@ -105,31 +105,31 @@ fn format_sort(level: &Level) -> Doc {
 /// Format a level to a string.
 #[allow(dead_code)]
 fn format_level_str(level: &Level) -> String {
-    match level {
-        Level::Zero => "0".to_string(),
-        Level::Succ(inner) => {
+    match level.view() {
+        LevelView::Zero => "0".to_string(),
+        LevelView::Succ(inner) => {
             if let Some(n) = level_to_nat(level) {
                 n.to_string()
             } else {
                 format!("{}+1", format_level_str(inner))
             }
         }
-        Level::Max(a, b) => {
+        LevelView::Max(a, b) => {
             format!("max({}, {})", format_level_str(a), format_level_str(b))
         }
-        Level::IMax(a, b) => {
+        LevelView::IMax(a, b) => {
             format!("imax({}, {})", format_level_str(a), format_level_str(b))
         }
-        Level::Param(name) => name.to_string(),
-        Level::MVar(id) => format!("?u_{}", id.0),
+        LevelView::Param(name) => name.to_string(),
+        LevelView::MVar(id) => format!("?u_{}", id.0),
     }
 }
 /// Convert a level to a natural number if possible.
 #[allow(dead_code)]
 fn level_to_nat(level: &Level) -> Option<u32> {
-    match level {
-        Level::Zero => Some(0),
-        Level::Succ(inner) => level_to_nat(inner).map(|n| n + 1),
+    match level.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(inner) => level_to_nat(inner).map(|n| n + 1),
         _ => None,
     }
 }

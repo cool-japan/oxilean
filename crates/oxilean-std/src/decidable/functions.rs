@@ -507,7 +507,7 @@ pub fn build_decidable_env(env: &mut oxilean_kernel::Environment) -> Result<(), 
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -820,7 +820,7 @@ pub fn dcs_ext_decidable_typeclass(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -898,7 +898,7 @@ pub fn dcs_ext_logical_connective_closure(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1003,7 +1003,7 @@ pub fn dcs_ext_decidable_eq_basic(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -1040,7 +1040,7 @@ pub fn dcs_ext_decidable_eq_basic(
         ),
     );
     add("Bool.decEq", bool_dec_eq_ty)?;
-    let _ = (type1(), Bi::Default, Name::Anonymous);
+    let _ = (type1(), Bi::Default, Name::anonymous());
     Ok(())
 }
 pub fn dcs_ext_decidable_eq_compound(
@@ -1050,7 +1050,7 @@ pub fn dcs_ext_decidable_eq_compound(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let _arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_eq_list_ty = Expr::Pi(
@@ -1136,7 +1136,7 @@ pub fn dcs_ext_linear_ordering(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -1210,7 +1210,7 @@ pub fn dcs_ext_bounded_quantifiers(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1309,7 +1309,7 @@ pub fn dcs_ext_lem_boolean_reflection(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1397,7 +1397,7 @@ pub fn dcs_ext_semi_decidability(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1477,7 +1477,7 @@ pub fn dcs_ext_undecidability_halting(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1516,7 +1516,7 @@ pub fn dcs_ext_presburger_arithmetic(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1575,7 +1575,7 @@ pub fn dcs_ext_dpll_procedure(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -1628,7 +1628,7 @@ pub fn dcs_ext_constructive_markov(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };

@@ -1009,7 +1009,7 @@ pub(super) fn ott_ext_ipi(name: &str, dom: Expr, body: Expr) -> Expr {
 pub(super) fn ott_ext_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )

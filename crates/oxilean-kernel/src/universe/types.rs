@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::level::{self, LevelMVarId};
-use crate::{Level, Name};
+use crate::{Level, LevelView, Name};
 use std::collections::{HashMap, HashSet};
 
 use super::functions::{add_succs, collect_nf_comps, format_level, substitute_level_param};
@@ -1070,7 +1070,7 @@ impl UnivChecker {
     pub fn fresh_level_mvar(&mut self) -> Level {
         let id = LevelMVarId(self.next_mvar_id);
         self.next_mvar_id += 1;
-        Level::MVar(id)
+        Level::mvar(id)
     }
     /// Assign a level metavariable.
     pub fn assign_mvar(&mut self, id: LevelMVarId, level: Level) {
@@ -1162,17 +1162,17 @@ impl UnivChecker {
                 if let UnivConstraint::Eq(l, r) = constraint {
                     let l_inst = self.instantiate_mvars(l);
                     let r_inst = self.instantiate_mvars(r);
-                    if let Level::MVar(id) = &l_inst {
+                    if let LevelView::MVar(id) = l_inst.view() {
                         if !r_inst.has_mvar() {
-                            self.mvar_assignments.insert(*id, r_inst);
+                            self.mvar_assignments.insert(id, r_inst);
                             changed = true;
                             any_solved = true;
                             continue;
                         }
                     }
-                    if let Level::MVar(id) = &r_inst {
+                    if let LevelView::MVar(id) = r_inst.view() {
                         if !l_inst.has_mvar() {
-                            self.mvar_assignments.insert(*id, l_inst);
+                            self.mvar_assignments.insert(id, l_inst);
                             changed = true;
                             any_solved = true;
                         }

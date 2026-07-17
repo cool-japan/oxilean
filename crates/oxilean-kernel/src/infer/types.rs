@@ -803,7 +803,7 @@ impl<'env> TypeChecker<'env> {
             if let Some(ty) = locals.get(&id) {
                 tc.push_local(LocalDecl {
                     fvar: FVarId(id),
-                    name: Name::Anonymous,
+                    name: Name::anonymous(),
                     ty: ty.clone(),
                     val: None,
                 });

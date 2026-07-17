@@ -5,7 +5,7 @@
 use crate::bignat::BigNat;
 use crate::expr_util::{get_app_args, get_app_fn};
 use crate::Node;
-use crate::{Environment, Expr, Literal, Name};
+use crate::{Environment, Expr, Literal, Name, NameView};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -171,7 +171,7 @@ pub(super) fn nat_bool_result(b: bool) -> Expr {
 /// renderings of the same constructor; the value is unchanged.
 pub(super) fn respell_bool_const_for_env(e: Expr, env: &Environment) -> Expr {
     if let Expr::Const(name, levels) = &e {
-        if let Name::Str(parent, leaf) = name {
+        if let NameView::Str(parent, leaf) = name.view() {
             if parent.is_anonymous()
                 && (leaf == "Bool.true" || leaf == "Bool.false")
                 && env.find(name).is_none()

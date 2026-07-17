@@ -113,19 +113,19 @@ fn arb_level(max_depth: u32) -> impl Strategy<Value = Level> {
 
 fn arb_level_impl(depth: u32) -> impl Strategy<Value = Level> {
     if depth == 0 {
-        prop_oneof![Just(Level::Zero), arb_name().prop_map(Level::Param),].boxed()
+        prop_oneof![Just(Level::zero()), arb_name().prop_map(Level::param),].boxed()
     } else {
         prop_oneof![
-            Just(Level::Zero),
-            arb_name().prop_map(Level::Param),
+            Just(Level::zero()),
+            arb_name().prop_map(Level::param),
             // Succ
-            arb_level_impl(depth - 1).prop_map(|l| Level::Succ(Box::new(l))),
+            arb_level_impl(depth - 1).prop_map(|l| Level::succ(l)),
             // Max
             (arb_level_impl(depth - 1), arb_level_impl(depth - 1))
-                .prop_map(|(l1, l2)| Level::Max(Box::new(l1), Box::new(l2))),
+                .prop_map(|(l1, l2)| Level::max(l1, l2)),
             // IMax
             (arb_level_impl(depth - 1), arb_level_impl(depth - 1))
-                .prop_map(|(l1, l2)| Level::IMax(Box::new(l1), Box::new(l2))),
+                .prop_map(|(l1, l2)| Level::imax(l1, l2)),
         ]
         .boxed()
     }
@@ -386,9 +386,9 @@ proptest! {
     #[test]
     fn prop_numeric_level_normalize_fixed(n in 0u32..=8u32) {
         // Build Level::Succ^n(Zero).
-        let mut l = Level::Zero;
+        let mut l = Level::zero();
         for _ in 0..n {
-            l = Level::Succ(Box::new(l));
+            l = Level::succ(l);
         }
         let normed = normalize_level(&l);
         // A chain of Succs over Zero is already in normal form.

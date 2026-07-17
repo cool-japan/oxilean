@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
-use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Literal, Name};
+use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, LevelView, Literal, Name};
 use oxilean_parse::{Binder, BinderKind, Located, Span, SurfaceExpr};
 use std::collections::{HashMap, HashSet};
 
@@ -1182,7 +1182,7 @@ impl<'env> ContextualDelaborator<'env> {
             }
             Expr::Lit(lit) => delab_literal(lit),
             Expr::Sort(level) => {
-                let kind = if matches!(level, Level::Zero) {
+                let kind = if matches!(level.view(), LevelView::Zero) {
                     oxilean_parse::SortKind::Prop
                 } else {
                     oxilean_parse::SortKind::Type

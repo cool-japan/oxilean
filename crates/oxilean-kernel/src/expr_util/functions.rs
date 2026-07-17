@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::Node;
-use crate::{Expr, FVarId, Level, Name};
+use crate::{Expr, FVarId, Level, LevelView, Name};
 use std::rc::Rc;
 
 use super::types::{
@@ -413,11 +413,13 @@ pub fn strip_pis(e: &Expr, n: u32) -> &Expr {
 }
 /// Check if a level has metavariables.
 pub fn level_has_mvar(l: &Level) -> bool {
-    match l {
-        Level::MVar(_) => true,
-        Level::Succ(l) => level_has_mvar(l),
-        Level::Max(l1, l2) | Level::IMax(l1, l2) => level_has_mvar(l1) || level_has_mvar(l2),
-        Level::Zero | Level::Param(_) => false,
+    match l.view() {
+        LevelView::MVar(_) => true,
+        LevelView::Succ(l) => level_has_mvar(l),
+        LevelView::Max(l1, l2) | LevelView::IMax(l1, l2) => {
+            level_has_mvar(l1) || level_has_mvar(l2)
+        }
+        LevelView::Zero | LevelView::Param(_) => false,
     }
 }
 /// Check if an expression has universe level metavariables.
@@ -453,11 +455,13 @@ pub fn has_level_param(e: &Expr) -> bool {
     }
 }
 fn level_has_param(l: &Level) -> bool {
-    match l {
-        Level::Param(_) => true,
-        Level::Succ(l) => level_has_param(l),
-        Level::Max(l1, l2) | Level::IMax(l1, l2) => level_has_param(l1) || level_has_param(l2),
-        Level::Zero | Level::MVar(_) => false,
+    match l.view() {
+        LevelView::Param(_) => true,
+        LevelView::Succ(l) => level_has_param(l),
+        LevelView::Max(l1, l2) | LevelView::IMax(l1, l2) => {
+            level_has_param(l1) || level_has_param(l2)
+        }
+        LevelView::Zero | LevelView::MVar(_) => false,
     }
 }
 /// Compute the "weight" of an expression (rough size metric).
@@ -481,7 +485,7 @@ pub fn is_app_of(e: &Expr, name: &Name) -> bool {
 pub fn mk_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         crate::BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(lift_loose_bvars(&b, 1, 0)),
     )
@@ -742,12 +746,12 @@ pub fn is_sort(e: &Expr) -> bool {
 /// Check if the expression is `Sort(Level::Zero)` (i.e. `Prop`).
 #[inline]
 pub fn is_prop(e: &Expr) -> bool {
-    matches!(e, Expr::Sort(l) if matches!(l, Level::Zero))
+    matches!(e, Expr::Sort(l) if matches!(l.view(), LevelView::Zero))
 }
 /// Check if the expression is `Sort(Level::Succ(Level::Zero))` (i.e. `Type 0`).
 #[inline]
 pub fn is_type0(e: &Expr) -> bool {
-    matches!(e, Expr::Sort(Level::Succ(inner)) if matches!(inner.as_ref(), Level::Zero))
+    matches!(e, Expr::Sort(l) if matches!(l.view(), LevelView::Succ(inner) if matches!(inner.view(), LevelView::Zero)))
 }
 /// Check if the expression is a lambda abstraction.
 #[inline]
@@ -883,7 +887,7 @@ pub fn mk_pi_n(binders: &[(crate::BinderInfo, Expr)], ret: Expr) -> Expr {
     binders.iter().rev().fold(ret, |acc, (bi, ty)| {
         Expr::Pi(
             *bi,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(ty.clone()),
             Node::new(acc),
         )
@@ -894,7 +898,7 @@ pub fn mk_lam_n(binders: &[(crate::BinderInfo, Expr)], body: Expr) -> Expr {
     binders.iter().rev().fold(body, |acc, (bi, ty)| {
         Expr::Lam(
             *bi,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(ty.clone()),
             Node::new(acc),
         )
@@ -924,7 +928,7 @@ mod extended_tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn prop() -> Expr {
-        Expr::Sort(Level::Zero)
+        Expr::Sort(Level::zero())
     }
     fn bv(i: u32) -> Expr {
         Expr::BVar(i)
@@ -937,20 +941,20 @@ mod extended_tests {
     #[test]
     fn test_is_sort() {
         assert!(is_sort(&prop()));
-        assert!(is_sort(&Expr::Sort(Level::Succ(Box::new(Level::Zero)))));
+        assert!(is_sort(&Expr::Sort(Level::succ(Level::zero()))));
         assert!(!is_sort(&nat()));
     }
     #[test]
     fn test_is_lambda_pi() {
         let lam = Expr::Lam(
             BinderInfo::Default,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(prop()),
             Node::new(bv(0)),
         );
         let pi = Expr::Pi(
             BinderInfo::Default,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(prop()),
             Node::new(bv(0)),
         );
@@ -968,8 +972,8 @@ mod extended_tests {
     }
     #[test]
     fn test_get_sort_level() {
-        let s = Expr::Sort(Level::Zero);
-        assert_eq!(get_sort_level(&s), Some(&Level::Zero));
+        let s = Expr::Sort(Level::zero());
+        assert_eq!(get_sort_level(&s), Some(&Level::zero()));
         assert_eq!(get_sort_level(&nat()), None);
     }
     #[test]
@@ -985,7 +989,7 @@ mod extended_tests {
     #[test]
     fn test_decompose_let() {
         let e = Expr::Let(
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(nat()),
             Node::new(bv(0)),
             Node::new(bv(0)),
@@ -999,7 +1003,7 @@ mod extended_tests {
     fn test_decompose_pi() {
         let e = Expr::Pi(
             BinderInfo::Default,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(nat()),
             Node::new(prop()),
         );
@@ -1012,7 +1016,7 @@ mod extended_tests {
     fn test_decompose_lam() {
         let e = Expr::Lam(
             BinderInfo::Implicit,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(nat()),
             Node::new(bv(0)),
         );

@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_kernel::Node;
-use oxilean_kernel::{Expr, Level, Literal, Name};
+use oxilean_kernel::{Expr, Level, LevelView, Literal, Name, NameView};
 use std::collections::HashMap;
 
 use super::types::{
@@ -146,16 +146,16 @@ pub fn substitute_name_in_expr(expr: &Expr, name: &Name, replacement: &Expr) -> 
 }
 /// Rename a name for hygienic expansion, appending a scope ID.
 pub fn hygiene_rename(name: &Name, scope_id: u64) -> Name {
-    match name {
-        Name::Anonymous => Name::Anonymous,
-        Name::Str(parent, s) => {
+    match name.view() {
+        NameView::Anonymous => Name::anonymous(),
+        NameView::Str(parent, s) => {
             if s.starts_with('_') {
                 name.clone()
             } else {
-                Name::Str(parent.clone(), format!("{}_hyg{}", s, scope_id))
+                Name::mk_str(parent.clone(), format!("{}_hyg{}", s, scope_id))
             }
         }
-        Name::Num(parent, n) => Name::Num(parent.clone(), *n),
+        NameView::Num(parent, n) => Name::mk_num(parent.clone(), n),
     }
 }
 /// Quote an expression: produce a representation of the expression as data.
@@ -196,8 +196,8 @@ pub fn quote_expr(expr: &Expr) -> Expr {
             Node::new(Expr::Lit(Literal::nat(fid.0))),
         ),
         Expr::Sort(level) => {
-            let level_repr = match level {
-                Level::Zero => Expr::Lit(Literal::nat(0)),
+            let level_repr = match level.view() {
+                LevelView::Zero => Expr::Lit(Literal::nat(0)),
                 _ => Expr::Lit(Literal::Str(format!("{}", level))),
             };
             Expr::App(

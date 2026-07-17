@@ -93,7 +93,7 @@ pub fn bench_elaboration(runner: &BenchRunner) -> BenchmarkResult {
 /// Benchmark WHNF reduction on a simple expression.
 pub fn bench_whnf(runner: &BenchRunner) -> BenchmarkResult {
     runner.run_benchmark("whnf", || {
-        let expr = oxilean_kernel::Expr::Sort(oxilean_kernel::Level::Zero);
+        let expr = oxilean_kernel::Expr::Sort(oxilean_kernel::Level::zero());
         let _ = oxilean_kernel::whnf(&expr);
     })
 }

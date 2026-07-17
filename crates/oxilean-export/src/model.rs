@@ -113,11 +113,8 @@ impl ExportDecl {
             ExportDecl::Inductive(b) => b
                 .types
                 .first()
-                .map_or_else(|| Name::Anonymous, |t| t.common.name.clone()),
-            ExportDecl::Oversized(v) => v
-                .names
-                .first()
-                .map_or_else(|| Name::Anonymous, Clone::clone),
+                .map_or_else(Name::anonymous, |t| t.common.name.clone()),
+            ExportDecl::Oversized(v) => v.names.first().map_or_else(Name::anonymous, Clone::clone),
         }
     }
 

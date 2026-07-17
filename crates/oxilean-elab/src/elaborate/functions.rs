@@ -84,8 +84,8 @@ fn elaborate_sort(sort: &SortKind) -> Result<Expr, ElabError> {
     match sort {
         SortKind::Type => Ok(Expr::Sort(Level::succ(Level::zero()))),
         SortKind::Prop => Ok(Expr::Sort(Level::zero())),
-        SortKind::TypeU(u) => Ok(Expr::Sort(Level::Param(Name::str(u)))),
-        SortKind::SortU(u) => Ok(Expr::Sort(Level::Param(Name::str(u)))),
+        SortKind::TypeU(u) => Ok(Expr::Sort(Level::param(Name::str(u)))),
+        SortKind::SortU(u) => Ok(Expr::Sort(Level::param(Name::str(u)))),
     }
 }
 fn elaborate_var(ctx: &mut ElabContext, name: &str) -> Result<Expr, ElabError> {

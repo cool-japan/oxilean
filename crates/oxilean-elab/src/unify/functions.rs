@@ -4,7 +4,7 @@
 
 use oxilean_kernel::FVarId;
 use oxilean_kernel::Node;
-use oxilean_kernel::{Expr, Level, Name};
+use oxilean_kernel::{Expr, Level, LevelView, Name};
 use std::collections::HashMap;
 
 use super::types::{
@@ -896,62 +896,66 @@ mod mvar_unify_tests {
 /// Check whether two levels are syntactically equal.
 #[allow(dead_code)]
 pub fn levels_equal(l1: &Level, l2: &Level) -> bool {
-    match (l1, l2) {
-        (Level::Zero, Level::Zero) => true,
-        (Level::Succ(a), Level::Succ(b)) => levels_equal(a, b),
-        (Level::Max(a1, b1), Level::Max(a2, b2)) => levels_equal(a1, a2) && levels_equal(b1, b2),
-        (Level::IMax(a1, b1), Level::IMax(a2, b2)) => levels_equal(a1, a2) && levels_equal(b1, b2),
-        (Level::Param(n1), Level::Param(n2)) => n1 == n2,
-        (Level::MVar(i), Level::MVar(j)) => i == j,
+    match (l1.view(), l2.view()) {
+        (LevelView::Zero, LevelView::Zero) => true,
+        (LevelView::Succ(a), LevelView::Succ(b)) => levels_equal(a, b),
+        (LevelView::Max(a1, b1), LevelView::Max(a2, b2)) => {
+            levels_equal(a1, a2) && levels_equal(b1, b2)
+        }
+        (LevelView::IMax(a1, b1), LevelView::IMax(a2, b2)) => {
+            levels_equal(a1, a2) && levels_equal(b1, b2)
+        }
+        (LevelView::Param(n1), LevelView::Param(n2)) => n1 == n2,
+        (LevelView::MVar(i), LevelView::MVar(j)) => i == j,
         _ => false,
     }
 }
 /// Normalize a level by reducing `Max(l, l)` to `l`, `Succ(Zero)` to `1`, etc.
 #[allow(dead_code)]
 pub fn normalize_level(l: &Level) -> Level {
-    match l {
-        Level::Max(a, b) => {
+    match l.view() {
+        LevelView::Max(a, b) => {
             let na = normalize_level(a);
             let nb = normalize_level(b);
             if levels_equal(&na, &nb) {
                 na
             } else {
-                Level::Max(Box::new(na), Box::new(nb))
+                Level::max(na, nb)
             }
         }
-        Level::IMax(a, b) => {
+        LevelView::IMax(a, b) => {
             let na = normalize_level(a);
             let nb = normalize_level(b);
-            if matches!(nb, Level::Zero) {
-                Level::Zero
+            if matches!(nb.view(), LevelView::Zero) {
+                Level::zero()
             } else {
-                Level::IMax(Box::new(na), Box::new(nb))
+                Level::imax(na, nb)
             }
         }
-        Level::Succ(inner) => Level::Succ(Box::new(normalize_level(inner))),
-        other => other.clone(),
+        LevelView::Succ(inner) => Level::succ(normalize_level(inner)),
+        _ => l.clone(),
     }
 }
 /// Compute the "depth" (number of `Succ` wrappers) of a level.
 #[allow(dead_code)]
 pub fn level_depth(l: &Level) -> Option<u32> {
-    match l {
-        Level::Zero => Some(0),
-        Level::Succ(inner) => level_depth(inner).map(|d| d + 1),
+    match l.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(inner) => level_depth(inner).map(|d| d + 1),
         _ => None,
     }
 }
 /// Add a constant offset to a level: `level + n`.
 #[allow(dead_code)]
 pub fn level_add(l: Level, n: u32) -> Level {
-    (0..n).fold(l, |acc, _| Level::Succ(Box::new(acc)))
+    (0..n).fold(l, |acc, _| Level::succ(acc))
 }
 /// Compute `max(l1, l2)` as a level expression (simplified: not normalised).
 #[allow(dead_code)]
 pub fn level_max(l1: Level, l2: Level) -> Level {
     match (level_depth(&l1), level_depth(&l2)) {
-        (Some(d1), Some(d2)) => level_add(Level::Zero, d1.max(d2)),
-        _ => Level::Max(Box::new(l1), Box::new(l2)),
+        (Some(d1), Some(d2)) => level_add(Level::zero(), d1.max(d2)),
+        _ => Level::max(l1, l2),
     }
 }
 /// Collect all universe parameters that appear (free) in a level expression.
@@ -962,12 +966,12 @@ pub fn level_free_params(l: &Level) -> Vec<Name> {
     params
 }
 fn collect_level_params(l: &Level, acc: &mut Vec<Name>) {
-    match l {
-        Level::Param(n) if !acc.contains(n) => {
+    match l.view() {
+        LevelView::Param(n) if !acc.contains(n) => {
             acc.push(n.clone());
         }
-        Level::Succ(inner) => collect_level_params(inner, acc),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Succ(inner) => collect_level_params(inner, acc),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_params(a, acc);
             collect_level_params(b, acc);
         }
@@ -1323,35 +1327,35 @@ mod unify_extended_tests {
     }
     #[test]
     fn test_levels_equal_succ() {
-        let l1 = Level::Succ(Box::new(Level::zero()));
-        let l2 = Level::Succ(Box::new(Level::zero()));
+        let l1 = Level::succ(Level::zero());
+        let l2 = Level::succ(Level::zero());
         assert!(levels_equal(&l1, &l2));
     }
     #[test]
     fn test_levels_equal_different() {
         let l1 = Level::zero();
-        let l2 = Level::Succ(Box::new(Level::zero()));
+        let l2 = Level::succ(Level::zero());
         assert!(!levels_equal(&l1, &l2));
     }
     #[test]
     fn test_normalize_level_max_same() {
-        let l = Level::Succ(Box::new(Level::zero()));
-        let max = Level::Max(Box::new(l.clone()), Box::new(l.clone()));
+        let l = Level::succ(Level::zero());
+        let max = Level::max(l.clone(), l.clone());
         let n = normalize_level(&max);
         assert!(levels_equal(&n, &l));
     }
     #[test]
     fn test_normalize_level_imax_zero() {
-        let l = Level::Succ(Box::new(Level::zero()));
-        let imax = Level::IMax(Box::new(l), Box::new(Level::zero()));
+        let l = Level::succ(Level::zero());
+        let imax = Level::imax(l, Level::zero());
         let n = normalize_level(&imax);
-        assert!(matches!(n, Level::Zero));
+        assert!(matches!(n.view(), LevelView::Zero));
     }
     #[test]
     fn test_level_depth() {
-        let l = Level::Succ(Box::new(Level::Succ(Box::new(Level::zero()))));
+        let l = Level::succ(Level::succ(Level::zero()));
         assert_eq!(level_depth(&l), Some(2));
-        let param = Level::Param(Name::str("u"));
+        let param = Level::param(Name::str("u"));
         assert_eq!(level_depth(&param), None);
     }
     #[test]
@@ -1368,10 +1372,7 @@ mod unify_extended_tests {
     }
     #[test]
     fn test_level_free_params() {
-        let l = Level::Max(
-            Box::new(Level::Param(Name::str("u"))),
-            Box::new(Level::Param(Name::str("v"))),
-        );
+        let l = Level::max(Level::param(Name::str("u")), Level::param(Name::str("v")));
         let params = level_free_params(&l);
         assert_eq!(params.len(), 2);
     }

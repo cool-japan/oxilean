@@ -104,7 +104,7 @@ impl WellFoundedOrder {
         );
         let c_y = match &self.motive {
             Some(motive) => Expr::App(Node::new(motive.clone()), Node::new(y_var)),
-            None => Expr::Sort(Level::Zero),
+            None => Expr::Sort(Level::zero()),
         };
         Expr::Pi(
             BinderInfo::Default,

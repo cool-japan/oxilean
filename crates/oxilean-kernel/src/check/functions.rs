@@ -185,19 +185,19 @@ pub(super) fn collect_expr_level_params(expr: &crate::Expr, out: &mut Vec<crate:
     }
 }
 fn collect_level_params_in_level(l: &crate::Level, out: &mut Vec<crate::Name>) {
-    use crate::Level;
-    match l {
-        Level::Param(n) => {
+    use crate::LevelView;
+    match l.view() {
+        LevelView::Param(n) => {
             if !out.contains(n) {
                 out.push(n.clone());
             }
         }
-        Level::Succ(inner) => collect_level_params_in_level(inner, out),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Succ(inner) => collect_level_params_in_level(inner, out),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_params_in_level(a, out);
             collect_level_params_in_level(b, out);
         }
-        Level::Zero | Level::MVar(_) => {}
+        LevelView::Zero | LevelView::MVar(_) => {}
     }
 }
 /// Check multiple declarations in sequence.

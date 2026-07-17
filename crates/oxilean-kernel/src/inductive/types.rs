@@ -615,7 +615,7 @@ impl InductiveType {
         ty: Expr,
         intro_rules: Vec<IntroRule>,
     ) -> Self {
-        let recursor = Name::Str(Box::new(name.clone()), "rec".to_string());
+        let recursor = Name::mk_str(name.clone(), "rec".to_string());
         Self {
             name,
             univ_params,

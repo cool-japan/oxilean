@@ -5,7 +5,8 @@
 use crate::reduce::ReducibilityHint;
 use crate::Node;
 use crate::{
-    BinderInfo, Declaration, Environment, Expr, FVarId, Level, LevelMVarId, Literal, Name,
+    BinderInfo, Declaration, Environment, Expr, FVarId, Level, LevelMVarId, LevelView, Literal,
+    Name, NameView,
 };
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -74,44 +75,44 @@ fn write_str(buf: &mut Vec<u8>, s: &str) {
     buf.extend_from_slice(bytes);
 }
 fn write_name(buf: &mut Vec<u8>, name: &Name) {
-    match name {
-        Name::Anonymous => write_u8(buf, 0),
-        Name::Str(parent, s) => {
+    match name.view() {
+        NameView::Anonymous => write_u8(buf, 0),
+        NameView::Str(parent, s) => {
             write_u8(buf, 1);
             write_name(buf, parent);
             write_str(buf, s);
         }
-        Name::Num(parent, n) => {
+        NameView::Num(parent, n) => {
             write_u8(buf, 2);
             write_name(buf, parent);
-            write_u64(buf, *n);
+            write_u64(buf, n);
         }
     }
 }
 fn write_level(buf: &mut Vec<u8>, level: &Level) {
-    match level {
-        Level::Zero => write_u8(buf, 0),
-        Level::Succ(inner) => {
+    match level.view() {
+        LevelView::Zero => write_u8(buf, 0),
+        LevelView::Succ(inner) => {
             write_u8(buf, 1);
             write_level(buf, inner);
         }
-        Level::Max(l, r) => {
+        LevelView::Max(l, r) => {
             write_u8(buf, 2);
             write_level(buf, l);
             write_level(buf, r);
         }
-        Level::IMax(l, r) => {
+        LevelView::IMax(l, r) => {
             write_u8(buf, 3);
             write_level(buf, l);
             write_level(buf, r);
         }
-        Level::Param(name) => {
+        LevelView::Param(name) => {
             write_u8(buf, 4);
             write_name(buf, name);
         }
-        Level::MVar(LevelMVarId(id)) => {
+        LevelView::MVar(LevelMVarId(id)) => {
             write_u8(buf, 5);
-            write_u64(buf, *id);
+            write_u64(buf, id);
         }
     }
 }
@@ -329,16 +330,16 @@ fn read_str(bytes: &[u8], pos: &mut usize) -> ReadResult<String> {
 fn read_name(bytes: &[u8], pos: &mut usize) -> ReadResult<Name> {
     let tag = read_u8(bytes, pos)?;
     match tag {
-        0 => Ok(Name::Anonymous),
+        0 => Ok(Name::anonymous()),
         1 => {
             let parent = read_name(bytes, pos)?;
             let s = read_str(bytes, pos)?;
-            Ok(Name::Str(Box::new(parent), s))
+            Ok(Name::mk_str(parent, s))
         }
         2 => {
             let parent = read_name(bytes, pos)?;
             let n = read_u64(bytes, pos)?;
-            Ok(Name::Num(Box::new(parent), n))
+            Ok(Name::mk_num(parent, n))
         }
         other => Err(format!("unknown Name tag: {}", other)),
     }
@@ -346,28 +347,28 @@ fn read_name(bytes: &[u8], pos: &mut usize) -> ReadResult<Name> {
 fn read_level(bytes: &[u8], pos: &mut usize) -> ReadResult<Level> {
     let tag = read_u8(bytes, pos)?;
     match tag {
-        0 => Ok(Level::Zero),
+        0 => Ok(Level::zero()),
         1 => {
             let inner = read_level(bytes, pos)?;
-            Ok(Level::Succ(Box::new(inner)))
+            Ok(Level::succ(inner))
         }
         2 => {
             let l = read_level(bytes, pos)?;
             let r = read_level(bytes, pos)?;
-            Ok(Level::Max(Box::new(l), Box::new(r)))
+            Ok(Level::max(l, r))
         }
         3 => {
             let l = read_level(bytes, pos)?;
             let r = read_level(bytes, pos)?;
-            Ok(Level::IMax(Box::new(l), Box::new(r)))
+            Ok(Level::imax(l, r))
         }
         4 => {
             let name = read_name(bytes, pos)?;
-            Ok(Level::Param(name))
+            Ok(Level::param(name))
         }
         5 => {
             let id = read_u64(bytes, pos)?;
-            Ok(Level::MVar(LevelMVarId(id)))
+            Ok(Level::mvar(LevelMVarId(id)))
         }
         other => Err(format!("unknown Level tag: {}", other)),
     }
@@ -805,11 +806,11 @@ mod tests {
     #[test]
     fn test_serialize_level_variants() {
         let levels = vec![
-            Level::Zero,
-            Level::succ(Level::Zero),
-            Level::max(Level::Zero, Level::param(Name::str("u"))),
+            Level::zero(),
+            Level::succ(Level::zero()),
+            Level::max(Level::zero(), Level::param(Name::str("u"))),
             Level::imax(Level::param(Name::str("u")), Level::param(Name::str("v"))),
-            Level::MVar(LevelMVarId(99)),
+            Level::mvar(LevelMVarId(99)),
         ];
         for level in &levels {
             let mut buf = Vec::new();

@@ -25,11 +25,11 @@ fn proof_irrelevance_fires_for_imax_u_zero_prop() {
     let mut env = Environment::new();
     let u = Name::str("u");
     // `P.{u} : Sort (imax u 0)`  — a Prop whose sort is NOT the literal Zero.
-    let prop_sort = Expr::Sort(Level::imax(Level::param(u.clone()), Level::Zero));
+    let prop_sort = Expr::Sort(Level::imax(Level::param(u.clone()), Level::zero()));
     axiom(&mut env, "P", vec![u.clone()], prop_sort);
 
     // Two proofs `a b : P.{0}`.
-    let p_at_0 = Expr::Const(Name::str("P"), vec![Level::Zero]);
+    let p_at_0 = Expr::Const(Name::str("P"), vec![Level::zero()]);
     axiom(&mut env, "a", vec![], p_at_0.clone());
     axiom(&mut env, "b", vec![], p_at_0);
 
@@ -48,7 +48,12 @@ fn proof_irrelevance_still_excludes_genuine_types() {
     // though the sort could be written awkwardly. `T : Sort 1` and two elements
     // are distinct.
     let mut env = Environment::new();
-    axiom(&mut env, "T", vec![], Expr::Sort(Level::succ(Level::Zero)));
+    axiom(
+        &mut env,
+        "T",
+        vec![],
+        Expr::Sort(Level::succ(Level::zero())),
+    );
     axiom(&mut env, "x", vec![], Expr::Const(Name::str("T"), vec![]));
     axiom(&mut env, "y", vec![], Expr::Const(Name::str("T"), vec![]));
 

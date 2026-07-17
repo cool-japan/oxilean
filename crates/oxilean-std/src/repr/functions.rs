@@ -52,7 +52,7 @@ pub fn type2() -> Expr {
 }
 #[allow(dead_code)]
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 #[allow(dead_code)]
 pub fn bvar(n: u32) -> Expr {

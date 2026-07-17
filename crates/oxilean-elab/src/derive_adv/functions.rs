@@ -1338,7 +1338,7 @@ mod tests {
             univ_params: vec![Name::str("u")],
             params: vec![(
                 Name::str("a"),
-                Expr::Sort(Level::Param(Name::str("u"))),
+                Expr::Sort(Level::param(Name::str("u"))),
                 BinderInfo::Implicit,
             )],
             constructors: vec![],

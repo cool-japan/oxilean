@@ -10,20 +10,20 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
-use super::types::Name;
+use super::types::{Name, NameView};
 
 impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Name::Anonymous => write!(f, "_"),
-            Name::Str(parent, s) => {
+        match self.view() {
+            NameView::Anonymous => write!(f, "_"),
+            NameView::Str(parent, s) => {
                 if parent.is_anonymous() {
                     write!(f, "{s}")
                 } else {
                     write!(f, "{parent}.{s}")
                 }
             }
-            Name::Num(parent, n) => {
+            NameView::Num(parent, n) => {
                 if parent.is_anonymous() {
                     write!(f, "{n}")
                 } else {

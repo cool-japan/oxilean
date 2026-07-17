@@ -67,11 +67,11 @@ pub fn mk_arrow(a: Expr, b: Expr) -> Expr {
 }
 /// Construct `Sort 0` (Prop)
 pub fn mk_prop() -> Expr {
-    Expr::Sort(oxilean_kernel::Level::Zero)
+    Expr::Sort(oxilean_kernel::Level::zero())
 }
 /// Construct `Sort 1` (Type 0)
 pub fn mk_type0() -> Expr {
-    Expr::Sort(oxilean_kernel::Level::succ(oxilean_kernel::Level::Zero))
+    Expr::Sort(oxilean_kernel::Level::succ(oxilean_kernel::Level::zero()))
 }
 /// Construct a natural number literal
 pub fn mk_nat_lit(n: u64) -> Expr {
@@ -190,7 +190,7 @@ pub fn is_sort(e: &Expr) -> bool {
 }
 /// Is the expression a Prop (Sort 0)?
 pub fn is_prop(e: &Expr) -> bool {
-    matches!(e, Expr::Sort(oxilean_kernel::Level::Zero))
+    matches!(e, Expr::Sort(l) if matches!(l.view(), oxilean_kernel::LevelView::Zero))
 }
 /// Is the expression a bound variable?
 pub fn is_bvar(e: &Expr) -> bool {
@@ -713,7 +713,7 @@ pub fn is_proj(e: &Expr) -> bool {
 /// Construct `Sort n` (universe level n)
 #[allow(dead_code)]
 pub fn mk_sort_n(n: u32) -> Expr {
-    let mut level = oxilean_kernel::Level::Zero;
+    let mut level = oxilean_kernel::Level::zero();
     for _ in 0..n {
         level = oxilean_kernel::Level::succ(level);
     }

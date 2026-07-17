@@ -901,7 +901,7 @@ pub fn eq_ext_bool_ty() -> Expr {
 pub fn eq_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         oxilean_kernel::BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(dom),
         Node::new(cod),
     )

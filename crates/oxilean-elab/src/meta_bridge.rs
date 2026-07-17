@@ -224,7 +224,7 @@ mod tests {
 
     fn prop_expr() -> Expr {
         // A simple Prop-level sort: `Sort 0`
-        Expr::Sort(Level::Zero)
+        Expr::Sort(Level::zero())
     }
 
     fn make_goal(name: &str, target: Expr) -> Goal {

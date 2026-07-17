@@ -208,8 +208,8 @@ mod tests {
     #[test]
     fn test_mk_sort_deduplicates() {
         let mut hc = HashConsArena::new();
-        let i1 = hc.mk_sort(Level::Zero);
-        let i2 = hc.mk_sort(Level::Zero);
+        let i1 = hc.mk_sort(Level::zero());
+        let i2 = hc.mk_sort(Level::zero());
         assert_eq!(i1, i2);
         assert_eq!(hc.len(), 1);
     }
@@ -217,8 +217,8 @@ mod tests {
     #[test]
     fn test_mk_sort_distinct_levels() {
         let mut hc = HashConsArena::new();
-        let i0 = hc.mk_sort(Level::Zero);
-        let i1 = hc.mk_sort(Level::succ(Level::Zero));
+        let i0 = hc.mk_sort(Level::zero());
+        let i1 = hc.mk_sort(Level::succ(Level::zero()));
         assert_ne!(i0, i1);
         assert_eq!(hc.len(), 2);
     }
@@ -297,7 +297,7 @@ mod tests {
     fn test_mk_lam_deduplicates() {
         let mut hc = HashConsArena::new();
         let name = Name::str("x");
-        let dom = Expr::Sort(Level::Zero);
+        let dom = Expr::Sort(Level::zero());
         let body = Expr::BVar(0);
         let i1 = hc.mk_lam(BinderInfo::Default, name.clone(), dom.clone(), body.clone());
         let i2 = hc.mk_lam(BinderInfo::Default, name, dom, body);
@@ -310,7 +310,7 @@ mod tests {
     fn test_mk_pi_deduplicates() {
         let mut hc = HashConsArena::new();
         let name = Name::str("A");
-        let dom = Expr::Sort(Level::Zero);
+        let dom = Expr::Sort(Level::zero());
         let cod = Expr::BVar(0);
         let i1 = hc.mk_pi(BinderInfo::Default, name.clone(), dom.clone(), cod.clone());
         let i2 = hc.mk_pi(BinderInfo::Default, name, dom, cod);
@@ -323,7 +323,7 @@ mod tests {
     fn test_mk_let_deduplicates() {
         let mut hc = HashConsArena::new();
         let name = Name::str("n");
-        let ty = Expr::Sort(Level::Zero);
+        let ty = Expr::Sort(Level::zero());
         let val = Expr::BVar(0);
         let body = Expr::BVar(1);
         let i1 = hc.mk_let(name.clone(), ty.clone(), val.clone(), body.clone());
@@ -364,9 +364,9 @@ mod tests {
     #[test]
     fn test_stats_hit_miss_tracking() {
         let mut hc = HashConsArena::new();
-        hc.mk_sort(Level::Zero); // miss
-        hc.mk_sort(Level::Zero); // hit
-        hc.mk_sort(Level::Zero); // hit
+        hc.mk_sort(Level::zero()); // miss
+        hc.mk_sort(Level::zero()); // hit
+        hc.mk_sort(Level::zero()); // hit
         hc.mk_bvar(0); // miss
         let s = hc.stats();
         assert_eq!(s.misses, 2);
@@ -403,7 +403,7 @@ mod tests {
     #[test]
     fn test_with_capacity_works() {
         let mut hc = HashConsArena::with_capacity(64);
-        hc.mk_sort(Level::Zero);
+        hc.mk_sort(Level::zero());
         assert_eq!(hc.len(), 1);
     }
 
@@ -418,7 +418,7 @@ mod tests {
         let mut hc = HashConsArena::new();
         // BVar(0) and Sort(Zero) must NOT collide even though both are "zero-ish"
         let bv = hc.mk_bvar(0);
-        let sv = hc.mk_sort(Level::Zero);
+        let sv = hc.mk_sort(Level::zero());
         assert_ne!(bv, sv);
     }
 
@@ -426,7 +426,7 @@ mod tests {
     fn test_binder_info_distinguishes_lam() {
         let mut hc = HashConsArena::new();
         let name = Name::str("x");
-        let dom = Expr::Sort(Level::Zero);
+        let dom = Expr::Sort(Level::zero());
         let body = Expr::BVar(0);
         let explicit = hc.mk_lam(BinderInfo::Default, name.clone(), dom.clone(), body.clone());
         let implicit = hc.mk_lam(BinderInfo::Implicit, name, dom, body);
@@ -437,12 +437,12 @@ mod tests {
     fn test_complex_expression_sharing() {
         let mut hc = HashConsArena::new();
         // Build `id : Π (A : Type 0), A → A` structurally, twice.
-        let prop = Expr::Sort(Level::Zero);
+        let prop = Expr::Sort(Level::zero());
         let bv0 = Expr::BVar(0);
         // A → A  =  Π (_ : A), A
         let arr = Expr::Pi(
             BinderInfo::Default,
-            Name::Anonymous,
+            Name::anonymous(),
             Node::new(bv0.clone()),
             Node::new(bv0.clone()),
         );

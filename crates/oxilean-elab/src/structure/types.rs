@@ -405,7 +405,7 @@ impl<'env> StructureElaborator<'env> {
             BinderInfo::Default,
             Name::str("_"),
             Node::new(struct_ty.clone()),
-            Node::new(Expr::Sort(Level::Param(Name::str("u")))),
+            Node::new(Expr::Sort(Level::param(Name::str("u")))),
         );
         let rec_ty = Expr::Pi(
             BinderInfo::Default,
@@ -415,7 +415,7 @@ impl<'env> StructureElaborator<'env> {
                 BinderInfo::Default,
                 Name::str("t"),
                 Node::new(struct_ty),
-                Node::new(Expr::Sort(Level::Param(Name::str("u")))),
+                Node::new(Expr::Sort(Level::param(Name::str("u")))),
             )),
         );
         RecursorDecl {
@@ -433,7 +433,7 @@ impl<'env> StructureElaborator<'env> {
         let base = if info.univ_params.is_empty() {
             Expr::Sort(Level::succ(Level::zero()))
         } else {
-            Expr::Sort(Level::Param(info.univ_params[0].clone()))
+            Expr::Sort(Level::param(info.univ_params[0].clone()))
         };
         let mut ty = base;
         for (name, param_ty, bi) in info.params.iter().rev() {

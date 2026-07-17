@@ -47,11 +47,11 @@ pub fn type1() -> Expr {
 }
 #[allow(dead_code)]
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 #[allow(dead_code)]
 pub fn sort_v() -> Expr {
-    Expr::Sort(Level::Param(Name::str("v")))
+    Expr::Sort(Level::param(Name::str("v")))
 }
 #[allow(dead_code)]
 pub fn bvar(n: u32) -> Expr {
@@ -59,11 +59,11 @@ pub fn bvar(n: u32) -> Expr {
 }
 #[allow(dead_code)]
 pub fn level_u() -> Level {
-    Level::Param(Name::str("u"))
+    Level::param(Name::str("u"))
 }
 #[allow(dead_code)]
 pub fn level_v() -> Level {
-    Level::Param(Name::str("v"))
+    Level::param(Name::str("v"))
 }
 #[allow(dead_code)]
 pub fn add_axiom(

@@ -87,7 +87,7 @@ pub(super) fn mk_app(head: Expr, args: Vec<Expr>) -> Expr {
 }
 /// Build an equality expression: `@Eq α lhs rhs`.
 pub(super) fn mk_eq(ty: &Expr, lhs: &Expr, rhs: &Expr) -> Expr {
-    let eq_const = Expr::Const(Name::str("Eq"), vec![Level::Zero]);
+    let eq_const = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
     Expr::App(
         Node::new(Expr::App(
             Node::new(Expr::App(Node::new(eq_const), Node::new(ty.clone()))),
@@ -98,7 +98,7 @@ pub(super) fn mk_eq(ty: &Expr, lhs: &Expr, rhs: &Expr) -> Expr {
 }
 /// Build `@Eq.refl α a` : `a = a`.
 pub(super) fn mk_eq_refl(ty: &Expr, a: &Expr) -> Expr {
-    let refl_const = Expr::Const(Name::str("Eq").append_str("refl"), vec![Level::Zero]);
+    let refl_const = Expr::Const(Name::str("Eq").append_str("refl"), vec![Level::zero()]);
     Expr::App(
         Node::new(Expr::App(Node::new(refl_const), Node::new(ty.clone()))),
         Node::new(a.clone()),
@@ -107,7 +107,7 @@ pub(super) fn mk_eq_refl(ty: &Expr, a: &Expr) -> Expr {
 /// Build `@Eq.trans α a b c hab hbc` : if `a = b` and `b = c` then `a = c`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn mk_eq_trans(ty: &Expr, a: &Expr, b: &Expr, c: &Expr, hab: Expr, hbc: Expr) -> Expr {
-    let trans_const = Expr::Const(Name::str("Eq").append_str("trans"), vec![Level::Zero]);
+    let trans_const = Expr::Const(Name::str("Eq").append_str("trans"), vec![Level::zero()]);
     mk_app(
         trans_const,
         vec![ty.clone(), a.clone(), b.clone(), c.clone(), hab, hbc],
@@ -123,7 +123,7 @@ pub(super) fn mk_congr_arg(
     b: &Expr,
     hab: Expr,
 ) -> Expr {
-    let congr_const = Expr::Const(Name::str("congr_arg"), vec![Level::Zero, Level::Zero]);
+    let congr_const = Expr::Const(Name::str("congr_arg"), vec![Level::zero(), Level::zero()]);
     mk_app(
         congr_const,
         vec![
@@ -146,7 +146,7 @@ pub(super) fn mk_congr_fun(
     hfg: Expr,
     a: &Expr,
 ) -> Expr {
-    let congr_const = Expr::Const(Name::str("congr_fun"), vec![Level::Zero, Level::Zero]);
+    let congr_const = Expr::Const(Name::str("congr_fun"), vec![Level::zero(), Level::zero()]);
     mk_app(
         congr_const,
         vec![
@@ -171,7 +171,7 @@ pub(super) fn mk_congr(
     hfg: Expr,
     hab: Expr,
 ) -> Expr {
-    let congr_const = Expr::Const(Name::str("congr"), vec![Level::Zero, Level::Zero]);
+    let congr_const = Expr::Const(Name::str("congr"), vec![Level::zero(), Level::zero()]);
     mk_app(
         congr_const,
         vec![
@@ -188,7 +188,7 @@ pub(super) fn mk_congr(
 }
 /// Build `@funext α β f g h` : if `∀ x, f x = g x` then `f = g`.
 pub(super) fn mk_funext(alpha: &Expr, beta: &Expr, f: &Expr, g: &Expr, h: Expr) -> Expr {
-    let funext_const = Expr::Const(Name::str("funext"), vec![Level::Zero, Level::Zero]);
+    let funext_const = Expr::Const(Name::str("funext"), vec![Level::zero(), Level::zero()]);
     mk_app(
         funext_const,
         vec![alpha.clone(), beta.clone(), f.clone(), g.clone(), h],
@@ -918,7 +918,7 @@ pub fn exit_conv(
         return Ok(ConvResult {
             new_expr: conv.original_goal.clone(),
             proof: mk_eq_refl(
-                &conv.eq_type.clone().unwrap_or(Expr::Sort(Level::Zero)),
+                &conv.eq_type.clone().unwrap_or(Expr::Sort(Level::zero())),
                 &conv.focused,
             ),
             num_rewrites: 0,
@@ -961,7 +961,7 @@ pub(super) fn build_combined_local_proof(proofs: &[ConvLocalProof]) -> TacticRes
         return Ok(proofs[0].proof.clone());
     }
     let mut combined = proofs[0].proof.clone();
-    let ty = proofs[0].ty.clone().unwrap_or(Expr::Sort(Level::Zero));
+    let ty = proofs[0].ty.clone().unwrap_or(Expr::Sort(Level::zero()));
     for i in 1..proofs.len() {
         combined = mk_eq_trans(
             &ty,
@@ -984,7 +984,7 @@ pub(super) fn reconstruct_proof_from_path(
     eq_type: &Option<Expr>,
     _ctx: &MetaContext,
 ) -> TacticResult<Expr> {
-    let ty = eq_type.clone().unwrap_or(Expr::Sort(Level::Zero));
+    let ty = eq_type.clone().unwrap_or(Expr::Sort(Level::zero()));
     let mut proof = local_proof.clone();
     for step in path.steps().iter().rev() {
         proof = wrap_proof_with_congr(&step.direction, &step.context_expr, proof, &ty)?;
@@ -1212,7 +1212,7 @@ mod tests {
         MetaContext::new(Environment::new())
     }
     fn mk_test_state(ctx: &mut MetaContext) -> (TacticState, MVarId) {
-        let ty = Expr::Sort(Level::Zero);
+        let ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         let state = TacticState::single(mvar_id);
         (state, mvar_id)
@@ -1221,7 +1221,7 @@ mod tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn mk_eq_goal(lhs: Expr, rhs: Expr) -> Expr {
-        let eq_const = Expr::Const(Name::str("Eq"), vec![Level::Zero]);
+        let eq_const = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
         let nat = mk_nat_const();
         Expr::App(
             Node::new(Expr::App(
@@ -1264,14 +1264,14 @@ mod tests {
     }
     #[test]
     fn test_conv_path_empty() {
-        let path = ConvPath::new(Expr::Sort(Level::Zero), ConvEntrySide::Lhs);
+        let path = ConvPath::new(Expr::Sort(Level::zero()), ConvEntrySide::Lhs);
         assert!(path.is_empty());
         assert_eq!(path.depth(), 0);
     }
     #[test]
     fn test_conv_path_push_pop() {
-        let mut path = ConvPath::new(Expr::Sort(Level::Zero), ConvEntrySide::Lhs);
-        let step = ConvPathStep::new(ConvDirection::Left, Expr::Sort(Level::Zero), 0);
+        let mut path = ConvPath::new(Expr::Sort(Level::zero()), ConvEntrySide::Lhs);
+        let step = ConvPathStep::new(ConvDirection::Left, Expr::Sort(Level::zero()), 0);
         path.push(step);
         assert_eq!(path.depth(), 1);
         assert!(!path.is_empty());
@@ -1281,20 +1281,20 @@ mod tests {
     }
     #[test]
     fn test_conv_path_multiple_steps() {
-        let mut path = ConvPath::new(Expr::Sort(Level::Zero), ConvEntrySide::Rhs);
+        let mut path = ConvPath::new(Expr::Sort(Level::zero()), ConvEntrySide::Rhs);
         path.push(ConvPathStep::new(
             ConvDirection::Left,
-            Expr::Sort(Level::Zero),
+            Expr::Sort(Level::zero()),
             0,
         ));
         path.push(ConvPathStep::new(
             ConvDirection::Right,
-            Expr::Sort(Level::Zero),
+            Expr::Sort(Level::zero()),
             1,
         ));
         path.push(ConvPathStep::new(
             ConvDirection::Ext,
-            Expr::Sort(Level::Zero),
+            Expr::Sort(Level::zero()),
             0,
         ));
         assert_eq!(path.depth(), 3);
@@ -1303,7 +1303,7 @@ mod tests {
     #[test]
     fn test_conv_state_creation() {
         let focused = Expr::Const(Name::str("x"), vec![]);
-        let goal = Expr::Sort(Level::Zero);
+        let goal = Expr::Sort(Level::zero());
         let mvar = MVarId(0);
         let state = ConvState::new(focused.clone(), goal, mvar, ConvEntrySide::Lhs);
         assert!(state.is_at_root());
@@ -1313,7 +1313,7 @@ mod tests {
     #[test]
     fn test_conv_state_record_rewrite() {
         let focused = Expr::Const(Name::str("x"), vec![]);
-        let goal = Expr::Sort(Level::Zero);
+        let goal = Expr::Sort(Level::zero());
         let mvar = MVarId(0);
         let mut state = ConvState::new(focused.clone(), goal, mvar, ConvEntrySide::Lhs);
         let before = Expr::Const(Name::str("a"), vec![]);
@@ -1520,7 +1520,7 @@ mod tests {
     #[test]
     fn test_rebuild_empty_path() {
         let new_focused = Expr::Const(Name::str("result"), vec![]);
-        let path = ConvPath::new(Expr::Sort(Level::Zero), ConvEntrySide::Lhs);
+        let path = ConvPath::new(Expr::Sort(Level::zero()), ConvEntrySide::Lhs);
         let result = rebuild_expr_from_path(&path, &new_focused).expect("result should be present");
         assert!(exprs_syntactically_equal(&result, &new_focused));
     }
@@ -1574,7 +1574,7 @@ mod tests {
     #[test]
     fn test_conv_result_no_change() {
         let result = ConvResult {
-            new_expr: Expr::Sort(Level::Zero),
+            new_expr: Expr::Sort(Level::zero()),
             proof: Expr::Const(Name::str("rfl"), vec![]),
             num_rewrites: 0,
             changed: false,
@@ -1612,7 +1612,7 @@ mod tests {
     #[test]
     fn test_decompose_pi() {
         let dom = mk_nat_const();
-        let cod = Expr::Sort(Level::Zero);
+        let cod = Expr::Sort(Level::zero());
         let pi = Expr::Pi(
             BinderInfo::Default,
             Name::str("x"),
@@ -1650,7 +1650,7 @@ mod tests {
     #[test]
     fn test_conv_state_full_lifecycle() {
         let focused = Expr::Const(Name::str("x"), vec![]);
-        let goal = Expr::Sort(Level::Zero);
+        let goal = Expr::Sort(Level::zero());
         let mvar = MVarId(0);
         let mut state = ConvState::new(focused.clone(), goal, mvar, ConvEntrySide::Lhs);
         let a = Expr::Const(Name::str("a"), vec![]);
@@ -1712,7 +1712,7 @@ mod tests {
     #[test]
     fn test_conv_up_at_root_fails() {
         let focused = Expr::Const(Name::str("x"), vec![]);
-        let goal = Expr::Sort(Level::Zero);
+        let goal = Expr::Sort(Level::zero());
         let mvar = MVarId(0);
         let mut state = ConvState::new(focused, goal, mvar, ConvEntrySide::Lhs);
         assert!(conv_up(&mut state).is_err());
@@ -1720,13 +1720,13 @@ mod tests {
     #[test]
     fn test_conv_arg_depth_limit() {
         let focused = Expr::Const(Name::str("x"), vec![]);
-        let goal = Expr::Sort(Level::Zero);
+        let goal = Expr::Sort(Level::zero());
         let mvar = MVarId(0);
         let mut state = ConvState::new(focused, goal, mvar, ConvEntrySide::Lhs);
         for _ in 0..MAX_CONV_DEPTH {
             state.path.push(ConvPathStep::new(
                 ConvDirection::Left,
-                Expr::Sort(Level::Zero),
+                Expr::Sort(Level::zero()),
                 0,
             ));
         }

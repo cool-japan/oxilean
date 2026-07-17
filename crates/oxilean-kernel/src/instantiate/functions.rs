@@ -4,7 +4,7 @@
 
 use crate::expr_util::lift_loose_bvars;
 use crate::Node;
-use crate::{Expr, FVarId, Level, Name};
+use crate::{Expr, FVarId, Level, LevelView, Name};
 use std::rc::Rc;
 
 use super::types::{
@@ -200,8 +200,8 @@ fn instantiate_type_lparams_core(expr: &Expr, param_names: &[Name], levels: &[Le
     }
 }
 fn instantiate_level_param(level: &Level, param_names: &[Name], levels: &[Level]) -> Level {
-    match level {
-        Level::Param(name) => {
+    match level.view() {
+        LevelView::Param(name) => {
             for (i, pn) in param_names.iter().enumerate() {
                 if pn == name {
                     if let Some(l) = levels.get(i) {
@@ -211,16 +211,16 @@ fn instantiate_level_param(level: &Level, param_names: &[Name], levels: &[Level]
             }
             level.clone()
         }
-        Level::Succ(l) => Level::succ(instantiate_level_param(l, param_names, levels)),
-        Level::Max(l1, l2) => Level::max(
+        LevelView::Succ(l) => Level::succ(instantiate_level_param(l, param_names, levels)),
+        LevelView::Max(l1, l2) => Level::max(
             instantiate_level_param(l1, param_names, levels),
             instantiate_level_param(l2, param_names, levels),
         ),
-        Level::IMax(l1, l2) => Level::imax(
+        LevelView::IMax(l1, l2) => Level::imax(
             instantiate_level_param(l1, param_names, levels),
             instantiate_level_param(l2, param_names, levels),
         ),
-        Level::Zero | Level::MVar(_) => level.clone(),
+        LevelView::Zero | LevelView::MVar(_) => level.clone(),
     }
 }
 /// Replace expression metavariables using a substitution function.

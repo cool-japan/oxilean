@@ -1992,7 +1992,7 @@ impl<'env> DefEqChecker<'env> {
         // Prop test must be up to universe equivalence, not syntactic: a proof
         // whose sort level is e.g. `imax(u, 0)` normalizes to `0` (Prop) but is
         // not the literal `Zero`. Use the complete `is_equivalent` check.
-        if !matches!(&ty_ty_t_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::Zero)) {
+        if !matches!(&ty_ty_t_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::zero())) {
             return false;
         }
         let ty_s = match self.quick_infer_type(s) {
@@ -2004,7 +2004,7 @@ impl<'env> DefEqChecker<'env> {
             None => return false,
         };
         let ty_ty_s_whnf = self.reducer.whnf_env(&ty_ty_s, self.env);
-        if !matches!(&ty_ty_s_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::Zero)) {
+        if !matches!(&ty_ty_s_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::zero())) {
             return false;
         }
         let ty_t_whnf = self.reducer.whnf_env(&ty_t, self.env);

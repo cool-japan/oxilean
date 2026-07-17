@@ -234,7 +234,7 @@ pub fn build_nat_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Resu
     })
     .map_err(|e| e.to_string())?;
     let u = Name::str("u");
-    let sort_u = Expr::Sort(Level::Param(u.clone()));
+    let sort_u = Expr::Sort(Level::param(u.clone()));
     let c_ty = Expr::Pi(
         BinderInfo::Default,
         Name::str("_"),

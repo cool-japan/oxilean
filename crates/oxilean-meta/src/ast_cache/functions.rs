@@ -13,7 +13,7 @@ use super::types::{
     VersionedCache, WarmableCache, WarmingStrategy, WhnfCache,
 };
 use oxilean_kernel::Node;
-use oxilean_kernel::{Expr, Level};
+use oxilean_kernel::{Expr, Level, LevelView};
 use std::hash::{Hash, Hasher};
 
 pub(super) fn make_hasher() -> std::collections::hash_map::DefaultHasher {
@@ -26,16 +26,16 @@ pub fn hash_expr(expr: &Expr) -> u64 {
     h.finish()
 }
 pub(super) fn hash_level(level: &Level, h: &mut std::collections::hash_map::DefaultHasher) {
-    std::mem::discriminant(level).hash(h);
-    match level {
-        Level::Zero => {}
-        Level::Succ(inner) => hash_level(inner, h),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+    std::mem::discriminant(&level.view()).hash(h);
+    match level.view() {
+        LevelView::Zero => {}
+        LevelView::Succ(inner) => hash_level(inner, h),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             hash_level(a, h);
             hash_level(b, h);
         }
-        Level::Param(name) => name.hash(h),
-        Level::MVar(id) => id.hash(h),
+        LevelView::Param(name) => name.hash(h),
+        LevelView::MVar(id) => id.hash(h),
     }
 }
 pub(super) fn hash_expr_into(expr: &Expr, h: &mut std::collections::hash_map::DefaultHasher) {
@@ -139,7 +139,7 @@ mod tests {
         Name::str(s)
     }
     fn sort0() -> Expr {
-        Expr::Sort(Level::Zero)
+        Expr::Sort(Level::zero())
     }
     fn bvar(n: u32) -> Expr {
         Expr::BVar(n)

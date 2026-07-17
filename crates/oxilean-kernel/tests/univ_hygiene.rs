@@ -47,7 +47,7 @@ fn s7_polymorphic_const_referenced_with_empty_levels_is_rejected() {
     let bad = Declaration::Definition {
         name: Name::str("Bad"),
         univ_params: vec![],
-        ty: Expr::Sort(Level::succ(Level::Zero)),
+        ty: Expr::Sort(Level::succ(Level::zero())),
         val: Expr::Const(Name::str("Poly"), vec![]), // <-- missing the level arg
         hint: ReducibilityHint::Regular(1),
     };
@@ -65,10 +65,10 @@ fn s7_polymorphic_const_referenced_with_too_many_levels_is_rejected() {
     let bad = Declaration::Definition {
         name: Name::str("Bad2"),
         univ_params: vec![Name::str("v")],
-        ty: Expr::Sort(Level::succ(Level::Zero)),
+        ty: Expr::Sort(Level::succ(Level::zero())),
         val: Expr::Const(
             Name::str("Poly"),
-            vec![Level::Zero, Level::param(Name::str("v"))], // 2 levels, arity 1
+            vec![Level::zero(), Level::param(Name::str("v"))], // 2 levels, arity 1
         ),
         hint: ReducibilityHint::Regular(1),
     };
@@ -84,8 +84,8 @@ fn s7_correct_arity_reference_is_accepted() {
     let good = Declaration::Definition {
         name: Name::str("Good"),
         univ_params: vec![],
-        ty: Expr::Sort(Level::Zero),
-        val: Expr::Const(Name::str("Poly"), vec![Level::Zero]),
+        ty: Expr::Sort(Level::zero()),
+        val: Expr::Const(Name::str("Poly"), vec![Level::zero()]),
         hint: ReducibilityHint::Regular(1),
     };
     check_declaration(&mut env, good).expect("correct-arity reference must check");
@@ -241,7 +241,7 @@ fn s8_ci_theorem_duplicate_univ_params_rejected() {
             vec![Name::str("u"), Name::str("u")],
             Expr::Sort(u),
         ),
-        value: Expr::Sort(Level::Zero),
+        value: Expr::Sort(Level::zero()),
         all: vec![],
     });
     let err = check_constant_info(&mut env, ci)

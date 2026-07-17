@@ -43,10 +43,10 @@ mod tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn prop_expr() -> Expr {
-        Expr::Sort(Level::Zero)
+        Expr::Sort(Level::zero())
     }
     fn type1_expr() -> Expr {
-        Expr::Sort(Level::succ(Level::Zero))
+        Expr::Sort(Level::succ(Level::zero()))
     }
     fn bvar0() -> Expr {
         Expr::BVar(0)

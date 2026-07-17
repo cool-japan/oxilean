@@ -614,7 +614,7 @@ mod tests {
     }
     #[test]
     fn test_proof_obligation() {
-        let obligation = ProofObligation::new("show n < m".to_string(), Expr::Sort(Level::Zero))
+        let obligation = ProofObligation::new("show n < m".to_string(), Expr::Sort(Level::zero()))
             .with_hypothesis(Name::str("n"), mk_nat())
             .with_source_range(10, 20)
             .mark_discharged();

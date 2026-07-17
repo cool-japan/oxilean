@@ -1002,8 +1002,8 @@ fn mutual_tree_forest() {
         .expect("mutual Tree/Forest must be accepted");
 
     // Family metadata mirrors the fixture: 2 motives, 4 minors, per-type rules.
-    let tree_rec_name = Name::Str(Box::new(tree.clone()), "rec".to_string());
-    let forest_rec_name = Name::Str(Box::new(forest.clone()), "rec".to_string());
+    let tree_rec_name = Name::mk_str(tree.clone(), "rec".to_string());
+    let forest_rec_name = Name::mk_str(forest.clone(), "rec".to_string());
     let trec = env
         .get_recursor_val(&tree_rec_name)
         .expect("Tree.rec")

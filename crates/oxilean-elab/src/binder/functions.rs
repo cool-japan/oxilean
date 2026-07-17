@@ -659,13 +659,13 @@ pub fn is_anonymous_binder(binder: &Binder) -> bool {
 /// Check whether an elaborated binder is anonymous.
 #[allow(dead_code)]
 pub fn is_anonymous_result(result: &BinderElabResult) -> bool {
-    result.name == Name::Anonymous || result.name == Name::str("_")
+    result.name == Name::anonymous() || result.name == Name::str("_")
 }
 /// Create an elaborated anonymous binder result directly.
 #[allow(dead_code)]
 pub fn make_anonymous_result(ty: Expr, fvar: FVarId) -> BinderElabResult {
     BinderElabResult {
-        name: Name::Anonymous,
+        name: Name::anonymous(),
         ty,
         info: BinderInfo::Default,
         fvar,

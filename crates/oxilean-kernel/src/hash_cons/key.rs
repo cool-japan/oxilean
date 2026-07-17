@@ -142,8 +142,8 @@ mod tests {
 
     #[test]
     fn test_expr_key_sort_zero_equals() {
-        let k1 = ExprKey::sort(Level::Zero);
-        let k2 = ExprKey::sort(Level::Zero);
+        let k1 = ExprKey::sort(Level::zero());
+        let k2 = ExprKey::sort(Level::zero());
         assert_eq!(k1, k2);
     }
 
@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn test_expr_key_lam_equals() {
         let name = Name::str("x");
-        let dom = Expr::Sort(Level::Zero);
+        let dom = Expr::Sort(Level::zero());
         let body = Expr::BVar(0);
         let k1 = ExprKey::lam(BinderInfo::Default, name.clone(), dom.clone(), body.clone());
         let k2 = ExprKey::lam(BinderInfo::Default, name, dom, body);
@@ -212,7 +212,7 @@ mod tests {
     #[test]
     fn test_expr_key_pi_equals() {
         let name = Name::str("A");
-        let dom = Expr::Sort(Level::Zero);
+        let dom = Expr::Sort(Level::zero());
         let cod = Expr::BVar(0);
         let k1 = ExprKey::pi(BinderInfo::Default, name.clone(), dom.clone(), cod.clone());
         let k2 = ExprKey::pi(BinderInfo::Default, name, dom, cod);
@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn test_expr_key_let_equals() {
         let name = Name::str("n");
-        let ty = Expr::Sort(Level::Zero);
+        let ty = Expr::Sort(Level::zero());
         let val = Expr::BVar(0);
         let body = Expr::BVar(1);
         let k1 = ExprKey::let_(name.clone(), ty.clone(), val.clone(), body.clone());

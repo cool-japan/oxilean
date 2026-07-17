@@ -46,7 +46,9 @@ use crate::instantiate::instantiate_type_lparams;
 use crate::level::{is_equivalent, is_geq, normalize as normalize_level};
 use crate::subst::instantiate;
 use crate::Node;
-use crate::{BinderInfo, Environment, Expr, FVarId, KernelError, Level, Name, TypeChecker};
+use crate::{
+    BinderInfo, Environment, Expr, FVarId, KernelError, Level, LevelView, Name, TypeChecker,
+};
 use std::rc::Rc;
 
 /// A single inductive type inside a (possibly mutual) family declaration.
@@ -81,7 +83,7 @@ impl InductiveSpec {
     fn effective_rec_name(&self) -> Name {
         self.rec_name
             .clone()
-            .unwrap_or_else(|| Name::Str(Box::new(self.name.clone()), "rec".to_string()))
+            .unwrap_or_else(|| Name::mk_str(self.name.clone(), "rec"))
     }
 }
 
@@ -275,19 +277,19 @@ pub(crate) fn has_const_occ(e: &Expr, names: &[Name]) -> bool {
 }
 
 fn collect_level_param_names(l: &Level, out: &mut Vec<Name>) {
-    match l {
-        Level::Zero => {}
-        Level::Succ(a) => collect_level_param_names(a, out),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+    match l.view() {
+        LevelView::Zero => {}
+        LevelView::Succ(a) => collect_level_param_names(a, out),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_param_names(a, out);
             collect_level_param_names(b, out);
         }
-        Level::Param(n) => {
+        LevelView::Param(n) => {
             if !out.contains(n) {
                 out.push(n.clone());
             }
         }
-        Level::MVar(_) => {}
+        LevelView::MVar(_) => {}
     }
 }
 
@@ -1434,7 +1436,7 @@ pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result
         } else if flat_style {
             Name::str(format!("{}.rec", tname))
         } else {
-            Name::Str(Box::new(tname.clone()), "rec".to_string())
+            Name::mk_str(tname.clone(), "rec")
         };
         specs.push(InductiveSpec {
             name: tname.clone(),

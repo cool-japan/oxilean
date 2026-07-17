@@ -65,7 +65,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_name_display() {
-        let n1 = Name::Anonymous;
+        let n1 = Name::anonymous();
         let n2 = Name::str("Nat");
         let n3 = Name::str("Nat").append_str("add");
         let n4 = Name::str("x").append_num(42);
@@ -90,7 +90,7 @@ mod tests {
     }
     #[test]
     fn test_name_depth() {
-        assert_eq!(Name::Anonymous.depth(), 0);
+        assert_eq!(Name::anonymous().depth(), 0);
         assert_eq!(Name::str("Nat").depth(), 1);
         assert_eq!(Name::str("Nat").append_str("add").depth(), 2);
     }
@@ -98,7 +98,7 @@ mod tests {
     fn test_name_last_str() {
         let n = Name::str("Nat").append_str("add");
         assert_eq!(n.last_str(), Some("add"));
-        assert_eq!(Name::Anonymous.last_str(), None);
+        assert_eq!(Name::anonymous().last_str(), None);
     }
     #[test]
     fn test_name_root() {

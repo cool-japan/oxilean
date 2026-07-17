@@ -238,8 +238,8 @@ pub(super) fn known_struct_ext(name: &Name) -> Option<StructExtInfo> {
             Name::str("Prod"),
             vec![Name::str("fst"), Name::str("snd")],
             vec![
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
+                Expr::Sort(Level::succ(Level::zero())),
+                Expr::Sort(Level::succ(Level::zero())),
             ],
             2,
         )),
@@ -247,8 +247,8 @@ pub(super) fn known_struct_ext(name: &Name) -> Option<StructExtInfo> {
             Name::str("PProd"),
             vec![Name::str("fst"), Name::str("snd")],
             vec![
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
+                Expr::Sort(Level::succ(Level::zero())),
+                Expr::Sort(Level::succ(Level::zero())),
             ],
             2,
         )),
@@ -256,15 +256,15 @@ pub(super) fn known_struct_ext(name: &Name) -> Option<StructExtInfo> {
             Name::str("Sigma"),
             vec![Name::str("fst"), Name::str("snd")],
             vec![
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
+                Expr::Sort(Level::succ(Level::zero())),
+                Expr::Sort(Level::succ(Level::zero())),
             ],
             2,
         )),
         "Subtype" => Some(StructExtInfo::new(
             Name::str("Subtype"),
             vec![Name::str("val")],
-            vec![Expr::Sort(Level::Succ(Box::new(Level::Zero)))],
+            vec![Expr::Sort(Level::succ(Level::zero()))],
             2,
         )),
         "And" => Some(StructExtInfo::new(

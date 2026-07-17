@@ -23,7 +23,9 @@
 use oxilean_kernel::check::check_declaration;
 use oxilean_kernel::level::{is_equivalent, is_geq, is_leq, mk_imax, mk_max, normalize};
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name, ReducibilityHint};
+use oxilean_kernel::{
+    BinderInfo, Declaration, Environment, Expr, Level, LevelView, Name, ReducibilityHint,
+};
 
 use proptest::prelude::*;
 
@@ -39,11 +41,11 @@ fn p(s: &str) -> Level {
 /// `universe::level_to_nat`): `imax(a, b)` is `0` when `b` evaluates to `0`,
 /// else `max(a, b)`.
 fn eval(l: &Level, u: u64, v: u64, w: u64) -> u64 {
-    match l {
-        Level::Zero => 0,
-        Level::Succ(i) => eval(i, u, v, w) + 1,
-        Level::Max(a, b) => eval(a, u, v, w).max(eval(b, u, v, w)),
-        Level::IMax(a, b) => {
+    match l.view() {
+        LevelView::Zero => 0,
+        LevelView::Succ(i) => eval(i, u, v, w) + 1,
+        LevelView::Max(a, b) => eval(a, u, v, w).max(eval(b, u, v, w)),
+        LevelView::IMax(a, b) => {
             let bb = eval(b, u, v, w);
             if bb == 0 {
                 0
@@ -51,37 +53,37 @@ fn eval(l: &Level, u: u64, v: u64, w: u64) -> u64 {
                 eval(a, u, v, w).max(bb)
             }
         }
-        Level::Param(n) => match n.to_string().as_str() {
+        LevelView::Param(n) => match n.to_string().as_str() {
             "u" => u,
             "v" => v,
             _ => w,
         },
         // MVars do not occur in these tests.
-        Level::MVar(_) => 0,
+        LevelView::MVar(_) => 0,
     }
 }
 
 /// The largest explicit numeral offset appearing anywhere in `l`.
 fn max_const(l: &Level) -> u64 {
-    match l {
-        Level::Zero => 0,
-        Level::Succ(i) => max_const(i) + 1,
-        Level::Max(a, b) | Level::IMax(a, b) => max_const(a).max(max_const(b)),
-        Level::Param(_) | Level::MVar(_) => 0,
+    match l.view() {
+        LevelView::Zero => 0,
+        LevelView::Succ(i) => max_const(i) + 1,
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => max_const(a).max(max_const(b)),
+        LevelView::Param(_) | LevelView::MVar(_) => 0,
     }
 }
 
 fn collect_params(l: &Level, acc: &mut std::collections::BTreeSet<String>) {
-    match l {
-        Level::Param(n) => {
+    match l.view() {
+        LevelView::Param(n) => {
             acc.insert(n.to_string());
         }
-        Level::Succ(i) => collect_params(i, acc),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Succ(i) => collect_params(i, acc),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_params(a, acc);
             collect_params(b, acc);
         }
-        Level::Zero | Level::MVar(_) => {}
+        LevelView::Zero | LevelView::MVar(_) => {}
     }
 }
 
@@ -143,7 +145,7 @@ fn sem_geq(l1: &Level, l2: &Level) -> bool {
 /// Enumerate all level terms up to `depth` over `{0, 1, u, v}` and the binary
 /// constructors `max`/`imax` plus unary `succ`. Deduplicated by structure.
 fn enumerate(depth: u32) -> Vec<Level> {
-    let atoms: Vec<Level> = vec![Level::Zero, Level::succ(Level::Zero), p("u"), p("v")];
+    let atoms: Vec<Level> = vec![Level::zero(), Level::succ(Level::zero()), p("u"), p("v")];
     let mut cur = atoms.clone();
     for _ in 0..depth {
         let prev = cur.clone();
@@ -300,7 +302,7 @@ fn d1_imax_uu_equiv_u() {
 /// D2: max(0, u) = u.
 #[test]
 fn d2_max_zero_u_equiv_u() {
-    let l = Level::max(Level::Zero, u());
+    let l = Level::max(Level::zero(), u());
     assert!(is_equivalent(&l, &u()));
     assert_eq!(normalize(&l), u());
 }
@@ -308,7 +310,7 @@ fn d2_max_zero_u_equiv_u() {
 /// D3: max(1, succ u) = succ u.
 #[test]
 fn d3_max_one_succ_u_equiv_succ_u() {
-    let l = Level::max(s(Level::Zero), s(u()));
+    let l = Level::max(s(Level::zero()), s(u()));
     let r = s(u());
     assert!(sem_eq(&l, &r));
     assert!(is_equivalent(&l, &r));
@@ -359,11 +361,11 @@ fn d7_imax_absorption() {
 /// D8: is_geq(succ u, 1) and is_geq(u+2, 2).
 #[test]
 fn d8_geq_succ_ge_numeral() {
-    assert!(sem_geq(&s(u()), &s(Level::Zero)));
-    assert!(is_geq(&s(u()), &s(Level::Zero)));
+    assert!(sem_geq(&s(u()), &s(Level::zero())));
+    assert!(is_geq(&s(u()), &s(Level::zero())));
 
     let up2 = s(s(u()));
-    let two = s(s(Level::Zero));
+    let two = s(s(Level::zero()));
     assert!(sem_geq(&up2, &two));
     assert!(is_geq(&up2, &two));
 }
@@ -458,10 +460,10 @@ fn param_case_split_terminates_on_deep_imax_chain() {
 #[test]
 fn leq_complete_imax_bare_param_rhs_under_right_max() {
     let v = || Level::param(Name::str("v"));
-    let l1 = Level::succ(Level::max(Level::max(Level::Zero, v()), Level::Zero));
+    let l1 = Level::succ(Level::max(Level::max(Level::zero(), v()), Level::zero()));
     let l2 = Level::max(
-        Level::succ(Level::succ(Level::Zero)),
-        Level::imax(Level::succ(v()), Level::imax(Level::Zero, v())),
+        Level::succ(Level::succ(Level::zero())),
+        Level::imax(Level::succ(v()), Level::imax(Level::zero(), v())),
     );
     assert!(sem_geq(&l2, &l1), "oracle: l1 <= l2 must hold pointwise");
     assert!(
@@ -480,7 +482,7 @@ fn leq_complete_imax_max_param_rhs_under_right_max() {
     let l1 = Level::succ(u());
     let l2 = Level::max(
         Level::imax(Level::succ(u()), Level::max(u(), u())),
-        Level::succ(Level::succ(Level::Zero)),
+        Level::succ(Level::succ(Level::zero())),
     );
     assert!(sem_geq(&l2, &l1), "oracle: l1 <= l2 must hold pointwise");
     assert!(
@@ -494,10 +496,10 @@ fn leq_complete_imax_max_param_rhs_under_right_max() {
 #[test]
 fn mk_imax_matches_lean_rules() {
     // imax(_, 0) = 0
-    assert_eq!(mk_imax(u(), Level::Zero), Level::Zero);
-    assert_eq!(mk_imax(Level::Zero, Level::Zero), Level::Zero);
+    assert_eq!(mk_imax(u(), Level::zero()), Level::zero());
+    assert_eq!(mk_imax(Level::zero(), Level::zero()), Level::zero());
     // imax(0, v) = v
-    assert_eq!(mk_imax(Level::Zero, v()), v());
+    assert_eq!(mk_imax(Level::zero(), v()), v());
     // imax(u, u) = u
     assert_eq!(mk_imax(u(), u()), u());
     // imax(u, succ v) = max(u, succ v) (rhs provably non-zero)
@@ -512,11 +514,17 @@ fn mk_imax_matches_lean_rules() {
 #[test]
 fn mk_max_matches_lean_rules() {
     assert_eq!(mk_max(u(), u()), u());
-    assert_eq!(mk_max(Level::Zero, u()), u());
-    assert_eq!(mk_max(u(), Level::Zero), u());
+    assert_eq!(mk_max(Level::zero(), u()), u());
+    assert_eq!(mk_max(u(), Level::zero()), u());
     // numeral subsumption
-    assert_eq!(mk_max(s(Level::Zero), s(s(Level::Zero))), s(s(Level::Zero)));
-    assert_eq!(mk_max(s(s(Level::Zero)), s(Level::Zero)), s(s(Level::Zero)));
+    assert_eq!(
+        mk_max(s(Level::zero()), s(s(Level::zero()))),
+        s(s(Level::zero()))
+    );
+    assert_eq!(
+        mk_max(s(s(Level::zero())), s(Level::zero())),
+        s(s(Level::zero()))
+    );
     // stuck
     assert_eq!(mk_max(u(), v()), Level::max(u(), v()));
 }
@@ -595,15 +603,15 @@ fn arb_param() -> impl Strategy<Value = Name> {
 fn arb_level_impl(depth: u32) -> BoxedStrategy<Level> {
     if depth == 0 {
         prop_oneof![
-            Just(Level::Zero),
-            Just(Level::succ(Level::Zero)),
-            arb_param().prop_map(Level::Param),
+            Just(Level::zero()),
+            Just(Level::succ(Level::zero())),
+            arb_param().prop_map(Level::param),
         ]
         .boxed()
     } else {
         prop_oneof![
-            Just(Level::Zero),
-            arb_param().prop_map(Level::Param),
+            Just(Level::zero()),
+            arb_param().prop_map(Level::param),
             arb_level_impl(depth - 1).prop_map(|l| Level::succ(l)),
             (arb_level_impl(depth - 1), arb_level_impl(depth - 1))
                 .prop_map(|(a, b)| Level::max(a, b)),

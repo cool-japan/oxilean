@@ -133,18 +133,18 @@ pub(super) fn detect_cast(expr: &Expr) -> Option<(Name, Name, Expr)> {
         let name_str = name.to_string();
         if name_str.contains("Nat.cast") && args.len() >= 2 {
             let to_type = get_type_name(&args[0]).unwrap_or(Name::str("unknown"));
-            let inner = args.last().cloned().unwrap_or(Expr::Sort(Level::Zero));
+            let inner = args.last().cloned().unwrap_or(Expr::Sort(Level::zero()));
             return Some((Name::str("Nat"), to_type, inner));
         }
         if name_str.contains("Int.cast") && args.len() >= 2 {
             let to_type = get_type_name(&args[0]).unwrap_or(Name::str("unknown"));
-            let inner = args.last().cloned().unwrap_or(Expr::Sort(Level::Zero));
+            let inner = args.last().cloned().unwrap_or(Expr::Sort(Level::zero()));
             return Some((Name::str("Int"), to_type, inner));
         }
         if name_str.contains("Coe.coe") && args.len() >= 4 {
             let from_type = get_type_name(&args[0]).unwrap_or(Name::str("unknown"));
             let to_type = get_type_name(&args[1]).unwrap_or(Name::str("unknown"));
-            let inner = args.last().cloned().unwrap_or(Expr::Sort(Level::Zero));
+            let inner = args.last().cloned().unwrap_or(Expr::Sort(Level::zero()));
             return Some((from_type, to_type, inner));
         }
     }

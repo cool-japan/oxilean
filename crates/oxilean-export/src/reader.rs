@@ -351,7 +351,7 @@ impl Reader {
     fn new(limits: Limits) -> Self {
         // Pre-seed: name[0] = anonymous, level[0] = zero. Exprs start empty.
         Self {
-            names: vec![Name::Anonymous],
+            names: vec![Name::anonymous()],
             lnodes: vec![LNode::Zero],
             lsizes: vec![1],
             enodes: Vec::new(),

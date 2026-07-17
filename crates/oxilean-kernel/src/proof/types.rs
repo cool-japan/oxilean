@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::Node;
-use crate::{Expr, Level, Name};
+use crate::{Expr, LevelView, Name};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -29,7 +29,7 @@ impl ProofTerm {
     /// A type is a Prop if its universe is Sort 0.
     pub fn could_be_prop(ty: &Expr) -> bool {
         match ty {
-            Expr::Sort(Level::Zero) => true,
+            Expr::Sort(l) if matches!(l.view(), LevelView::Zero) => true,
             Expr::Pi(_, _, _, body) => Self::could_be_prop(body),
             Expr::Const(_, _) => true,
             Expr::App(_, _) => true,
@@ -38,7 +38,7 @@ impl ProofTerm {
     }
     /// Check if a type is definitely Prop (Sort 0).
     pub fn is_sort_zero(ty: &Expr) -> bool {
-        matches!(ty, Expr::Sort(Level::Zero))
+        matches!(ty, Expr::Sort(l) if matches!(l.view(), LevelView::Zero))
     }
     /// Extract the proposition from a proof term's type annotation.
     ///

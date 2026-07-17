@@ -274,8 +274,8 @@ pub mod name;
 pub use arena::{Arena, Idx};
 pub use bignat::BigNat;
 pub use expr::{BinderInfo, Expr, FVarId, Literal, Node};
-pub use level::{Level, LevelMVarId};
-pub use name::Name;
+pub use level::{Level, LevelMVarId, LevelView};
+pub use name::{Name, NameView};
 pub mod subst;
 
 pub use subst::{abstract_expr, instantiate};

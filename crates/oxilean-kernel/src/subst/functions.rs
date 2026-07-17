@@ -1118,7 +1118,7 @@ pub fn peel_lambdas(e: &Expr, n: usize) -> (Vec<(crate::Name, crate::BinderInfo,
     let mut cur = e;
     for _ in 0..n {
         if let Expr::Lam(bi, _, ty, body) = cur {
-            binders.push((crate::Name::Anonymous, *bi, ty.clone()));
+            binders.push((crate::Name::anonymous(), *bi, ty.clone()));
             cur = body;
         } else {
             break;

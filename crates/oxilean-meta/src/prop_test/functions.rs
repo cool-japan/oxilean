@@ -11,7 +11,7 @@ use super::types::{
     RegressionTestExt, Rng,
 };
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
+use oxilean_kernel::{BinderInfo, Expr, Level, LevelView, Literal, Name};
 
 /// Trait for types that can be randomly generated
 pub trait Arbitrary {
@@ -43,7 +43,7 @@ pub fn arbitrary_expr(rng: &mut Rng, depth: usize) -> Expr {
             0 => Expr::BVar(rng.next_u32(3)),
             1 => Expr::Const(Name::str(format!("x{}", rng.next_u32(5))), vec![]),
             2 => Expr::Lit(Literal::nat(rng.next_u64() % 10)),
-            _ => Expr::Sort(Level::Zero),
+            _ => Expr::Sort(Level::zero()),
         }
     } else {
         match rng.next_u32(6) {
@@ -56,13 +56,13 @@ pub fn arbitrary_expr(rng: &mut Rng, depth: usize) -> Expr {
             3 => Expr::Lam(
                 BinderInfo::Default,
                 Name::str("x"),
-                Node::new(Expr::Sort(Level::Zero)),
+                Node::new(Expr::Sort(Level::zero())),
                 Node::new(arbitrary_expr(rng, depth - 1)),
             ),
             4 => Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
-                Node::new(Expr::Sort(Level::Zero)),
+                Node::new(Expr::Sort(Level::zero())),
                 Node::new(arbitrary_expr(rng, depth - 1)),
             ),
             _ => Expr::Lit(Literal::nat(rng.next_u64() % 10)),
@@ -234,7 +234,7 @@ mod tests {
     }
     #[test]
     fn test_node_count_lam_pi() {
-        let ty = Expr::Sort(Level::Zero);
+        let ty = Expr::Sort(Level::zero());
         let body = Expr::BVar(0);
         let lam = Expr::Lam(
             BinderInfo::Default,
@@ -446,22 +446,22 @@ pub fn expr_depth(e: &Expr) -> usize {
 /// Generate an arbitrary `Level`.
 pub fn arbitrary_level(rng: &mut Rng, depth: usize) -> Level {
     if depth == 0 {
-        return Level::Zero;
+        return Level::zero();
     }
     match rng.next_u32(4) {
-        0 => Level::Zero,
-        1 => Level::Succ(Box::new(arbitrary_level(rng, depth - 1))),
-        2 => Level::Max(
-            Box::new(arbitrary_level(rng, depth - 1)),
-            Box::new(arbitrary_level(rng, depth - 1)),
+        0 => Level::zero(),
+        1 => Level::succ(arbitrary_level(rng, depth - 1)),
+        2 => Level::max(
+            arbitrary_level(rng, depth - 1),
+            arbitrary_level(rng, depth - 1),
         ),
-        _ => Level::Param(Name::str(format!("u{}", rng.next_u32(3)))),
+        _ => Level::param(Name::str(format!("u{}", rng.next_u32(3)))),
     }
 }
 /// Generate an arbitrary closed expression (wrapped in lambda layers).
 pub fn arbitrary_closed_expr(rng: &mut Rng, depth: usize) -> Expr {
     let inner = arbitrary_expr(rng, depth);
-    let ty = Expr::Sort(Level::Zero);
+    let ty = Expr::Sort(Level::zero());
     let b2 = Expr::Lam(
         BinderInfo::Default,
         Name::str("z"),
@@ -494,7 +494,7 @@ pub fn arbitrary_app_chain(rng: &mut Rng, depth: usize) -> Expr {
 /// Generate an arbitrary Pi type of the given depth.
 pub fn arbitrary_pi_type(rng: &mut Rng, depth: usize) -> Expr {
     if depth == 0 {
-        return Expr::Sort(Level::Zero);
+        return Expr::Sort(Level::zero());
     }
     Expr::Pi(
         BinderInfo::Default,
@@ -597,7 +597,7 @@ pub mod more_properties {
     /// Property: arbitrary_level(_, 0) is always Zero.
     pub fn prop_level_depth0_is_zero(rng: &mut Rng) -> Option<bool> {
         let l = arbitrary_level(rng, 0);
-        Some(matches!(l, Level::Zero))
+        Some(matches!(l.view(), LevelView::Zero))
     }
 }
 /// Run a property test gathering detailed statistics.
@@ -790,12 +790,12 @@ mod extended_tests {
         let mut rng = Rng::new(6666);
         for _ in 0..20 {
             let l = arbitrary_level(&mut rng, 0);
-            assert!(matches!(l, Level::Zero));
+            assert!(matches!(l.view(), LevelView::Zero));
         }
         let mut saw_nonzero = false;
         for _ in 0..100 {
             let l = arbitrary_level(&mut rng, 2);
-            if !matches!(l, Level::Zero) {
+            if !matches!(l.view(), LevelView::Zero) {
                 saw_nonzero = true;
                 break;
             }
@@ -1016,20 +1016,24 @@ pub fn is_ground_ext(expr: &Expr) -> bool {
 /// Compute the depth of a level expression.
 #[allow(dead_code)]
 pub fn level_depth_ext(l: &Level) -> usize {
-    match l {
-        Level::Zero | Level::Param(_) | Level::MVar(_) => 0,
-        Level::Succ(inner) => 1 + level_depth_ext(inner),
-        Level::Max(a, b) | Level::IMax(a, b) => 1 + level_depth_ext(a).max(level_depth_ext(b)),
+    match l.view() {
+        LevelView::Zero | LevelView::Param(_) | LevelView::MVar(_) => 0,
+        LevelView::Succ(inner) => 1 + level_depth_ext(inner),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
+            1 + level_depth_ext(a).max(level_depth_ext(b))
+        }
     }
 }
 /// Check if a level has any metavariables.
 #[allow(dead_code)]
 pub fn level_has_mvar_ext(l: &Level) -> bool {
-    match l {
-        Level::MVar(_) => true,
-        Level::Zero | Level::Param(_) => false,
-        Level::Succ(inner) => level_has_mvar_ext(inner),
-        Level::Max(a, b) | Level::IMax(a, b) => level_has_mvar_ext(a) || level_has_mvar_ext(b),
+    match l.view() {
+        LevelView::MVar(_) => true,
+        LevelView::Zero | LevelView::Param(_) => false,
+        LevelView::Succ(inner) => level_has_mvar_ext(inner),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
+            level_has_mvar_ext(a) || level_has_mvar_ext(b)
+        }
     }
 }
 /// Generate an arbitrary level up to depth n (new unique name).
@@ -1037,23 +1041,23 @@ pub fn level_has_mvar_ext(l: &Level) -> bool {
 pub fn gen_arbitrary_level(rng: &mut Rng, depth: usize) -> Level {
     if depth == 0 {
         match rng.next_usize(3) {
-            0 => Level::Zero,
-            1 => Level::Succ(Box::new(Level::Zero)),
-            _ => Level::Param(Name::str("u")),
+            0 => Level::zero(),
+            1 => Level::succ(Level::zero()),
+            _ => Level::param(Name::str("u")),
         }
     } else {
         match rng.next_usize(5) {
-            0 => Level::Zero,
-            1 => Level::Succ(Box::new(gen_arbitrary_level(rng, depth - 1))),
-            2 => Level::Max(
-                Box::new(gen_arbitrary_level(rng, depth - 1)),
-                Box::new(gen_arbitrary_level(rng, depth - 1)),
+            0 => Level::zero(),
+            1 => Level::succ(gen_arbitrary_level(rng, depth - 1)),
+            2 => Level::max(
+                gen_arbitrary_level(rng, depth - 1),
+                gen_arbitrary_level(rng, depth - 1),
             ),
-            3 => Level::IMax(
-                Box::new(gen_arbitrary_level(rng, depth - 1)),
-                Box::new(gen_arbitrary_level(rng, depth - 1)),
+            3 => Level::imax(
+                gen_arbitrary_level(rng, depth - 1),
+                gen_arbitrary_level(rng, depth - 1),
             ),
-            _ => Level::Param(Name::str("u")),
+            _ => Level::param(Name::str("u")),
         }
     }
 }
@@ -1154,13 +1158,13 @@ mod prop_test_ext_2 {
     }
     #[test]
     fn test_level_depth_ext() {
-        let l = Level::Succ(Box::new(Level::Succ(Box::new(Level::Zero))));
+        let l = Level::succ(Level::succ(Level::zero()));
         assert_eq!(level_depth_ext(&l), 2);
     }
     #[test]
     fn test_level_has_mvar_ext() {
         use oxilean_kernel::LevelMVarId;
-        let l = Level::MVar(LevelMVarId(0));
+        let l = Level::mvar(LevelMVarId(0));
         assert!(level_has_mvar_ext(&l));
     }
     #[test]
