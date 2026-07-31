@@ -41,8 +41,8 @@ toml = "0.8"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 
 # SMT Solver (OxiZ - COOLJAPAN Pure Rust SMT solver, replaces Z3)
-oxiz-solver = "0.3.0"
-oxiz-math = "0.3.0"
+oxiz-solver = "0.3.1"
+oxiz-math = "0.3.1"
 num-bigint = { version = "0.4", default-features = false }
 num-rational = { version = "0.4", default-features = false, features = ["num-bigint"] }
 
