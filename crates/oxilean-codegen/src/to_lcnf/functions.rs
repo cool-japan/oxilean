@@ -238,11 +238,7 @@ pub(super) fn level_to_u64(level: &Level) -> u64 {
         LevelView::Max(l1, l2) => level_to_u64(l1).max(level_to_u64(l2)),
         LevelView::IMax(_, l2) => {
             let v2 = level_to_u64(l2);
-            if v2 == 0 {
-                0
-            } else {
-                v2
-            }
+            if v2 == 0 { 0 } else { v2 }
         }
         LevelView::Param(_) => 1,
         LevelView::MVar(_) => 1,
@@ -397,9 +393,7 @@ pub(super) fn convert_to_atomic(
         // name.
         Expr::Proj(name, _idx, base) => {
             if let Expr::Const(base_name, _) = base.as_ref() {
-                let mangled = mangle_name(
-                    &base_name.clone().append_str(name_to_string(name)),
-                );
+                let mangled = mangle_name(&base_name.clone().append_str(name_to_string(name)));
                 if let Some(var_id) = state.lookup_name(&mangled) {
                     return Ok(LcnfArg::Var(var_id));
                 }
@@ -421,6 +415,29 @@ pub(super) fn convert_to_atomic(
 /// Bind a complex LCNF expression to a fresh variable, returning the variable ID.
 ///
 /// If the expression is already a simple Return of a variable, extract it directly.
+///
+/// # The `Let`-spine case
+///
+/// A sub-conversion that ended in `wrap_pending_lets` hands us a
+/// finished `Let` chain rather than a bare `Return`. The chain's
+/// bindings are *not* on `state.pending_lets` any more — wrapping
+/// drained them — so they have to be pushed back before the caller
+/// splices our returned variable into its own expression, or that
+/// variable is never bound.
+///
+/// This arm used to be a catch-all that allocated a fresh variable and
+/// dropped `expr` on the floor. Every non-atomic subexpression went
+/// through it — a nested application, a compound `if` condition, a
+/// `let`-in, a `match` scrutinee — so the emitted Rust referenced
+/// `_xN` identifiers that nothing declared and failed to compile with
+/// `E0425: cannot find value`. Nothing caught it because no test in
+/// either repository compiled the transpiler's output.
+///
+/// `Case` / `TailCall` / `Unreachable` are genuinely different: they
+/// are control flow, not a value, and binding one to a variable needs a
+/// join point the LCNF here has no representation for. They keep the
+/// old fresh-variable behaviour, but now say so explicitly rather than
+/// hiding inside a catch-all — see the `debug_assert` below.
 pub(super) fn bind_expr_to_var(
     expr: LcnfExpr,
     state: &mut ToLcnfState,
@@ -438,7 +455,28 @@ pub(super) fn bind_expr_to_var(
             let id = state.emit_let(hint, LcnfType::Object, val);
             Ok(id)
         }
-        _ => {
+        // Walk the `Let` spine, restoring each binding to the pending
+        // stack in source order, then bind whatever the spine ends in.
+        LcnfExpr::Let {
+            id,
+            name,
+            ty,
+            value,
+            body,
+        } => {
+            state.pending_lets.push_back((id, name, ty, value));
+            bind_expr_to_var(*body, state, hint)
+        }
+        other => {
+            debug_assert!(
+                matches!(
+                    other,
+                    LcnfExpr::Case { .. } | LcnfExpr::TailCall(..) | LcnfExpr::Unreachable
+                ),
+                "bind_expr_to_var: unhandled LcnfExpr shape reached the \
+                 control-flow arm; a value-shaped expression must be \
+                 flattened into pending_lets instead of dropped"
+            );
             let id = state.fresh_named_var(hint);
             Ok(id)
         }
@@ -757,13 +795,7 @@ pub fn decl_to_lcnf_with_const_names(
     params: &[(Name, Expr)],
     body: &Expr,
     config: &ToLcnfConfig,
-) -> Result<
-    (
-        LcnfFunDecl,
-        std::collections::HashMap<LcnfVarId, String>,
-    ),
-    ConversionError,
-> {
+) -> Result<(LcnfFunDecl, std::collections::HashMap<LcnfVarId, String>), ConversionError> {
     decl_to_lcnf_full(name, params, None, body, config)
 }
 
@@ -786,13 +818,7 @@ pub fn decl_to_lcnf_full(
     ret_type_expr: Option<&Expr>,
     body: &Expr,
     config: &ToLcnfConfig,
-) -> Result<
-    (
-        LcnfFunDecl,
-        std::collections::HashMap<LcnfVarId, String>,
-    ),
-    ConversionError,
-> {
+) -> Result<(LcnfFunDecl, std::collections::HashMap<LcnfVarId, String>), ConversionError> {
     let (mut decl, state) = decl_to_lcnf_inner(name, params, body, config)?;
     if let Some(rt_expr) = ret_type_expr {
         decl.ret_type = convert_type(rt_expr, &state);
@@ -1479,10 +1505,8 @@ mod tests {
             Box::new(Expr::BVar(0)),
         );
 
-        let (decl, const_names) = decl_to_lcnf_full(
-            &name, &params, Some(&uint64), &body, &config,
-        )
-        .expect("conversion must succeed");
+        let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
+            .expect("conversion must succeed");
 
         let mut backend = RustTargetBackend::new();
         backend.set_const_names(const_names);
@@ -1554,10 +1578,8 @@ mod tests {
             Box::new(Expr::BVar(0)),
         );
 
-        let (decl, const_names) = decl_to_lcnf_full(
-            &name, &params, Some(&uint64), &body, &config,
-        )
-        .expect("conversion must succeed");
+        let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
+            .expect("conversion must succeed");
 
         let mut backend = RustTargetBackend::new();
         backend.set_const_names(const_names);
@@ -1649,9 +1671,8 @@ mod tests {
             Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(0))),
         );
 
-        let (decl, const_names) =
-            decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
-                .expect("conversion must succeed");
+        let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
+            .expect("conversion must succeed");
 
         eprintln!("OX7 (bool lit fold) const_names = {:?}", const_names);
         // const_names MUST register `Bool_true` — that's
@@ -1727,10 +1748,8 @@ mod tests {
             Box::new(Expr::Lit(Literal::Nat(8))),
         );
 
-        let (decl, const_names) = decl_to_lcnf_full(
-            &name, &params, Some(&uint64), &body, &config,
-        )
-        .expect("conversion must succeed");
+        let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
+            .expect("conversion must succeed");
 
         let mut backend = RustTargetBackend::new();
         backend.set_const_names(const_names);
@@ -1789,10 +1808,8 @@ mod tests {
             Box::new(Expr::BVar(0)),
         );
 
-        let (decl, const_names) = decl_to_lcnf_full(
-            &name, &params, Some(&uint64), &body, &config,
-        )
-        .expect("conversion must succeed");
+        let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
+            .expect("conversion must succeed");
 
         eprintln!("OX7 (1b-β) const_names = {:?}", const_names);
         assert!(
@@ -1838,10 +1855,8 @@ mod tests {
             Box::new(Expr::BVar(0)),
         );
 
-        let (decl, const_names) = decl_to_lcnf_full(
-            &name, &params, Some(&uint64), &body, &config,
-        )
-        .expect("conversion must succeed");
+        let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
+            .expect("conversion must succeed");
 
         eprintln!("OX7 (#1+#2) ret_type = {:?}", decl.ret_type);
         // #1: ret_type is the declared `UInt64`, not the
@@ -1900,10 +1915,7 @@ mod tests {
         let config = default_config();
         let name = Name::str("add");
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let params = vec![
-            (Name::str("a"), nat.clone()),
-            (Name::str("b"), nat.clone()),
-        ];
+        let params = vec![(Name::str("a"), nat.clone()), (Name::str("b"), nat.clone())];
         let body = Expr::App(
             Box::new(Expr::App(
                 Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
@@ -1912,9 +1924,8 @@ mod tests {
             Box::new(Expr::BVar(0)),
         );
 
-        let (decl, const_names) =
-            decl_to_lcnf_with_const_names(&name, &params, &body, &config)
-                .expect("conversion must succeed");
+        let (decl, const_names) = decl_to_lcnf_with_const_names(&name, &params, &body, &config)
+            .expect("conversion must succeed");
 
         // The Const reference `Nat.add` must be in the
         // map keyed by its var_id; `a`/`b` (params) must
@@ -1964,10 +1975,7 @@ mod tests {
         let config = default_config();
         let name = Name::str("add");
         let nat = Expr::Const(Name::str("Nat"), vec![]);
-        let params = vec![
-            (Name::str("a"), nat.clone()),
-            (Name::str("b"), nat.clone()),
-        ];
+        let params = vec![(Name::str("a"), nat.clone()), (Name::str("b"), nat.clone())];
         // body = Nat.add a b
         // = App(App(Const("Nat.add"), BVar(1)), BVar(0))
         let nat_add = Expr::Const(Name::str("Nat.add"), vec![]);
@@ -1976,8 +1984,7 @@ mod tests {
             Box::new(Expr::BVar(0)),
         );
 
-        let decl = decl_to_lcnf(&name, &params, &body, &config)
-            .expect("decl_to_lcnf must succeed");
+        let decl = decl_to_lcnf(&name, &params, &body, &config).expect("decl_to_lcnf must succeed");
 
         // ── Invariant 1: params get var_ids 0 and 1.
         assert_eq!(decl.params.len(), 2, "expect 2 params");
@@ -1992,10 +1999,7 @@ mod tests {
         // and Var(LcnfVarId(1)) for `a` and `b`.
         match &decl.body {
             LcnfExpr::TailCall(head, args) => {
-                eprintln!(
-                    "OX7 spike: head = {:?}, args = {:?}",
-                    head, args
-                );
+                eprintln!("OX7 spike: head = {:?}, args = {:?}", head, args);
                 assert_eq!(args.len(), 2, "expect 2 args (a, b)");
                 // `Nat.add a b` — args[0] is `a` (BVar 1
                 // in de Bruijn after the App reversal in
