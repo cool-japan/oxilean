@@ -343,7 +343,10 @@ pub(super) fn arg_lcnf_type(arg: &LcnfArg, state: &ToLcnfState) -> Option<LcnfTy
         LcnfArg::Var(id) => state.var_type(*id).cloned(),
         LcnfArg::Lit(LcnfLit::Nat(_)) => Some(LcnfType::Nat),
         LcnfArg::Lit(LcnfLit::Str(_)) => Some(LcnfType::LcnfString),
-        LcnfArg::Erased | LcnfArg::Type(_) => None,
+        // A signed literal has no `LcnfType` of its own — `Int` is not
+        // in the enum, and picking a width here would be the same
+        // mistake `app_result_type` refuses to make for `Nat`.
+        LcnfArg::Lit(LcnfLit::Int(_)) | LcnfArg::Erased | LcnfArg::Type(_) => None,
     }
 }
 /// How a Lean stdlib typeclass projection relates its result type to
@@ -1736,11 +1739,11 @@ mod tests {
         ];
         // body = HAdd.hAdd a b
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::from_str("HAdd.hAdd"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::from_str("HAdd.hAdd"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
 
         let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
@@ -1800,20 +1803,20 @@ mod tests {
         let alpha = Expr::FVar(FVarId(9_000_001));
         let inst = Expr::FVar(FVarId(9_000_002));
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("ite"), vec![])),
-                            Box::new(alpha),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("ite"), vec![])),
+                            Node::new(alpha),
                         )),
-                        Box::new(Expr::BVar(2)),
+                        Node::new(Expr::BVar(2)),
                     )),
-                    Box::new(inst),
+                    Node::new(inst),
                 )),
-                Box::new(Expr::BVar(1)),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
 
         let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
@@ -1893,20 +1896,20 @@ mod tests {
         let inst = Expr::FVar(FVarId(9_100_002));
         let bool_true = Expr::Const(Name::str("Bool.true"), vec![]);
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::App(
-                            Box::new(Expr::Const(Name::str("ite"), vec![])),
-                            Box::new(alpha),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::App(
+                            Node::new(Expr::Const(Name::str("ite"), vec![])),
+                            Node::new(alpha),
                         )),
-                        Box::new(bool_true),
+                        Node::new(bool_true),
                     )),
-                    Box::new(inst),
+                    Node::new(inst),
                 )),
-                Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(1))),
+                Node::new(Expr::Lit(oxilean_kernel::Literal::nat(1))),
             )),
-            Box::new(Expr::Lit(oxilean_kernel::Literal::Nat(0))),
+            Node::new(Expr::Lit(oxilean_kernel::Literal::nat(0))),
         );
 
         let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
@@ -1969,7 +1972,7 @@ mod tests {
     /// typeclass) to `App(App(Const("HPow.hPow"), n), 8)`.
     /// We construct the App tree directly with
     /// `Expr::BVar(0)` for `n` and a `Nat`-typed literal
-    /// `8` (modelled as `Expr::Lit(Literal::Nat(8))`).
+    /// `8` (modelled as `Expr::Lit(Literal::nat(8))`).
     #[test]
     pub(super) fn spike_ox7_hpow_lowers_to_method_call() {
         use crate::rust_target_backend::RustTargetBackend;
@@ -1979,11 +1982,11 @@ mod tests {
         let params = vec![(Name::str("n"), uint64.clone())];
         // body = HPow.hPow n 8
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::from_str("HPow.hPow"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::from_str("HPow.hPow"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::Lit(Literal::Nat(8))),
+            Node::new(Expr::Lit(Literal::nat(8))),
         );
 
         let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
@@ -2039,11 +2042,11 @@ mod tests {
         let proj = Expr::Proj(
             Name::str("add"),
             0,
-            Box::new(Expr::Const(Name::str("UInt64"), vec![])),
+            Node::new(Expr::Const(Name::str("UInt64"), vec![])),
         );
         let body = Expr::App(
-            Box::new(Expr::App(Box::new(proj), Box::new(Expr::BVar(1)))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(Node::new(proj), Node::new(Expr::BVar(1)))),
+            Node::new(Expr::BVar(0)),
         );
 
         let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
@@ -2086,11 +2089,11 @@ mod tests {
             (Name::str("b"), uint64.clone()),
         ];
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
 
         let (decl, const_names) = decl_to_lcnf_full(&name, &params, Some(&uint64), &body, &config)
@@ -2155,11 +2158,11 @@ mod tests {
         let nat = Expr::Const(Name::str("Nat"), vec![]);
         let params = vec![(Name::str("a"), nat.clone()), (Name::str("b"), nat.clone())];
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Nat.add"), vec![])),
-                Box::new(Expr::BVar(1)),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Nat.add"), vec![])),
+                Node::new(Expr::BVar(1)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
 
         let (decl, const_names) = decl_to_lcnf_with_const_names(&name, &params, &body, &config)
@@ -2218,8 +2221,8 @@ mod tests {
         // = App(App(Const("Nat.add"), BVar(1)), BVar(0))
         let nat_add = Expr::Const(Name::str("Nat.add"), vec![]);
         let body = Expr::App(
-            Box::new(Expr::App(Box::new(nat_add), Box::new(Expr::BVar(1)))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(Node::new(nat_add), Node::new(Expr::BVar(1)))),
+            Node::new(Expr::BVar(0)),
         );
 
         let decl = decl_to_lcnf(&name, &params, &body, &config).expect("decl_to_lcnf must succeed");
@@ -2640,8 +2643,8 @@ mod tests {
         let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
         let dbl = Expr::Const(Name::str("double"), vec![]);
         let body = Expr::App(
-            Box::new(dbl.clone()),
-            Box::new(Expr::App(Box::new(dbl), Box::new(Expr::BVar(0)))),
+            Node::new(dbl.clone()),
+            Node::new(Expr::App(Node::new(dbl), Node::new(Expr::BVar(0)))),
         );
         let (decl, _) = decl_to_lcnf_full_with_sigs(
             &Name::str("quadruple"),
@@ -2671,8 +2674,8 @@ mod tests {
         let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
         let dbl = Expr::Const(Name::str("double"), vec![]);
         let body = Expr::App(
-            Box::new(dbl.clone()),
-            Box::new(Expr::App(Box::new(dbl), Box::new(Expr::BVar(0)))),
+            Node::new(dbl.clone()),
+            Node::new(Expr::App(Node::new(dbl), Node::new(Expr::BVar(0)))),
         );
         let (decl, _) = decl_to_lcnf_full(
             &Name::str("quadruple"),
@@ -2704,25 +2707,25 @@ mod tests {
 
         // LT.lt 10 (HAdd.hAdd n 1) — `n > 10` unfolds to `10 < n`.
         let sum = Expr::App(
-            Box::new(Expr::App(Box::new(hadd), Box::new(Expr::BVar(0)))),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::App(Node::new(hadd), Node::new(Expr::BVar(0)))),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         let cmp = Expr::App(
-            Box::new(Expr::App(
-                Box::new(lt),
-                Box::new(Expr::Lit(Literal::Nat(10))),
+            Node::new(Expr::App(
+                Node::new(lt),
+                Node::new(Expr::Lit(Literal::nat(10))),
             )),
-            Box::new(sum),
+            Node::new(sum),
         );
         // Wrap in `ite` so the comparison is a scrutinee rather than
         // the tail call — a tail call takes the declaration's declared
         // return type and would not exercise the inference at all.
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("ite"), vec![])),
-                Box::new(cmp),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("ite"), vec![])),
+                Node::new(cmp),
             )),
-            Box::new(Expr::Const(Name::from_str("Bool.true"), vec![])),
+            Node::new(Expr::Const(Name::from_str("Bool.true"), vec![])),
         );
         let (decl, _) = decl_to_lcnf_full(
             &Name::str("isBig"),
@@ -2762,15 +2765,15 @@ mod tests {
         // ite (HAdd.hAdd UInt64 n n) — the `ite` wrapper keeps the sum
         // out of tail position so it gets a `Let` to inspect.
         let sum = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(Box::new(hadd), Box::new(uint64.clone()))),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(
+                Node::new(Expr::App(Node::new(hadd), Node::new(uint64.clone()))),
+                Node::new(Expr::BVar(0)),
             )),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::BVar(0)),
         );
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("ite"), vec![])),
-            Box::new(sum),
+            Node::new(Expr::Const(Name::str("ite"), vec![])),
+            Node::new(sum),
         );
         let (decl, _) = decl_to_lcnf_full_with_sigs(
             &Name::str("f"),
@@ -2804,16 +2807,16 @@ mod tests {
         let config = default_config();
         let hadd = Expr::Const(Name::from_str("HAdd.hAdd"), vec![]);
         let sum = Expr::App(
-            Box::new(Expr::App(
-                Box::new(hadd),
-                Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::App(
+                Node::new(hadd),
+                Node::new(Expr::Lit(Literal::nat(1))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::Lit(Literal::nat(1))),
         );
         // Wrapped so the sum is not the tail call.
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("ite"), vec![])),
-            Box::new(sum),
+            Node::new(Expr::Const(Name::str("ite"), vec![])),
+            Node::new(sum),
         );
         let (decl, _) = decl_to_lcnf_full(
             &Name::str("two"),
@@ -2845,12 +2848,12 @@ mod tests {
         let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
         let eq = Expr::Const(Name::from_str("Eq.eq"), vec![]);
         let cmp = Expr::App(
-            Box::new(Expr::App(Box::new(eq), Box::new(Expr::BVar(1)))),
-            Box::new(Expr::BVar(0)),
+            Node::new(Expr::App(Node::new(eq), Node::new(Expr::BVar(1)))),
+            Node::new(Expr::BVar(0)),
         );
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("ite"), vec![])),
-            Box::new(cmp),
+            Node::new(Expr::Const(Name::str("ite"), vec![])),
+            Node::new(cmp),
         );
         let (decl, _) = decl_to_lcnf_full(
             &Name::str("eqp"),
@@ -2889,10 +2892,10 @@ mod tests {
         // partial one out of tail position so it gets a `Let` whose
         // type we can inspect.
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("h"), vec![])),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("f"), vec![])),
-                Box::new(Expr::BVar(0)),
+            Node::new(Expr::Const(Name::str("h"), vec![])),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("f"), vec![])),
+                Node::new(Expr::BVar(0)),
             )),
         );
         let (decl, _) = decl_to_lcnf_full_with_sigs(
@@ -2926,8 +2929,8 @@ mod tests {
             ty: Expr::Pi(
                 BinderInfo::Default,
                 Name::str("_"),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
-                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                Node::new(Expr::Const(Name::str("Nat"), vec![])),
             ),
         })
         .expect("add");
