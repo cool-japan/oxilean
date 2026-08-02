@@ -158,14 +158,14 @@
 use std::sync::Arc;
 
 use oxilean_kernel::{
+    Expr, Literal, Name,
     declaration::ConstantInfo,
     env::{Declaration, Environment},
     ffi::ExternRegistry,
     instantiate::instantiate_one,
-    Expr, Literal, Name,
 };
 
-use crate::extern_resolver::{dispatch_extern_const, ExternDispatch, SharedExternResolver};
+use crate::extern_resolver::{ExternDispatch, SharedExternResolver, dispatch_extern_const};
 
 /// Error surface for [`run_main`].
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -297,8 +297,8 @@ pub fn run_main_with_args(
     };
 
     let _ = args; // program-args slot reserved for `main :
-                  // List String → IO α`; v0 walker accepts
-                  // only `main : IO α` (no-arg).
+    // List String → IO α`; v0 walker accepts
+    // only `main : IO α` (no-arg).
 
     let mut ctx = WalkCtx {
         env,
@@ -366,11 +366,7 @@ const MAX_WALK_DEPTH: usize = 1024;
 /// the continuation as another opaque IO action.
 type WalkResult = Result<Option<Expr>, DriverError>;
 
-fn walk_io_action(
-    expr: &Expr,
-    ctx: &mut WalkCtx<'_>,
-    depth: usize,
-) -> WalkResult {
+fn walk_io_action(expr: &Expr, ctx: &mut WalkCtx<'_>, depth: usize) -> WalkResult {
     if depth > MAX_WALK_DEPTH {
         return Err(DriverError::NotYetImplemented {
             reason: format!(
@@ -498,7 +494,13 @@ fn walk_io_action(
         // the resolver still fires; embedders that need
         // richer encoding can layer on top.
         let encoded_args = encode_leaf_args_for_extern(&head_args, ctx.env).unwrap_or_default();
-        match dispatch_extern_const(ctx.env, ctx.extern_registry, Some(ctx.resolver), name, &encoded_args) {
+        match dispatch_extern_const(
+            ctx.env,
+            ctx.extern_registry,
+            Some(ctx.resolver),
+            name,
+            &encoded_args,
+        ) {
             ExternDispatch::Resolved(_bytes) => {
                 // Effect fired. The result bytes don't
                 // decode into a Lean Expr at the
@@ -624,7 +626,11 @@ fn encode_leaf_args_for_extern(args: &[&Expr], env: &Environment) -> Option<Vec<
 fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>, env: &Environment) -> Option<()> {
     match arg {
         Expr::Lit(Literal::Nat(n)) => {
-            out.extend_from_slice(&n.to_le_bytes());
+            // Upstream 0.1.4 widened `Literal::Nat` to `BigNat`. The
+            // canonical ABI's `Nat` leaf is a u64 here, so a literal
+            // that does not fit is not encodable — refuse rather than
+            // silently truncate.
+            out.extend_from_slice(&n.to_u64()?.to_le_bytes());
         }
         Expr::Lit(Literal::Str(s)) => {
             let bytes = s.as_bytes();
@@ -704,14 +710,13 @@ fn encode_one_arg(arg: &Expr, out: &mut Vec<u8>, env: &Environment) -> Option<()
 /// elaboration, not IO-level).
 fn try_dispatch_io_builtin(name: &Name, args: &[&Expr]) -> Option<()> {
     let name_str = name.to_string();
-    let (handler, has_newline, to_stderr): (&str, bool, bool) =
-        match name_str.as_str() {
-            "IO.println" | "IO_println" => ("println", true, false),
-            "IO.eprintln" | "IO_eprintln" => ("eprintln", true, true),
-            "IO.print" | "IO_print" => ("print", false, false),
-            "IO.eprint" | "IO_eprint" => ("eprint", false, true),
-            _ => return None,
-        };
+    let (handler, has_newline, to_stderr): (&str, bool, bool) = match name_str.as_str() {
+        "IO.println" | "IO_println" => ("println", true, false),
+        "IO.eprintln" | "IO_eprintln" => ("eprintln", true, true),
+        "IO.print" | "IO_print" => ("print", false, false),
+        "IO.eprint" | "IO_eprint" => ("eprint", false, true),
+        _ => return None,
+    };
     let _ = handler;
     // Last arg is the string payload.
     let payload = args.last()?;
@@ -850,9 +855,11 @@ fn try_dispatch_io_fs_builtin(name: &Name, args: &[&Expr]) -> Option<WalkResult>
             let to = decode_string_arg(args.last()?)?;
             Some(match std::fs::rename(&from, &to) {
                 Ok(()) => Ok(None),
-                Err(e) => {
-                    Err(extern_fs_error("IO.FS.rename", &format!("{from} -> {to}"), e))
-                }
+                Err(e) => Err(extern_fs_error(
+                    "IO.FS.rename",
+                    &format!("{from} -> {to}"),
+                    e,
+                )),
             })
         }
         _ => None,
@@ -865,11 +872,7 @@ fn try_dispatch_io_fs_builtin(name: &Name, args: &[&Expr]) -> Option<WalkResult>
 /// dispatch path uses for cdylib errors, so embedders that
 /// observe `ExternFailed` don't need to special-case
 /// builtin failures separately.
-fn extern_fs_error(
-    op: &str,
-    arg: &str,
-    err: std::io::Error,
-) -> DriverError {
+fn extern_fs_error(op: &str, arg: &str, err: std::io::Error) -> DriverError {
     DriverError::ExternFailed(oxilean_kernel::ffi::ExternCallError::CallbackFailed(
         format!("{op}({arg}): {err}"),
     ))
@@ -963,7 +966,7 @@ fn encode_typeclass_projection(
             let ty_expr = head_args[0];
             let value_expr = head_args[1];
             let n = match value_expr {
-                Expr::Lit(Literal::Nat(n)) => *n,
+                Expr::Lit(Literal::Nat(n)) => n.to_u64()?,
                 _ => return None,
             };
             encode_sized_integer(ty_expr, n, /*negate=*/ false, out)?;
@@ -989,7 +992,7 @@ fn encode_typeclass_projection(
                 return None;
             }
             let n = match inner_args[1] {
-                Expr::Lit(Literal::Nat(n)) => *n,
+                Expr::Lit(Literal::Nat(n)) => n.to_u64()?,
                 _ => return None,
             };
             encode_sized_integer(ty_expr, n, /*negate=*/ true, out)?;
@@ -1001,7 +1004,7 @@ fn encode_typeclass_projection(
                 return None;
             }
             let n = match head_args[head_args.len() - 1] {
-                Expr::Lit(Literal::Nat(n)) => *n,
+                Expr::Lit(Literal::Nat(n)) => n.to_u64()?,
                 _ => return None,
             };
             let cp = u32::try_from(n).ok()?;
@@ -1168,12 +1171,7 @@ fn encode_user_defined_ctor(
 /// complement at the type's width. Recognised types:
 /// UInt8/16/32/64/128, Int8/16/32/64/128, USize/ISize
 /// (host width).
-fn encode_sized_integer(
-    ty_expr: &Expr,
-    n: u64,
-    negate: bool,
-    out: &mut Vec<u8>,
-) -> Option<()> {
+fn encode_sized_integer(ty_expr: &Expr, n: u64, negate: bool, out: &mut Vec<u8>) -> Option<()> {
     let Expr::Const(ty_name, _) = ty_expr else {
         return None;
     };
@@ -1356,7 +1354,7 @@ fn is_io_bind_name(name: &Name) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use oxilean_kernel::{env::Environment, Expr, Name};
+    use oxilean_kernel::{Expr, Name, Node, env::Environment};
 
     fn empty_env() -> Environment {
         Environment::new()
@@ -1404,7 +1402,7 @@ mod tests {
         env.add(Declaration::Axiom {
             name: main.clone(),
             univ_params: Vec::new(),
-            ty: Expr::Sort(oxilean_kernel::Level::Zero),
+            ty: Expr::Sort(oxilean_kernel::Level::zero()),
         })
         .unwrap();
         let resolver = make_resolver();
@@ -1426,8 +1424,8 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         let body = Expr::Const(Name::str("IO.pure"), Vec::new());
         env.add(Declaration::Definition {
@@ -1451,12 +1449,12 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
         );
         env.add(Declaration::Definition {
             name: main.clone(),
@@ -1480,8 +1478,8 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         // App-chain: ((((IO.bind α) β) m) k)
         let alpha = Expr::Const(Name::str("Unit"), Vec::new());
@@ -1489,17 +1487,17 @@ mod tests {
         let m = Expr::Const(Name::str("IO.pure"), Vec::new());
         let k = Expr::Const(Name::str("IO.pure"), Vec::new());
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("IO.bind"), Vec::new())),
-                        Box::new(alpha),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("IO.bind"), Vec::new())),
+                        Node::new(alpha),
                     )),
-                    Box::new(beta),
+                    Node::new(beta),
                 )),
-                Box::new(m),
+                Node::new(m),
             )),
-            Box::new(k),
+            Node::new(k),
         );
         env.add(Declaration::Definition {
             name: main.clone(),
@@ -1523,17 +1521,17 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         let m = Expr::Const(Name::str("IO.pure"), Vec::new());
         let k = Expr::Const(Name::str("IO.pure"), Vec::new());
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
-                Box::new(m),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
+                Node::new(m),
             )),
-            Box::new(k),
+            Node::new(k),
         );
         env.add(Declaration::Definition {
             name: main.clone(),
@@ -1557,12 +1555,12 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("EStateM.pure"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("EStateM.pure"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
         );
         env.add(Declaration::Definition {
             name: main.clone(),
@@ -1586,17 +1584,17 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         let m = Expr::Const(Name::str("EIO.pure"), Vec::new());
         let k = Expr::Const(Name::str("EIO.pure"), Vec::new());
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("EIO.bind"), Vec::new())),
-                Box::new(m),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("EIO.bind"), Vec::new())),
+                Node::new(m),
             )),
-            Box::new(k),
+            Node::new(k),
         );
         env.add(Declaration::Definition {
             name: main.clone(),
@@ -1619,8 +1617,8 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         let body = Expr::Const(Name::str("StateT.pure"), Vec::new());
         env.add(Declaration::Definition {
@@ -1651,31 +1649,31 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         let unit = Expr::Const(Name::str("Unit.unit"), Vec::new());
         let m = Expr::App(
-            Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
-            Box::new(unit.clone()),
+            Node::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+            Node::new(unit.clone()),
         );
         // k = `fun x : Unit => IO.pure (BVar 0)`.
         let unit_ty = Expr::Const(Name::str("Unit"), Vec::new());
         let k = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             Name::str("x"),
-            Box::new(unit_ty),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
-                Box::new(Expr::BVar(0)),
+            Node::new(unit_ty),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+                Node::new(Expr::BVar(0)),
             )),
         );
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
-                Box::new(m),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
+                Node::new(m),
             )),
-            Box::new(k),
+            Node::new(k),
         );
         env.add(Declaration::Definition {
             name: main.clone(),
@@ -1723,8 +1721,8 @@ mod tests {
             name: extern_name.clone(),
             univ_params: Vec::new(),
             ty: Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+                Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
             ),
         })
         .unwrap();
@@ -1736,26 +1734,26 @@ mod tests {
         let k = Expr::Lam(
             oxilean_kernel::BinderInfo::Default,
             Name::str("_"),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
-                Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+                Node::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
             )),
         );
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
-                Box::new(m),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Bind.bind"), Vec::new())),
+                Node::new(m),
             )),
-            Box::new(k),
+            Node::new(k),
         );
 
         env.add(Declaration::Definition {
             name: main.clone(),
             univ_params: Vec::new(),
             ty: Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+                Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
             ),
             val: body,
             hint: oxilean_kernel::ReducibilityHint::Regular(0),
@@ -1813,8 +1811,8 @@ mod tests {
             name: extern_name.clone(),
             univ_params: Vec::new(),
             ty: Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+                Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
             ),
         })
         .unwrap();
@@ -1825,8 +1823,8 @@ mod tests {
             name: main.clone(),
             univ_params: Vec::new(),
             ty: Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+                Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
             ),
             val: body,
             hint: oxilean_kernel::ReducibilityHint::Regular(0),
@@ -1896,7 +1894,7 @@ mod tests {
 
     #[test]
     fn encode_nat_literal_is_u64_le() {
-        let arg = Expr::Lit(Literal::Nat(0xDEAD_BEEF));
+        let arg = Expr::Lit(Literal::nat(0xDEAD_BEEF));
         let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0xEF, 0xBE, 0xAD, 0xDE, 0, 0, 0, 0]);
     }
@@ -1938,15 +1936,15 @@ mod tests {
         // `(IO.pure x)` is App-headed; encoder bails so
         // the walker forwards `&[]`.
         let arg = Expr::App(
-            Box::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO.pure"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit.unit"), Vec::new())),
         );
         assert!(encode_leaf_args_for_extern(&[&arg], &empty_env()).is_none());
     }
 
     #[test]
     fn encode_concatenates_multiple_args_in_order() {
-        let a = Expr::Lit(Literal::Nat(1));
+        let a = Expr::Lit(Literal::nat(1));
         let b = Expr::Const(Name::str("Bool.true"), Vec::new());
         let c = Expr::Lit(Literal::Str("x".to_string()));
         let out = encode_leaf_args_for_extern(&[&a, &b, &c], &empty_env()).unwrap();
@@ -1965,28 +1963,28 @@ mod tests {
         // `@OfNat.ofNat <ty> <n> <instance>` — instance
         // is opaque to the encoder; use a sentinel Const.
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("OfNat.ofNat"), Vec::new())),
-                    Box::new(Expr::Const(Name::str(ty), Vec::new())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("OfNat.ofNat"), Vec::new())),
+                    Node::new(Expr::Const(Name::str(ty), Vec::new())),
                 )),
-                Box::new(Expr::Lit(Literal::Nat(n))),
+                Node::new(Expr::Lit(Literal::nat(n))),
             )),
-            Box::new(Expr::Const(Name::str("_inst"), Vec::new())),
+            Node::new(Expr::Const(Name::str("_inst"), Vec::new())),
         )
     }
 
     fn neg_of(ty: &str, inner: Expr) -> Expr {
         // `@Neg.neg <ty> <inst> <inner>`.
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Neg.neg"), Vec::new())),
-                    Box::new(Expr::Const(Name::str(ty), Vec::new())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Neg.neg"), Vec::new())),
+                    Node::new(Expr::Const(Name::str(ty), Vec::new())),
                 )),
-                Box::new(Expr::Const(Name::str("_inst"), Vec::new())),
+                Node::new(Expr::Const(Name::str("_inst"), Vec::new())),
             )),
-            Box::new(inner),
+            Node::new(inner),
         )
     }
 
@@ -2006,11 +2004,7 @@ mod tests {
                 7,
                 vec![7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             ),
-            (
-                "USize",
-                42,
-                vec![42, 0, 0, 0, 0, 0, 0, 0],
-            ),
+            ("USize", 42, vec![42, 0, 0, 0, 0, 0, 0, 0]),
         ];
         for (ty, n, expected) in cases {
             let arg = ofnat_of(ty, n);
@@ -2029,11 +2023,7 @@ mod tests {
         let cases: Vec<(&str, u64, Vec<u8>)> = vec![
             ("Int8", 42, vec![42]),
             ("Int16", 0x07F0, vec![0xF0, 0x07]),
-            (
-                "Int32",
-                0x0102_0304,
-                vec![0x04, 0x03, 0x02, 0x01],
-            ),
+            ("Int32", 0x0102_0304, vec![0x04, 0x03, 0x02, 0x01]),
             (
                 "Int64",
                 0x1122_3344_5566_7788,
@@ -2044,11 +2034,7 @@ mod tests {
                 1,
                 vec![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             ),
-            (
-                "ISize",
-                100,
-                vec![100, 0, 0, 0, 0, 0, 0, 0],
-            ),
+            ("ISize", 100, vec![100, 0, 0, 0, 0, 0, 0, 0]),
         ];
         for (ty, n, expected) in cases {
             let arg = ofnat_of(ty, n);
@@ -2090,16 +2076,16 @@ mod tests {
     fn encode_char_ofnat_writes_u32_le_code_point() {
         // `'A'` = `Char.ofNat 65` → 4 bytes LE.
         let arg = Expr::App(
-            Box::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
-            Box::new(Expr::Lit(Literal::Nat(65))),
+            Node::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
+            Node::new(Expr::Lit(Literal::nat(65))),
         );
         let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![65, 0, 0, 0]);
 
         // BMP-side code point check.
         let arg = Expr::App(
-            Box::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
-            Box::new(Expr::Lit(Literal::Nat(0x4E2D))), // 中
+            Node::new(Expr::Const(Name::str("Char.ofNat"), Vec::new())),
+            Node::new(Expr::Lit(Literal::nat(0x4E2D))), // 中
         );
         let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![0x2D, 0x4E, 0, 0]);
@@ -2137,17 +2123,17 @@ mod tests {
         let alpha = Expr::Const(Name::str("_α"), Vec::new());
         let beta = Expr::Const(Name::str("_β"), Vec::new());
         Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Prod.mk"), Vec::new())),
-                        Box::new(alpha),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Prod.mk"), Vec::new())),
+                        Node::new(alpha),
                     )),
-                    Box::new(beta),
+                    Node::new(beta),
                 )),
-                Box::new(a),
+                Node::new(a),
             )),
-            Box::new(b),
+            Node::new(b),
         )
     }
 
@@ -2178,17 +2164,17 @@ mod tests {
         // Int8 for a determinate byte width.
         let val = ofnat_of("Int8", 42);
         let arg = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::App(
-                        Box::new(Expr::Const(Name::str("Subtype.mk"), Vec::new())),
-                        Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::App(
+                        Node::new(Expr::Const(Name::str("Subtype.mk"), Vec::new())),
+                        Node::new(Expr::Const(Name::str("_α"), Vec::new())),
                     )),
-                    Box::new(Expr::Const(Name::str("_pred"), Vec::new())),
+                    Node::new(Expr::Const(Name::str("_pred"), Vec::new())),
                 )),
-                Box::new(val),
+                Node::new(val),
             )),
-            Box::new(Expr::Const(Name::str("_proof"), Vec::new())),
+            Node::new(Expr::Const(Name::str("_proof"), Vec::new())),
         );
         let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![42]);
@@ -2205,11 +2191,11 @@ mod tests {
     fn encode_option_some_writes_tag_then_payload() {
         // `Option.some (42 : UInt8)` → tag 1 ‖ 0x2A.
         let arg = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Option.some"), Vec::new())),
-                Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Option.some"), Vec::new())),
+                Node::new(Expr::Const(Name::str("_α"), Vec::new())),
             )),
-            Box::new(ofnat_of("UInt8", 0x2A)),
+            Node::new(ofnat_of("UInt8", 0x2A)),
         );
         let out = encode_leaf_args_for_extern(&[&arg], &empty_env()).unwrap();
         assert_eq!(out, vec![1, 0, 0, 0, 0x2A]);
@@ -2220,14 +2206,14 @@ mod tests {
         // `Sum.inl (0xFF : UInt8) : Sum UInt8 UInt16` →
         // tag 0 ‖ 0xFF.
         let inl = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Sum.inl"), Vec::new())),
-                    Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Sum.inl"), Vec::new())),
+                    Node::new(Expr::Const(Name::str("_α"), Vec::new())),
                 )),
-                Box::new(Expr::Const(Name::str("_β"), Vec::new())),
+                Node::new(Expr::Const(Name::str("_β"), Vec::new())),
             )),
-            Box::new(ofnat_of("UInt8", 0xFF)),
+            Node::new(ofnat_of("UInt8", 0xFF)),
         );
         let out = encode_leaf_args_for_extern(&[&inl], &empty_env()).unwrap();
         assert_eq!(out, vec![0, 0, 0, 0, 0xFF]);
@@ -2235,14 +2221,14 @@ mod tests {
         // `Sum.inr (0x4242 : UInt16) : Sum UInt8 UInt16`
         // → tag 1 ‖ 0x42 0x42 (little-endian).
         let inr = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::App(
-                    Box::new(Expr::Const(Name::str("Sum.inr"), Vec::new())),
-                    Box::new(Expr::Const(Name::str("_α"), Vec::new())),
+            Node::new(Expr::App(
+                Node::new(Expr::App(
+                    Node::new(Expr::Const(Name::str("Sum.inr"), Vec::new())),
+                    Node::new(Expr::Const(Name::str("_α"), Vec::new())),
                 )),
-                Box::new(Expr::Const(Name::str("_β"), Vec::new())),
+                Node::new(Expr::Const(Name::str("_β"), Vec::new())),
             )),
-            Box::new(ofnat_of("UInt16", 0x4242)),
+            Node::new(ofnat_of("UInt16", 0x4242)),
         );
         let out = encode_leaf_args_for_extern(&[&inr], &empty_env()).unwrap();
         assert_eq!(out, vec![1, 0, 0, 0, 0x42, 0x42]);
@@ -2254,11 +2240,11 @@ mod tests {
         // the walker forwards `&[]` so embedder-side IDL-
         // aware encoding can layer on top.
         let arg = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(Name::str("Foo.mk"), Vec::new())),
-                Box::new(Expr::Lit(Literal::Nat(1))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(Name::str("Foo.mk"), Vec::new())),
+                Node::new(Expr::Lit(Literal::nat(1))),
             )),
-            Box::new(Expr::Lit(Literal::Nat(2))),
+            Node::new(Expr::Lit(Literal::nat(2))),
         );
         assert!(encode_leaf_args_for_extern(&[&arg], &empty_env()).is_none());
     }
@@ -2279,12 +2265,7 @@ mod tests {
 
     #[test]
     fn try_dispatch_io_builtin_recognises_eprintln_eprint_print() {
-        for builtin in [
-            "IO.println",
-            "IO.eprintln",
-            "IO.print",
-            "IO.eprint",
-        ] {
+        for builtin in ["IO.println", "IO.eprintln", "IO.print", "IO.eprint"] {
             let n = Name::str(builtin);
             let s = Expr::Lit(Literal::Str("x".to_string()));
             assert!(
@@ -2297,7 +2278,7 @@ mod tests {
     #[test]
     fn try_dispatch_io_builtin_rejects_non_string_arg() {
         let name = Name::str("IO.println");
-        let arg = Expr::Lit(Literal::Nat(42));
+        let arg = Expr::Lit(Literal::nat(42));
         assert!(try_dispatch_io_builtin(&name, &[&arg]).is_none());
     }
 
@@ -2316,8 +2297,8 @@ mod tests {
         let name = Name::str("IO.println");
         let inner = Expr::Lit(Literal::Str("via toString".to_string()));
         let to_string = Expr::App(
-            Box::new(Expr::Const(Name::str("toString"), Vec::new())),
-            Box::new(inner),
+            Node::new(Expr::Const(Name::str("toString"), Vec::new())),
+            Node::new(inner),
         );
         assert!(try_dispatch_io_builtin(&name, &[&to_string]).is_some());
     }
@@ -2330,8 +2311,8 @@ mod tests {
         let mut env = empty_env();
         let main = Name::str("main");
         let io_unit_ty = Expr::App(
-            Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-            Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+            Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
         );
         // Have to declare the extern axiom so env.find
         // can resolve it, but the walker's IO-builtin arm
@@ -2344,8 +2325,8 @@ mod tests {
         })
         .unwrap();
         let body = Expr::App(
-            Box::new(Expr::Const(Name::str("IO.println"), Vec::new())),
-            Box::new(Expr::Lit(Literal::Str(
+            Node::new(Expr::Const(Name::str("IO.println"), Vec::new())),
+            Node::new(Expr::Lit(Literal::Str(
                 "[driver test] IO.println dispatch".to_string(),
             ))),
         );
@@ -2401,8 +2382,7 @@ mod tests {
 
         // readFile path
         let name = Name::str("IO.FS.readFile");
-        let r = try_dispatch_io_fs_builtin(&name, &[&path_e])
-            .expect("readFile head should match");
+        let r = try_dispatch_io_fs_builtin(&name, &[&path_e]).expect("readFile head should match");
         match r {
             Ok(Some(Expr::Lit(Literal::Str(s)))) => {
                 assert_eq!(s, payload, "round-tripped contents must match");
@@ -2422,8 +2402,8 @@ mod tests {
 
         let path_e = Expr::Lit(Literal::Str(path.to_string_lossy().into_owned()));
         let name = Name::str("IO.FS.removeFile");
-        let r = try_dispatch_io_fs_builtin(&name, &[&path_e])
-            .expect("removeFile head should match");
+        let r =
+            try_dispatch_io_fs_builtin(&name, &[&path_e]).expect("removeFile head should match");
         assert!(matches!(r, Ok(None)));
         assert!(!path.exists(), "file must be gone after removeFile");
     }
@@ -2434,14 +2414,12 @@ mod tests {
         let dir_e = Expr::Lit(Literal::Str(dir.to_string_lossy().into_owned()));
 
         let name = Name::str("IO.FS.createDir");
-        let r = try_dispatch_io_fs_builtin(&name, &[&dir_e])
-            .expect("createDir head should match");
+        let r = try_dispatch_io_fs_builtin(&name, &[&dir_e]).expect("createDir head should match");
         assert!(matches!(r, Ok(None)));
         assert!(dir.is_dir(), "directory must exist after createDir");
 
         let name = Name::str("IO.FS.removeDir");
-        let r = try_dispatch_io_fs_builtin(&name, &[&dir_e])
-            .expect("removeDir head should match");
+        let r = try_dispatch_io_fs_builtin(&name, &[&dir_e]).expect("removeDir head should match");
         assert!(matches!(r, Ok(None)));
         assert!(!dir.exists(), "directory must be gone after removeDir");
     }
@@ -2468,8 +2446,7 @@ mod tests {
         let path = unique_tempfile_path("does-not-exist.txt");
         let path_e = Expr::Lit(Literal::Str(path.to_string_lossy().into_owned()));
         let name = Name::str("IO.FS.readFile");
-        let r = try_dispatch_io_fs_builtin(&name, &[&path_e])
-            .expect("readFile head should match");
+        let r = try_dispatch_io_fs_builtin(&name, &[&path_e]).expect("readFile head should match");
         match r {
             Err(DriverError::ExternFailed(e)) => {
                 let msg = e.to_string();
@@ -2542,9 +2519,7 @@ mod tests {
             common: ConstantVal {
                 name: Name::str("Color"),
                 level_params: vec![],
-                ty: Expr::Sort(oxilean_kernel::Level::succ(
-                    oxilean_kernel::Level::zero(),
-                )),
+                ty: Expr::Sort(oxilean_kernel::Level::succ(oxilean_kernel::Level::zero())),
             },
             num_params: 0,
             num_indices: 0,
@@ -2583,9 +2558,7 @@ mod tests {
             common: ConstantVal {
                 name: Name::str("Point"),
                 level_params: vec![],
-                ty: Expr::Sort(oxilean_kernel::Level::succ(
-                    oxilean_kernel::Level::zero(),
-                )),
+                ty: Expr::Sort(oxilean_kernel::Level::succ(oxilean_kernel::Level::zero())),
             },
             num_params: 0,
             num_indices: 0,
@@ -2627,8 +2600,8 @@ mod tests {
         // discriminant prefix; payload is the Nat → 8
         // bytes u64 LE.
         let arg = Expr::App(
-            Box::new(Expr::Const(Name::str("Point.mk"), Vec::new())),
-            Box::new(Expr::Lit(Literal::Nat(42))),
+            Node::new(Expr::Const(Name::str("Point.mk"), Vec::new())),
+            Node::new(Expr::Lit(Literal::nat(42))),
         );
         let out = encode_leaf_args_for_extern(&[&arg], &env).unwrap();
         assert_eq!(out, vec![42, 0, 0, 0, 0, 0, 0, 0]);
@@ -2672,26 +2645,26 @@ mod tests {
             name: extern_name.clone(),
             univ_params: Vec::new(),
             ty: Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+                Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
             ),
         })
         .unwrap();
 
         // `main := nat_extern 42 Bool.true`
         let body = Expr::App(
-            Box::new(Expr::App(
-                Box::new(Expr::Const(extern_name.clone(), Vec::new())),
-                Box::new(Expr::Lit(Literal::Nat(42))),
+            Node::new(Expr::App(
+                Node::new(Expr::Const(extern_name.clone(), Vec::new())),
+                Node::new(Expr::Lit(Literal::nat(42))),
             )),
-            Box::new(Expr::Const(Name::str("Bool.true"), Vec::new())),
+            Node::new(Expr::Const(Name::str("Bool.true"), Vec::new())),
         );
         env.add(Declaration::Definition {
             name: main.clone(),
             univ_params: Vec::new(),
             ty: Expr::App(
-                Box::new(Expr::Const(Name::str("IO"), Vec::new())),
-                Box::new(Expr::Const(Name::str("Unit"), Vec::new())),
+                Node::new(Expr::Const(Name::str("IO"), Vec::new())),
+                Node::new(Expr::Const(Name::str("Unit"), Vec::new())),
             ),
             val: body,
             hint: oxilean_kernel::ReducibilityHint::Regular(0),
@@ -2722,6 +2695,9 @@ mod tests {
         let mut expected = Vec::new();
         expected.extend_from_slice(&42u64.to_le_bytes());
         expected.push(0x01);
-        assert_eq!(got, expected, "resolver should receive concatenated u64+bool bytes");
+        assert_eq!(
+            got, expected,
+            "resolver should receive concatenated u64+bool bytes"
+        );
     }
 }

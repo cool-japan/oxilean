@@ -64,14 +64,16 @@ use oxilean_kernel::{Environment, Name};
 /// `Send + Sync` so future parallel evaluators can dispatch
 /// without holding a `&mut` to the resolver. The current evaluator
 /// runs sequentially but the bound is cheap to require up-front.
+///
+/// One consequence worth stating: `Name` is `Rc<NameKind>` since
+/// the kernel's structural-sharing work, so it is `!Send` and an
+/// implementor **cannot store the `decl_name` it is handed**.
+/// Keep a `String` (or an interned id of your own) instead. The
+/// `&Name` in the signature is fine — only ownership is barred.
 pub trait ExternResolver: Send + Sync {
     /// Resolve and execute the `@[extern]` declaration named
     /// `decl_name` against the encoded argument bytes `args`.
-    fn resolve(
-        &self,
-        decl_name: &Name,
-        args: &[u8],
-    ) -> Result<Vec<u8>, ExternCallError>;
+    fn resolve(&self, decl_name: &Name, args: &[u8]) -> Result<Vec<u8>, ExternCallError>;
 }
 
 /// Boxed `dyn ExternResolver` — convenience alias for the
@@ -206,9 +208,7 @@ mod tests {
     use super::*;
     use oxilean_kernel::env::Declaration;
     use oxilean_kernel::expr::Expr;
-    use oxilean_kernel::ffi::{
-        CallingConvention, ExternDecl, FfiSafety, FfiSignature, FfiType,
-    };
+    use oxilean_kernel::ffi::{CallingConvention, ExternDecl, FfiSafety, FfiSignature, FfiType};
     use std::sync::Mutex;
 
     /// Build a `Declaration::Axiom` named `name` with a `ByteArray`-
@@ -239,8 +239,13 @@ mod tests {
     /// Mock resolver that records the calls it received and
     /// returns canned bytes. Keeps the recorded calls under a
     /// `Mutex` so the trait's `&self` (not `&mut self`) works.
+    ///
+    /// Records the decl name as a `String`, not a `Name`: since
+    /// oxilean-kernel's structural-sharing work `Name` is
+    /// `Rc<NameKind>` and therefore `!Send`, so a `Send + Sync`
+    /// resolver cannot own one. See [`ExternResolver`]'s note.
     struct MockResolver {
-        calls: Mutex<Vec<(Name, Vec<u8>)>>,
+        calls: Mutex<Vec<(String, Vec<u8>)>>,
         result: Result<Vec<u8>, ExternCallError>,
     }
 
@@ -257,15 +262,11 @@ mod tests {
     }
 
     impl ExternResolver for MockResolver {
-        fn resolve(
-            &self,
-            decl_name: &Name,
-            args: &[u8],
-        ) -> Result<Vec<u8>, ExternCallError> {
+        fn resolve(&self, decl_name: &Name, args: &[u8]) -> Result<Vec<u8>, ExternCallError> {
             self.calls
                 .lock()
                 .unwrap()
-                .push((decl_name.clone(), args.to_vec()));
+                .push((decl_name.to_string(), args.to_vec()));
             self.result.clone()
         }
     }
@@ -306,7 +307,7 @@ mod tests {
         // Mock observed the call with the right args.
         assert_eq!(mock.call_count(), 1);
         let calls = mock.calls.lock().unwrap();
-        assert_eq!(calls[0].0, Name::str("leo4_add_u64"));
+        assert_eq!(calls[0].0, Name::str("leo4_add_u64").to_string());
         assert_eq!(calls[0].1, vec![0x01, 0x02, 0x03, 0x04]);
     }
 
@@ -322,13 +323,7 @@ mod tests {
         let mut registry = ExternRegistry::new();
         registry.register(extern_decl("leo4_unhooked")).unwrap();
 
-        let result = dispatch_extern_const(
-            &env,
-            &registry,
-            None,
-            &Name::str("leo4_unhooked"),
-            &[],
-        );
+        let result = dispatch_extern_const(&env, &registry, None, &Name::str("leo4_unhooked"), &[]);
 
         match result {
             ExternDispatch::NoResolverInstalled => {}
@@ -379,8 +374,7 @@ mod tests {
 
         let registry = ExternRegistry::new(); // empty
 
-        let resolver: SharedExternResolver =
-            Arc::new(MockResolver::new(Ok(vec![])));
+        let resolver: SharedExternResolver = Arc::new(MockResolver::new(Ok(vec![])));
 
         let result = dispatch_extern_const(
             &env,
@@ -404,8 +398,7 @@ mod tests {
     fn unknown_name_returns_not_extern() {
         let env = Environment::new();
         let registry = ExternRegistry::new();
-        let resolver: SharedExternResolver =
-            Arc::new(MockResolver::new(Ok(vec![])));
+        let resolver: SharedExternResolver = Arc::new(MockResolver::new(Ok(vec![])));
 
         let result = dispatch_extern_const(
             &env,
@@ -431,8 +424,7 @@ mod tests {
         let mut registry = ExternRegistry::new();
         registry.register(extern_decl("leo4_decl_handle")).unwrap();
 
-        let resolver: SharedExternResolver =
-            Arc::new(MockResolver::new(Ok(vec![0x42])));
+        let resolver: SharedExternResolver = Arc::new(MockResolver::new(Ok(vec![0x42])));
 
         let result = dispatch_extern_decl(&decl, &registry, Some(&resolver), &[]);
 
