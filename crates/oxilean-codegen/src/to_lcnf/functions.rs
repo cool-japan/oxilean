@@ -266,8 +266,19 @@ pub(super) fn convert_const(
         Ok(LcnfExpr::Return(LcnfArg::Var(var_id)))
     } else {
         let var_id = state.fresh_named_var(&mangled);
+        note_const_type(state, &mangled, var_id);
         state.name_map.insert(mangled, var_id);
         Ok(LcnfExpr::Return(LcnfArg::Var(var_id)))
+    }
+}
+/// Copy a constant's declared type onto the variable that stands for
+/// it, so a later `arg_lcnf_type` on that variable answers.
+///
+/// Only meaningful when the caller supplied signatures; a no-op
+/// otherwise.
+pub(super) fn note_const_type(state: &mut ToLcnfState, mangled: &str, id: LcnfVarId) {
+    if let Some(ty) = state.const_type(mangled).cloned() {
+        state.record_var_type(id, &ty);
     }
 }
 /// Convert a function application.
@@ -299,10 +310,165 @@ pub(super) fn convert_app(
         let result = LcnfExpr::TailCall(head_arg, lcnf_args);
         Ok(state.wrap_pending_lets(result))
     } else {
+        let result_ty = app_result_type(head, &lcnf_args, state);
         let app_val = LcnfLetValue::App(head_arg, lcnf_args);
-        let result_id = state.emit_let("app", LcnfType::Object, app_val);
+        let result_id = state.emit_let("app", result_ty, app_val);
         let result = LcnfExpr::Return(LcnfArg::Var(result_id));
         Ok(state.wrap_pending_lets(result))
+    }
+}
+/// The mangled kernel name an application head denotes, if it denotes
+/// one at all.
+///
+/// The `Proj`-over-`Const` case mirrors [`convert_proj`]'s fast path:
+/// `oxilean-elab` lowers a namespaced reference like `UInt64.add` as
+/// `Proj("add", _, Const("UInt64"))`, and both have to resolve to the
+/// same composite name or the signature lookup misses.
+pub(super) fn app_head_name(head: &Expr) -> Option<String> {
+    match head {
+        Expr::Const(name, _) => Some(mangle_name(name)),
+        Expr::Proj(field, _, base) => match base.as_ref() {
+            Expr::Const(base_name, _) => Some(mangle_name(
+                &base_name.clone().append_str(name_to_string(field)),
+            )),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+/// The LCNF type of an already-converted argument, or `None` when it
+/// carries no type information.
+pub(super) fn arg_lcnf_type(arg: &LcnfArg, state: &ToLcnfState) -> Option<LcnfType> {
+    match arg {
+        LcnfArg::Var(id) => state.var_type(*id).cloned(),
+        LcnfArg::Lit(LcnfLit::Nat(_)) => Some(LcnfType::Nat),
+        LcnfArg::Lit(LcnfLit::Str(_)) => Some(LcnfType::LcnfString),
+        LcnfArg::Erased | LcnfArg::Type(_) => None,
+    }
+}
+/// How a Lean stdlib typeclass projection relates its result type to
+/// its operands' — for the projections whose env entry carries no
+/// usable signature.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum TcResultShape {
+    /// Result has the same type as the operands: `HAdd.hAdd`,
+    /// `HShiftLeft.hShiftLeft`, `Neg.neg`, …
+    Homogeneous,
+    /// Result is `Bool` regardless of operand type: `LT.lt`,
+    /// `BEq.beq`, `Decidable.decide`, …
+    Boolean,
+}
+/// Classify a mangled typeclass-projection name.
+///
+/// Entries here are exactly the projections
+/// `rust_target_backend::tc_projection_to_rust_binop` /
+/// `…_to_rust_unaryop` lower to native Rust operators, plus the
+/// `Bool`-valued ones that lower to method calls. Keep the two in
+/// step: a projection the backend emits as `a < b` but which this
+/// table does not classify gets `LcnfType::Object` for its result,
+/// which the Rust backend renders `Box<dyn std::any::Any>` and which
+/// then fails to compile at the use site.
+pub(super) fn tc_projection_result_shape(mangled: &str) -> Option<TcResultShape> {
+    match mangled {
+        // Arithmetic and bitwise — homogeneous in Lean's stdlib
+        // instances for every type the rust-transpile path admits
+        // (sized ints, floats). The shift operators are homogeneous
+        // in Lean too: `HShiftLeft UInt64 UInt64 UInt64`.
+        "HAdd_hAdd"
+        | "HSub_hSub"
+        | "HMul_hMul"
+        | "HDiv_hDiv"
+        | "HMod_hMod"
+        | "HPow_hPow"
+        | "HAnd_hAnd"
+        | "HOr_hOr"
+        | "HXor_hXor"
+        | "HShiftLeft_hShiftLeft"
+        | "HShiftRight_hShiftRight"
+        | "Neg_neg"
+        | "Complement_complement" => Some(TcResultShape::Homogeneous),
+        // Comparison and boolean connectives.
+        "LT_lt" | "LE_le" | "GT_gt" | "GE_ge" | "BEq_beq" | "Not_not" | "Bool_not" | "Bool_and"
+        | "Bool_or" | "Bool_xor" | "Decidable_decide" => Some(TcResultShape::Boolean),
+        _ => None,
+    }
+}
+/// Infer the LCNF type of an application's result.
+///
+/// Two sources, tried in order:
+///
+/// 1. **The callee's declared signature**, when the caller supplied
+///    one via [`env_const_types`]. `double : UInt64 → UInt64` converts
+///    to `Fun([UInt64], UInt64)`; peeling one `Fun` layer per supplied
+///    argument yields `UInt64`. Peeling stops early if the arguments
+///    outrun the arrows (an over-application through an opaque result
+///    type), and a partial application legitimately leaves a `Fun`
+///    behind.
+///
+/// 2. **The operands**, when the head is a typeclass projection.
+///    Lean's `HAdd.hAdd` reaches `to_lcnf` as an axiom of type `Type`
+///    — the arrows that would carry `α → α → α` are not there to peel,
+///    and no instance has been resolved. For the homogeneous
+///    projections the result type *is* an operand's type, so the first
+///    operand with a known type answers it. `Nat` from an integer
+///    literal is only used as a last resort: in `n + 1` the literal
+///    would otherwise type the whole expression `Nat` where `n` says
+///    `UInt64`.
+///
+/// Falls back to `LcnfType::Object` — the pre-2026-08-02 behaviour for
+/// every application — when neither source knows.
+pub(super) fn app_result_type(head: &Expr, args: &[LcnfArg], state: &ToLcnfState) -> LcnfType {
+    let Some(name) = app_head_name(head) else {
+        return LcnfType::Object;
+    };
+    // 1. Declared signature.
+    if let Some(sig) = state.const_type(&name) {
+        let mut cur = sig;
+        let mut peeled = 0usize;
+        while peeled < args.len() {
+            match cur {
+                LcnfType::Fun(params, ret) => {
+                    // A `Fun` node may carry several params at once
+                    // (`flatten_pi_type` builds those); consume them
+                    // together.
+                    if peeled + params.len() > args.len() {
+                        break;
+                    }
+                    peeled += params.len();
+                    cur = ret;
+                }
+                _ => break,
+            }
+        }
+        if peeled == args.len() && !matches!(cur, LcnfType::Object) {
+            return cur.clone();
+        }
+    }
+    // 2. Operand-driven, for typeclass projections.
+    match tc_projection_result_shape(&name) {
+        Some(TcResultShape::Boolean) => LcnfType::Ctor("Bool".to_string(), Vec::new()),
+        Some(TcResultShape::Homogeneous) => {
+            let mut fallback = None;
+            for arg in args {
+                match arg_lcnf_type(arg, state) {
+                    // A bare `Nat` here almost always comes from an
+                    // integer literal that Lean would have coerced to
+                    // the other operand's type.
+                    Some(LcnfType::Nat) => fallback = fallback.or(Some(LcnfType::Nat)),
+                    // An erasure marker is a type or instance
+                    // argument, not an operand. Lean's fully-elaborated
+                    // `HAdd.hAdd α β γ inst a b` puts three of them
+                    // ahead of the real operands; taking one would
+                    // claim the sum is `()`, which is worse than
+                    // admitting we don't know.
+                    Some(LcnfType::Erased | LcnfType::Irrelevant | LcnfType::Unit) => {}
+                    Some(ty) => return ty,
+                    None => {}
+                }
+            }
+            fallback.unwrap_or(LcnfType::Object)
+        }
+        None => LcnfType::Object,
     }
 }
 /// Flatten a nested application spine.
@@ -361,6 +527,7 @@ pub(super) fn convert_to_atomic(
                 Ok(LcnfArg::Var(var_id))
             } else {
                 let var_id = state.fresh_named_var(&mangled);
+                note_const_type(state, &mangled, var_id);
                 state.name_map.insert(mangled, var_id);
                 Ok(LcnfArg::Var(var_id))
             }
@@ -398,6 +565,7 @@ pub(super) fn convert_to_atomic(
                     return Ok(LcnfArg::Var(var_id));
                 }
                 let var_id = state.fresh_named_var(&mangled);
+                note_const_type(state, &mangled, var_id);
                 state.name_map.insert(mangled, var_id);
                 return Ok(LcnfArg::Var(var_id));
             }
@@ -767,7 +935,13 @@ pub fn decl_to_lcnf(
     body: &Expr,
     config: &ToLcnfConfig,
 ) -> Result<LcnfFunDecl, ConversionError> {
-    let (decl, _state) = decl_to_lcnf_inner(name, params, body, config)?;
+    let (decl, _state) = decl_to_lcnf_inner(
+        name,
+        params,
+        body,
+        config,
+        &std::collections::HashMap::new(),
+    )?;
     Ok(decl)
 }
 
@@ -819,7 +993,62 @@ pub fn decl_to_lcnf_full(
     body: &Expr,
     config: &ToLcnfConfig,
 ) -> Result<(LcnfFunDecl, std::collections::HashMap<LcnfVarId, String>), ConversionError> {
-    let (mut decl, state) = decl_to_lcnf_inner(name, params, body, config)?;
+    decl_to_lcnf_full_with_sigs(
+        name,
+        params,
+        ret_type_expr,
+        body,
+        config,
+        &std::collections::HashMap::new(),
+    )
+}
+
+/// Build the constant-signature map [`decl_to_lcnf_full_with_sigs`]
+/// consumes, from an elaboration environment.
+///
+/// Keys are mangled kernel names — the same spelling `to_lcnf` uses
+/// internally — and values are each constant's type run through
+/// `convert_type`. A `def double (n : UInt64) : UInt64` contributes
+/// `"double" → Fun([Ctor("UInt64")], Ctor("UInt64"))`, which is what
+/// lets an application of it be typed `UInt64` instead of `Object`.
+///
+/// Build this once per module and pass it to each declaration's
+/// conversion; it does not depend on which declaration is being
+/// converted.
+#[must_use]
+pub fn env_const_types(
+    env: &oxilean_kernel::Environment,
+    config: &ToLcnfConfig,
+) -> std::collections::HashMap<String, LcnfType> {
+    // `convert_type` reads only config-independent parts of the state
+    // (the proof/type name sets and the bvar stack, all empty here),
+    // but it takes a `&ToLcnfState`, so build a throwaway one.
+    let state = ToLcnfState::new(config);
+    env.constant_infos()
+        .map(|(name, ci)| (mangle_name(name), convert_type(ci.ty(), &state)))
+        .collect()
+}
+
+/// As [`decl_to_lcnf_full`], but with the signatures of the constants
+/// the body may refer to.
+///
+/// Without them every application result is typed `LcnfType::Object`,
+/// which the Rust backend renders `Box<dyn std::any::Any>` — so
+/// `def quadruple (n : UInt64) : UInt64 := double (double n)` emitted
+/// `let _x2: Box<dyn std::any::Any> = double(_x0); double(_x2)` and
+/// did not compile. Build the map with [`env_const_types`].
+///
+/// # Errors
+/// Same as [`decl_to_lcnf`].
+pub fn decl_to_lcnf_full_with_sigs(
+    name: &Name,
+    params: &[(Name, Expr)],
+    ret_type_expr: Option<&Expr>,
+    body: &Expr,
+    config: &ToLcnfConfig,
+    const_types: &std::collections::HashMap<String, LcnfType>,
+) -> Result<(LcnfFunDecl, std::collections::HashMap<LcnfVarId, String>), ConversionError> {
+    let (mut decl, state) = decl_to_lcnf_inner(name, params, body, config, const_types)?;
     if let Some(rt_expr) = ret_type_expr {
         decl.ret_type = convert_type(rt_expr, &state);
     }
@@ -865,14 +1094,22 @@ fn decl_to_lcnf_inner(
     params: &[(Name, Expr)],
     body: &Expr,
     config: &ToLcnfConfig,
+    const_types: &std::collections::HashMap<String, LcnfType>,
 ) -> Result<(LcnfFunDecl, ToLcnfState), ConversionError> {
     let mut state = ToLcnfState::new(config);
+    if !const_types.is_empty() {
+        state.type_map = const_types.clone();
+    }
     let name_str = mangle_name(name);
     let mut lcnf_params = Vec::new();
     for (pname, pty) in params {
         let pname_str = name_to_string(pname);
         let param_ty = convert_type(pty, &state);
         let param_id = state.fresh_named_var(&pname_str);
+        // The parameter's declared type is the root of the whole
+        // `var_types` chain: without it, an operand-driven inference
+        // like `n + 1` has nothing to start from.
+        state.record_var_type(param_id, &param_ty);
         let is_erased = param_ty == LcnfType::Irrelevant
             || (config.erase_types && param_ty == LcnfType::Erased);
         let param = LcnfParam {
@@ -2361,5 +2598,276 @@ mod tests {
             },
             _ => panic!("Expected outer let"),
         }
+    }
+
+    // ── Application result typing (cause-2 fix, 2026-08-02) ──────────
+    //
+    // Before these, every `LcnfLetValue::App` binding was typed
+    // `LcnfType::Object`, which the Rust backend renders
+    // `Box<dyn std::any::Any>`. `def quadruple (n : UInt64) : UInt64
+    // := double (double n)` therefore emitted
+    // `let _x2: Box<dyn std::any::Any> = double(_x0); double(_x2)` —
+    // syntactically plausible Rust that does not compile.
+
+    /// Collect the `(name, ty)` of every `Let` in a converted body.
+    fn let_types(expr: &LcnfExpr) -> Vec<(String, LcnfType)> {
+        let mut out = Vec::new();
+        let mut cur = expr;
+        while let LcnfExpr::Let { name, ty, body, .. } = cur {
+            out.push((name.clone(), ty.clone()));
+            cur = body;
+        }
+        out
+    }
+
+    /// `UInt64 -> UInt64`, the shape `convert_type` produces for a
+    /// non-dependent one-parameter signature.
+    fn uint64_to_uint64() -> LcnfType {
+        LcnfType::Fun(
+            vec![LcnfType::Ctor("UInt64".to_string(), Vec::new())],
+            Box::new(LcnfType::Ctor("UInt64".to_string(), Vec::new())),
+        )
+    }
+
+    #[test]
+    pub(super) fn test_app_result_type_from_declared_signature() {
+        let config = default_config();
+        let mut sigs = HashMap::new();
+        sigs.insert("double".to_string(), uint64_to_uint64());
+
+        // def quadruple (n : UInt64) : UInt64 := double (double n)
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let dbl = Expr::Const(Name::str("double"), vec![]);
+        let body = Expr::App(
+            Box::new(dbl.clone()),
+            Box::new(Expr::App(Box::new(dbl), Box::new(Expr::BVar(0)))),
+        );
+        let (decl, _) = decl_to_lcnf_full_with_sigs(
+            &Name::str("quadruple"),
+            &[(Name::str("n"), uint64.clone())],
+            Some(&uint64),
+            &body,
+            &config,
+            &sigs,
+        )
+        .expect("conversion should succeed");
+
+        let lets = let_types(&decl.body);
+        assert_eq!(lets.len(), 1, "expected one intermediate binding: {lets:?}");
+        assert_eq!(
+            lets[0].1,
+            LcnfType::Ctor("UInt64".to_string(), Vec::new()),
+            "inner `double n` must take the callee's declared return \
+             type, not Object"
+        );
+    }
+
+    #[test]
+    pub(super) fn test_app_result_type_without_signature_stays_object() {
+        // Same body, no signatures supplied: the pre-fix behaviour is
+        // the documented fallback, not an accident.
+        let config = default_config();
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let dbl = Expr::Const(Name::str("double"), vec![]);
+        let body = Expr::App(
+            Box::new(dbl.clone()),
+            Box::new(Expr::App(Box::new(dbl), Box::new(Expr::BVar(0)))),
+        );
+        let (decl, _) = decl_to_lcnf_full(
+            &Name::str("quadruple"),
+            &[(Name::str("n"), uint64.clone())],
+            Some(&uint64),
+            &body,
+            &config,
+        )
+        .expect("conversion should succeed");
+
+        let lets = let_types(&decl.body);
+        assert_eq!(lets.len(), 1);
+        assert_eq!(lets[0].1, LcnfType::Object);
+    }
+
+    #[test]
+    pub(super) fn test_app_result_type_from_operands_for_tc_projection() {
+        // def isBig (n : UInt64) : Bool := (n + 1) > 10
+        //
+        // `HAdd.hAdd` / `LT.lt` reach `to_lcnf` as bare axioms — Lean's
+        // instance for them is never resolved on this path — so the
+        // arrows that would carry `α → α → α` are not there to peel and
+        // the result type has to come from the operands.
+        let config = default_config();
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let bool_ty = Expr::Const(Name::str("Bool"), vec![]);
+        let hadd = Expr::Const(Name::from_str("HAdd.hAdd"), vec![]);
+        let lt = Expr::Const(Name::from_str("LT.lt"), vec![]);
+
+        // LT.lt 10 (HAdd.hAdd n 1) — `n > 10` unfolds to `10 < n`.
+        let sum = Expr::App(
+            Box::new(Expr::App(Box::new(hadd), Box::new(Expr::BVar(0)))),
+            Box::new(Expr::Lit(Literal::Nat(1))),
+        );
+        let cmp = Expr::App(
+            Box::new(Expr::App(
+                Box::new(lt),
+                Box::new(Expr::Lit(Literal::Nat(10))),
+            )),
+            Box::new(sum),
+        );
+        // Wrap in `ite` so the comparison is a scrutinee rather than
+        // the tail call — a tail call takes the declaration's declared
+        // return type and would not exercise the inference at all.
+        let body = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("ite"), vec![])),
+                Box::new(cmp),
+            )),
+            Box::new(Expr::Const(Name::from_str("Bool.true"), vec![])),
+        );
+        let (decl, _) = decl_to_lcnf_full(
+            &Name::str("isBig"),
+            &[(Name::str("n"), uint64)],
+            Some(&bool_ty),
+            &body,
+            &config,
+        )
+        .expect("conversion should succeed");
+
+        let tys: Vec<LcnfType> = let_types(&decl.body).into_iter().map(|(_, t)| t).collect();
+        assert!(
+            tys.contains(&LcnfType::Ctor("UInt64".to_string(), Vec::new())),
+            "`n + 1` must take `n`'s type, not the literal's Nat and \
+             not Object: {tys:?}"
+        );
+        assert!(
+            tys.contains(&LcnfType::Ctor("Bool".to_string(), Vec::new())),
+            "a comparison projection is Bool-valued regardless of \
+             operand type: {tys:?}"
+        );
+    }
+
+    #[test]
+    pub(super) fn test_app_result_type_skips_erased_operands() {
+        // Lean's fully-elaborated form of `a + b` is
+        // `HAdd.hAdd α β γ inst a b` — three type arguments and an
+        // instance ahead of the operands. Those reach `to_lcnf` as
+        // references to `Sort`-typed constants, i.e. `LcnfType::Erased`.
+        // Reading the result type off one of them would emit `()`.
+        let config = default_config();
+        let mut sigs = HashMap::new();
+        sigs.insert("UInt64".to_string(), LcnfType::Erased);
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let hadd = Expr::Const(Name::from_str("HAdd.hAdd"), vec![]);
+
+        // ite (HAdd.hAdd UInt64 n n) — the `ite` wrapper keeps the sum
+        // out of tail position so it gets a `Let` to inspect.
+        let sum = Expr::App(
+            Box::new(Expr::App(
+                Box::new(Expr::App(Box::new(hadd), Box::new(uint64.clone()))),
+                Box::new(Expr::BVar(0)),
+            )),
+            Box::new(Expr::BVar(0)),
+        );
+        let body = Expr::App(
+            Box::new(Expr::Const(Name::str("ite"), vec![])),
+            Box::new(sum),
+        );
+        let (decl, _) = decl_to_lcnf_full_with_sigs(
+            &Name::str("f"),
+            &[(Name::str("n"), uint64.clone())],
+            None,
+            &body,
+            &config,
+            &sigs,
+        )
+        .expect("conversion should succeed");
+
+        let tys: Vec<LcnfType> = let_types(&decl.body).into_iter().map(|(_, t)| t).collect();
+        assert!(
+            tys.contains(&LcnfType::Ctor("UInt64".to_string(), Vec::new())),
+            "the sum must take the operand's type, not the erased type \
+             argument's: {tys:?}"
+        );
+        assert!(
+            !tys.contains(&LcnfType::Erased),
+            "no binding may be typed from an erasure marker: {tys:?}"
+        );
+    }
+
+    #[test]
+    pub(super) fn test_app_result_type_partial_application_is_not_the_return_type() {
+        // Applying one argument to a two-parameter function yields a
+        // function, never the final return type — peeling must not run
+        // past the arguments actually supplied.
+        let state_sig = LcnfType::Fun(
+            vec![LcnfType::Nat],
+            Box::new(LcnfType::Fun(
+                vec![LcnfType::Nat],
+                Box::new(LcnfType::LcnfString),
+            )),
+        );
+        let mut sigs = HashMap::new();
+        sigs.insert("f".to_string(), state_sig);
+        let config = default_config();
+
+        let nat = Expr::Const(Name::str("Nat"), vec![]);
+        // `h (f x)`, not `f x` — the outer application keeps the
+        // partial one out of tail position so it gets a `Let` whose
+        // type we can inspect.
+        let body = Expr::App(
+            Box::new(Expr::Const(Name::str("h"), vec![])),
+            Box::new(Expr::App(
+                Box::new(Expr::Const(Name::str("f"), vec![])),
+                Box::new(Expr::BVar(0)),
+            )),
+        );
+        let (decl, _) = decl_to_lcnf_full_with_sigs(
+            &Name::str("g"),
+            &[(Name::str("x"), nat)],
+            None,
+            &body,
+            &config,
+            &sigs,
+        )
+        .expect("conversion should succeed");
+
+        let lets = let_types(&decl.body);
+        assert_eq!(lets.len(), 1, "expected one binding: {lets:?}");
+        assert_eq!(
+            lets[0].1,
+            LcnfType::Fun(vec![LcnfType::Nat], Box::new(LcnfType::LcnfString)),
+            "one argument to a two-parameter fn yields a function, not \
+             its final return type"
+        );
+    }
+
+    #[test]
+    pub(super) fn test_env_const_types_keys_are_mangled() {
+        use oxilean_kernel::env::{Declaration, Environment};
+
+        let mut env = Environment::new();
+        env.add(Declaration::Axiom {
+            name: Name::from_str("Foo.bar"),
+            univ_params: Vec::new(),
+            ty: Expr::Pi(
+                BinderInfo::Default,
+                Name::str("_"),
+                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+                Box::new(Expr::Const(Name::str("Nat"), vec![])),
+            ),
+        })
+        .expect("add");
+
+        let sigs = env_const_types(&env, &default_config());
+        // `to_lcnf` looks constants up by their mangled spelling; a map
+        // keyed by the dotted form would silently never hit.
+        assert!(
+            sigs.contains_key("Foo_bar"),
+            "keys must be mangled: {:?}",
+            sigs.keys().collect::<Vec<_>>()
+        );
+        assert_eq!(
+            sigs["Foo_bar"],
+            LcnfType::Fun(vec![LcnfType::Nat], Box::new(LcnfType::Nat))
+        );
     }
 }
