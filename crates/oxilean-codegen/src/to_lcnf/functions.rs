@@ -360,14 +360,17 @@ pub(super) enum TcResultShape {
 }
 /// Classify a mangled typeclass-projection name.
 ///
-/// Entries here are exactly the projections
-/// `rust_target_backend::tc_projection_to_rust_binop` /
-/// `…_to_rust_unaryop` lower to native Rust operators, plus the
-/// `Bool`-valued ones that lower to method calls. Keep the two in
-/// step: a projection the backend emits as `a < b` but which this
-/// table does not classify gets `LcnfType::Object` for its result,
-/// which the Rust backend renders `Box<dyn std::any::Any>` and which
-/// then fails to compile at the use site.
+/// Deliberately the *smallest* table that covers what actually reaches
+/// `to_lcnf`. An unclassified head falls through to
+/// `LcnfType::Object`, which is what every application got before, so
+/// under-listing is safe; over-listing is not, because a wrong entry
+/// claims a type the value does not have.
+///
+/// Three spellings that look like they belong here do not: `>` / `>=`
+/// never survive elaboration (Lean desugars them to `LT.lt` / `LE.le`
+/// with the operands swapped), and `&&` / `||` lower to bare
+/// `and` / `or`, which no elaboration environment on this path
+/// declares — they fail earlier with `NameNotFound`.
 pub(super) fn tc_projection_result_shape(mangled: &str) -> Option<TcResultShape> {
     match mangled {
         // Arithmetic and bitwise — homogeneous in Lean's stdlib
@@ -385,11 +388,11 @@ pub(super) fn tc_projection_result_shape(mangled: &str) -> Option<TcResultShape>
         | "HXor_hXor"
         | "HShiftLeft_hShiftLeft"
         | "HShiftRight_hShiftRight"
-        | "Neg_neg"
-        | "Complement_complement" => Some(TcResultShape::Homogeneous),
-        // Comparison and boolean connectives.
-        "LT_lt" | "LE_le" | "GT_gt" | "GE_ge" | "BEq_beq" | "Not_not" | "Bool_not" | "Bool_and"
-        | "Bool_or" | "Bool_xor" | "Decidable_decide" => Some(TcResultShape::Boolean),
+        | "Neg_neg" => Some(TcResultShape::Homogeneous),
+        // Comparison. `Not_not` is the unary member: `a ≠ b` lowers to
+        // `Not.not (Eq.eq a b)`, so leaving `Eq_eq` out would also put
+        // a non-`bool` under Rust's `!`.
+        "LT_lt" | "LE_le" | "BEq_beq" | "Eq_eq" | "Not_not" => Some(TcResultShape::Boolean),
         _ => None,
     }
 }
@@ -410,10 +413,14 @@ pub(super) fn tc_projection_result_shape(mangled: &str) -> Option<TcResultShape>
 ///    — the arrows that would carry `α → α → α` are not there to peel,
 ///    and no instance has been resolved. For the homogeneous
 ///    projections the result type *is* an operand's type, so the first
-///    operand with a known type answers it. `Nat` from an integer
-///    literal is only used as a last resort: in `n + 1` the literal
-///    would otherwise type the whole expression `Nat` where `n` says
-///    `UInt64`.
+///    operand with a known one answers it.
+///
+///    Only *variables* answer. A literal's own type is not evidence:
+///    Lean coerces integer literals to whatever the surrounding
+///    instance demands, so reading `1` as `Nat` types `1 + 1` as `u64`
+///    even inside a `UInt8` function, and types `-1` as `u64` — the
+///    one type Rust's unary `-` rejects. When every operand is a
+///    literal we do not know, and say so.
 ///
 /// Falls back to `LcnfType::Object` — the pre-2026-08-02 behaviour for
 /// every application — when neither source knows.
@@ -448,25 +455,19 @@ pub(super) fn app_result_type(head: &Expr, args: &[LcnfArg], state: &ToLcnfState
     match tc_projection_result_shape(&name) {
         Some(TcResultShape::Boolean) => LcnfType::Ctor("Bool".to_string(), Vec::new()),
         Some(TcResultShape::Homogeneous) => {
-            let mut fallback = None;
             for arg in args {
-                match arg_lcnf_type(arg, state) {
-                    // A bare `Nat` here almost always comes from an
-                    // integer literal that Lean would have coerced to
-                    // the other operand's type.
-                    Some(LcnfType::Nat) => fallback = fallback.or(Some(LcnfType::Nat)),
-                    // An erasure marker is a type or instance
-                    // argument, not an operand. Lean's fully-elaborated
+                let LcnfArg::Var(id) = arg else { continue };
+                match state.var_type(*id) {
+                    // An erasure marker is a type or instance argument,
+                    // not an operand. Lean's fully-elaborated
                     // `HAdd.hAdd α β γ inst a b` puts three of them
                     // ahead of the real operands; taking one would
-                    // claim the sum is `()`, which is worse than
-                    // admitting we don't know.
-                    Some(LcnfType::Erased | LcnfType::Irrelevant | LcnfType::Unit) => {}
-                    Some(ty) => return ty,
-                    None => {}
+                    // claim the sum is `()`.
+                    Some(LcnfType::Erased | LcnfType::Irrelevant | LcnfType::Unit) | None => {}
+                    Some(ty) => return ty.clone(),
                 }
             }
-            fallback.unwrap_or(LcnfType::Object)
+            LcnfType::Object
         }
         None => LcnfType::Object,
     }
@@ -2790,6 +2791,80 @@ mod tests {
         assert!(
             !tys.contains(&LcnfType::Erased),
             "no binding may be typed from an erasure marker: {tys:?}"
+        );
+    }
+
+    #[test]
+    pub(super) fn test_app_result_type_literal_only_operands_stay_object() {
+        // `1 + 1` inside a `UInt8` function used to be typed from the
+        // literal's own `Nat`, i.e. `u64`, which then failed to unify
+        // with the surrounding `u8`. A literal carries no type
+        // evidence in Lean — it is coerced to whatever the instance
+        // demands — so the honest answer is "unknown".
+        let config = default_config();
+        let hadd = Expr::Const(Name::from_str("HAdd.hAdd"), vec![]);
+        let sum = Expr::App(
+            Box::new(Expr::App(
+                Box::new(hadd),
+                Box::new(Expr::Lit(Literal::Nat(1))),
+            )),
+            Box::new(Expr::Lit(Literal::Nat(1))),
+        );
+        // Wrapped so the sum is not the tail call.
+        let body = Expr::App(
+            Box::new(Expr::Const(Name::str("ite"), vec![])),
+            Box::new(sum),
+        );
+        let (decl, _) = decl_to_lcnf_full(
+            &Name::str("two"),
+            &[(Name::str("n"), Expr::Const(Name::str("UInt8"), vec![]))],
+            None,
+            &body,
+            &config,
+        )
+        .expect("conversion should succeed");
+
+        for (name, ty) in let_types(&decl.body) {
+            if name.starts_with("app") || name.starts_with("_x") {
+                assert_ne!(
+                    ty,
+                    LcnfType::Nat,
+                    "an all-literal sum must not claim `Nat`/`u64`"
+                );
+            }
+        }
+    }
+
+    #[test]
+    pub(super) fn test_app_result_type_eq_eq_is_boolean() {
+        // leo4's translate layer lowers surface `=` to `Eq.eq`. Without
+        // an entry it fell through to `Object` -> `Box<dyn Any>`, and
+        // `a != b` (`Not.not (Eq.eq a b)`) then put that under Rust's
+        // unary `!`.
+        let config = default_config();
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let eq = Expr::Const(Name::from_str("Eq.eq"), vec![]);
+        let cmp = Expr::App(
+            Box::new(Expr::App(Box::new(eq), Box::new(Expr::BVar(1)))),
+            Box::new(Expr::BVar(0)),
+        );
+        let body = Expr::App(
+            Box::new(Expr::Const(Name::str("ite"), vec![])),
+            Box::new(cmp),
+        );
+        let (decl, _) = decl_to_lcnf_full(
+            &Name::str("eqp"),
+            &[(Name::str("a"), uint64.clone()), (Name::str("b"), uint64)],
+            None,
+            &body,
+            &config,
+        )
+        .expect("conversion should succeed");
+
+        let tys: Vec<LcnfType> = let_types(&decl.body).into_iter().map(|(_, t)| t).collect();
+        assert!(
+            tys.contains(&LcnfType::Ctor("Bool".to_string(), Vec::new())),
+            "`a = b` must be Bool-valued: {tys:?}"
         );
     }
 

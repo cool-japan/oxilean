@@ -1657,6 +1657,10 @@ fn tc_projection_to_rust_binop(mangled: &str) -> Option<&'static str> {
         "LT_lt"   => Some("<"),
         "LE_le"   => Some("<="),
         "BEq_beq" => Some("=="),
+        // leo4's translate layer lowers surface `=` to `Eq.eq` and
+        // `≠` to `Not.not (Eq.eq a b)`; without this arm both emit a
+        // call to an undefined `Eq_eq`.
+        "Eq_eq" => Some("=="),
         _ => None,
     }
 }
