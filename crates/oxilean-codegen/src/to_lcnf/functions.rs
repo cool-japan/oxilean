@@ -399,6 +399,228 @@ pub(super) fn tc_projection_result_shape(mangled: &str) -> Option<TcResultShape>
         _ => None,
     }
 }
+/// Do a projection's operands have to agree with each other?
+///
+/// Distinct from [`TcResultShape`], which relates operands to the
+/// *result*. `HPow.hPow` is `Homogeneous` in its result — `x ^ n` has
+/// `x`'s type — while its exponent is routinely a different type, and
+/// the shift operators are the same shape. Those are excluded here;
+/// the unary projections have no sibling to agree with, so listing
+/// them would be vacuous.
+pub(super) fn operands_agree(mangled: &str) -> bool {
+    matches!(
+        mangled,
+        "HAdd_hAdd"
+            | "HSub_hSub"
+            | "HMul_hMul"
+            | "HDiv_hDiv"
+            | "HMod_hMod"
+            | "HAnd_hAnd"
+            | "HOr_hOr"
+            | "HXor_hXor"
+            | "LT_lt"
+            | "LE_le"
+            | "BEq_beq"
+            | "Eq_eq"
+    )
+}
+
+/// Second pass: push types *backwards*, from an application into its
+/// own operands.
+///
+/// [`app_result_type`] runs during conversion and can only look at what
+/// it has already seen — operands, then result. That is one-directional
+/// and one-pass, so it cannot type
+///
+/// ```lean
+/// def g (n : UInt8) : Bool := if 1 + 1 < n then true else false
+/// ```
+///
+/// The sum `1 + 1` has two literal operands and no type of its own; the
+/// type it needs belongs to the *enclosing* comparison, which does not
+/// exist yet when the sum's `Let` is emitted. The result was
+/// `Box<dyn std::any::Any>` and Rust rejected it.
+///
+/// Running after conversion, the whole body is visible, so the
+/// comparison's other operand answers: `LT.lt(_x5, _x0)` with
+/// `_x0 : u8` forces `_x5 : u8`, and `_x5 = 1 + 1` takes it.
+///
+/// Only `Object` bindings are filled in — a type the conversion already
+/// inferred is evidence, and this pass has no better information about
+/// it. That also makes the pass monotone (types only ever go from
+/// unknown to known), so the fixpoint terminates; `MAX_ROUNDS` is
+/// insurance, not the mechanism.
+///
+/// `const_names` maps the head variable of an application back to its
+/// kernel name, which is how a projection is recognised — the same map
+/// [`decl_to_lcnf_full`] already returns for identifier emission.
+pub fn propagate_operand_types(
+    decl: &mut LcnfFunDecl,
+    const_names: &std::collections::HashMap<LcnfVarId, String>,
+) {
+    const MAX_ROUNDS: usize = 8;
+
+    let mut known: HashMap<LcnfVarId, LcnfType> = HashMap::new();
+    for p in &decl.params {
+        if is_informative_type(&p.ty) {
+            known.insert(p.id, p.ty.clone());
+        }
+    }
+    collect_known_types(&decl.body, &mut known);
+
+    for _ in 0..MAX_ROUNDS {
+        let mut changed = false;
+        solve_operand_types(&decl.body, const_names, &mut known, &mut changed);
+        if !changed {
+            break;
+        }
+    }
+    apply_known_types(&mut decl.body, &known);
+}
+
+/// Seed [`propagate_operand_types`] with every binding that already has
+/// a type worth trusting.
+fn collect_known_types(expr: &LcnfExpr, known: &mut HashMap<LcnfVarId, LcnfType>) {
+    match expr {
+        LcnfExpr::Let { id, ty, body, .. } => {
+            if is_informative_type(ty) {
+                known.insert(*id, ty.clone());
+            }
+            collect_known_types(body, known);
+        }
+        LcnfExpr::Case {
+            scrutinee,
+            scrutinee_ty,
+            alts,
+            default,
+        } => {
+            if is_informative_type(scrutinee_ty) {
+                known.insert(*scrutinee, scrutinee_ty.clone());
+            }
+            for alt in alts {
+                for p in &alt.params {
+                    if is_informative_type(&p.ty) {
+                        known.insert(p.id, p.ty.clone());
+                    }
+                }
+                collect_known_types(&alt.body, known);
+            }
+            if let Some(d) = default {
+                collect_known_types(d, known);
+            }
+        }
+        LcnfExpr::Return(_) | LcnfExpr::Unreachable | LcnfExpr::TailCall(_, _) => {}
+    }
+}
+
+/// One round of [`propagate_operand_types`]'s fixpoint.
+fn solve_operand_types(
+    expr: &LcnfExpr,
+    const_names: &std::collections::HashMap<LcnfVarId, String>,
+    known: &mut HashMap<LcnfVarId, LcnfType>,
+    changed: &mut bool,
+) {
+    match expr {
+        LcnfExpr::Let {
+            id, value, body, ..
+        } => {
+            if let LcnfLetValue::App(LcnfArg::Var(head), args) = value {
+                if let Some(name) = const_names.get(head) {
+                    let operand_vars: Vec<LcnfVarId> = args
+                        .iter()
+                        .filter_map(|a| match a {
+                            LcnfArg::Var(v) => Some(*v),
+                            _ => None,
+                        })
+                        .collect();
+
+                    if operands_agree(name) {
+                        // Any operand that knows its type settles the
+                        // rest, and — for a homogeneous projection —
+                        // the result too.
+                        let settled = operand_vars
+                            .iter()
+                            .find_map(|v| known.get(v).cloned())
+                            .or_else(|| {
+                                matches!(
+                                    tc_projection_result_shape(name),
+                                    Some(TcResultShape::Homogeneous)
+                                )
+                                .then(|| known.get(id).cloned())
+                                .flatten()
+                            });
+                        if let Some(ty) = settled {
+                            for v in &operand_vars {
+                                if !known.contains_key(v) {
+                                    known.insert(*v, ty.clone());
+                                    *changed = true;
+                                }
+                            }
+                            if matches!(
+                                tc_projection_result_shape(name),
+                                Some(TcResultShape::Homogeneous)
+                            ) && !known.contains_key(id)
+                            {
+                                known.insert(*id, ty);
+                                *changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+            solve_operand_types(body, const_names, known, changed);
+        }
+        LcnfExpr::Case { alts, default, .. } => {
+            for alt in alts {
+                solve_operand_types(&alt.body, const_names, known, changed);
+            }
+            if let Some(d) = default {
+                solve_operand_types(d, const_names, known, changed);
+            }
+        }
+        LcnfExpr::Return(_) | LcnfExpr::Unreachable | LcnfExpr::TailCall(_, _) => {}
+    }
+}
+
+/// Write [`propagate_operand_types`]'s conclusions back into the tree.
+fn apply_known_types(expr: &mut LcnfExpr, known: &HashMap<LcnfVarId, LcnfType>) {
+    match expr {
+        LcnfExpr::Let { id, ty, body, .. } => {
+            if !is_informative_type(ty) {
+                if let Some(t) = known.get(id) {
+                    *ty = t.clone();
+                }
+            }
+            apply_known_types(body, known);
+        }
+        LcnfExpr::Case {
+            scrutinee,
+            scrutinee_ty,
+            alts,
+            default,
+        } => {
+            if !is_informative_type(scrutinee_ty) {
+                if let Some(t) = known.get(scrutinee) {
+                    *scrutinee_ty = t.clone();
+                }
+            }
+            for alt in alts {
+                for p in &mut alt.params {
+                    if !is_informative_type(&p.ty) {
+                        if let Some(t) = known.get(&p.id) {
+                            p.ty = t.clone();
+                        }
+                    }
+                }
+                apply_known_types(&mut alt.body, known);
+            }
+            if let Some(d) = default {
+                apply_known_types(d, known);
+            }
+        }
+        LcnfExpr::Return(_) | LcnfExpr::Unreachable | LcnfExpr::TailCall(_, _) => {}
+    }
+}
 /// Infer the LCNF type of an application's result.
 ///
 /// Two sources, tried in order:
@@ -1103,6 +1325,10 @@ pub fn decl_to_lcnf_full_with_sigs(
         })
         .map(|(mangled, id)| (*id, mangled.clone()))
         .collect();
+    // Second pass: fill in bindings the one-pass conversion had to
+    // leave as `Object` because the type they need lives in an
+    // enclosing application it had not reached yet.
+    propagate_operand_types(&mut decl, &const_names);
     Ok((decl, const_names))
 }
 
@@ -3028,6 +3254,73 @@ mod tests {
         assert!(!is_informative_type(&LcnfType::Var("fv_1000001".into())));
         assert!(is_informative_type(&LcnfType::Var("Alpha".into())));
         assert!(is_informative_type(&LcnfType::Nat));
+    }
+
+    #[test]
+    pub(super) fn test_propagate_operand_types_settles_a_literal_only_sum() {
+        // `if 1 + 1 < n then … ` with `n : UInt8`.
+        //
+        // The sum's operands are both literals, so conversion has
+        // nothing to type it from and leaves `Object`. The comparison
+        // it feeds does know — `n` is `UInt8` — but does not exist yet
+        // when the sum's `Let` is emitted. The second pass closes that.
+        let config = default_config();
+        let uint8 = Expr::Const(Name::str("UInt8"), vec![]);
+        let hadd = Expr::Const(Name::from_str("HAdd.hAdd"), vec![]);
+        let lt = Expr::Const(Name::from_str("LT.lt"), vec![]);
+        let sum = Expr::App(
+            Node::new(Expr::App(
+                Node::new(hadd),
+                Node::new(Expr::Lit(Literal::nat(1))),
+            )),
+            Node::new(Expr::Lit(Literal::nat(1))),
+        );
+        let cmp = Expr::App(
+            Node::new(Expr::App(Node::new(lt), Node::new(sum))),
+            Node::new(Expr::BVar(0)),
+        );
+        let body = Expr::App(
+            Node::new(Expr::Const(Name::str("ite"), vec![])),
+            Node::new(cmp),
+        );
+        let (decl, _) = decl_to_lcnf_full(
+            &Name::str("g"),
+            &[(Name::str("n"), uint8.clone())],
+            None,
+            &body,
+            &config,
+        )
+        .expect("conversion should succeed");
+
+        let tys: Vec<LcnfType> = let_types(&decl.body).into_iter().map(|(_, t)| t).collect();
+        assert!(
+            !tys.contains(&LcnfType::Object),
+            "no binding should be left `Object`: {tys:?}"
+        );
+        assert!(
+            tys.iter()
+                .filter(|t| **t == LcnfType::Ctor("UInt8".to_string(), Vec::new()))
+                .count()
+                >= 1,
+            "the sum must take `n`'s type through the comparison: {tys:?}"
+        );
+    }
+
+    #[test]
+    pub(super) fn test_operands_agree_excludes_the_heterogeneous_ones() {
+        // `HPow` takes its exponent in a different type from its base,
+        // and the shifts take a shift amount, so neither may push a
+        // type sideways even though both are `Homogeneous` in *result*.
+        assert!(operands_agree("HAdd_hAdd"));
+        assert!(operands_agree("LT_lt"));
+        assert!(!operands_agree("HPow_hPow"));
+        assert!(!operands_agree("HShiftLeft_hShiftLeft"));
+        assert!(!operands_agree("Neg_neg"));
+        assert_eq!(
+            tc_projection_result_shape("HPow_hPow"),
+            Some(TcResultShape::Homogeneous),
+            "still homogeneous in its result — the two notions differ"
+        );
     }
 
     #[test]
