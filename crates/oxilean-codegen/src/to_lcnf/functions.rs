@@ -778,23 +778,40 @@ pub(super) fn convert_let(
     let lcnf_ty = convert_type(ty, state);
     let val_lcnf = convert_expr(val, state, false)?;
     let var_id = bind_expr_to_var(val_lcnf, state, &name_str)?;
+
+    // Lowering the value already produced a binding for `var_id`. This
+    // used to emit a *second* `Let` with the same id and
+    // `LcnfLetValue::FVar(var_id)` as its value — i.e. `let _x2 = _x2;`,
+    // which the Rust backend emitted verbatim and which does not
+    // compile. The binding the value produced is the `let`; there is no
+    // second one to make.
+    //
+    // What the declared type is still good for: the value's binding may
+    // have been typed `Object` because nothing about the value said
+    // otherwise (`let m : UInt8 := 1 + 1` — integer literals carry no
+    // type evidence). The annotation is evidence, so hand it over.
+    if is_informative_type(&lcnf_ty) {
+        state.retype_pending(var_id, &lcnf_ty);
+    }
+
     state.push_bvar(var_id, &name_str);
     let body_lcnf = convert_expr(body, state, true)?;
     state.pop_bvar();
-    let let_name = if state.config.debug_names {
-        name_str
-    } else {
-        format!("_x{}", var_id.0)
-    };
-    let let_val = LcnfLetValue::FVar(var_id);
-    let result = LcnfExpr::Let {
-        id: var_id,
-        name: let_name,
-        ty: lcnf_ty,
-        value: let_val,
-        body: Box::new(body_lcnf),
-    };
-    Ok(state.wrap_pending_lets(result))
+    Ok(state.wrap_pending_lets(body_lcnf))
+}
+/// Does this converted type actually say something?
+///
+/// `Object` is LCNF's "unknown". `Var("fv_<N>")` is what
+/// [`convert_type`] makes of an `FVar` the elaborator left in a type
+/// position — an unresolved placeholder, not a name any backend can
+/// emit; `oxilean-elab` puts those at `FVarId(1_000_000+)`, well clear
+/// of the binder ids.
+pub(super) fn is_informative_type(ty: &LcnfType) -> bool {
+    match ty {
+        LcnfType::Object => false,
+        LcnfType::Var(name) => !name.starts_with("fv_"),
+        _ => true,
+    }
 }
 /// Convert a literal expression.
 pub(super) fn convert_lit(
@@ -2916,6 +2933,101 @@ mod tests {
             "one argument to a two-parameter fn yields a function, not \
              its final return type"
         );
+    }
+
+    #[test]
+    pub(super) fn test_convert_let_does_not_rebind_the_value() {
+        // `let m := n + 1; m + m`.
+        //
+        // `convert_let` used to emit a second `Let` with the same id as
+        // the one `bind_expr_to_var` had already produced, and
+        // `LcnfLetValue::FVar(id)` as its value — `let _x2 = _x2;`,
+        // which the Rust backend emitted verbatim.
+        let config = default_config();
+        let uint64 = Expr::Const(Name::str("UInt64"), vec![]);
+        let hadd = Expr::Const(Name::from_str("HAdd.hAdd"), vec![]);
+        let value = Expr::App(
+            Node::new(Expr::App(Node::new(hadd.clone()), Node::new(Expr::BVar(0)))),
+            Node::new(Expr::Lit(Literal::nat(1))),
+        );
+        let body = Expr::App(
+            Node::new(Expr::App(Node::new(hadd), Node::new(Expr::BVar(0)))),
+            Node::new(Expr::BVar(0)),
+        );
+        let decl_body = Expr::Let(
+            Name::str("m"),
+            Node::new(uint64.clone()),
+            Node::new(value),
+            Node::new(body),
+        );
+        let (decl, _) = decl_to_lcnf_full(
+            &Name::str("viaLet"),
+            &[(Name::str("n"), uint64.clone())],
+            Some(&uint64),
+            &decl_body,
+            &config,
+        )
+        .expect("conversion should succeed");
+
+        let mut seen: Vec<LcnfVarId> = Vec::new();
+        let mut cur = &decl.body;
+        while let LcnfExpr::Let {
+            id, value, body, ..
+        } = cur
+        {
+            assert!(
+                !matches!(value, LcnfLetValue::FVar(v) if v == id),
+                "a `let` must not bind a variable to itself: {id:?}"
+            );
+            assert!(!seen.contains(id), "`{id:?}` bound twice");
+            seen.push(*id);
+            cur = body;
+        }
+    }
+
+    #[test]
+    pub(super) fn test_convert_let_takes_the_declared_binder_type() {
+        // `let m : UInt8 := 1 + 1` — the value is all literals and so
+        // cannot type itself, but the annotation can.
+        let config = default_config();
+        let uint8 = Expr::Const(Name::str("UInt8"), vec![]);
+        let hadd = Expr::Const(Name::from_str("HAdd.hAdd"), vec![]);
+        let value = Expr::App(
+            Node::new(Expr::App(
+                Node::new(hadd.clone()),
+                Node::new(Expr::Lit(Literal::nat(1))),
+            )),
+            Node::new(Expr::Lit(Literal::nat(1))),
+        );
+        let body = Expr::App(
+            Node::new(Expr::App(Node::new(hadd), Node::new(Expr::BVar(0)))),
+            Node::new(Expr::BVar(0)),
+        );
+        let decl_body = Expr::Let(
+            Name::str("m"),
+            Node::new(uint8.clone()),
+            Node::new(value),
+            Node::new(body),
+        );
+        let (decl, _) = decl_to_lcnf_full(&Name::str("h"), &[], Some(&uint8), &decl_body, &config)
+            .expect("conversion should succeed");
+
+        let tys: Vec<LcnfType> = let_types(&decl.body).into_iter().map(|(_, t)| t).collect();
+        assert!(
+            tys.contains(&LcnfType::Ctor("UInt8".to_string(), Vec::new())),
+            "the annotation must reach the value's binding: {tys:?}"
+        );
+    }
+
+    #[test]
+    pub(super) fn test_is_informative_type_rejects_elab_placeholders() {
+        // `convert_type` turns an `FVar` left in a type position into
+        // `Var("fv_<N>")`. That is not a type any backend can emit, and
+        // must not overwrite a real one.
+        assert!(!is_informative_type(&LcnfType::Object));
+        assert!(!is_informative_type(&LcnfType::Var("fv_1000001".into())));
+        assert!(is_informative_type(&LcnfType::Var("Alpha".into())));
+        assert!(is_informative_type(&LcnfType::Nat));
     }
 
     #[test]

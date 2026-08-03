@@ -246,6 +246,28 @@ impl ToLcnfState {
         self.metadata.let_bindings += 1;
         id
     }
+    /// Give an already-pending `let` binding a better type.
+    ///
+    /// `convert_let` learns the declared type of a `let` binder *after*
+    /// the value has been lowered and bound, so this is the only way to
+    /// get `let m : UInt8 := 1 + 1` typed from the annotation rather
+    /// than from operands that cannot answer.
+    ///
+    /// Only upgrades `Object` — a type inferred from the value is
+    /// evidence, and a declared type that disagrees with it is a
+    /// mis-elaboration this pass should not paper over.
+    pub(super) fn retype_pending(&mut self, id: LcnfVarId, ty: &LcnfType) {
+        if matches!(ty, LcnfType::Object) {
+            return;
+        }
+        for slot in &mut self.pending_lets {
+            if slot.0 == id && matches!(slot.2, LcnfType::Object) {
+                slot.2 = ty.clone();
+                self.var_types.insert(id, ty.clone());
+                return;
+            }
+        }
+    }
     /// Get the conversion statistics so far.
     pub(super) fn get_stats(&self) -> &ConversionStats {
         &self.stats
