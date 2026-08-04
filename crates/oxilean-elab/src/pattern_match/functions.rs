@@ -418,13 +418,20 @@ fn convert_literal(lit: &oxilean_parse::Literal) -> oxilean_kernel::Literal {
         oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(*n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s.clone()),
         oxilean_parse::Literal::Char(_) => oxilean_kernel::Literal::Str("?".to_string()),
-        // KNOWN LIMIT: a float literal in *pattern* position still
-        // collapses to `0`, so `| 3.14 =>` would match `0.0`. The
-        // expression-position fix (2026-08-04) routes floats through
-        // `OfScientific.ofScientific`, but that is an `Expr` and this
-        // returns a `Literal`; giving patterns the same treatment means
-        // matching on an application, which is a change to the pattern
-        // matcher rather than to this conversion.
+        // Unreachable: no front-end produces a float pattern.
+        // `oxilean-parse-peg`'s `pat_lit` is `nat_lit / str_lit`, and
+        // `oxilean-parse` only ever builds `Pattern::Lit` from `Nat` or
+        // `String`, so `| 3.14 =>` is rejected at parse time rather
+        // than reaching this conversion.
+        //
+        // Kept — and kept as `nat(0)` — because the arm has to exist
+        // for the match to be total. If a parser ever grows float
+        // patterns this becomes a silent wrong-match and needs the same
+        // treatment expression position got in 2026-08-04: floats
+        // encode as an `OfScientific.ofScientific` *application*, which
+        // a `Literal`-returning conversion cannot express, so it would
+        // be a change to the pattern matcher rather than to this
+        // function.
         oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }
@@ -1276,13 +1283,20 @@ fn convert_lit_helper(lit: &oxilean_parse::Literal) -> oxilean_kernel::Literal {
         oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(*n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s.clone()),
         oxilean_parse::Literal::Char(_) => oxilean_kernel::Literal::Str("?".to_string()),
-        // KNOWN LIMIT: a float literal in *pattern* position still
-        // collapses to `0`, so `| 3.14 =>` would match `0.0`. The
-        // expression-position fix (2026-08-04) routes floats through
-        // `OfScientific.ofScientific`, but that is an `Expr` and this
-        // returns a `Literal`; giving patterns the same treatment means
-        // matching on an application, which is a change to the pattern
-        // matcher rather than to this conversion.
+        // Unreachable: no front-end produces a float pattern.
+        // `oxilean-parse-peg`'s `pat_lit` is `nat_lit / str_lit`, and
+        // `oxilean-parse` only ever builds `Pattern::Lit` from `Nat` or
+        // `String`, so `| 3.14 =>` is rejected at parse time rather
+        // than reaching this conversion.
+        //
+        // Kept — and kept as `nat(0)` — because the arm has to exist
+        // for the match to be total. If a parser ever grows float
+        // patterns this becomes a silent wrong-match and needs the same
+        // treatment expression position got in 2026-08-04: floats
+        // encode as an `OfScientific.ofScientific` *application*, which
+        // a `Literal`-returning conversion cannot express, so it would
+        // be a change to the pattern matcher rather than to this
+        // function.
         oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }
