@@ -418,6 +418,13 @@ fn convert_literal(lit: &oxilean_parse::Literal) -> oxilean_kernel::Literal {
         oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(*n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s.clone()),
         oxilean_parse::Literal::Char(_) => oxilean_kernel::Literal::Str("?".to_string()),
+        // KNOWN LIMIT: a float literal in *pattern* position still
+        // collapses to `0`, so `| 3.14 =>` would match `0.0`. The
+        // expression-position fix (2026-08-04) routes floats through
+        // `OfScientific.ofScientific`, but that is an `Expr` and this
+        // returns a `Literal`; giving patterns the same treatment means
+        // matching on an application, which is a change to the pattern
+        // matcher rather than to this conversion.
         oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }
@@ -1269,6 +1276,13 @@ fn convert_lit_helper(lit: &oxilean_parse::Literal) -> oxilean_kernel::Literal {
         oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(*n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s.clone()),
         oxilean_parse::Literal::Char(_) => oxilean_kernel::Literal::Str("?".to_string()),
+        // KNOWN LIMIT: a float literal in *pattern* position still
+        // collapses to `0`, so `| 3.14 =>` would match `0.0`. The
+        // expression-position fix (2026-08-04) routes floats through
+        // `OfScientific.ofScientific`, but that is an `Expr` and this
+        // returns a `Literal`; giving patterns the same treatment means
+        // matching on an application, which is a change to the pattern
+        // matcher rather than to this conversion.
         oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }

@@ -111,6 +111,16 @@ mod tests {
             Expr::Lit(oxilean_kernel::Literal::Str("a".to_string()))
         );
     }
+    /// A float literal becomes `OfScientific.ofScientific m negExp e`,
+    /// the encoding Lean itself uses — the kernel's `Literal` is
+    /// `Nat | Str`, so there is nothing else for it to become.
+    ///
+    /// This test previously asserted `Literal::nat(0)`, pinning the
+    /// behaviour of the `Literal::Float(_) => nat(0)` arm it was
+    /// written against. That arm discarded the value: `x * 2.0`
+    /// elaborated to `x * 0` and the codegen backends emitted exactly
+    /// that. The assertion is updated rather than removed, because the
+    /// shape of the encoding is worth pinning.
     #[test]
     fn test_elaborate_lit_float() {
         let env = Environment::new();
@@ -118,7 +128,28 @@ mod tests {
         #[allow(clippy::approx_constant)]
         let lit = mk_located(SurfaceExpr::Lit(oxilean_parse::Literal::Float(3.14)));
         let result = elaborate_expr(&mut ctx, &lit).expect("elaboration should succeed");
-        assert_eq!(result, Expr::Lit(oxilean_kernel::Literal::nat(0)));
+
+        // ((OfScientific.ofScientific 314) Bool.true) 2
+        let Expr::App(outer, exp) = &result else {
+            panic!("expected an application, got {result:?}")
+        };
+        assert_eq!(**exp, Expr::Lit(oxilean_kernel::Literal::nat(2)));
+        let Expr::App(inner, sign) = &**outer else {
+            panic!("expected a nested application, got {outer:?}")
+        };
+        assert_eq!(
+            **sign,
+            Expr::Const(Name::from_str("Bool.true"), Vec::new()),
+            "3.14 is 314 * 10^-2, so the exponent is negative"
+        );
+        let Expr::App(head, mantissa) = &**inner else {
+            panic!("expected a nested application, got {inner:?}")
+        };
+        assert_eq!(**mantissa, Expr::Lit(oxilean_kernel::Literal::nat(314)));
+        assert_eq!(
+            **head,
+            Expr::Const(Name::from_str("OfScientific.ofScientific"), Vec::new())
+        );
     }
     #[test]
     fn test_elaborate_hole() {
