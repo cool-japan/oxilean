@@ -425,6 +425,29 @@ pub(super) fn operands_agree(mangled: &str) -> bool {
     )
 }
 
+/// Does a projection's *result* share its operands' type?
+///
+/// The homogeneous arithmetic and bitwise operators, plus unary
+/// negation. `HPow.hPow` and the shifts are excluded for the same
+/// reason as in [`operands_agree`] — their result matches the *base*
+/// but not the exponent or shift amount, and this predicate is used in
+/// both directions, so a half-truth would propagate a wrong type into
+/// the second argument.
+pub(super) fn result_agrees_with_operands(mangled: &str) -> bool {
+    matches!(
+        mangled,
+        "HAdd_hAdd"
+            | "HSub_hSub"
+            | "HMul_hMul"
+            | "HDiv_hDiv"
+            | "HMod_hMod"
+            | "HAnd_hAnd"
+            | "HOr_hOr"
+            | "HXor_hXor"
+            | "Neg_neg"
+    )
+}
+
 /// Second pass: push types *backwards*, from an application into its
 /// own operands.
 ///
@@ -470,7 +493,8 @@ pub fn propagate_operand_types(
 
     for _ in 0..MAX_ROUNDS {
         let mut changed = false;
-        solve_operand_types(&decl.body, const_names, &mut known, &mut changed);
+        let ret_ty = decl.ret_type.clone();
+        solve_operand_types(&decl.body, const_names, &ret_ty, &mut known, &mut changed);
         if !changed {
             break;
         }
@@ -514,9 +538,16 @@ fn collect_known_types(expr: &LcnfExpr, known: &mut HashMap<LcnfVarId, LcnfType>
 }
 
 /// One round of [`propagate_operand_types`]'s fixpoint.
+///
+/// `ret_ty` is the declaration's return type, which is what a
+/// `TailCall`'s result *is* — that is the only type information a tail
+/// call carries, and without it `def fa (x : Float64) := x * 2.0`
+/// leaves the literal unsettled: the multiplication is the body, so it
+/// never becomes a `Let` to read a type off.
 fn solve_operand_types(
     expr: &LcnfExpr,
     const_names: &std::collections::HashMap<LcnfVarId, String>,
+    ret_ty: &LcnfType,
     known: &mut HashMap<LcnfVarId, LcnfType>,
     changed: &mut bool,
 ) {
@@ -525,60 +556,77 @@ fn solve_operand_types(
             id, value, body, ..
         } => {
             if let LcnfLetValue::App(LcnfArg::Var(head), args) = value {
-                if let Some(name) = const_names.get(head) {
-                    let operand_vars: Vec<LcnfVarId> = args
-                        .iter()
-                        .filter_map(|a| match a {
-                            LcnfArg::Var(v) => Some(*v),
-                            _ => None,
-                        })
-                        .collect();
-
-                    if operands_agree(name) {
-                        // Any operand that knows its type settles the
-                        // rest, and — for a homogeneous projection —
-                        // the result too.
-                        let settled = operand_vars
-                            .iter()
-                            .find_map(|v| known.get(v).cloned())
-                            .or_else(|| {
-                                matches!(
-                                    tc_projection_result_shape(name),
-                                    Some(TcResultShape::Homogeneous)
-                                )
-                                .then(|| known.get(id).cloned())
-                                .flatten()
-                            });
-                        if let Some(ty) = settled {
-                            for v in &operand_vars {
-                                if !known.contains_key(v) {
-                                    known.insert(*v, ty.clone());
-                                    *changed = true;
-                                }
-                            }
-                            if matches!(
-                                tc_projection_result_shape(name),
-                                Some(TcResultShape::Homogeneous)
-                            ) && !known.contains_key(id)
-                            {
-                                known.insert(*id, ty);
-                                *changed = true;
-                            }
-                        }
-                    }
-                }
+                unify_application(
+                    head,
+                    args,
+                    known.get(id).cloned(),
+                    const_names,
+                    known,
+                    changed,
+                );
             }
-            solve_operand_types(body, const_names, known, changed);
+            solve_operand_types(body, const_names, ret_ty, known, changed);
+        }
+        LcnfExpr::TailCall(LcnfArg::Var(head), args) => {
+            let result = is_informative_type(ret_ty).then(|| ret_ty.clone());
+            unify_application(head, args, result, const_names, known, changed);
         }
         LcnfExpr::Case { alts, default, .. } => {
             for alt in alts {
-                solve_operand_types(&alt.body, const_names, known, changed);
+                solve_operand_types(&alt.body, const_names, ret_ty, known, changed);
             }
             if let Some(d) = default {
-                solve_operand_types(d, const_names, known, changed);
+                solve_operand_types(d, const_names, ret_ty, known, changed);
             }
         }
         LcnfExpr::Return(_) | LcnfExpr::Unreachable | LcnfExpr::TailCall(_, _) => {}
+    }
+}
+
+/// Settle one application's operands, and its result where the
+/// projection ties the two together.
+///
+/// `result` is the type of whatever the application produces — the
+/// binding's type for a `Let`, the declaration's return type for a
+/// `TailCall` — or `None` when that is not known either.
+fn unify_application(
+    head: &LcnfVarId,
+    args: &[LcnfArg],
+    result: Option<LcnfType>,
+    const_names: &std::collections::HashMap<LcnfVarId, String>,
+    known: &mut HashMap<LcnfVarId, LcnfType>,
+    changed: &mut bool,
+) {
+    let Some(name) = const_names.get(head) else {
+        return;
+    };
+    let sideways = operands_agree(name);
+    let through_result = result_agrees_with_operands(name);
+    if !sideways && !through_result {
+        return;
+    }
+    let operand_vars: Vec<LcnfVarId> = args
+        .iter()
+        .filter_map(|a| match a {
+            LcnfArg::Var(v) => Some(*v),
+            _ => None,
+        })
+        .collect();
+
+    // Whichever of the operands or the result already knows.
+    let settled = operand_vars
+        .iter()
+        .find_map(|v| known.get(v).cloned())
+        .or(if through_result { result } else { None });
+    let Some(ty) = settled else { return };
+
+    if sideways || through_result {
+        for v in &operand_vars {
+            if !known.contains_key(v) {
+                known.insert(*v, ty.clone());
+                *changed = true;
+            }
+        }
     }
 }
 

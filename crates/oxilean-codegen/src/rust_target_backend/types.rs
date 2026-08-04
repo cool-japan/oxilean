@@ -983,22 +983,22 @@ impl RustTargetBackend {
                     // doesn't touch ASCII alnum chars, so the
                     // two coincide for these primitives).
                     match name.as_str() {
-                        "UInt8"   => RustType::U8,
-                        "UInt16"  => RustType::U16,
-                        "UInt32"  => RustType::U32,
-                        "UInt64"  => RustType::U64,
+                        "UInt8" => RustType::U8,
+                        "UInt16" => RustType::U16,
+                        "UInt32" => RustType::U32,
+                        "UInt64" => RustType::U64,
                         "UInt128" => RustType::U128,
-                        "USize"   => RustType::Usize,
-                        "Int8"   => RustType::I8,
-                        "Int16"  => RustType::I16,
-                        "Int32"  => RustType::I32,
-                        "Int64"  => RustType::I64,
+                        "USize" => RustType::Usize,
+                        "Int8" => RustType::I8,
+                        "Int16" => RustType::I16,
+                        "Int32" => RustType::I32,
+                        "Int64" => RustType::I64,
                         "Int128" => RustType::I128,
-                        "ISize"  => RustType::Isize,
+                        "ISize" => RustType::Isize,
                         "Float32" => RustType::F32,
                         "Float64" => RustType::F64,
-                        "Char"    => RustType::Char,
-                        "Bool"    => RustType::Bool,
+                        "Char" => RustType::Char,
+                        "Bool" => RustType::Bool,
                         _ => RustType::Custom(name.clone()),
                     }
                 } else {
@@ -1054,13 +1054,46 @@ impl RustTargetBackend {
     /// `set_const_names`. Names there are already
     /// `mangle_name`d (`.` → `_`), so the match table
     /// keys carry the mangled spelling.
-    fn try_builtin_app(
-        &mut self,
-        func: &LcnfArg,
-        args: &[LcnfArg],
-    ) -> Option<RustExpr> {
+    /// Reconstruct the `f64` behind an `OfScientific.ofScientific`
+    /// application: `mantissa * 10 ^ (if negExp then -exp else exp)`.
+    ///
+    /// Returns `None` unless all three arguments have the literal shape
+    /// the encoder produces, so a genuine call with computed arguments
+    /// is left alone rather than silently mis-folded.
+    fn fold_of_scientific(
+        &self,
+        mantissa: &LcnfArg,
+        neg_exp: &LcnfArg,
+        exp: &LcnfArg,
+    ) -> Option<f64> {
+        let nat = |a: &LcnfArg| match a {
+            LcnfArg::Lit(LcnfLit::Nat(n)) => Some(*n),
+            _ => None,
+        };
+        let m = nat(mantissa)?;
+        let e = i32::try_from(nat(exp)?).ok()?;
+        let negative = match neg_exp {
+            LcnfArg::Var(id) => bool_ctor_to_native(self.const_names.get(id)?)?,
+            _ => return None,
+        };
+        #[allow(clippy::cast_precision_loss)] // a source literal's mantissa
+        let m = m as f64;
+        Some(m * 10f64.powi(if negative { -e } else { e }))
+    }
+
+    fn try_builtin_app(&mut self, func: &LcnfArg, args: &[LcnfArg]) -> Option<RustExpr> {
         let LcnfArg::Var(id) = func else { return None };
         let mangled = self.const_names.get(id)?.clone();
+        // Float literal: `OfScientific.ofScientific m negExp e`, which
+        // is how both Lean and `oxilean-elab` encode one, since the
+        // kernel's `Literal` has no float case. Fold it back to a
+        // native literal — otherwise it emits a call to a function that
+        // does not exist.
+        if mangled == "OfScientific_ofScientific" && args.len() == 3 {
+            if let Some(f) = self.fold_of_scientific(&args[0], &args[1], &args[2]) {
+                return Some(RustExpr::Lit(RustLit::Float(f)));
+            }
+        }
         // Binary arithmetic / comparison.
         if let Some(op) = tc_projection_to_rust_binop(&mangled) {
             if args.len() == 2 {
@@ -1440,11 +1473,7 @@ impl RustConstantFoldingHelper {
     }
     #[allow(dead_code)]
     pub fn fold_div_i64(a: i64, b: i64) -> Option<i64> {
-        if b == 0 {
-            None
-        } else {
-            a.checked_div(b)
-        }
+        if b == 0 { None } else { a.checked_div(b) }
     }
     #[allow(dead_code)]
     pub fn fold_add_f64(a: f64, b: f64) -> f64 {
@@ -1480,11 +1509,7 @@ impl RustConstantFoldingHelper {
     }
     #[allow(dead_code)]
     pub fn fold_rem_i64(a: i64, b: i64) -> Option<i64> {
-        if b == 0 {
-            None
-        } else {
-            Some(a % b)
-        }
+        if b == 0 { None } else { Some(a % b) }
     }
     #[allow(dead_code)]
     pub fn fold_bitand_i64(a: i64, b: i64) -> i64 {
@@ -1649,13 +1674,13 @@ fn tc_projection_to_rust_binop(mangled: &str) -> Option<&'static str> {
         "HMod_hMod" => Some("%"),
         // Bitwise.
         "HAnd_hAnd" => Some("&"),
-        "HOr_hOr"   => Some("|"),
+        "HOr_hOr" => Some("|"),
         "HXor_hXor" => Some("^"),
-        "HShiftLeft_hShiftLeft"   => Some("<<"),
+        "HShiftLeft_hShiftLeft" => Some("<<"),
         "HShiftRight_hShiftRight" => Some(">>"),
         // Comparison.
-        "LT_lt"   => Some("<"),
-        "LE_le"   => Some("<="),
+        "LT_lt" => Some("<"),
+        "LE_le" => Some("<="),
         "BEq_beq" => Some("=="),
         // leo4's translate layer lowers surface `=` to `Eq.eq` and
         // `≠` to `Not.not (Eq.eq a b)`; without this arm both emit a
