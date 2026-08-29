@@ -814,6 +814,54 @@ mod tests {
         assert_eq!(RustVisibility::Pub.to_string(), "pub ");
         assert_eq!(RustVisibility::PubCrate.to_string(), "pub(crate) ");
     }
+    #[test]
+    pub(super) fn test_ox7_string_literal_coerced_in_let_binding() {
+        use crate::lcnf::*;
+        use crate::rust_target_backend::RustTargetBackend;
+        let mut backend = RustTargetBackend::new();
+        let mut stmts: Vec<RustStmt> = Vec::new();
+        let expr = LcnfExpr::Let {
+            id: LcnfVarId(0),
+            ty: LcnfType::LcnfString,
+            value: LcnfLetValue::Lit(LcnfLit::Str("hi".to_string())),
+            body: Box::new(LcnfExpr::Return(LcnfArg::Var(LcnfVarId(0)))),
+            name: String::new(),
+        };
+        let _ = backend.compile_expr(&expr, &mut stmts);
+        let rendered = stmts
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            rendered.contains(".to_string()"),
+            "string-literal `let _: String = \"…\"` must coerce via `.to_string()`; got: {rendered}"
+        );
+    }
+    #[test]
+    pub(super) fn test_ox7_non_string_let_binding_unchanged() {
+        use crate::lcnf::*;
+        use crate::rust_target_backend::RustTargetBackend;
+        let mut backend = RustTargetBackend::new();
+        let mut stmts: Vec<RustStmt> = Vec::new();
+        let expr = LcnfExpr::Let {
+            id: LcnfVarId(1),
+            ty: LcnfType::Nat,
+            value: LcnfLetValue::Lit(LcnfLit::Nat(42)),
+            body: Box::new(LcnfExpr::Return(LcnfArg::Var(LcnfVarId(1)))),
+            name: String::new(),
+        };
+        let _ = backend.compile_expr(&expr, &mut stmts);
+        let rendered = stmts
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            !rendered.contains(".to_string()"),
+            "Nat let-binding should not get a `.to_string()` coercion; got: {rendered}"
+        );
+    }
 }
 #[cfg(test)]
 mod Rust_infra_tests {
