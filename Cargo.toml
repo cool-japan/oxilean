@@ -47,7 +47,7 @@ num-bigint = { version = "0.4", default-features = false }
 num-rational = { version = "0.4", default-features = false, features = ["num-bigint"] }
 
 # Compression (OxiARC - COOLJAPAN Pure Rust compression, replaces flate2/zip/zstd)
-oxiarc-deflate = "0.4.1"
+oxiarc-deflate = "0.4.2"
 
 # Internal dependencies
 oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.4" }

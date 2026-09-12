@@ -1,0 +1,62 @@
+# Standalone package: deliberately its own `[workspace]`, so it is invisible to
+# the `oxilean` root workspace (whose `members` list is literal and has no
+# glob), and `cargo build` at the repository root cannot pick it up. Its
+# `target/` and `Cargo.lock` are its own and are git-ignored by the
+# `.gitignore` beside this file.
+[workspace]
+
+[package]
+name = "oxilean-kernel-formal"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "cargo-formal self-host harnesses over oxilean-kernel's public BigNat API (bounded model checking of the proof kernel's bignum arithmetic)"
+
+[dependencies]
+# The crate under verification, by relative path. `oxilean-kernel`'s `default`
+# feature set is empty and it has zero non-dev dependencies, so this pulls in
+# nothing else.
+oxilean-kernel = { path = "..", default-features = false }
+# Becomes a crates.io version once `oxiformal` is published; until then the
+# harness facade is reached by relative path into the `cargo-formal` checkout
+# that sits beside this repository.
+oxiformal = { path = "../../../../cargo-formal/crates/oxiformal" }
+
+[package.metadata.formal]
+schema = 1
+default-layers = ["hygiene", "bmc", "contract"]
+# Every limb vector below holds at most three limbs; the longest loops
+# (`from_limbs`'s trailing-zero strip, `cmp_limbs`'s reverse walk,
+# `shr_bits`'s limb loop) all run once per limb plus a final test.
+unwind = 8
+budget = { max-conflicts = 200000, timeout-ms = 30000, seed = 1 }
+# The code under test is the OxiLean proof kernel's own bignum arithmetic: a
+# carry bug there is a wrong proof, not a wrong number.
+self-host = true
+# Set explicitly rather than left to the driver's default (every path
+# dependency whose `cargo metadata` source is null): here the two coincide,
+# but the harnesses depend on `oxilean-kernel` bodies being lowered, so the
+# list is written down instead of inferred.
+dep-crates = ["oxilean-kernel"]
+
+[[package.metadata.formal.target]]
+path = "src/lib.rs"
+layers = ["hygiene", "bmc", "contract"]
+
+[lints.rust]
+unsafe_code = "forbid"
+# `formal` is set by the `cargo-formal` driver build; `oxiformal_runtime_checks`
+# is set via RUSTFLAGS for the randomized-execution build. Declared here so
+# `unexpected_cfgs` stays quiet in all three builds (see the crate's module
+# docs for what each one proves).
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(formal)', 'cfg(oxiformal_runtime_checks)'] }
+
+[lints.clippy]
+unwrap_used = "deny"
+
+[profile.dev]
+# Left at the Rust default (`overflow-checks = true`, implied by
+# `debug-assertions`): the point of the `RUSTFLAGS="--cfg
+# oxiformal_runtime_checks" cargo test` build is that arithmetic overflow and
+# the kernel's own `debug_assert!`s are live exactly where the encoder says
+# they are.
