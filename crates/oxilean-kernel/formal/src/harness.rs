@@ -3,8 +3,8 @@
 //! Nothing here is copied from `oxilean-kernel`: this module is the *external*
 //! specification of what the kernel's bignum arithmetic is supposed to do.
 //! Every entry point carries a doc comment stating the property and the
-//! **measured** L1 verdict for each obligation it raises; `EXPECTED.toml` at
-//! the package root mirrors the same table machine-readably.
+//! **measured** (2026-09-14) L1 verdict for each obligation it raises;
+//! `EXPECTED.toml` mirrors it and says how load-sensitive the split is.
 //!
 //! # Two constraints that shape every harness below
 //!
@@ -14,7 +14,7 @@
 //!    algorithms (`add_limbs`, `mul_*`, `div_rem_*`) all compute in `u128`, so
 //!    every public operator that reaches one of them is `unsupported(width)`.
 //!    That is a soundness rule, not an omission, and one harness
-//!    ([`add_reaches_the_u128_carry_harness`]) exists to state it precisely.
+//!    (`add_reaches_the_u128_carry_harness`) exists to state it precisely.
 //! 2. **`Vec` construction.** A one-element `vec![x]` lowers through
 //!    `Box::new_uninit` and is refused by the encoder
 //!    (`unsupported-type: union std::mem::MaybeUninit has no logical layout`).
@@ -73,14 +73,14 @@ const PAIR_LIMBS: usize = 2;
 /// hence the kernel's literal cache) coincide with numeric equality, which is
 /// the reason `beq` can be `self == rhs` at all.
 ///
-/// **Measured L1 verdict (2026-09-08): every obligation `unknown`.** The
+/// **Measured L1 verdict (2026-09-14): all 4 obligations `unknown`.** The
 /// three `assert` sites are `unknown` (two `solver-model-rejected`, one
 /// `bounded`), and the `unwinding-assertion` of the normalisation loop itself
 /// (`../src/bignat/mod.rs:78:15`) is `unknown (solver-model-rejected)` — OxiZ
 /// 0.3.3 answers with a model that fails cargo-formal's mandatory model check
 /// (upstream U-Z10). The `bounded` row is downstream of that same failure, not
-/// of the bound: re-measured at `--unwind 16`, only the number in the message
-/// changes.
+/// of the bound: re-measured at `--unwind 16` on 2026-09-08, only the number
+/// in the message changed. Verdicts unchanged since wave 3.
 ///
 /// Runtime-checks build: green, unmarked.
 #[harness]
@@ -96,10 +96,10 @@ fn from_limbs_normalizes_trailing_zeros_harness() {
 /// and the normalisation invariant makes "fits in zero limbs" and "is zero"
 /// the same statement — so a one-limb `BigNat` can never carry the value `0`.
 ///
-/// **Measured L1 verdict (2026-09-08): every obligation `unknown`.** All three
-/// `assert` sites are `solver-model-rejected`; the two incidental
-/// `bounds-check`s on `self.limbs[0]` (`../src/bignat/mod.rs:108`) and the
-/// `unwinding-assertion` are `unknown` for the same root cause.
+/// **Measured L1 verdict (2026-09-14): all 6 obligations `unknown`.** All three
+/// `assert` sites are `solver-model-rejected`, and so is the
+/// `unwinding-assertion`; the two incidental `bounds-check`s on `self.limbs[0]`
+/// (`../src/bignat/mod.rs:108`) are `bounded`. Unchanged since wave 3.
 ///
 /// Runtime-checks build: green, unmarked.
 #[harness]
@@ -120,16 +120,16 @@ fn to_u64_matches_the_limb_count_harness() {
 /// harness exercises the encoder's closure handling and its `TryFrom`-between-
 /// integers rule as well as the arithmetic.
 ///
-/// **Measured L1 verdict (2026-09-08): `unsupported(no-body)`** —
-/// "`oxilean_kernel::bignat::BigNat::to_u32::{closure-0}` is not in the module
-/// set" (`../src/bignat/mod.rs:115:9`). Phase 2b's dependency-body lowering
-/// reaches the functions of a path dependency, but not the **closures defined
-/// inside** one, and `to_u32` is nothing but such a closure. No harness-side
-/// spelling avoids it: the closure is in the code under test. This row is the
-/// concrete ask for lowering external closure bodies.
+/// **Measured L1 verdict (2026-09-14): all 6 obligations `unknown`.** The three
+/// `assert` sites are `solver-model-rejected`, and so is the
+/// `unwinding-assertion`; the two `bounds-check`s at
+/// `../src/bignat/mod.rs:108` are `bounded`.
 ///
-/// Runtime-checks build: green, unmarked — `unsupported` is a statement about
-/// the encoder, not about the property.
+/// History: on 2026-09-08 this was a whole-harness `unsupported(no-body)` —
+/// "`BigNat::to_u32::{closure-0}` is not in the module set" (`:115:9`).
+/// cargo-formal's `P2-13` now lowers closures a dependency only ever passes as
+/// a value, so the harness encodes completely and the closure is no longer the
+/// obstacle. Runtime-checks build: green, unmarked.
 #[harness]
 fn to_u32_agrees_with_to_u64_harness() {
     let limbs: Vec<u64> = any_vec(PAIR_LIMBS);
@@ -148,11 +148,11 @@ fn to_u32_agrees_with_to_u64_harness() {
 /// return `0` for a non-zero number would make the kernel's `log2` reduction
 /// wrong, and `log2` is `bit_length() - 1`.
 ///
-/// **Measured L1 verdict (2026-09-08): every obligation `unknown`.** The three
-/// `assert`s and the `arith-overflow-2` row are `solver-model-rejected`; the
-/// six `arith-overflow` sites split three `solver-model-rejected` and three
-/// `bounded`. Nothing here is an encoding gap — the harness encodes completely
-/// and the solver is what does not decide it.
+/// **Measured L1 verdict (2026-09-14): all 11 obligations `unknown`.** The
+/// three `assert`s, the `unwinding-assertion` and the `arith-overflow-2` row
+/// are `solver-model-rejected`; the six `arith-overflow` sites split three
+/// `solver-model-rejected` and three `bounded`. Nothing here is an encoding
+/// gap — the harness encodes completely and the solver does not decide it.
 ///
 /// Runtime-checks build: green, unmarked.
 #[harness]
@@ -174,9 +174,9 @@ fn bit_length_bounds_harness() {
 /// `PartialEq`, so this states that the derived structural equality on the
 /// *normalised* representation is the intended numeric equality.
 ///
-/// **Measured L1 verdict (2026-09-08): every obligation `unknown`.** Both
+/// **Measured L1 verdict (2026-09-14): all 3 obligations `unknown`.** Both
 /// `assert` sites are `bounded` and the `unwinding-assertion` is
-/// `solver-model-rejected`.
+/// `solver-model-rejected`. Unchanged since wave 3.
 ///
 /// This harness settles an open question of the Phase 2b inventory: the
 /// derived `PartialEq for BigNat` **is** lowered from the dependency and
@@ -201,17 +201,17 @@ fn beq_agrees_with_limb_equality_harness() {
 /// The spec is spelled out for at most two limbs: equal lengths compare on
 /// the top limb, then on the bottom one.
 ///
-/// **Measured L1 verdict (2026-09-08): `unsupported(aliasing)`** — "a
-/// reference to a symbolically indexed element", at `cmp_limbs`'s
-/// `a[i].cmp(&b[i])` (`../src/bignat/mod.rs:493:15`).
+/// **Measured L1 verdict (2026-09-14): `timeout`** over 40 obligations —
+/// 32 `unknown`, every one of them `bounded: unwind=8 reached` at `cmp_limbs`'s
+/// `for i in (0..a.len()).rev()` (`../src/bignat/mod.rs:492:14`) and none
+/// model-rejected, plus 8 `timeout` at the 30 000 ms budget, among them the
+/// harness's own `assert` and both `unwinding-assertion`s. Several `bounded`
+/// sites solve in 21–29 s, so *which* rows are `timeout` moves with machine
+/// load: `EXPECTED.toml`'s LOAD SENSITIVITY section says how much.
 ///
-/// Read that refusal precisely, because it is *not* the one the Phase 2b
-/// inventory predicted. The encoder's ordering fallback to a user
-/// `PartialOrd`/`Ord` impl works here: `<BigNat as Ord>::cmp` is resolved to
-/// the hand-written impl and inlined, and so is `cmp_limbs`. The refusal is
-/// three frames deeper, on the `&b[i]` that `Ord::cmp`'s receiver autoref
-/// builds over a symbolically indexed slot. So the ask this row produces is
-/// "a reference to `seq[i]` for a symbolic `i`", not "an ordering fallback".
+/// History: on 2026-09-08 this was whole-harness `unsupported(aliasing)` at
+/// `a[i].cmp(&b[i])` (`:493:15`). The encoder builtin resolving a shared
+/// `&xs[i]` at a symbolic index to the selected element's value closed it.
 ///
 /// Runtime-checks build: green, unmarked.
 #[harness]
@@ -243,26 +243,26 @@ fn cmp_matches_lexicographic_order_harness() {
 /// on the `ble` side; and it is non-zero on the other, which is the part that
 /// makes "truncated" a real claim rather than "always returns zero".
 ///
-/// **Measured L1 verdict (2026-09-08): `unsupported(unsupported-rvalue)`** —
-/// "a reference has no field", at `cmp_limbs`'s `a.len()`
-/// (`../src/bignat/mod.rs:489:8`).
+/// **Measured L1 verdict (2026-09-14): `timeout`** over 57 obligations —
+/// 55 `timeout` at the 30 000 ms budget, 1 `unknown` (`bounded`) and
+/// **1 proved**, the `unwinding-assertion` of `sub_limbs`'s `out.push(d2)`
+/// (`../src/bignat/mod.rs:480:9`). The most expensive harness here and also
+/// its most reproducible: the same 1 proved / 55 timeout / 1 unknown split
+/// came back in all three runs of `EXPECTED.toml`'s LOAD SENSITIVITY table.
+/// Nothing is refuted, and nothing is an encoder refusal.
 ///
-/// This is a *different* refusal from the one
-/// [`cmp_matches_lexicographic_order_harness`] gets, and the difference is the
-/// finding. A direct `a.cmp(&b)` reaches `cmp_limbs` with slice arguments and
-/// gets as far as line 493; `ble`'s `self <= rhs` on `&BigNat` goes through
-/// `<&A as PartialOrd<&A>>::le` and arrives at the same user impl one
-/// indirection deeper, so the very first `a.len()` is projected on a reference
-/// and refused.
+/// It is also the harness that reaches `sub_limbs`'s own debug assertions and
+/// raises them as obligations: the bare
+/// `debug_assert!(cmp_limbs(a, b) != Ordering::Less)` at `:473` (key `panic`)
+/// and `debug_assert_eq!(borrow, 0)` at `:483` (key `assert`) — the two
+/// contracts `README.md` proposes for `sub_limbs`, now raised rather than
+/// merely proposed. Both `timeout`, so neither is proved yet.
 ///
-/// That the two refusals are entry-path-dependent, and not one merely masking
-/// the other, was **measured**: with `let ordering = a.cmp(&b);` hoisted above
-/// the `a.ble(&b)` below, this same harness comes back
-/// `unsupported(aliasing)` at `:493:15` instead. The ordering here is
-/// therefore deliberate — `ble` first, so that the package records *both*
-/// distinct refusals (this one and
-/// [`cmp_matches_lexicographic_order_harness`]'s) rather than the same one
-/// twice. The verdict is `unsupported` either way; only the reason moves.
+/// History: on 2026-09-08 this was whole-harness
+/// `unsupported(unsupported-rvalue)`, "a reference has no field", at
+/// `cmp_limbs`'s `a.len()` (`:489:8`), reached through `ble`'s `self <= rhs`
+/// one indirection deeper than a direct `.cmp()`. The ordering fallback to a
+/// user `PartialOrd`/`Ord` impl, wired into `le` as well as `cmp`, closed it.
 ///
 /// Runtime-checks build: green, unmarked.
 #[harness]
@@ -296,9 +296,9 @@ fn sub_is_truncating_and_ble_agrees_harness() {
 /// at 128 bits, or the encoder learns to lower a `u128` add-with-carry into
 /// two 64-bit terms.
 ///
-/// **Measured L1 verdict (2026-09-08): `unsupported(width)`** —
-/// "`<u128 as From<u64>>::from`: the result is 128 bits, over the 64-bit limit
-/// of design rule W" (`../src/bignat/mod.rs:459:17`).
+/// **Measured L1 verdict (2026-09-14, unchanged since wave 3):
+/// `unsupported(width)`** — "`<u128 as From<u64>>::from`: the result is 128
+/// bits, over the 64-bit limit of design rule W" (`:459:17`). Encoding-time.
 ///
 /// Runtime-checks build: green, unmarked — `unsupported` says nothing about
 /// whether the property holds, and the plain-build test below exhibits the
@@ -326,23 +326,23 @@ fn add_reaches_the_u128_carry_harness() {
 /// so the randomized build keeps every draw instead of rejecting all but one
 /// in 2^57.
 ///
-/// **Measured L1 verdict (2026-09-08): 9 `timeout` and the rest `unknown`,
-/// with the package's only two `proved` obligations.** Both proved rows are
-/// `unwinding-assertion`s — one for this harness's own `any_vec` draw loop and
-/// one inside `shr_bits`'s limb loop (`../src/bignat/mod.rs:405:13`). The
-/// worst-of-sites rule nonetheless records that property as `timeout` in
-/// `EXPECTED.toml`, because two other `unwinding-assertion` sites time out.
+/// **Measured L1 verdict (2026-09-14): `timeout`** over 52 obligations —
+/// 4 `timeout`, 46 `unknown` (4 `solver-model-rejected`, 42 `bounded`) and
+/// **2 proved**, two of the package's three proved obligations. Both proved
+/// rows are `unwinding-assertion`s: this harness's own `shift_limbs.push(..)`
+/// (`src/harness.rs:363:5`) and `shr_bits`'s `out.push(lo | hi)`
+/// (`../src/bignat/mod.rs:405:13`). The worst-of-sites rule still records that
+/// property as `timeout` in `EXPECTED.toml`, because the other two
+/// `unwinding-assertion` sites time out.
 ///
-/// The cost is concentrated in `shr_bits`: `let limb_shift = (bits / 64)` and
-/// `let bit_shift = (bits % 64)` (`../src/bignat/mod.rs:391`, `:392`) are
-/// emitted as full 64-bit bit-blasted division and remainder even though the
-/// divisor is the constant 64, and they sit under `bit_length`'s
-/// `leading_zeros` and an eight-fold unrolled limb loop. Strength-reducing
-/// division by a power-of-two constant to a shift and a mask is the concrete
-/// encoder ask this harness produces. One of the nine timeouts is borderline
-/// at the 30 000 ms budget and comes back `unknown` on a warm re-run; it
-/// shares its `EXPECTED.toml` row with a site that times out either way, so
-/// no recorded row moves.
+/// Wave 3 measured 9 timeouts here; this run has 4, and three rows moved
+/// `timeout` to `unknown`. Phase 2b gave the encoder strength reduction of `/`
+/// and `%` by a constant power of two, which is exactly the ask the wave-3
+/// file recorded for `shr_bits`'s `bits / 64` and `bits % 64`
+/// (`../src/bignat/mod.rs:391`, `:392`). Both checks are still *raised*
+/// (`division-by-zero` at `:391:26`, `remainder-by-zero` at `:392:25`, both
+/// `bounded`) — MIR inserts them whatever the encoding. And part of the
+/// difference is machine load: see `EXPECTED.toml`'s LOAD SENSITIVITY section.
 ///
 /// An earlier, stronger version of this harness asserted the exact identity
 /// `bit_length(a >>> k) == bit_length(a) - k` for `k < bit_length(a)`. It was
@@ -377,13 +377,13 @@ fn shr_is_a_power_of_two_division_harness() {
 /// it reaches first and the whole thing is `unsupported(iterator)`. It is the
 /// concrete ask for those three adapters, and the property is true.
 ///
-/// **Measured L1 verdict (2026-09-08): `unsupported(iterator)`** —
-/// "`std::iter::Iterator::map`: builds or advances an iterator outside the
-/// bounded model", at `land`'s `(0..n).map(..).collect()`
-/// (`../src/bignat/mod.rs:296:29`). The harness aborts there, so that is the
-/// recorded reason; `lor` and `lxor`'s `out.iter_mut().zip(short.iter())`
-/// (`:307`, `:321`) are the same gap one call later and would be reported
-/// instead if `map`/`collect` were covered.
+/// **Measured L1 verdict (2026-09-14, unchanged since wave 3):
+/// `unsupported(iterator)`** — "`Iterator::map`: builds or advances an
+/// iterator outside the bounded model", at `land`'s `(0..n).map(..).collect()`
+/// (`../src/bignat/mod.rs:296:29`), cargo-formal TODO P3-23. The harness
+/// aborts there, so that is the recorded reason; `lor`/`lxor`'s
+/// `out.iter_mut().zip(short.iter())` (`:307`, `:321`) are the same gap one
+/// call later. Decided at encoding time, so machine load cannot move it.
 ///
 /// Runtime-checks build: green, unmarked.
 #[harness]
@@ -408,13 +408,13 @@ fn bitwise_ops_respect_the_limb_count_lattice_harness() {
 /// The cheapest statement in the package, and therefore the clearest read on
 /// what the solver can do with this shape at all.
 ///
-/// **Measured L1 verdict (2026-09-08): every obligation `unknown`.** All five
+/// **Measured L1 verdict (2026-09-14): all 9 obligations `unknown`.** All five
 /// `assert` sites and all three incidental `bounds-check`s are `bounded`, and
-/// the `unwinding-assertion` of `from_limbs`'s normalisation loop is
-/// `solver-model-rejected`. This is the harness that was re-measured at
-/// `--unwind 16` to establish that the `bounded` rows across this whole
-/// package are a consequence of that un-discharged unwinding assertion and not
-/// of the bound: at 16 the verdicts are identical.
+/// every one of them truncates at `from_limbs`'s normalisation loop
+/// (`../src/bignat/mod.rs:78:15`), whose own `unwinding-assertion` here is
+/// `solver-model-rejected`. On 2026-09-08 this harness was re-measured at
+/// `--unwind 16` to establish that link for the loop it names: at 16 the
+/// verdicts were identical and only the message's number changed.
 ///
 /// Runtime-checks build: green, unmarked.
 #[harness]

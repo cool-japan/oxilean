@@ -61,23 +61,68 @@
 //!
 //! `proved` means the solver found no input, within the harness's bounds,
 //! that violates the property. `refuted` means a concrete counterexample
-//! exists. `unknown` means the solver did not decide it; in this package the
-//! reason is almost always `solver-model-rejected` — see below. `unsupported`
-//! means the encoder could not build a verification condition at all, and is
-//! a statement about the encoder (or about a deliberate soundness rule),
-//! never about the code.
+//! exists. `unknown` means the solver did not decide it, and its message says
+//! which of the two reasons applies: `solver-model-rejected` (see below) or
+//! `bounded: unwind=8 reached`. `timeout` means the 30 000 ms budget ran out
+//! before any answer. `unsupported` means the encoder could not build a
+//! verification condition at all, and is a statement about the encoder (or
+//! about a deliberate soundness rule), never about the code.
 //!
-//! # Why so many `unknown`s: cargo-formal is pinned to OxiZ 0.3.3
+//! # Measured result (2026-09-14)
+//!
+//! 188 VCs over 190 obligations in 615 s, **exit 0**: 3 proved /
+//! **0 refuted** / 118 unknown (25 `solver-model-rejected`, 93 `bounded`) /
+//! 67 timeout / 2 unsupported (`width` and `iterator`). Nine of the eleven
+//! harnesses encode completely; the two that do not are
+//! `add_reaches_the_u128_carry_harness` (design rule W, the `u128` carry in
+//! `add_limbs`) and `bitwise_ops_respect_the_limb_count_lattice_harness`
+//! (`map`/`collect` outside the iteration model). `EXPECTED.toml` carries the
+//! per-property table and `README.md` the narrative.
+//!
+//! **The `unknown`/`timeout` boundary is load-sensitive.** It is a wall clock,
+//! not a property of the verification conditions: three runs of this source
+//! with the same pins reported 124/61, 101/84 and 118/67 over the same 190
+//! obligations. An obligation can only trade `unknown` for `timeout` and back,
+//! never for `proved` or `refuted`, because a `bounded`/`solver-model-rejected`
+//! verdict is a real answer and a `timeout` is the absence of one. A re-run
+//! that reports a different split is reproducing this package, not regressing
+//! it. `EXPECTED.toml`'s LOAD SENSITIVITY section has the table and names the
+//! rows nearest the boundary.
+//!
+//! # Why so little is `proved`: cargo-formal is pinned to OxiZ 0.3.3
 //!
 //! `cargo-formal` depends on the SMT solver `oxiz` at a crates.io pin of
 //! `=0.3.3`, which answers `sat` with a model that does not satisfy the
 //! formula for a class of Boolean-structure-over-bit-vector queries
 //! (upstream item U-Z10). `cargo-formal` runs a **mandatory model check** on
 //! every reported counterexample, so such an answer is reported as `unknown`
-//! and never as a `refuted` with a fabricated witness. Those rows are
-//! labelled `solver-model-rejected` in the report and in `EXPECTED.toml`.
-//! They are not encoder gaps; they move to `proved` once the pin moves to an
-//! OxiZ release carrying the fix.
+//! and never as a `refuted` with a fabricated witness. Those 25 obligations
+//! are labelled `solver-model-rejected` in the report and in `EXPECTED.toml`,
+//! 18 of the 93 `bounded` ones are downstream of them: they name
+//! `from_limbs`'s normalisation loop, whose own `unwinding-assertion` is
+//! model-rejected, and where the encoder cannot conclude "the loop finished"
+//! every obligation on the truncated path is `bounded` too. (The other 75 name
+//! `shr_bits`'s or `cmp_limbs`'s loops, whose unwinding assertions time out
+//! instead — those sit downstream of the budget, not of the pin.) None of it
+//! is an encoder gap, and the pin's share moves once the pin does.
+//!
+//! The 67 `timeout`s are a different matter and are not the pin's fault: they
+//! are genuinely hard bit-blasting problems in the eight-fold unrolled
+//! two-vector walks of `cmp_limbs` and `sub_limbs`, 55 of them in the single
+//! `sub`/`ble` harness.
+//!
+//! # What this package caught
+//!
+//! On 2026-09-09 it reported a `refuted` `bounds-check` on
+//! `BigNat::from_limbs`, with the counterexample `in0 = vec![]`. The kernel is
+//! not wrong; the **verifier** was. The cause was in cargo-formal's
+//! `resolve_referents`, which resolved dead enum payloads under an un-narrowed
+//! guard, so a dead `Some` from `slice::last` on an empty constant-length
+//! vector raised a `bounds-check` that folds to false under a reachable guard.
+//! Payloads are now resolved under `guard AND discr = d` and slots under
+//! `guard AND k < len`; the obligation is removed, not proved. Six regression
+//! tests pin it, and `refuted` has been **0** in every run since. That is what
+//! `self-host = true` is for; `README.md` tells the whole story.
 //!
 //! [`cargo-formal`]: https://github.com/cool-japan/cargo-formal
 
