@@ -9,6 +9,8 @@ homepage.workspace = true
 documentation.workspace = true
 rust-version.workspace = true
 description = "Independent Lean 4 proof checker — the oxilean-verify product CLI and streaming verify engine"
+categories = ["command-line-utilities", "development-tools", "science"]
+keywords = ["lean4", "lean", "proof-checker", "verification", "theorem-prover"]
 
 [[bin]]
 name = "oxilean-verify"

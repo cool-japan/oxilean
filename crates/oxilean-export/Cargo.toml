@@ -9,6 +9,8 @@ homepage.workspace = true
 documentation.workspace = true
 rust-version.workspace = true
 description = "lean4export NDJSON reader feeding the oxilean-verify trusted computing base"
+categories = ["development-tools", "parser-implementations", "science"]
+keywords = ["lean4", "lean", "proof", "ndjson", "parser"]
 
 [dependencies]
 # ONLY the kernel — this crate is inside the TCB. No external runtime deps.

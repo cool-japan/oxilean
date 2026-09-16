@@ -101,15 +101,17 @@
 #
 # The `unknown`/`timeout` boundary in this package is a **wall-clock** boundary,
 # not a property of the verification conditions, and it moves with machine load.
-# Three runs of the same source with the same pins:
+# Five runs of the same source with the same pins:
 #
-#   | run                              | unknown | timeout | wall  |
-#   |----------------------------------|---------|---------|-------|
-#   | 2026-09-09, quiet (Gate 5)       | 124     | 61      | 556 s |
-#   | 2026-09-14, concurrent load      | 101     | 84      | 758 s |
-#   | 2026-09-14, quiet (**this file**)| 118     | 67      | 615 s |
+#   | run                                                    | unknown | timeout | wall  |
+#   |---------------------------------------------------------|---------|---------|-------|
+#   | 2026-09-09, quiet (Gate 5)                               | 124     | 61      | 556 s |
+#   | 2026-09-14, concurrent load                              | 101     | 84      | 758 s |
+#   | 2026-09-14, quiet (**the 72 rows below record this run**)| 118     | 67      | 615 s |
+#   | 2026-09-15, Phase 3 defaults, moderate load (D-wave run1)| 159     | 26      | 411 s |
+#   | 2026-09-15, Phase 3 defaults, moderate load (D-wave run2)| 147     | 38      | 451 s |
 #
-# In all three: 3 proved, **0 refuted**, 2 unsupported, 190 obligations.
+# In all five: 3 proved, **0 refuted**, 2 unsupported, 190 obligations.
 #
 # The movement is **asymmetric and bounded**: an obligation can only trade
 # `unknown` for `timeout` and back. It can never become `proved` or `refuted`
@@ -117,6 +119,39 @@
 # answer from the solver and `timeout` is the absence of one -- neither is a
 # decision about the property. So a re-run that reports a different split is
 # reproducing this file, not contradicting it.
+#
+# The 2026-09-15 Phase 3 re-measurement (autoharness off, modular on, vacuity
+# check on, --jobs 4; release cargo-formal 0621fc0, OxiZ 0.3.3, rustc
+# nightly-2026-06-20) reproduces the file under the same asymmetry: run twice
+# from fresh --target-dirs, item set identical (0 added/removed ids against
+# the 2026-09-14 quiet report), 0 FLIPs in either direction (`--prev`
+# run1<->run2: 12 UNDECIDED-SWAP, 0 FLIP; run1<->2026-09-14 quiet: 41
+# UNDECIDED-SWAP, 0 FLIP), and `compare_expected.py --undecided-equivalent`
+# exits 0 against this file for both runs. The machine was NOT quiet for this
+# pair (other agents' cargo/nextest jobs ran throughout on the shared 8-core
+# host, 1-min load ~13-14); the run is faster and more unknown-heavy than the
+# quiet 2026-09-14 row (25 solver-model-rejected of its 118 unknown),
+# consistent with contention making the solver give up
+# (bounded/solver-model-rejected) before the 30000 ms wall clock rather than
+# after it -- it does not change any decided verdict. solver-model-rejected
+# was 28 (run1) and 27 (run2), against this file's 25; per the rule above,
+# this count also moves only with timeouts on the same sites, so 27-28 is
+# read as the same phenomenon at a different point in the unknown/timeout
+# split, not a new class of rejection.
+#
+# New report surface, not a verdict: `items[].holes[]` (absent from the
+# 2026-09-14 report; the field did not exist yet) now carries 553 entries in
+# both 2026-09-15 runs, all one `(kind, message)` pair --
+# `("assume", "drop-elided: \`oxilean_kernel::BigNat\` is dropped without
+# running glue")`. This is the documented Drop rule of design phase3.md
+# section 5.5 (`crates/formal-vcgen/src/symex/term.rs:367-407`): `BigNat` has
+# no user `Drop` impl and is not "obviously trivial" (it owns a heap field),
+# so its drop is assumed rather than modeled; a type with a genuine user
+# `Drop` impl is refused outright instead. It is not the `modular`/`trusted`
+# hole class design section 8 anticipates for this wave (neither marker
+# string appears anywhere in this report), reproduces identically in both
+# runs, and moves no verdict -- read it as a pre-existing rule newly visible
+# through a new report field, not as new encoder behaviour.
 #
 # What is therefore a **stable** claim, and what is not:
 #

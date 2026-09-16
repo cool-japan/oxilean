@@ -141,13 +141,36 @@ load. The same source, the same pins, three runs:
 | 2026-09-09, quiet (Gate 5) | 3 | **0** | 124 | 61 | 2 | 556 s |
 | 2026-09-14, under concurrent load | 3 | **0** | 101 | 84 | 2 | 758 s |
 | 2026-09-14, quiet (the run this file records) | 3 | **0** | 118 | 67 | 2 | 615 s |
+| 2026-09-15, Phase 3 defaults (autoharness off, modular on, vacuity check on), moderate concurrent load (uptime 1-min load ~13-14 of 8 cores: 13.79 before run1, 12.98 before run2; other D-wave/OxiZ/oxifunnel `cargo`/`nextest` jobs running) | 3 | **0** | 159 | 26 | 2 | 411 s |
+| 2026-09-15, same binaries, same load class, run 2 | 3 | **0** | 147 | 38 | 2 | 451 s |
 
-All three are 190 obligations. The movement is **asymmetric and bounded**: an
+All five are 190 obligations. The movement is **asymmetric and bounded**: an
 obligation can only trade `unknown` for `timeout` and back, never for `proved`
 or `refuted`, because `bounded`/`solver-model-rejected` is a real answer from
 the solver and a `timeout` is the absence of one — neither decides the
 property. **A re-run that reports a different split is reproducing this
 package, not regressing it.**
+
+The 2026-09-15 Phase 3 re-measurement (release `cargo-formal` 0.1.0 rev
+`0621fc0`, OxiZ 0.3.3, rustc nightly-2026-06-20, `--jobs 4`) reproduces this
+file under the same asymmetry, run twice from fresh `--target-dir`s:
+`refuted` stays 0, both whole-harness `unsupported` rows
+(`add_reaches_the_u128_carry_harness` width, `bitwise_ops_respect_the_limb_count_lattice_harness`
+iterator) are unchanged, and the three `proved` obligations are the same
+three sites (`shr_is_a_power_of_two_division_harness#unwinding-assertion` at
+`../src/bignat/mod.rs:405:13` and `src/harness.rs:363:5`,
+`sub_is_truncating_and_ble_agrees_harness#unwinding-assertion` at
+`../src/bignat/mod.rs:480:9`). `compare_expected.py --undecided-equivalent`
+against `EXPECTED.toml` exits 0 for both runs; `--prev` between them reports
+0 `FLIP`s and 12 `UNDECIDED-SWAP`s (unknown⇄timeout only), and against the
+2026-09-14 quiet report 0 `FLIP`s, 0 added/removed ids, and 41
+`UNDECIDED-SWAP`s. The machine was **not** quiet for this run (unlike the
+2026-09-09/2026-09-14 rows): other agents' `cargo`/`nextest` jobs were
+running throughout on the shared 8-core host, which plausibly explains why
+this pair of runs is both faster (411 s / 451 s) and more `unknown`-heavy
+than the quiet 2026-09-14 row — contention appears to make OxiZ give up
+(`bounded`/`solver-model-rejected`) before the 30 000 ms wall clock, not
+after it, shifting the split without changing any decided verdict.
 
 What is stable, and what is not:
 
