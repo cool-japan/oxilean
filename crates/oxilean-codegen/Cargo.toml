@@ -11,7 +11,7 @@ documentation = "https://docs.rs/oxilean-codegen"
 description = "OxiLean code generator - LCNF-based compilation and optimization"
 readme = "README.md"
 keywords = ["lean", "codegen", "compiler", "optimization", "lcnf"]
-categories = ["development-tools", "development-tools::build-utils"]
+categories = ["development-tools::build-utils"]
 
 [dependencies]
 oxilean-kernel = { workspace = true }
