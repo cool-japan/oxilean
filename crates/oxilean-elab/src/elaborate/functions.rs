@@ -26,6 +26,11 @@ pub fn elaborate_expr(
         SurfaceExpr::Let(name, ty_opt, val, body) => {
             elaborate_let(ctx, name, ty_opt.as_deref(), val, body, None)
         }
+        // A float literal has no kernel `Literal` to become — the
+        // kernel's is `Nat | Str`, matching Lean's own
+        // `Lean.Literal`. Lean encodes floats as an
+        // `OfScientific.ofScientific` application, and so do we.
+        SurfaceExpr::Lit(oxilean_parse::Literal::Float(f)) => Ok(float_to_of_scientific(*f)),
         SurfaceExpr::Lit(lit) => Ok(Expr::Lit(convert_literal(lit.clone()))),
         SurfaceExpr::Ann(inner, ty) => elaborate_annotation(ctx, inner, ty),
         SurfaceExpr::Hole => elaborate_hole(ctx),
@@ -1145,9 +1150,89 @@ fn convert_literal(lit: oxilean_parse::Literal) -> oxilean_kernel::Literal {
         oxilean_parse::Literal::Nat(n) => oxilean_kernel::Literal::nat(n),
         oxilean_parse::Literal::String(s) => oxilean_kernel::Literal::Str(s),
         oxilean_parse::Literal::Char(c) => oxilean_kernel::Literal::Str(c.to_string()),
+        // Unreachable from expression position — `elaborate_expr`
+        // routes `Float` to `float_to_of_scientific` before reaching
+        // here. Pattern position has no float-literal pattern, so this
+        // arm exists only to keep the match total; it used to be
+        // `nat(0)` for *every* float, which silently turned `x * 2.0`
+        // into `x * 0`.
         oxilean_parse::Literal::Float(_) => oxilean_kernel::Literal::nat(0),
     }
 }
+
+/// Encode a float literal the way Lean does: as an application of
+/// `OfScientific.ofScientific`.
+///
+/// The kernel's `Literal` is `Nat | Str`, mirroring `Lean.Literal`'s
+/// `natVal | strVal`; there is deliberately no float case, so a float
+/// literal has to be *built* rather than stored. Lean's encoding is
+///
+/// ```text
+/// OfScientific.ofScientific (mantissa : Nat) (negExp : Bool) (exp : Nat)
+/// ```
+///
+/// denoting `mantissa * 10 ^ (if negExp then -exp else exp)`. So `3.14`
+/// is `ofScientific 314 true 2` and `1e10` is `ofScientific 1 false 10`.
+///
+/// A negative literal wraps the result in `Neg.neg`, since the mantissa
+/// is a `Nat`.
+fn float_to_of_scientific(f: f64) -> Expr {
+    let (mantissa, neg_exp, exp) = decimal_parts(f.abs());
+    let of_sci = Expr::Const(Name::from_str("OfScientific.ofScientific"), Vec::new());
+    let bool_ctor = if neg_exp { "Bool.true" } else { "Bool.false" };
+    let app = mk_app3(
+        of_sci,
+        Expr::Lit(oxilean_kernel::Literal::nat(mantissa)),
+        Expr::Const(Name::from_str(bool_ctor), Vec::new()),
+        Expr::Lit(oxilean_kernel::Literal::nat(exp)),
+    );
+    if f.is_sign_negative() && f != 0.0 {
+        Expr::App(
+            Node::new(Expr::Const(Name::from_str("Neg.neg"), Vec::new())),
+            Node::new(app),
+        )
+    } else {
+        app
+    }
+}
+
+/// Split a non-negative finite float into `(mantissa, neg_exp, exp)`
+/// with `mantissa * 10 ^ (if neg_exp { -exp } else { exp }) == f`.
+///
+/// Works off Rust's shortest round-trip decimal rendering, so the
+/// reconstruction is exact for every literal a source file can contain
+/// — the rendering is by definition the shortest decimal that parses
+/// back to the same `f64`.
+fn decimal_parts(f: f64) -> (u64, bool, u64) {
+    if !f.is_finite() {
+        return (0, false, 0);
+    }
+    let rendered = format!("{f:?}");
+    let (mantissa_str, sci_exp) = match rendered.split_once(['e', 'E']) {
+        Some((m, e)) => (m.to_string(), e.parse::<i64>().unwrap_or(0)),
+        None => (rendered, 0),
+    };
+    let (digits, frac_len) = match mantissa_str.split_once('.') {
+        Some((int_part, frac)) => {
+            // A trailing `.0` carries no precision; dropping it keeps
+            // `2.0` as `ofScientific 2 _ 0` rather than `20 true 1`.
+            let frac = frac.trim_end_matches('0');
+            (
+                format!("{int_part}{frac}"),
+                i64::try_from(frac.len()).unwrap_or(0),
+            )
+        }
+        None => (mantissa_str, 0),
+    };
+    let mantissa = digits.parse::<u64>().unwrap_or(0);
+    let exp = frac_len - sci_exp;
+    if exp >= 0 {
+        (mantissa, true, u64::try_from(exp).unwrap_or(0))
+    } else {
+        (mantissa, false, u64::try_from(-exp).unwrap_or(0))
+    }
+}
+
 /// Build a 5-argument application.
 fn mk_app5(f: Expr, a1: Expr, a2: Expr, a3: Expr, a4: Expr, a5: Expr) -> Expr {
     let app1 = Expr::App(Node::new(f), Node::new(a1));
@@ -1164,7 +1249,54 @@ fn mk_app2(f: Expr, a1: Expr, a2: Expr) -> Expr {
         Node::new(a2),
     )
 }
-/// Build a 3-argument application.
+#[cfg(test)]
+mod float_literal_tests {
+    use super::decimal_parts;
+
+    /// `mantissa * 10 ^ (if neg_exp { -exp } else { exp })` must be the
+    /// original value exactly — the encoding is lossless or it is not
+    /// worth having.
+    fn round_trip(f: f64) -> f64 {
+        let (m, neg, e) = decimal_parts(f);
+        #[allow(clippy::cast_precision_loss)]
+        let m = m as f64;
+        let e = i32::try_from(e).expect("exponent fits i32");
+        m * 10f64.powi(if neg { -e } else { e })
+    }
+
+    #[test]
+    fn decimal_parts_round_trips() {
+        for f in [
+            0.0, 1.0, 2.0, 3.14, 0.5, 0.001, 1.5e10, 1e-3, 123.456, 2.5, 100.0, 0.125,
+        ] {
+            assert!(
+                (round_trip(f) - f).abs() < f64::EPSILON * f.abs().max(1.0),
+                "{f} did not round-trip: got {}",
+                round_trip(f)
+            );
+        }
+    }
+
+    #[test]
+    fn decimal_parts_drops_a_trailing_zero_fraction() {
+        // `2.0` is `2 * 10^0`, not `20 * 10^-1`. Both are correct; the
+        // shorter one keeps the emitted literal readable.
+        assert_eq!(decimal_parts(2.0), (2, true, 0));
+        assert_eq!(decimal_parts(3.14), (314, true, 2));
+    }
+
+    #[test]
+    fn decimal_parts_handles_scientific_rendering() {
+        // Rust renders large magnitudes with an exponent, which the
+        // splitter has to consume rather than parse as a mantissa.
+        let (m, neg, e) = decimal_parts(1e300);
+        assert_eq!(m, 1);
+        assert!(!neg, "1e300 needs a positive exponent");
+        assert_eq!(e, 300);
+    }
+}
+
+/// Build a 3-argument application./// Build a 3-argument application.
 #[allow(dead_code)]
 fn mk_app3(f: Expr, a1: Expr, a2: Expr, a3: Expr) -> Expr {
     let app1 = Expr::App(Node::new(f), Node::new(a1));
