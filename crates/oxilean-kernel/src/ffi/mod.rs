@@ -1,5 +1,6 @@
 //! Auto-generated module structure
 
+pub mod callbackregistry_traits;
 pub mod callingconvention_traits;
 pub mod externregistry_traits;
 pub mod ffierror_traits;
@@ -27,6 +28,7 @@ pub mod windowiterator_traits;
 pub mod writeonce_traits;
 
 // Re-export all types
+pub use callbackregistry_traits::*;
 pub use callingconvention_traits::*;
 pub use externregistry_traits::*;
 pub use ffierror_traits::*;
