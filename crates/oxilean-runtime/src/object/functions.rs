@@ -347,3 +347,5 @@ mod extra_object_tests {
         assert_eq!(pool.free_count(), 0);
     }
 }
+#[cfg(test)]
+mod array_pop_tests;

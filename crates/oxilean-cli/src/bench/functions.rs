@@ -15,7 +15,7 @@ use super::types::{
 
 /// Compute descriptive statistics from a list of timings.
 pub fn compute_statistics(name: &str, timings: &[Duration]) -> BenchmarkResult {
-    if timings.is_empty() {
+    let Some((&first, rest)) = timings.split_first() else {
         return BenchmarkResult {
             name: name.to_string(),
             iterations: 0,
@@ -25,17 +25,12 @@ pub fn compute_statistics(name: &str, timings: &[Duration]) -> BenchmarkResult {
             mean_time: Duration::ZERO,
             std_dev: Duration::ZERO,
         };
-    }
+    };
     let n = timings.len() as u64;
     let total: Duration = timings.iter().sum();
-    let min = *timings
+    let (min, max) = rest
         .iter()
-        .min()
-        .expect("timings is non-empty: checked by early return");
-    let max = *timings
-        .iter()
-        .max()
-        .expect("timings is non-empty: checked by early return");
+        .fold((first, first), |(lo, hi), &t| (lo.min(t), hi.max(t)));
     let mean_ns = total.as_nanos() / n as u128;
     let mean = Duration::from_nanos(mean_ns as u64);
     let variance: f64 = timings

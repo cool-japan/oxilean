@@ -966,7 +966,10 @@ impl CBackend {
         ret_ty: &LcnfType,
     ) -> Vec<CStmt> {
         let mut stmts = Vec::new();
-        if alts.is_empty() {
+        let mut remaining = alts.to_vec();
+        remaining.reverse();
+        let Some(first) = remaining.pop() else {
+            // No alternatives: the default (or an unreachable marker) is the whole case.
             if let Some(def) = default {
                 stmts.extend(self.emit_expr(def, ret_ty));
             } else {
@@ -976,12 +979,7 @@ impl CBackend {
                 )));
             }
             return stmts;
-        }
-        let mut remaining = alts.to_vec();
-        remaining.reverse();
-        let first = remaining
-            .pop()
-            .expect("alts is non-empty after reverse; guaranteed by caller");
+        };
         let mut result = {
             let cond = CExpr::binop(
                 CBinOp::Eq,
@@ -1327,3 +1325,6 @@ impl CBConstantFoldingHelper {
         !a
     }
 }
+
+#[cfg(test)]
+mod scalar_case_tests;

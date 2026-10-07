@@ -622,13 +622,10 @@ pub fn line_col_to_offset(source: &str, line: usize, col: usize) -> usize {
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub fn is_valid_identifier(s: &str) -> bool {
-    if s.is_empty() {
-        return false;
-    }
     let mut chars = s.chars();
-    let first = chars
-        .next()
-        .expect("string is non-empty per is_empty check above");
+    let Some(first) = chars.next() else {
+        return false;
+    };
     if !first.is_alphabetic() && first != '_' {
         return false;
     }
@@ -1211,3 +1208,6 @@ mod extended_parser_tests_3 {
         assert!(lim.enter());
     }
 }
+
+#[cfg(test)]
+mod identifier_tests;

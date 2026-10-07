@@ -824,10 +824,7 @@ impl UndoStack {
         if self.history.len() <= 1 {
             return None;
         }
-        let top = self
-            .history
-            .pop()
-            .expect("history has at least 2 elements: checked by early return");
+        let top = self.history.pop()?;
         self.redo_stack.push(top);
         Some(self.current())
     }

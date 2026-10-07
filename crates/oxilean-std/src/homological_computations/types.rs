@@ -760,11 +760,9 @@ impl SimplexBoundaryMatrix {
             if pivot >= rows {
                 break;
             }
-            let found = (pivot..rows).find(|&r| m[r][col] != 0);
-            if found.is_none() {
+            let Some(pr) = (pivot..rows).find(|&r| m[r][col] != 0) else {
                 continue;
-            }
-            let pr = found.expect("found is Some: checked by is_none guard above");
+            };
             m.swap(pivot, pr);
             let pv = m[pivot][col];
             for r in (pivot + 1)..rows {

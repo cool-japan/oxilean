@@ -262,13 +262,7 @@ impl ExprToLatex {
             }
             return format!("\\mathrm{{{}}}", escape_latex(name));
         }
-        if name.len() == 1
-            && name
-                .chars()
-                .next()
-                .expect("name is non-empty: len() == 1")
-                .is_alphabetic()
-        {
+        if name.len() == 1 && name.starts_with(|c: char| c.is_alphabetic()) {
             return name.to_string();
         }
         if name.chars().all(|c| c.is_alphanumeric() || c == '_') {

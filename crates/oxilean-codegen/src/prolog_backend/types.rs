@@ -1367,13 +1367,9 @@ impl PrologTerm {
     }
     /// Whether an atom needs quoting.
     pub(super) fn needs_quoting(s: &str) -> bool {
-        if s.is_empty() {
+        let Some(first) = s.chars().next() else {
             return true;
-        }
-        let mut chars = s.chars();
-        let first = chars
-            .next()
-            .expect("s is non-empty; guaranteed by early return on s.is_empty() above");
+        };
         if s.chars().all(|c| "#&*+-./:<=>?@\\^~".contains(c)) {
             return false;
         }
@@ -1463,3 +1459,6 @@ impl PrologMetaPredicates {
         compound("setof", vec![template, goal, bag])
     }
 }
+
+#[cfg(test)]
+mod quoting_tests;

@@ -3,7 +3,9 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::lcnf::{LcnfArg, LcnfExpr, LcnfFunDecl, LcnfLetValue, LcnfLit, LcnfVarId};
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 use super::functions::*;
 use std::collections::VecDeque;
@@ -483,23 +485,30 @@ impl PassManager {
     ///
     /// Returns `None` if there is a cycle in the dependency graph.
     pub fn topological_order(&self) -> Option<Vec<String>> {
-        let mut in_degree: HashMap<&str, usize> = HashMap::new();
-        let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
+        // A pass's count of unmet dependencies is one shared counter, held
+        // by the pass's own entry and by every edge into it, so following an
+        // edge reaches the counter without a lookup.
+        let mut in_degree: HashMap<&str, Rc<Cell<usize>>> = HashMap::new();
+        let mut adj: HashMap<&str, Vec<(&str, Rc<Cell<usize>>)>> = HashMap::new();
         for name in &self.pass_names {
-            in_degree.insert(name.as_str(), 0);
+            in_degree.insert(name.as_str(), Rc::new(Cell::new(0)));
             adj.entry(name.as_str()).or_default();
         }
         for dep in &self.dependencies {
-            if self.pass_names.contains(&dep.pass) && self.pass_names.contains(&dep.depends_on) {
+            if !self.pass_names.contains(&dep.depends_on) {
+                continue;
+            }
+            // `in_degree` has an entry for exactly the registered passes.
+            if let Some(count) = in_degree.get(dep.pass.as_str()) {
+                count.set(count.get() + 1);
                 adj.entry(dep.depends_on.as_str())
                     .or_default()
-                    .push(dep.pass.as_str());
-                *in_degree.entry(dep.pass.as_str()).or_insert(0) += 1;
+                    .push((dep.pass.as_str(), Rc::clone(count)));
             }
         }
         let mut queue: Vec<&str> = in_degree
             .iter()
-            .filter(|(_, &deg)| deg == 0)
+            .filter(|(_, count)| count.get() == 0)
             .map(|(&name, _)| name)
             .collect();
         queue.sort();
@@ -507,14 +516,9 @@ impl PassManager {
         while let Some(node) = queue.pop() {
             result.push(node.to_string());
             if let Some(neighbors) = adj.get(node) {
-                for &neighbor in neighbors {
-                    let deg = in_degree
-                        .get_mut(neighbor)
-                        .expect(
-                            "neighbor must be in in_degree; all passes were inserted during initialization",
-                        );
-                    *deg -= 1;
-                    if *deg == 0 {
+                for (neighbor, count) in neighbors {
+                    count.set(count.get() - 1);
+                    if count.get() == 0 {
                         queue.push(neighbor);
                         queue.sort();
                     }
@@ -1317,3 +1321,5 @@ impl UnreachableCodeEliminationPass {
         }
     }
 }
+#[cfg(test)]
+mod topo_order_tests;

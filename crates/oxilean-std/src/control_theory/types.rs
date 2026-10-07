@@ -160,17 +160,15 @@ impl StateSpaceModel {
     }
     /// Simulate for a sequence of inputs, returning all states (including initial).
     pub fn simulate(&self, initial: Vec<f64>, inputs: &[Vec<f64>], dt: f64) -> Vec<Vec<f64>> {
-        let mut states = vec![initial];
+        let mut states = Vec::new();
+        // `current` is the latest state; it joins `states` once its successor
+        // has been computed, and last of all.
+        let mut current = initial;
         for inp in inputs {
-            let next = self.euler_step(
-                states
-                    .last()
-                    .expect("states is non-empty: initialized with one element"),
-                inp,
-                dt,
-            );
-            states.push(next);
+            let next = self.euler_step(&current, inp, dt);
+            states.push(std::mem::replace(&mut current, next));
         }
+        states.push(current);
         states
     }
     /// Crude stability check: all diagonal elements of A negative.
@@ -600,17 +598,15 @@ impl LtiSystem {
     ///
     /// Returns the sequence of states (including the initial state).
     pub fn simulate(&self, initial: Vec<f64>, inputs: &[Vec<f64>], dt: f64) -> Vec<Vec<f64>> {
-        let mut states = vec![initial];
+        let mut states = Vec::new();
+        // `current` is the latest state; it joins `states` once its successor
+        // has been computed, and last of all.
+        let mut current = initial;
         for inp in inputs {
-            let next = self.euler_step(
-                states
-                    .last()
-                    .expect("states is non-empty: initialized with one element"),
-                inp,
-                dt,
-            );
-            states.push(next);
+            let next = self.euler_step(&current, inp, dt);
+            states.push(std::mem::replace(&mut current, next));
         }
+        states.push(current);
         states
     }
     /// Crude stability check: returns true if all diagonal elements of A are negative.
@@ -1020,12 +1016,13 @@ impl MpcController {
         steps: usize,
         dt: f64,
     ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
-        let mut states = vec![initial];
+        let mut states = Vec::new();
         let mut inputs = Vec::new();
+        // `current` is the latest state; it joins `states` once its successor
+        // has been computed, and last of all.
+        let mut current = initial;
         for _ in 0..steps {
-            let x = states
-                .last()
-                .expect("states is non-empty: initialized with one element");
+            let x = &current;
             let u = self
                 .control(x)
                 .unwrap_or_else(|| vec![0.0; self.b[0].len()]);
@@ -1038,8 +1035,9 @@ impl MpcController {
                 .map(|((&axi, &bui), &xi)| xi + dt * (axi + bui))
                 .collect();
             inputs.push(u);
-            states.push(next);
+            states.push(std::mem::replace(&mut current, next));
         }
+        states.push(current);
         (states, inputs)
     }
     /// Return the horizon length.
@@ -1112,16 +1110,15 @@ impl DiscreteStateSpace {
     }
     /// Simulate for `steps` steps, returning all states.
     pub fn simulate(&self, initial: Vec<f64>, inputs: &[Vec<f64>]) -> Vec<Vec<f64>> {
-        let mut states = vec![initial];
+        let mut states = Vec::new();
+        // `current` is the latest state; it joins `states` once its successor
+        // has been computed, and last of all.
+        let mut current = initial;
         for inp in inputs {
-            let next = self.step(
-                states
-                    .last()
-                    .expect("states is non-empty: initialized with one element"),
-                inp,
-            );
-            states.push(next);
+            let next = self.step(&current, inp);
+            states.push(std::mem::replace(&mut current, next));
         }
+        states.push(current);
         states
     }
     /// Spectral radius ρ(A) = max |eigenvalue| approximated by power iteration.
@@ -1192,3 +1189,5 @@ impl KalmanFilter1D {
         self.p
     }
 }
+#[cfg(test)]
+mod simulate_tests;

@@ -547,13 +547,12 @@ impl BoundedModelChecker {
     }
     /// Unroll the Kripke structure up to depth `bound` starting from `start`.
     pub fn unroll(&self, ks: &KripkeStructure, start: usize) -> Vec<Vec<usize>> {
-        let mut paths: Vec<Vec<usize>> = vec![vec![start]];
+        // Each path is kept with its last state.
+        let mut paths: Vec<(Vec<usize>, usize)> = vec![(vec![start], start)];
         for _ in 0..self.bound {
             let mut new_paths = Vec::new();
-            for path in &paths {
-                let last = *path
-                    .last()
-                    .expect("path is non-empty: initialized with start element");
+            for (path, last) in &paths {
+                let last = *last;
                 let succs: Vec<usize> = ks
                     .transitions
                     .iter()
@@ -561,18 +560,18 @@ impl BoundedModelChecker {
                     .map(|(_, d)| *d)
                     .collect();
                 if succs.is_empty() {
-                    new_paths.push(path.clone());
+                    new_paths.push((path.clone(), last));
                 } else {
                     for s in succs {
                         let mut p = path.clone();
                         p.push(s);
-                        new_paths.push(p);
+                        new_paths.push((p, s));
                     }
                 }
             }
             paths = new_paths;
         }
-        paths
+        paths.into_iter().map(|(path, _)| path).collect()
     }
     /// Check LTL Finally(atom) up to bound: is there a path reaching `atom`?
     pub fn check_finally(&self, ks: &KripkeStructure, atom: &str) -> bool {
@@ -1396,3 +1395,5 @@ impl HeapPredicate {
         }
     }
 }
+#[cfg(test)]
+mod unroll_tests;

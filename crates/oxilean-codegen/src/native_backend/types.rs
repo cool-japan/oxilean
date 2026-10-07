@@ -535,8 +535,7 @@ impl NativeBackend {
                 if *ret_type != NativeType::Void {
                     merge_block.params.push((merge_result_reg, *ret_type));
                 }
-                if alts.len() == 1 && default.is_some() {
-                    let alt = &alts[0];
+                if let (Some(def), [alt]) = (default.as_ref(), alts.as_slice()) {
                     let tag_reg = self.alloc_vreg();
                     current_block.push_inst(NativeInst::Call {
                         dst: Some(tag_reg),
@@ -567,16 +566,7 @@ impl NativeBackend {
                     }
                     extra_blocks.push(then_block);
                     let mut else_block = BasicBlock::new(else_id);
-                    self.compile_expr(
-                        default
-                            .as_ref()
-                            .expect(
-                                "default is Some; guaranteed by default.is_some() check at if condition",
-                            ),
-                        &mut else_block,
-                        extra_blocks,
-                        ret_type,
-                    );
+                    self.compile_expr(def, &mut else_block, extra_blocks, ret_type);
                     if else_block.terminator.is_none() {
                         else_block.push_inst(NativeInst::Br { target: merge_id });
                     }
@@ -1584,8 +1574,9 @@ pub struct RegisterAllocator {
     pub(super) num_phys_regs: usize,
     /// Live intervals computed during analysis.
     pub(super) intervals: Vec<LiveInterval>,
-    /// Active intervals (sorted by end point).
-    pub(super) active: Vec<usize>,
+    /// Active intervals (sorted by end point), each with the physical
+    /// register it holds while it is active.
+    pub(super) active: Vec<(usize, Register)>,
     /// Next spill slot to allocate.
     pub(super) next_spill: u32,
     /// Set of free physical registers.
@@ -1618,11 +1609,12 @@ impl RegisterAllocator {
             let current_start = self.intervals[idx].start;
             self.expire_old_intervals(current_start);
             if let Some(phys_idx) = self.find_free_reg() {
-                self.intervals[idx].assigned_phys = Some(Register::phys(phys_idx as u32));
+                let phys = Register::phys(phys_idx as u32);
+                self.intervals[idx].assigned_phys = Some(phys);
                 self.free_regs[phys_idx] = false;
-                self.active.push(idx);
-                self.active.sort_by_key(|&i| self.intervals[i].end);
-                assignment.insert(self.intervals[idx].vreg, Register::phys(phys_idx as u32));
+                self.active.push((idx, phys));
+                self.active.sort_by_key(|&(i, _)| self.intervals[i].end);
+                assignment.insert(self.intervals[idx].vreg, phys);
             } else {
                 self.spill_at_interval(idx, &mut assignment);
             }
@@ -1695,13 +1687,11 @@ impl RegisterAllocator {
     /// Expire intervals that end before the current position.
     pub(super) fn expire_old_intervals(&mut self, current_start: usize) {
         let mut to_remove = Vec::new();
-        for (active_idx, &interval_idx) in self.active.iter().enumerate() {
+        for (active_idx, &(interval_idx, phys)) in self.active.iter().enumerate() {
             if self.intervals[interval_idx].end < current_start {
-                if let Some(phys) = self.intervals[interval_idx].assigned_phys {
-                    let phys_idx = (phys.0 - VIRT_PHYS_BOUNDARY) as usize;
-                    if phys_idx < self.free_regs.len() {
-                        self.free_regs[phys_idx] = true;
-                    }
+                let phys_idx = (phys.0 - VIRT_PHYS_BOUNDARY) as usize;
+                if phys_idx < self.free_regs.len() {
+                    self.free_regs[phys_idx] = true;
                 }
                 to_remove.push(active_idx);
             }
@@ -1720,18 +1710,8 @@ impl RegisterAllocator {
         current_idx: usize,
         assignment: &mut HashMap<Register, Register>,
     ) {
-        if !self.active.is_empty() {
-            let last_active_idx = *self
-                .active
-                .last()
-                .expect("active is non-empty; guaranteed by !self.active.is_empty() guard");
+        if let Some(&(last_active_idx, phys)) = self.active.last() {
             if self.intervals[last_active_idx].end > self.intervals[current_idx].end {
-                let phys = self
-                    .intervals[last_active_idx]
-                    .assigned_phys
-                    .expect(
-                        "last active interval must have an assigned physical register; invariant of linear scan regalloc",
-                    );
                 self.intervals[current_idx].assigned_phys = Some(phys);
                 assignment.insert(self.intervals[current_idx].vreg, phys);
                 let spill_slot = self.next_spill;
@@ -1740,8 +1720,8 @@ impl RegisterAllocator {
                 self.intervals[last_active_idx].spill_slot = Some(spill_slot);
                 assignment.remove(&self.intervals[last_active_idx].vreg);
                 self.active.pop();
-                self.active.push(current_idx);
-                self.active.sort_by_key(|&i| self.intervals[i].end);
+                self.active.push((current_idx, phys));
+                self.active.sort_by_key(|&(i, _)| self.intervals[i].end);
                 self.spill_count += 1;
                 return;
             }
@@ -1798,3 +1778,6 @@ impl NatWorklist {
         self.in_worklist.contains(&item)
     }
 }
+
+#[cfg(test)]
+mod regalloc_tests;

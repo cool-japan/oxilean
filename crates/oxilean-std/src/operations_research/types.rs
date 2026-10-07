@@ -462,11 +462,9 @@ impl PrimMst {
         key[0] = 0;
         let mut mst_edges = Vec::new();
         let mut total = 0_i64;
-        for _ in 0..n {
-            let u = (0..n)
-                .filter(|&v| !in_mst[v])
-                .min_by_key(|&v| key[v])
-                .expect("Prim's algorithm: there is always an unvisited vertex in 0..n iterations");
+        // Each pass adds one more vertex to the tree, so the loop ends after
+        // `n` passes, when every vertex is in it.
+        while let Some(u) = (0..n).filter(|&v| !in_mst[v]).min_by_key(|&v| key[v]) {
             in_mst[u] = true;
             if parent[u] != usize::MAX {
                 let w = key[u];
@@ -1234,3 +1232,5 @@ impl Dijkstra {
         dist
     }
 }
+#[cfg(test)]
+mod prim_tests;

@@ -466,11 +466,12 @@ mod tests_extended3 {
 /// Compute the RC statistics for a list of counts.
 #[allow(dead_code)]
 pub fn rc_statistics(counts: &[u64]) -> (u64, u64, f64) {
-    if counts.is_empty() {
+    let Some((&first, rest)) = counts.split_first() else {
         return (0, 0, 0.0);
-    }
-    let min = *counts.iter().min().expect("test operation should succeed");
-    let max = *counts.iter().max().expect("test operation should succeed");
+    };
+    let (min, max) = rest
+        .iter()
+        .fold((first, first), |(lo, hi), &c| (lo.min(c), hi.max(c)));
     let avg = counts.iter().sum::<u64>() as f64 / counts.len() as f64;
     (min, max, avg)
 }
@@ -525,5 +526,32 @@ mod tests_sticky {
         let rc = StickyRc::new(2, 10);
         let s = format!("{}", rc);
         assert!(s.contains("2/10"));
+    }
+}
+#[cfg(test)]
+mod tests_statistics_and_threads {
+    use super::*;
+    fn assert_send_sync<T: Send + Sync>() {}
+    #[test]
+    fn rc_statistics_matches_min_max_over_unsorted_counts() {
+        let counts = [7u64, 3, 9, 3, 12, 0, 12, 5];
+        let (min, max, avg) = rc_statistics(&counts);
+        assert_eq!(min, 0);
+        assert_eq!(max, 12);
+        assert!((avg - 51.0 / 8.0).abs() < 1e-12);
+        assert_eq!(rc_statistics(&[42]), (42, 42, 42.0));
+    }
+    #[test]
+    fn rtarc_is_send_and_sync_for_send_and_sync_values() {
+        assert_send_sync::<RtArc<u64>>();
+        assert_send_sync::<RtArc<String>>();
+        assert_send_sync::<RtArc<std::sync::Mutex<Vec<u8>>>>();
+        let shared = RtArc::new(String::from("shared"));
+        let moved = shared.clone_arc();
+        let len = std::thread::spawn(move || moved.as_ref().len())
+            .join()
+            .expect("the spawned thread does not panic");
+        assert_eq!(len, 6);
+        assert_eq!(shared.strong_count(), 1);
     }
 }

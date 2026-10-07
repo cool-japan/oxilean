@@ -174,16 +174,12 @@ impl LeaderElectionRing {
     ///   - if received == own id: we are the leader
     ///   - if received < own id: discard
     pub fn elect_leader(&mut self) -> u64 {
-        if self.nodes.is_empty() {
-            return 0;
-        }
         let n = self.nodes.len();
-        let (leader_idx, &leader_id) = self
-            .nodes
-            .iter()
-            .enumerate()
-            .max_by_key(|(_, &id)| id)
-            .expect("nodes is non-empty: checked by n == 0 guard");
+        let Some((leader_idx, &leader_id)) =
+            self.nodes.iter().enumerate().max_by_key(|(_, &id)| id)
+        else {
+            return 0;
+        };
         self.leader = Some(leader_idx);
         let _messages = n;
         leader_id
@@ -529,29 +525,23 @@ impl CausalBroadcast {
         let mut delivered_any = true;
         while delivered_any {
             delivered_any = false;
-            let mut i = 0;
-            while i < self.pending.len() {
-                let deliverable = {
-                    let (sender, msg_vc, _) = &self.pending[i];
-                    let sender_ok = msg_vc[*sender] == self.vc[*sender] + 1;
-                    let others_ok = (0..self.num_processes)
-                        .filter(|&j| j != *sender)
-                        .all(|j| msg_vc[j] <= self.vc[j]);
-                    sender_ok && others_ok
-                };
-                if deliverable {
-                    let (sender, msg_vc, payload) = self
-                        .pending
-                        .remove(i)
-                        .expect("index i is valid: checked by loop bounds");
+            // One pass over the pending messages in their order: each is
+            // delivered or kept, and the kept ones stay in that order.
+            let mut kept = VecDeque::with_capacity(self.pending.len());
+            while let Some((sender, msg_vc, payload)) = self.pending.pop_front() {
+                let sender_ok = msg_vc[sender] == self.vc[sender] + 1;
+                let others_ok = (0..self.num_processes)
+                    .filter(|&j| j != sender)
+                    .all(|j| msg_vc[j] <= self.vc[j]);
+                if sender_ok && others_ok {
                     self.vc[sender] += 1;
-                    let _ = msg_vc;
                     self.delivered.push((sender, payload));
                     delivered_any = true;
                 } else {
-                    i += 1;
+                    kept.push_back((sender, msg_vc, payload));
                 }
             }
+            self.pending = kept;
         }
     }
     /// Number of delivered messages so far.
@@ -1064,17 +1054,13 @@ impl ConsistentHashRing {
     /// Compute load imbalance: (max_load - min_load) / avg_load.
     pub fn load_imbalance(&self, num_keys: u64) -> f64 {
         let dist = self.key_distribution(num_keys);
-        if dist.is_empty() || num_keys == 0 {
+        if num_keys == 0 {
             return 0.0;
         }
-        let max_load = *dist
-            .iter()
-            .max()
-            .expect("dist is non-empty: checked by early return") as f64;
-        let min_load = *dist
-            .iter()
-            .min()
-            .expect("dist is non-empty: checked by early return") as f64;
+        let (Some(&max_load), Some(&min_load)) = (dist.iter().max(), dist.iter().min()) else {
+            return 0.0;
+        };
+        let (max_load, min_load) = (max_load as f64, min_load as f64);
         let avg_load = num_keys as f64 / self.num_nodes as f64;
         if avg_load == 0.0 {
             0.0
@@ -1283,3 +1269,7 @@ pub enum CAPClass {
     /// CA: Consistent + Available (not partition-tolerant; e.g., traditional RDBMS)
     CA,
 }
+#[cfg(test)]
+mod causal_delivery_tests;
+#[cfg(test)]
+mod load_imbalance_tests;

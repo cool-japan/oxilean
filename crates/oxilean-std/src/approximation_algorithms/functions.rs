@@ -675,17 +675,17 @@ pub fn christofides_serdyukov(dist: &[Vec<i64>]) -> (i64, Vec<usize>) {
     let mut adj_idx = vec![0usize; n];
     let mut circuit = Vec::new();
     let mut stack = vec![0usize];
-    while let Some(&cur) = stack.last() {
+    // Take the top vertex off the stack: while it has an unused edge it goes
+    // back, with the edge's other end on top of it; otherwise it is the next
+    // vertex of the circuit.
+    while let Some(cur) = stack.pop() {
         if adj_idx[cur] < multi_adj[cur].len() {
             let next = multi_adj[cur][adj_idx[cur]];
             adj_idx[cur] += 1;
+            stack.push(cur);
             stack.push(next);
         } else {
-            circuit.push(
-                stack
-                    .pop()
-                    .expect("stack is non-empty: loop condition ensures non-empty"),
-            );
+            circuit.push(cur);
         }
     }
     circuit.reverse();
@@ -1434,3 +1434,5 @@ mod tests_approx_extra {
         assert!((obj - (0.3 + 1.4 + 1.5 + 3.6)).abs() < 1e-9);
     }
 }
+#[cfg(test)]
+mod euler_circuit_tests;

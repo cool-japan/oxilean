@@ -839,15 +839,11 @@ impl DiagnosticTrend {
     /// Return the current trend direction.
     #[allow(dead_code)]
     pub fn direction(&self) -> TrendDirection {
-        if self.history.len() < 2 {
+        let [first, .., last] = self.history.as_slice() else {
             return TrendDirection::Stable;
-        }
-        let first = self.history[0] as f64;
-        let last = *self
-            .history
-            .last()
-            .expect("history has at least 2 elements: checked by early return")
-            as f64;
+        };
+        let first = *first as f64;
+        let last = *last as f64;
         if last > first + 0.5 {
             TrendDirection::Increasing
         } else if last < first - 0.5 {

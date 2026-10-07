@@ -615,14 +615,9 @@ impl ProgressCheckpointLog {
         Some(b.timestamp_ms.saturating_sub(a.timestamp_ms))
     }
     pub fn average_rate_per_ms(&self) -> Option<f64> {
-        if self.checkpoints.len() < 2 {
+        let [first, .., last] = self.checkpoints.as_slice() else {
             return None;
-        }
-        let first = &self.checkpoints[0];
-        let last = self
-            .checkpoints
-            .last()
-            .expect("checkpoints has at least 2 elements: checked by early return");
+        };
         let elapsed = last.timestamp_ms.saturating_sub(first.timestamp_ms);
         if elapsed == 0 {
             return None;

@@ -261,19 +261,22 @@ pub fn mk_ctor_pattern(name: Name, arity: usize) -> Pattern {
 }
 /// Normalize or-patterns by flattening and deduplicating.
 pub fn normalize_or_patterns(pat: &Pattern) -> Pattern {
-    let alts = flatten_or(pat);
-    if alts.len() == 1 {
-        return alts
-            .into_iter()
-            .next()
-            .expect("alts has exactly one element");
+    nest_alternatives(pat, None)
+}
+/// Rebuild the alternatives of `pat` (the leaves `flatten_or` lists, in the
+/// same order) as a right-nested `Or` chain ending in `rest`, or ending in
+/// the last alternative when `rest` is `None`.
+fn nest_alternatives(pat: &Pattern, rest: Option<Pattern>) -> Pattern {
+    match pat {
+        Pattern::Or(p1, p2) => {
+            let right = nest_alternatives(p2, rest);
+            nest_alternatives(p1, Some(right))
+        }
+        leaf => match rest {
+            None => leaf.clone(),
+            Some(right) => Pattern::Or(Box::new(leaf.clone()), Box::new(right)),
+        },
     }
-    let mut iter = alts.into_iter().rev();
-    let mut result = iter.next().expect("alts is non-empty after flatten_or");
-    for p in iter {
-        result = Pattern::Or(Box::new(p), Box::new(result));
-    }
-    result
 }
 /// Compile a set of equations into a function body using a decision tree.
 ///
@@ -1005,3 +1008,5 @@ mod matrix_tests {
 pub fn equation_extension_version() -> &'static str {
     "oxilean-elab-equation-extension-v1"
 }
+#[cfg(test)]
+mod or_normalization_tests;

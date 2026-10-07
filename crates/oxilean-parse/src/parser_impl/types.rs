@@ -1040,18 +1040,15 @@ impl Parser {
                 while self.can_start_pattern() {
                     sub_pats.push(self.parse_atomic_pattern()?);
                 }
-                if sub_pats.is_empty() {
-                    Ok(Located::new(Pattern::Var(name), start))
-                } else {
-                    let end = sub_pats
-                        .last()
-                        .expect("sub_pats non-empty per else branch")
-                        .span
-                        .clone();
-                    Ok(Located::new(
-                        Pattern::Ctor(name, sub_pats),
-                        start.merge(&end),
-                    ))
+                match sub_pats.last() {
+                    None => Ok(Located::new(Pattern::Var(name), start)),
+                    Some(last_pat) => {
+                        let end = last_pat.span.clone();
+                        Ok(Located::new(
+                            Pattern::Ctor(name, sub_pats),
+                            start.merge(&end),
+                        ))
+                    }
                 }
             }
             TokenKind::LParen => {
@@ -1459,6 +1456,8 @@ impl Parser {
         let rhs = self.parse_expr()?;
         self.expect(TokenKind::Assign)?;
         let proof = self.parse_expr()?;
+        // The right-hand side of the latest step: the next step's left-hand side.
+        let mut prev_rhs = rhs.clone();
         steps.push(CalcStep {
             lhs,
             rel,
@@ -1470,17 +1469,14 @@ impl Parser {
             let rhs = self.parse_expr()?;
             self.expect(TokenKind::Assign)?;
             let proof = self.parse_expr()?;
-            let prev_rhs = steps
-                .last()
-                .expect("steps non-empty: first step pushed before loop")
-                .rhs
-                .clone();
+            let next_rhs = rhs.clone();
             steps.push(CalcStep {
                 lhs: prev_rhs,
                 rel,
                 rhs,
                 proof,
             });
+            prev_rhs = next_rhs;
         }
         let end = self.current().span.clone();
         Ok(Located::new(SurfaceExpr::Calc(steps), start.merge(&end)))
@@ -1674,3 +1670,6 @@ enum Assoc {
     /// Right-associative
     Right,
 }
+
+#[cfg(test)]
+mod calc_tests;

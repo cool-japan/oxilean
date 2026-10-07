@@ -471,20 +471,14 @@ pub fn mk_decidable_and_chain(exprs: &[Expr]) -> Expr {
 /// Combine hash expressions: `mixHash h1 (mixHash h2 ...)`.
 /// Empty list yields `hash 0`.
 pub(super) fn mk_hash_combine(exprs: &[Expr]) -> Expr {
-    if exprs.is_empty() {
+    let Some((last, init)) = exprs.split_last() else {
         return mk_app2(
             Expr::Const(Name::str("hash"), vec![]),
             Expr::Lit(Literal::nat(0)),
         );
-    }
-    if exprs.len() == 1 {
-        return exprs[0].clone();
-    }
-    let mut result = exprs
-        .last()
-        .expect("exprs is non-empty (checked above)")
-        .clone();
-    for e in exprs[..exprs.len() - 1].iter().rev() {
+    };
+    let mut result = last.clone();
+    for e in init.iter().rev() {
         result = mk_app2(
             mk_app2(Expr::Const(Name::str("mixHash"), vec![]), e.clone()),
             result,

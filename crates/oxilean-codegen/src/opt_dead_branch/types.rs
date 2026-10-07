@@ -1074,16 +1074,10 @@ impl DeadBranchElim {
                 if let Some(kv) = env.get(&scrutinee).cloned() {
                     match &kv {
                         KnownValue::Ctor(known_ctor, known_tag) => {
-                            let matching = alts.iter().position(|a| {
-                                &a.ctor_name == known_ctor && a.ctor_tag == *known_tag
-                            });
-                            if let Some(idx) = matching {
-                                let alt = alts
-                                    .into_iter()
-                                    .nth(idx)
-                                    .expect(
-                                        "idx was returned by Iterator::position so it must be a valid index",
-                                    );
+                            let matching = alts
+                                .into_iter()
+                                .find(|a| &a.ctor_name == known_ctor && a.ctor_tag == *known_tag);
+                            if let Some(alt) = matching {
                                 self.report.cases_folded += 1;
                                 self.stats.known_ctor_matches += 1;
                                 return self.elim_expr(alt.body, env);

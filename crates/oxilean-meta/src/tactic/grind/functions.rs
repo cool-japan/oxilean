@@ -1664,3 +1664,6 @@ mod tests {
         assert!(state.is_done());
     }
 }
+
+#[cfg(test)]
+mod exact_tests;

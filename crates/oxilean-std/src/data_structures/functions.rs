@@ -929,3 +929,5 @@ mod tests_data_structures_ext {
         assert!(it.is_implicitly_keyed);
     }
 }
+#[cfg(test)]
+mod avl_rebalance_tests;

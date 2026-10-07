@@ -801,22 +801,11 @@ pub fn annotations_for_source(
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub fn annotation_line_range(table: &WasmAnnotationTable) -> Option<(u32, u32)> {
-    if table.is_empty() {
-        return None;
-    }
-    let min_line = table
-        .annotations
-        .iter()
-        .map(|a| a.line)
-        .min()
-        .expect("annotations non-empty per is_empty check above");
-    let max_line = table
-        .annotations
-        .iter()
-        .map(|a| a.line)
-        .max()
-        .expect("annotations non-empty per is_empty check above");
-    Some((min_line, max_line))
+    let mut lines = table.annotations.iter().map(|a| a.line);
+    let first = lines.next()?;
+    Some(lines.fold((first, first), |(min_line, max_line), line| {
+        (min_line.min(line), max_line.max(line))
+    }))
 }
 #[cfg(test)]
 mod wasm_pad {
@@ -933,3 +922,6 @@ mod wasm_pad3 {
         assert_eq!(idxs, vec![0, 1]);
     }
 }
+
+#[cfg(test)]
+mod line_range_tests;

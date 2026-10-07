@@ -420,13 +420,12 @@ impl ScalarMult {
         let w: u64 = 4;
         let window = 1u64 << w;
         let base = EllipticCurvePoint::Affine(self.point.0, self.point.1);
-        let mut table = vec![EllipticCurvePoint::Infinity];
+        // `last` is always the most recently pushed entry of `table`.
+        let mut last = EllipticCurvePoint::Infinity;
+        let mut table = vec![last.clone()];
         for _ in 1..window {
-            let last = table
-                .last()
-                .expect("table is non-empty: initialized with Infinity")
-                .clone();
-            table.push(last.add_points(&base, a));
+            last = last.add_points(&base, a);
+            table.push(last.clone());
         }
         let mut result = EllipticCurvePoint::Infinity;
         let bits = 64u32;
@@ -1064,3 +1063,5 @@ impl ECDLPSolver {
         None
     }
 }
+#[cfg(test)]
+mod windowed_tests;

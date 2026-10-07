@@ -525,14 +525,11 @@ pub fn resolve_name(name: &str, state: &CommandState) -> Vec<Name> {
 }
 /// Check if a name resolves to exactly one definition.
 pub fn resolve_unique_name(name: &str, state: &CommandState) -> Result<Name, CommandError> {
-    let candidates = resolve_name(name, state);
-    match candidates.len() {
-        0 => Err(CommandError::NameNotFound(name.to_string())),
-        1 => Ok(candidates
-            .into_iter()
-            .next()
-            .expect("candidates has exactly one element")),
-        _ => Err(CommandError::ElabError(format!(
+    let mut candidates = resolve_name(name, state).into_iter();
+    match (candidates.next(), candidates.next()) {
+        (None, _) => Err(CommandError::NameNotFound(name.to_string())),
+        (Some(only), None) => Ok(only),
+        (Some(_), Some(_)) => Err(CommandError::ElabError(format!(
             "ambiguous name '{}': multiple definitions found",
             name
         ))),
@@ -1396,3 +1393,5 @@ mod command_throughput_tests {
         assert!(s.contains("100.0%"));
     }
 }
+#[cfg(test)]
+mod unique_name_tests;

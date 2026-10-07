@@ -488,11 +488,12 @@ pub fn treewidth_upper_bound(adj: &[Vec<usize>]) -> usize {
         .map(|nbrs| nbrs.iter().cloned().collect())
         .collect();
     let mut max_clique = 0usize;
-    for _ in 0..n {
-        let v = (0..n)
-            .filter(|&u| remaining[u])
-            .min_by_key(|&u| adj_copy[u].len())
-            .expect("at least one remaining vertex exists: loop runs n times for n vertices");
+    // Each pass removes one more vertex, so the loop ends after `n` passes,
+    // when no vertex remains.
+    while let Some(v) = (0..n)
+        .filter(|&u| remaining[u])
+        .min_by_key(|&u| adj_copy[u].len())
+    {
         let deg = adj_copy[v].len();
         max_clique = max_clique.max(deg);
         let nbrs: Vec<usize> = adj_copy[v].iter().cloned().collect();
@@ -1404,3 +1405,5 @@ mod tests_pc_extra {
         assert!(!bad_red.is_fpt_reduction());
     }
 }
+#[cfg(test)]
+mod treewidth_tests;

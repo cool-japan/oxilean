@@ -393,13 +393,10 @@ pub fn decode_string_literal(s: &str) -> Result<String, String> {
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub fn is_valid_lean_ident(s: &str) -> bool {
-    if s.is_empty() {
-        return false;
-    }
     let mut chars = s.chars();
-    let first = chars
-        .next()
-        .expect("string is non-empty per is_empty check above");
+    let Some(first) = chars.next() else {
+        return false;
+    };
     if !first.is_alphabetic() && first != '_' {
         return false;
     }
@@ -449,14 +446,11 @@ pub fn is_lean_keyword(s: &str) -> bool {
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub fn tokens_cover_source(src: &str, tokens: &[RawToken]) -> bool {
-    if tokens.is_empty() {
+    let (Some(first), Some(last)) = (tokens.first(), tokens.last()) else {
         return src.is_empty();
-    }
-    let first_start = tokens[0].start;
-    let last_end = tokens
-        .last()
-        .expect("tokens non-empty per is_empty check above")
-        .end;
+    };
+    let first_start = first.start;
+    let last_end = last.end;
     let mut pos = first_start;
     for tok in tokens {
         if tok.start != pos {
@@ -911,3 +905,6 @@ mod lexer_pad2 {
 pub fn is_lean_op_token(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| "!#$%&*+-./:<=>?@\\^|~".contains(c))
 }
+
+#[cfg(test)]
+mod cover_tests;

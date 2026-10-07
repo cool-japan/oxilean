@@ -570,6 +570,10 @@ impl<T: Clone + fmt::Debug> ThunkVec<T> {
             .push(std::cell::RefCell::new(ThunkVecState::Computed(value)));
     }
     /// Get the element at `index`, forcing it if necessary.
+    ///
+    /// Returns `None` if `index` is out of bounds, and also while the
+    /// element's own thunk is running (a re-entrant `get` of the same index)
+    /// or after that thunk panicked: the element then has no value.
     pub fn get(&self, index: usize) -> Option<T> {
         let cell = self.thunks.get(index)?;
         let state = cell.borrow();
@@ -577,12 +581,12 @@ impl<T: Clone + fmt::Debug> ThunkVec<T> {
             return Some(v.clone());
         }
         drop(state);
-        let old = cell.replace(ThunkVecState::Computed(
-            match cell.replace(ThunkVecState::Computed(unsafe { std::mem::zeroed() })) {
-                ThunkVecState::Pending(f) => f(),
-                ThunkVecState::Computed(v) => v,
-            },
-        ));
+        let value = match cell.replace(ThunkVecState::Forcing) {
+            ThunkVecState::Pending(f) => f(),
+            ThunkVecState::Computed(v) => v,
+            ThunkVecState::Forcing => return None,
+        };
+        let old = cell.replace(ThunkVecState::Computed(value));
         drop(old);
         let state2 = cell.borrow();
         if let ThunkVecState::Computed(ref v) = *state2 {
@@ -600,6 +604,11 @@ impl<T: Clone + fmt::Debug> ThunkVec<T> {
         self.thunks.is_empty()
     }
     /// Force all thunks and return a Vec.
+    ///
+    /// An element without a value (see [`ThunkVec::get`]: its thunk is
+    /// running, as when a thunk calls `force_all` on its own vec, or it
+    /// panicked) is skipped, so the elements after it move down one place
+    /// and the result is shorter than [`ThunkVec::len`].
     pub fn force_all(&self) -> Vec<T> {
         (0..self.len()).filter_map(|i| self.get(i)).collect()
     }
@@ -697,6 +706,9 @@ impl<T: Clone + fmt::Debug + Send + Sync + 'static> SharedThunk<T> {
 enum ThunkVecState<T> {
     Pending(Box<dyn FnOnce() -> T>),
     Computed(T),
+    /// The thunk has been taken out to run; no value exists yet (or the
+    /// thunk panicked and none ever will).
+    Forcing,
 }
 /// A rose tree node with lazily-computed children.
 pub struct LazyTree<T: Clone + fmt::Debug + 'static> {

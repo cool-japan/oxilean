@@ -77,7 +77,7 @@ impl CoercionCache {
         let key = Self::key(from, to);
         if let Some(entry) = self.entries.get(&key) {
             self.hits += 1;
-            Some(unsafe { &*(entry as *const Option<CoercionPath>) })
+            Some(entry)
         } else {
             self.misses += 1;
             None

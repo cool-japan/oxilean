@@ -491,11 +491,8 @@ pub fn mk_lam_telescope(binders: &[(&str, Expr)], body: Expr) -> Expr {
 /// Build a chain of arrows `T1 → T2 → ... → Tn`
 #[allow(dead_code)]
 pub fn mk_arrow_chain(types: &[Expr]) -> Option<Expr> {
-    if types.is_empty() {
-        return None;
-    }
     let mut rev = types.iter().cloned().rev();
-    let last = rev.next().expect("types is non-empty; checked above");
+    let last = rev.next()?;
     Some(rev.fold(last, |acc, ty| mk_arrow(ty, acc)))
 }
 /// Collect all Pi binders: returns `([(name, bi, ty)], final_body)`

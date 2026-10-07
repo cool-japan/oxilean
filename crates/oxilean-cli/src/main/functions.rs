@@ -455,11 +455,21 @@ pub mod signal_util {
     pub fn install_ctrlc_handler() {
         #[cfg(unix)]
         {
-            unsafe extern "C" fn handler(_: LibcSigNum) {
+            extern "C" fn handler(_: LibcSigNum) {
                 INTERRUPTED.store(true, Ordering::SeqCst);
             }
+            // SAFETY: `signal` is declared below with the C prototype of
+            // `signal(2)`: an `int` and a `void (*)(int)`, returning the
+            // previous `void (*)(int)` (read here as a raw pointer, which
+            // has the same size and is returned the same way, and not
+            // used). `SIGINT` is 2, its value on every platform the `libc`
+            // crate defines it for. `handler` has the `void (*)(int)`
+            // signature a signal handler is called with, and its body is
+            // async-signal-safe: one store to a static `AtomicBool`, which
+            // is lock-free wherever Rust provides it, and nothing that can
+            // panic or allocate.
             unsafe {
-                libc_signal(SIGINT, handler as *const () as usize);
+                signal(SIGINT, handler);
             }
         }
         #[cfg(not(unix))]
@@ -500,12 +510,9 @@ pub mod signal_util {
     const SIGINT: LibcSigNum = 2;
     #[cfg(unix)]
     extern "C" {
-        /// C standard `signal(2)`.
-        fn signal(signum: LibcSigNum, handler: usize) -> usize;
-    }
-    #[cfg(unix)]
-    unsafe fn libc_signal(signum: LibcSigNum, handler: usize) -> usize {
-        signal(signum, handler)
+        /// C standard `signal(2)`: `sighandler_t signal(int, sighandler_t)`
+        /// with `sighandler_t` = `void (*)(int)`.
+        fn signal(signum: LibcSigNum, handler: extern "C" fn(LibcSigNum)) -> *const ();
     }
 }
 #[cfg(test)]
@@ -1202,3 +1209,5 @@ mod cli_reporter_tests {
         assert!(cli_description().contains("OxiLean"));
     }
 }
+#[cfg(test)]
+mod signal_tests;

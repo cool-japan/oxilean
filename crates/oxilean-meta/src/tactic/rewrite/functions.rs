@@ -1171,12 +1171,9 @@ pub fn tac_rewrite_any(
 /// The `path` is a sequence of child indices as described in `RewritePosition`.
 #[allow(dead_code)]
 pub fn replace_at_position(expr: &Expr, path: &[usize], replacement: &Expr) -> Option<Expr> {
-    if path.is_empty() {
+    let Some((head, tail)) = path.split_first() else {
         return Some(replacement.clone());
-    }
-    let (head, tail) = path
-        .split_first()
-        .expect("path is non-empty; checked above");
+    };
     match expr {
         Expr::App(f, a) => match head {
             0 => {

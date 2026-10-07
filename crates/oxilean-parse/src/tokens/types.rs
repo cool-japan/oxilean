@@ -474,15 +474,9 @@ pub struct TokenRange {
 impl TokenRange {
     /// Create a token range from a vector of tokens.
     pub fn from_tokens(tokens: Vec<Token>) -> Option<Self> {
-        if tokens.is_empty() {
+        let (Some(first), Some(last)) = (tokens.first(), tokens.last()) else {
             return None;
-        }
-        let first = tokens
-            .first()
-            .expect("tokens non-empty per is_empty check above");
-        let last = tokens
-            .last()
-            .expect("tokens non-empty per is_empty check above");
+        };
         let span = first.span.merge(&last.span);
         Some(Self { tokens, span })
     }
@@ -930,3 +924,6 @@ impl TokenBuffer {
         &self.tokens[start..end.min(self.tokens.len())]
     }
 }
+
+#[cfg(test)]
+mod range_tests;

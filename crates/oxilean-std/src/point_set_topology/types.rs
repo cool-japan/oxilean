@@ -543,15 +543,13 @@ impl MetricSpace {
         let mut min_edge = vec![f64::INFINITY; self.n];
         min_edge[0] = 0.0;
         let mut total = 0.0;
-        for _ in 0..self.n {
-            let u = (0..self.n)
-                .filter(|&v| !in_tree[v])
-                .min_by(|&a, &b| {
-                    min_edge[a]
-                        .partial_cmp(&min_edge[b])
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
-                .expect("at least one vertex not in tree: loop runs n times for n vertices");
+        // Each pass adds one more vertex to the tree, so the loop ends after
+        // `n` passes, when every vertex is in it.
+        while let Some(u) = (0..self.n).filter(|&v| !in_tree[v]).min_by(|&a, &b| {
+            min_edge[a]
+                .partial_cmp(&min_edge[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
             in_tree[u] = true;
             total += min_edge[u];
             for v in 0..self.n {
@@ -992,3 +990,5 @@ impl ConnectedComponents {
         self.count
     }
 }
+#[cfg(test)]
+mod mst_tests;

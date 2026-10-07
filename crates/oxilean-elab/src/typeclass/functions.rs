@@ -740,14 +740,11 @@ pub fn fill_default_methods(class: &TypeClass, provided: &[Name]) -> Vec<Default
     class
         .methods
         .iter()
-        .filter(|m| m.default_impl.is_some() && !provided.contains(&m.name))
-        .map(|m| {
-            DefaultMethodFill::from_default(
-                m.name.clone(),
-                m.default_impl
-                    .clone()
-                    .expect("default_impl is Some: filtered by is_some() above"),
-            )
+        .filter(|m| !provided.contains(&m.name))
+        .filter_map(|m| {
+            m.default_impl
+                .clone()
+                .map(|default_impl| DefaultMethodFill::from_default(m.name.clone(), default_impl))
         })
         .collect()
 }
@@ -1007,3 +1004,5 @@ mod typeclass_budget_tests {
         assert_eq!(sc.len(), 2);
     }
 }
+#[cfg(test)]
+mod default_fill_tests;

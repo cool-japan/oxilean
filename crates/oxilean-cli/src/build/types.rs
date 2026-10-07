@@ -1109,11 +1109,12 @@ impl BuildGraph {
                         .any(|d| self.nodes.get(d).is_some_and(|n| n.is_stale))
                 };
                 if stale {
-                    self.nodes
-                        .get_mut(name)
-                        .expect("name exists in nodes: iterating over self.nodes keys")
-                        .is_stale = true;
-                    changed = true;
+                    // `self.nodes[name]` above found this key, and nothing
+                    // has changed the map since.
+                    if let Some(node) = self.nodes.get_mut(name) {
+                        node.is_stale = true;
+                        changed = true;
+                    }
                 }
             }
         }
@@ -1467,3 +1468,5 @@ impl BuildProfile {
         self.codegen_ms += other.codegen_ms;
     }
 }
+#[cfg(test)]
+mod staleness_tests;

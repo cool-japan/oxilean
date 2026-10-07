@@ -35,16 +35,11 @@ mod tests {
 }
 /// Format a list of expected token descriptions as a human-readable string.
 pub fn format_expected(expected: &[String]) -> String {
-    match expected.len() {
-        0 => "something".to_string(),
-        1 => expected[0].clone(),
-        2 => format!("{} or {}", expected[0], expected[1]),
-        _ => {
-            let (last, rest) = expected
-                .split_last()
-                .expect("slice has len >= 3 per match arm");
-            format!("{}, or {}", rest.join(", "), last)
-        }
+    match expected {
+        [] => "something".to_string(),
+        [only] => only.clone(),
+        [first, second] => format!("{} or {}", first, second),
+        [rest @ .., last] => format!("{}, or {}", rest.join(", "), last),
     }
 }
 /// Suggest a correction for a common typo in keywords.
@@ -1097,3 +1092,6 @@ mod error_impl_pad2 {
         assert!(!error_contains(&e, "missing"));
     }
 }
+
+#[cfg(test)]
+mod expected_tests;

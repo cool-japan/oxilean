@@ -776,12 +776,7 @@ pub fn merge_hover_results(
         return None;
     }
     match strategy {
-        HoverMergeStrategy::FirstWins => Some(
-            valid
-                .into_iter()
-                .next()
-                .expect("valid is non-empty: checked by early return"),
-        ),
+        HoverMergeStrategy::FirstWins => valid.into_iter().next(),
         HoverMergeStrategy::ConcatenateAll => {
             let first = valid[0].clone();
             let combined_content = valid

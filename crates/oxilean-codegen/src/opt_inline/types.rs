@@ -1269,27 +1269,28 @@ impl TarjanScc {
                 continue;
             }
             let callee_disc = self.nodes.get(callee).and_then(|n| n.disc);
-            if callee_disc.is_none() {
-                self.dfs(callee.clone());
-                let callee_low = self.nodes.get(callee).and_then(|n| n.low);
-                let my_low = self.nodes.get(&name).and_then(|n| n.low);
-                if let (Some(ml), Some(cl)) = (my_low, callee_low) {
-                    if let Some(n) = self.nodes.get_mut(&name) {
-                        n.low = Some(ml.min(cl));
+            match callee_disc {
+                None => {
+                    self.dfs(callee.clone());
+                    let callee_low = self.nodes.get(callee).and_then(|n| n.low);
+                    let my_low = self.nodes.get(&name).and_then(|n| n.low);
+                    if let (Some(ml), Some(cl)) = (my_low, callee_low) {
+                        if let Some(n) = self.nodes.get_mut(&name) {
+                            n.low = Some(ml.min(cl));
+                        }
                     }
                 }
-            } else if self.nodes.get(callee).map_or(false, |n| n.on_stack) {
-                let cd = callee_disc
-                    .expect(
-                        "callee_disc is Some; guaranteed by the else-if branch that checks !callee_disc.is_none()",
-                    );
-                let ml = self
-                    .nodes
-                    .get(&name)
-                    .and_then(|n| n.low)
-                    .unwrap_or(u32::MAX);
-                if let Some(n) = self.nodes.get_mut(&name) {
-                    n.low = Some(ml.min(cd));
+                Some(cd) => {
+                    if self.nodes.get(callee).map_or(false, |n| n.on_stack) {
+                        let ml = self
+                            .nodes
+                            .get(&name)
+                            .and_then(|n| n.low)
+                            .unwrap_or(u32::MAX);
+                        if let Some(n) = self.nodes.get_mut(&name) {
+                            n.low = Some(ml.min(cd));
+                        }
+                    }
                 }
             }
         }
@@ -1776,3 +1777,6 @@ impl InlineHeuristics {
         InlineDecision::Heuristic(score)
     }
 }
+
+#[cfg(test)]
+mod tarjan_tests;

@@ -378,13 +378,8 @@ impl ArrayOps {
     pub fn pop(obj: &RtObject) -> Option<(RtObject, RtObject)> {
         obj.with_heap(|heap| {
             if let HeapObject::Array(data) = heap {
-                if data.elements.is_empty() {
-                    return None;
-                }
                 let mut new_elements = data.elements.clone();
-                let last = new_elements
-                    .pop()
-                    .expect("elements is non-empty as verified by the is_empty check above");
+                let last = new_elements.pop()?;
                 Some((RtObject::array(new_elements), last))
             } else {
                 None

@@ -81,9 +81,7 @@ impl<A: Clone> Zipper<A> {
         }
         let mut v = data;
         let right = v.split_off(i + 1);
-        let focus = v
-            .pop()
-            .expect("v is non-empty: i < data.len() and v is data[..=i]");
+        let focus = v.pop()?;
         Some(Self {
             left: v,
             focus,
@@ -98,34 +96,59 @@ impl<A: Clone> Zipper<A> {
     ///
     /// This implements `extend f w` for the zipper comonad.
     pub fn extend<B: Clone>(&self, f: impl Fn(&Zipper<A>) -> B) -> Zipper<B> {
-        let all: Vec<A> = self
+        // `f` is applied at every position from left to right: each position
+        // of `left`, then the focus (where the zipper is `self`), then each
+        // position of `right`; the results keep that shape.
+        let focus = std::iter::once(&self.focus);
+        let new_left: Vec<B> = self
             .left
             .iter()
-            .cloned()
-            .chain(std::iter::once(self.focus.clone()))
-            .chain(self.right.iter().cloned())
-            .collect();
-        let focus_idx = self.left.len();
-        let results: Vec<B> = (0..all.len())
-            .map(|i| {
-                let z = Zipper::new(all.clone(), i)
-                    .expect("i < all.len(): iterating over 0..all.len()");
-                f(&z)
+            .enumerate()
+            .map(|(j, x)| {
+                f(&Zipper {
+                    left: self.left.iter().take(j).cloned().collect(),
+                    focus: x.clone(),
+                    right: self
+                        .left
+                        .iter()
+                        .skip(j + 1)
+                        .chain(focus.clone())
+                        .chain(self.right.iter())
+                        .cloned()
+                        .collect(),
+                })
             })
             .collect();
-        Zipper::new(results, focus_idx).expect(
-            "focus_idx < results.len(): focus_idx == left.len() < all.len() == results.len()",
-        )
+        let new_focus = f(self);
+        let new_right: Vec<B> = self
+            .right
+            .iter()
+            .enumerate()
+            .map(|(k, x)| {
+                f(&Zipper {
+                    left: self
+                        .left
+                        .iter()
+                        .chain(focus.clone())
+                        .chain(self.right.iter().take(k))
+                        .cloned()
+                        .collect(),
+                    focus: x.clone(),
+                    right: self.right.iter().skip(k + 1).cloned().collect(),
+                })
+            })
+            .collect();
+        Zipper {
+            left: new_left,
+            focus: new_focus,
+            right: new_right,
+        }
     }
     /// Move focus one step to the left.
     pub fn move_left(&self) -> Option<Zipper<A>> {
-        if self.left.is_empty() {
-            return None;
-        }
-        let mut new_left = self.left.clone();
-        let new_focus = new_left
-            .pop()
-            .expect("new_left is non-empty: left is non-empty, checked by early return");
+        let (new_focus, rest) = self.left.split_last()?;
+        let new_left = rest.to_vec();
+        let new_focus = new_focus.clone();
         let mut new_right = vec![self.focus.clone()];
         new_right.extend(self.right.iter().cloned());
         Some(Zipper {
@@ -1429,3 +1452,5 @@ impl ApplicativeData {
         "McBride-Paterson (2008): Applicative programming with effects".to_string()
     }
 }
+#[cfg(test)]
+mod zipper_tests;

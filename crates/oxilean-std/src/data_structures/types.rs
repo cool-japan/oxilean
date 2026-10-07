@@ -774,13 +774,16 @@ impl Trie {
         let mut current = 0;
         for byte in key.bytes() {
             let idx = byte as usize;
-            if self.nodes[current].children[idx].is_none() {
-                let new_node = self.nodes.len();
-                self.nodes.push(TrieNode::new());
-                self.nodes[current].children[idx] = Some(new_node);
-            }
-            current = self.nodes[current].children[idx]
-                .expect("children[idx] is Some: was just inserted in the if branch above");
+            let existing = self.nodes[current].children[idx];
+            current = match existing {
+                Some(child) => child,
+                None => {
+                    let new_node = self.nodes.len();
+                    self.nodes.push(TrieNode::new());
+                    self.nodes[current].children[idx] = Some(new_node);
+                    new_node
+                }
+            };
         }
         self.nodes[current].is_terminal = true;
     }
@@ -1441,3 +1444,5 @@ impl<T: Clone + Default> PersistArrayV2<T> {
         )
     }
 }
+#[cfg(test)]
+mod trie_insert_tests;

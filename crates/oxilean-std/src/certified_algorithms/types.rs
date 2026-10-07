@@ -718,16 +718,16 @@ impl CertBFSExt {
         self.distances = vec![None; self.n_vertices];
         self.predecessors = vec![None; self.n_vertices];
         self.distances[source] = Some(0);
+        // Each queue entry carries the distance its vertex was given when it
+        // was enqueued, which is the value stored in `distances` for it.
         let mut queue = std::collections::VecDeque::new();
-        queue.push_back(source);
-        while let Some(u) = queue.pop_front() {
-            let d = self.distances[u]
-                .expect("distances[u] is Some: u was enqueued only after distances[u] was set");
+        queue.push_back((source, 0));
+        while let Some((u, d)) = queue.pop_front() {
             for &v in &self.adjacency[u].clone() {
                 if self.distances[v].is_none() {
                     self.distances[v] = Some(d + 1);
                     self.predecessors[v] = Some(u);
-                    queue.push_back(v);
+                    queue.push_back((v, d + 1));
                 }
             }
         }
@@ -1433,3 +1433,5 @@ impl CertifiedDijkstra {
         Some(path)
     }
 }
+#[cfg(test)]
+mod bfs_tests;

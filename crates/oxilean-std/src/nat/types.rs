@@ -42,13 +42,13 @@ impl FibonacciUtil {
             return vec![0];
         }
         let mut all_fibs = vec![1u64, 1];
-        while *all_fibs
-            .last()
-            .expect("all_fibs is non-empty: initialized with [1, 1]")
-            < n
-        {
-            let len = all_fibs.len();
-            all_fibs.push(all_fibs[len - 1].saturating_add(all_fibs[len - 2]));
+        // The two most recently pushed entries of `all_fibs`.
+        let (mut prev, mut last) = (1u64, 1u64);
+        while last < n {
+            let next = last.saturating_add(prev);
+            all_fibs.push(next);
+            prev = last;
+            last = next;
         }
         all_fibs.retain(|&x| x <= n);
         all_fibs.dedup();
@@ -152,14 +152,12 @@ impl CollatzUtil {
     /// Stopping time: number of steps to reach 1.
     pub fn stopping_time(n: u64) -> Option<usize> {
         let seq = Self::sequence(n);
-        if *seq
-            .last()
-            .expect("seq is non-empty: sequence(n) always includes n")
-            == 1
-        {
+        if seq.last() == Some(&1) {
             Some(seq.len() - 1)
         } else {
             None
         }
     }
 }
+#[cfg(test)]
+mod sequence_tests;

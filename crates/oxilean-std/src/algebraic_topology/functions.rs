@@ -775,11 +775,10 @@ pub fn matrix_rank(mat: &[Vec<i32>]) -> usize {
                 break;
             }
         }
-        if found.is_none() {
+        let Some(pivot_row) = found else {
             pivot_col += 1;
             continue;
-        }
-        let pivot_row = found.expect("found is Some: checked by is_none guard above");
+        };
         a.swap(r, pivot_row);
         let pivot = a[r][pivot_col];
         for j in pivot_col..cols {

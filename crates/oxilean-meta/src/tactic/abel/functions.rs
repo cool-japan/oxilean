@@ -205,12 +205,11 @@ fn collect_pairs(term: AbelTerm, factor: i64, out: &mut Vec<(i64, Expr)>) {
 /// The result is a left-associated sum of `coeff * atom` terms.
 /// An empty normal form returns `0` (as `Nat.zero`).
 pub fn abel_to_expr(nf: &AbelNormalForm) -> Expr {
-    if nf.terms.is_empty() {
-        return Expr::Const(Name::str("Nat.zero"), vec![]);
-    }
-    let add_const = Expr::Const(Name::str("HAdd.hAdd"), vec![]);
     let mut it = nf.terms.iter();
-    let first = it.next().expect("non-empty checked above");
+    let Some(first) = it.next() else {
+        return Expr::Const(Name::str("Nat.zero"), vec![]);
+    };
+    let add_const = Expr::Const(Name::str("HAdd.hAdd"), vec![]);
     let mut acc = coeff_atom_to_expr(first.0, &first.1);
     for (coeff, atom) in it {
         let rhs = coeff_atom_to_expr(*coeff, atom);

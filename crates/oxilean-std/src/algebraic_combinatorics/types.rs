@@ -714,13 +714,9 @@ impl YoungDiagram {
     }
     /// Conjugate partition λ' (transpose of the Young diagram).
     pub fn conjugate_partition(&self) -> Self {
-        if self.parts.is_empty() {
+        let Some(&max_col) = self.parts.first() else {
             return Self { parts: vec![] };
-        }
-        let max_col = *self
-            .parts
-            .first()
-            .expect("parts is non-empty: checked by early return");
+        };
         let mut conj = vec![0usize; max_col];
         for &row_len in &self.parts {
             for col in 0..row_len {

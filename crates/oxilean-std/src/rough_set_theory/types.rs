@@ -760,6 +760,14 @@ impl InformationSystem {
     /// Compute the indiscernibility relation for a set of attributes.
     /// Returns equivalence classes as sets of object indices.
     pub fn indiscernibility_classes(&self, attrs: &[usize]) -> Vec<HashSet<usize>> {
+        self.seeded_indiscernibility_classes(attrs)
+            .into_iter()
+            .map(|(_, cls)| cls)
+            .collect()
+    }
+    /// The indiscernibility classes for `attrs`, each with the object that
+    /// started it, which is always one of its members.
+    fn seeded_indiscernibility_classes(&self, attrs: &[usize]) -> Vec<(usize, HashSet<usize>)> {
         let mut visited = vec![false; self.n_objects];
         let mut classes = Vec::new();
         for i in 0..self.n_objects {
@@ -775,7 +783,7 @@ impl InformationSystem {
                 }
             }
             visited[i] = true;
-            classes.push(cls);
+            classes.push((i, cls));
         }
         classes
     }
@@ -1033,12 +1041,9 @@ impl DecisionTable {
     pub fn extract_rules(&self) -> Vec<(HashMap<usize, u32>, u32)> {
         let cond = self.condition_attrs();
         let mut rules = Vec::new();
-        let classes = self.info.indiscernibility_classes(&cond);
-        for cls in &classes {
-            let obj = *cls
-                .iter()
-                .next()
-                .expect("cls is a non-empty indiscernibility class");
+        // The members of a class agree on every condition attribute; the
+        // object that started the class stands for it.
+        for (obj, _) in self.info.seeded_indiscernibility_classes(&cond) {
             let cond_map: HashMap<usize, u32> =
                 cond.iter().map(|&a| (a, self.info.get(obj, a))).collect();
             let decision = self.info.get(obj, self.decision_attr);
@@ -1047,3 +1052,5 @@ impl DecisionTable {
         rules
     }
 }
+#[cfg(test)]
+mod rule_extraction_tests;

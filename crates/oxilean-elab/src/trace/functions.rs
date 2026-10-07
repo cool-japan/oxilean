@@ -33,9 +33,22 @@ pub fn init_tracer(level: TraceLevel) {
 }
 /// Closes the global tracer and discards all recorded events.
 pub fn close_tracer() {
-    let mut tracer = get_global_tracer()
+    clear_tracer_slot(get_global_tracer());
+}
+/// Empties a tracer slot.
+fn clear_tracer_slot(slot: &Mutex<Option<ElabTracer>>) {
+    // A poisoned lock is recovered: this function overwrites the whole value
+    // without reading it, so nothing a panicking holder left half-updated is
+    // used (an `ElabTracer` is an event log, a level and a category set, with
+    // no invariant across them, and has no `Drop` of its own). Recovering the
+    // guard does not clear the poison: the lock stays poisoned, and the
+    // module's readers (`trace_global`, `format_global_events`,
+    // `export_global_trace`, `clear_global_trace`) keep skipping it, so they
+    // behave as if no tracer were installed, which is what this leaves
+    // (`init_tracer` still stops on the poisoned lock).
+    let mut tracer = slot
         .lock()
-        .expect("global tracer mutex should not be poisoned");
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     *tracer = None;
 }
 /// Records a trace event in the global tracer.
@@ -1043,3 +1056,5 @@ mod trace_metrics_tests {
         assert_eq!(snap.health_status(), "critical");
     }
 }
+#[cfg(test)]
+mod poisoned_slot_tests;

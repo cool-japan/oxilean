@@ -598,11 +598,12 @@ pub fn closure_size_summary(table: &FunctionTable) -> (usize, usize, f64) {
             estimator.object_overhead + estimator.ptr_size * (entry.env_size as usize + 1)
         })
         .collect();
-    if sizes.is_empty() {
+    let Some((&first, rest)) = sizes.split_first() else {
         return (0, 0, 0.0);
-    }
-    let min = *sizes.iter().min().expect("test operation should succeed");
-    let max = *sizes.iter().max().expect("test operation should succeed");
+    };
+    let (min, max) = rest
+        .iter()
+        .fold((first, first), |(lo, hi), &s| (lo.min(s), hi.max(s)));
     let avg = sizes.iter().sum::<usize>() as f64 / sizes.len() as f64;
     (min, max, avg)
 }
@@ -661,5 +662,25 @@ mod tests_curry {
         assert_eq!(fc.fn_index, 5);
         assert_eq!(fc.arity, 0);
         assert_eq!(fc.env, vec![1, 2, 3]);
+    }
+}
+#[cfg(test)]
+mod tests_size_summary {
+    use super::*;
+    #[test]
+    fn closure_size_summary_reports_extremes_and_mean() {
+        let empty = FunctionTable::new();
+        assert_eq!(closure_size_summary(&empty), (0, 0, 0.0));
+        let mut table = FunctionTable::new();
+        for env_size in [3u16, 0, 7, 0, 7] {
+            let mut entry = FunctionEntry::new(format!("f{}", env_size), 1);
+            entry.env_size = env_size;
+            table.register(entry);
+        }
+        let (min, max, avg) = closure_size_summary(&table);
+        assert_eq!(min, 16 + 8);
+        assert_eq!(max, 16 + 8 * 8);
+        let expected = [48usize, 24, 80, 24, 80].iter().sum::<usize>() as f64 / 5.0;
+        assert!((avg - expected).abs() < 1e-12);
     }
 }

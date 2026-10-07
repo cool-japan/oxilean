@@ -244,14 +244,9 @@ impl SpectralTripleData {
     /// Check that the supplied eigenvalues are consistent with compact resolvent
     /// (eigenvalues must accumulate only at +∞).
     pub fn resolvent_is_compact(&self) -> bool {
-        if self.dirac_eigenvalues.len() < 2 {
+        let [first, .., last] = self.dirac_eigenvalues.as_slice() else {
             return true;
-        }
-        let last = *self
-            .dirac_eigenvalues
-            .last()
-            .expect("dirac_eigenvalues has at least 2 elements: checked by early return");
-        let first = self.dirac_eigenvalues[0];
+        };
         last > first
     }
     /// Estimate the metric dimension from the growth rate λ_n ~ C · n^{1/p}.
@@ -959,3 +954,5 @@ impl ConnesDistance {
         d_phi_chi <= d_phi_psi + d_psi_chi + 1e-10
     }
 }
+#[cfg(test)]
+mod resolvent_tests;

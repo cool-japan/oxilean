@@ -952,20 +952,14 @@ impl GaloisConnection {
     pub fn interval_galois() -> Self {
         Self {
             alpha: Box::new(|vals: &[i64]| {
-                if vals.is_empty() {
-                    return IntervalDomain::bottom();
+                // `min` and `max` are `None` exactly when `vals` is empty,
+                // whose abstraction is bottom.
+                match (vals.iter().copied().min(), vals.iter().copied().max()) {
+                    (Some(lo), Some(hi)) => {
+                        IntervalDomain::new(Bound::Finite(lo), Bound::Finite(hi))
+                    }
+                    _ => IntervalDomain::bottom(),
                 }
-                let lo = vals
-                    .iter()
-                    .copied()
-                    .min()
-                    .expect("vals is non-empty: checked by early return");
-                let hi = vals
-                    .iter()
-                    .copied()
-                    .max()
-                    .expect("vals is non-empty: checked by early return");
-                IntervalDomain::new(Bound::Finite(lo), Bound::Finite(hi))
             }),
             gamma: Box::new(|interval: &IntervalDomain| {
                 if interval.is_bottom {

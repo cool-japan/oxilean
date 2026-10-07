@@ -710,32 +710,36 @@ impl MutualRecGroup {
         lowlinks: &mut Vec<usize>,
         result: &mut Vec<Vec<usize>>,
     ) {
-        indices[v] = Some(*index_counter);
-        lowlinks[v] = *index_counter;
+        let v_index = *index_counter;
+        indices[v] = Some(v_index);
+        lowlinks[v] = v_index;
         *index_counter += 1;
         stack.push(v);
         on_stack[v] = true;
         for &w in &adj[v] {
-            if indices[w].is_none() {
-                Self::tarjan_dfs(
-                    w,
-                    adj,
-                    index_counter,
-                    stack,
-                    on_stack,
-                    indices,
-                    lowlinks,
-                    result,
-                );
-                lowlinks[v] = lowlinks[v].min(lowlinks[w]);
-            } else if on_stack[w] {
-                // Safety: on_stack[w] is true, so w was visited and indices[w] is Some
-                lowlinks[v] =
-                    lowlinks[v].min(indices[w].expect("on-stack node must have an index"));
+            match indices[w] {
+                None => {
+                    Self::tarjan_dfs(
+                        w,
+                        adj,
+                        index_counter,
+                        stack,
+                        on_stack,
+                        indices,
+                        lowlinks,
+                        result,
+                    );
+                    lowlinks[v] = lowlinks[v].min(lowlinks[w]);
+                }
+                Some(w_index) if on_stack[w] => {
+                    lowlinks[v] = lowlinks[v].min(w_index);
+                }
+                Some(_) => {}
             }
         }
-        // Safety: indices[v] was set to Some at the start of this function
-        if lowlinks[v] == indices[v].expect("current node must have an index") {
+        // `indices[v]` is `Some(v_index)` from here on: a node is indexed
+        // once, on entry to its own visit.
+        if lowlinks[v] == v_index {
             let mut component = Vec::new();
             loop {
                 // Safety: v is on the stack; loop terminates when w == v
@@ -1135,3 +1139,5 @@ impl PreDefConfig {
         self
     }
 }
+#[cfg(test)]
+mod scc_tests;

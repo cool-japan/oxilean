@@ -268,18 +268,16 @@ pub fn is_snake_case(name: &str) -> bool {
 }
 /// Check if a name follows PascalCase convention.
 pub fn is_pascal_case(name: &str) -> bool {
-    if name.is_empty() {
+    let Some(first) = name.chars().next() else {
         return true;
-    }
-    let first = name.chars().next().expect("name is non-empty");
+    };
     first.is_uppercase() && !name.contains('_')
 }
 /// Check if a name follows camelCase convention.
 pub fn is_camel_case(name: &str) -> bool {
-    if name.is_empty() {
+    let Some(first) = name.chars().next() else {
         return true;
-    }
-    let first = name.chars().next().expect("name is non-empty");
+    };
     first.is_lowercase() && !name.contains('_')
 }
 /// Convert a name to snake_case.
@@ -619,3 +617,6 @@ mod pass_dep_tests {
         assert!(!deps2.is_empty());
     }
 }
+
+#[cfg(test)]
+mod case_tests;

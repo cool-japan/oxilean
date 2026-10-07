@@ -229,11 +229,12 @@ impl GraphColoring {
         let mut saturation = vec![0usize; self.n];
         let mut colored = vec![false; self.n];
         let mut max_color = 0;
-        for _ in 0..self.n {
-            let u = (0..self.n)
-                .filter(|&v| !colored[v])
-                .max_by_key(|&v| (saturation[v], adj[v].len()))
-                .expect("at least one uncolored vertex exists: loop runs n times for n vertices");
+        // Each pass colours one more vertex, so the loop ends after `n` passes,
+        // when no uncoloured vertex is left.
+        while let Some(u) = (0..self.n)
+            .filter(|&v| !colored[v])
+            .max_by_key(|&v| (saturation[v], adj[v].len()))
+        {
             let used: std::collections::HashSet<usize> = adj[u]
                 .iter()
                 .filter_map(|&v| {
@@ -767,12 +768,7 @@ impl BipartiteMatchingGraph {
         let mut match_l = vec![None; self.n_left];
         let mut match_r = vec![None; self.n_right];
         let mut size = 0;
-        loop {
-            let dist = self.bfs_phase(&match_l, &match_r);
-            if dist.is_none() {
-                break;
-            }
-            let mut dist = dist.expect("dist is Some: checked by is_none guard above");
+        while let Some(mut dist) = self.bfs_phase(&match_l, &match_r) {
             let mut augmented = false;
             for u in 0..self.n_left {
                 if match_l[u].is_none() && self.dfs_phase(u, &mut dist, &mut match_l, &mut match_r)
@@ -1205,3 +1201,5 @@ impl SetCoverData {
         )
     }
 }
+#[cfg(test)]
+mod greedy_loop_tests;

@@ -656,10 +656,7 @@ pub fn orientation(p: &Point2D, q: &Point2D, r: &Point2D) -> Orientation {
 /// Returns vertices in counter-clockwise order.
 pub fn graham_scan(points: &[Point2D]) -> Vec<Point2D> {
     let n = points.len();
-    if n < 3 {
-        return points.to_vec();
-    }
-    let pivot_idx = points
+    let Some(pivot_idx) = points
         .iter()
         .enumerate()
         .min_by(|(_, a), (_, b)| {
@@ -668,7 +665,13 @@ pub fn graham_scan(points: &[Point2D]) -> Vec<Point2D> {
                 .then(a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal))
         })
         .map(|(i, _)| i)
-        .expect("points is non-empty: checked by caller");
+    else {
+        // No points: returned unchanged, as one or two points are below.
+        return points.to_vec();
+    };
+    if n < 3 {
+        return points.to_vec();
+    }
     let pivot = points[pivot_idx];
     let mut sorted: Vec<Point2D> = points.to_vec();
     sorted.swap(0, pivot_idx);
@@ -707,10 +710,7 @@ pub fn graham_scan(points: &[Point2D]) -> Vec<Point2D> {
 /// O(nh) where h is the hull size.
 pub fn jarvis_march(points: &[Point2D]) -> Vec<Point2D> {
     let n = points.len();
-    if n < 3 {
-        return points.to_vec();
-    }
-    let start = points
+    let Some(start) = points
         .iter()
         .enumerate()
         .min_by(|(_, a), (_, b)| {
@@ -719,7 +719,13 @@ pub fn jarvis_march(points: &[Point2D]) -> Vec<Point2D> {
                 .then(a.y.partial_cmp(&b.y).unwrap_or(std::cmp::Ordering::Equal))
         })
         .map(|(i, _)| i)
-        .expect("points is non-empty: checked by n < 3 guard");
+    else {
+        // No points: returned unchanged, as one or two points are below.
+        return points.to_vec();
+    };
+    if n < 3 {
+        return points.to_vec();
+    }
     let mut hull = Vec::new();
     let mut current = start;
     loop {
@@ -1528,3 +1534,5 @@ mod tests_cg_extra {
         assert_eq!(sub.n_faces(), 2);
     }
 }
+#[cfg(test)]
+mod hull_start_tests;

@@ -7,7 +7,7 @@ use oxilean_parse::parse_source_file;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 /// Unique identifier for a build step.
@@ -796,6 +796,27 @@ pub struct BuildExecutor {
     cancelled: Arc<Mutex<bool>>,
 }
 impl BuildExecutor {
+    /// Lock the cancellation flag.
+    ///
+    /// The flag is a single `bool`: every holder either reads it or stores
+    /// `true` in one statement, so a thread that panicked while holding the
+    /// lock cannot have left it half written, and a poisoned lock is recovered
+    /// with `PoisonError::into_inner`.
+    fn lock_cancelled(&self) -> MutexGuard<'_, bool> {
+        self.cancelled
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+    /// Lock the log of completed step results.
+    ///
+    /// The log is only ever appended to, by `execute`, one complete
+    /// `StepResult` at a time (the value is built before the lock is taken),
+    /// and otherwise cloned as a whole, so every element is complete whenever
+    /// an unwinding holder releases the lock; a poisoned lock is recovered
+    /// with `PoisonError::into_inner`.
+    fn lock_results(&self) -> MutexGuard<'_, Vec<StepResult>> {
+        self.results.lock().unwrap_or_else(PoisonError::into_inner)
+    }
     /// Create a new executor.
     pub fn new(dag: BuildDag, config: ExecutorConfig) -> Self {
         let total = dag.step_count();
@@ -818,7 +839,7 @@ impl BuildExecutor {
         let mut completed: HashSet<StepId> = HashSet::new();
         let mut failures: Vec<(StepId, String)> = Vec::new();
         for step_id in &topo {
-            if *self.cancelled.lock().expect("mutex should not be poisoned") {
+            if *self.lock_cancelled() {
                 return Err(ExecutorError::Cancelled);
             }
             let step = self.dag.get_step(step_id).ok_or(ExecutorError::EmptyDag)?;
@@ -844,7 +865,7 @@ impl BuildExecutor {
             };
             let success = step_result.success;
             {
-                let mut results = self.results.lock().expect("mutex should not be poisoned");
+                let mut results = self.lock_results();
                 results.push(step_result);
             }
             {
@@ -868,11 +889,7 @@ impl BuildExecutor {
             }
         }
         let total_duration = start.elapsed();
-        let results = self
-            .results
-            .lock()
-            .expect("mutex should not be poisoned")
-            .clone();
+        let results = self.lock_results().clone();
         let report = BuildReport {
             total_steps: self.dag.step_count(),
             completed_steps: completed.len(),
@@ -1177,7 +1194,7 @@ impl BuildExecutor {
     }
     /// Cancel the build.
     pub fn cancel(&self) {
-        *self.cancelled.lock().expect("mutex should not be poisoned") = true;
+        *self.lock_cancelled() = true;
     }
     /// Get current progress.
     pub fn current_progress(&self) -> BuildProgress {
@@ -1579,3 +1596,6 @@ impl SandboxConfig {
         self
     }
 }
+
+#[cfg(test)]
+mod poison_tests;

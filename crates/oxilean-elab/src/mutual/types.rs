@@ -271,31 +271,37 @@ impl CallGraph {
         result: &mut Vec<Vec<Name>>,
         names: &[Name],
     ) {
-        indices[v] = Some(*index_counter);
-        lowlinks[v] = *index_counter;
+        let v_index = *index_counter;
+        indices[v] = Some(v_index);
+        lowlinks[v] = v_index;
         *index_counter += 1;
         stack.push(v);
         on_stack[v] = true;
         for &w in &adj[v] {
-            if indices[w].is_none() {
-                Self::tarjan_visit(
-                    w,
-                    adj,
-                    index_counter,
-                    stack,
-                    on_stack,
-                    indices,
-                    lowlinks,
-                    result,
-                    names,
-                );
-                lowlinks[v] = lowlinks[v].min(lowlinks[w]);
-            } else if on_stack[w] {
-                lowlinks[v] =
-                    lowlinks[v].min(indices[w].expect("w is on stack so indices[w] is set"));
+            match indices[w] {
+                None => {
+                    Self::tarjan_visit(
+                        w,
+                        adj,
+                        index_counter,
+                        stack,
+                        on_stack,
+                        indices,
+                        lowlinks,
+                        result,
+                        names,
+                    );
+                    lowlinks[v] = lowlinks[v].min(lowlinks[w]);
+                }
+                Some(w_index) if on_stack[w] => {
+                    lowlinks[v] = lowlinks[v].min(w_index);
+                }
+                Some(_) => {}
             }
         }
-        if lowlinks[v] == indices[v].expect("v was just assigned an index above") {
+        // `indices[v]` is `Some(v_index)` from here on: a node is indexed
+        // once, on entry to its own visit.
+        if lowlinks[v] == v_index {
             let mut component = Vec::new();
             loop {
                 let w = stack
@@ -1285,3 +1291,5 @@ impl StructuralRecursion {
         &self.recursive_args
     }
 }
+#[cfg(test)]
+mod scc_tests;

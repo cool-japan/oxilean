@@ -220,14 +220,9 @@ impl InstanceResolver {
             .into_iter()
             .filter(|i| structural_match(&i.ty, ty))
             .collect();
-        if candidates.is_empty() {
+        let Some(best_priority) = candidates.iter().map(|i| i.priority).min() else {
             return ResolutionResult::NotFound;
-        }
-        let best_priority = candidates
-            .iter()
-            .map(|i| i.priority)
-            .min()
-            .expect("candidates is non-empty (checked above)");
+        };
         let best: Vec<&InstanceDecl> = candidates
             .iter()
             .filter(|i| i.priority == best_priority)

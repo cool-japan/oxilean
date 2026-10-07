@@ -19,7 +19,7 @@ impl BuildStages {
     pub fn from_graph(graph: &ModuleGraph) -> Result<Self, ProjectError> {
         let mut remaining: HashSet<String> = graph.nodes.iter().cloned().collect();
         let mut stages = Vec::new();
-        while !remaining.is_empty() {
+        while let Some(any_remaining) = remaining.iter().next() {
             let mut stage = Vec::new();
             for node in &remaining {
                 let deps = graph.dependencies_of(node);
@@ -28,12 +28,7 @@ impl BuildStages {
                 }
             }
             if stage.is_empty() {
-                let cycle_node = remaining
-                    .iter()
-                    .next()
-                    .expect("remaining is non-empty: stage is empty means cycle")
-                    .clone();
-                return Err(ProjectError::CyclicDependency(vec![cycle_node]));
+                return Err(ProjectError::CyclicDependency(vec![any_remaining.clone()]));
             }
             stage.sort();
             for node in &stage {

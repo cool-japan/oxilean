@@ -654,11 +654,7 @@ impl ProObjectLimit {
             for j in 0..next_level_size {
                 let parent = proj[j];
                 for thread in &threads {
-                    if *thread
-                        .last()
-                        .expect("threads are always non-empty: initialized with vec![i]")
-                        == parent
-                    {
+                    if thread.last() == Some(&parent) {
                         let mut new_thread = thread.clone();
                         new_thread.push(j);
                         new_threads.push(new_thread);

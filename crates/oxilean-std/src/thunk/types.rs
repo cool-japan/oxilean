@@ -655,10 +655,8 @@ impl<T: Clone> FixThunk<T> {
         if let Some(v) = self.memo.get(&n) {
             return v.clone();
         }
-        let memo_ref: *mut std::collections::HashMap<usize, T> = &mut self.memo;
-        let lookup = |k: usize| -> T {
-            unsafe { (*memo_ref).get(&k).cloned() }.expect("missing cached value")
-        };
+        let memo = &self.memo;
+        let lookup = |k: usize| -> T { memo.get(&k).cloned().expect("missing cached value") };
         let v = (self.step)(n, &lookup);
         self.memo.insert(n, v.clone());
         v
@@ -796,3 +794,5 @@ impl<E: Clone, R: Clone> ITreeNode<E, R> {
         None
     }
 }
+#[cfg(test)]
+mod fix_thunk_tests;

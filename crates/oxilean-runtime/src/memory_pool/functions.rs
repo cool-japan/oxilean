@@ -38,6 +38,10 @@ mod tests {
     fn test_pool_allocate_and_read() {
         let mut pool: PoolAllocator<u64> = PoolAllocator::new();
         let ptr = pool.allocate(42u64).expect("allocation should succeed");
+        // SAFETY: `ptr` was just returned by `allocate` on `pool`, which
+        // wrote `42u64` into an aligned slot of a live slab; the pool is
+        // neither reset, cleared, dropped nor asked to deallocate it before
+        // this read.
         assert_eq!(unsafe { *ptr.as_ptr() }, 42u64);
         assert_eq!(pool.allocated(), 1);
     }
@@ -46,6 +50,8 @@ mod tests {
         let mut pool: PoolAllocator<i32> = PoolAllocator::new();
         let ptr = pool.allocate(100).expect("allocation should succeed");
         assert_eq!(pool.allocated(), 1);
+        // SAFETY: `ptr` was returned by `allocate` on this pool, is
+        // deallocated once, and the pool was not reset or cleared since.
         unsafe { pool.deallocate(ptr) };
         assert_eq!(pool.allocated(), 0);
     }
@@ -115,6 +121,8 @@ mod tests {
         let _ = pool.allocate(2);
         let _ = pool.allocate(3);
         assert_eq!(pool.allocated(), 3);
+        // SAFETY: the three pointers `allocate` returned were discarded
+        // (`let _ =`), so nothing refers to the objects `reset` overwrites.
         unsafe { pool.reset() };
         assert_eq!(pool.allocated(), 0);
         assert_eq!(pool.capacity(), 8);
@@ -125,8 +133,13 @@ mod tests {
         let cfg = PoolConfig::default().with_block_size(2);
         let mut pool: PoolAllocator<u64> = PoolAllocator::with_config(cfg);
         let p1 = pool.allocate(10).expect("allocation should succeed");
+        // SAFETY: `p1` was returned by `allocate` on this pool, is
+        // deallocated once, and the pool was not reset or cleared since.
         unsafe { pool.deallocate(p1) };
         let p2 = pool.allocate(20).expect("allocation should succeed");
+        // SAFETY: `p2` was just returned by `allocate` on `pool`, which wrote
+        // `20` into an aligned slot of a live slab (the slot `p1` freed);
+        // `p1` is not used again, and the pool is untouched until the read.
         assert_eq!(unsafe { *p2.as_ptr() }, 20);
         assert_eq!(pool.stats().slab_count, 1);
     }
@@ -153,6 +166,9 @@ mod tests {
     fn test_arena_alloc_value() {
         let mut arena = ArenaAllocator::new(256);
         let ptr = arena.alloc_value(42u64).expect("allocation should succeed");
+        // SAFETY: `alloc_value` wrote `42u64` at `ptr`, aligned for `u64`,
+        // inside a chunk `arena` owns; the arena is not reset or dropped
+        // before this read.
         assert_eq!(unsafe { *ptr.as_ptr() }, 42u64);
     }
     #[test]
@@ -160,6 +176,9 @@ mod tests {
         let mut arena = ArenaAllocator::new(128);
         for i in 0u32..20 {
             let ptr = arena.alloc_value(i).expect("allocation should succeed");
+            // SAFETY: `alloc_value` wrote `i` at `ptr`, aligned for `u32`,
+            // inside a chunk `arena` owns; later allocations only move past
+            // it, and the arena is not reset or dropped before this read.
             assert_eq!(unsafe { *ptr.as_ptr() }, i);
         }
         assert_eq!(arena.bytes_allocated(), 20 * std::mem::size_of::<u32>());
@@ -737,3 +756,7 @@ mod tests_memory_extended3 {
         assert_eq!(alloc.gap_count(), 2);
     }
 }
+#[cfg(test)]
+mod arena_allocator_bounds_tests;
+#[cfg(test)]
+mod placement_tests;

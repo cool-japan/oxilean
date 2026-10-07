@@ -1502,13 +1502,9 @@ impl IndentZipper {
     #[allow(dead_code)]
     #[allow(missing_docs)]
     pub fn move_up(&mut self) -> bool {
-        if self.above.is_empty() {
+        let Some(prev) = self.above.pop() else {
             return false;
-        }
-        let prev = self
-            .above
-            .pop()
-            .expect("above is non-empty per is_empty check above");
+        };
         self.below
             .insert(0, std::mem::replace(&mut self.focus, prev));
         true
@@ -1591,3 +1587,6 @@ impl ScopeTracker {
         }
     }
 }
+
+#[cfg(test)]
+mod zipper_tests;

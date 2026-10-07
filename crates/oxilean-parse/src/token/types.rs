@@ -330,12 +330,14 @@ impl TokenStream {
         F: FnMut(&Token) -> bool,
     {
         let mut consumed = Vec::new();
-        while let Some(tok) = self.peek() {
-            if pred(tok) {
-                consumed.push(self.next().expect("peek confirmed token exists"));
-            } else {
+        // `peek` and `next` read `tokens[pos]`; reading it once and advancing
+        // `pos` by hand keeps the check and the access in one place.
+        while let Some(tok) = self.tokens.get(self.pos) {
+            if !pred(tok) {
                 break;
             }
+            consumed.push(tok.clone());
+            self.pos += 1;
         }
         consumed
     }
@@ -367,9 +369,11 @@ impl TokenStream {
     /// Consume the next token and return an error if the kind is wrong.
     #[allow(missing_docs)]
     pub fn expect(&mut self, expected: &TokenKind) -> Result<Token, String> {
-        match self.peek() {
+        match self.tokens.get(self.pos) {
             Some(tok) if &tok.kind == expected => {
-                Ok(self.next().expect("peek confirmed token exists"))
+                let tok = tok.clone();
+                self.pos += 1;
+                Ok(tok)
             }
             Some(tok) => Err(format!(
                 "expected {:?}, got {:?} at {}:{}",
@@ -647,3 +651,6 @@ pub enum OperatorArity {
     /// Not an operator.
     None,
 }
+
+#[cfg(test)]
+mod stream_tests;

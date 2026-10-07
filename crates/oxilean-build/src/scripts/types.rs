@@ -1582,8 +1582,6 @@ impl ParallelScriptExecutor {
     }
     /// Queue a script for parallel execution.
     pub fn queue(&mut self, script: ScriptDef) {
-        self.handles
-            .push(ParallelScriptHandle::new(&script.name.clone()));
         let result = self.runner.run_single_public(&script).unwrap_or_else(|_| {
             ScriptResult::failure(
                 &script.name,
@@ -1592,12 +1590,8 @@ impl ParallelScriptExecutor {
                 std::time::Duration::ZERO,
             )
         });
-        // Safety: we just pushed a handle on the previous line
-        let handle = self
-            .handles
-            .last_mut()
-            .expect("handles is non-empty after push");
-        *handle = handle.clone().resolve(result);
+        self.handles
+            .push(ParallelScriptHandle::new(&script.name).resolve(result));
     }
     /// Run all queued scripts and return their results.
     pub fn run_all(&mut self, scripts: Vec<ScriptDef>) -> Vec<ScriptResult> {

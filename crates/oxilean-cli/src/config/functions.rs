@@ -477,11 +477,11 @@ pub fn default_oxilean_schema() -> ConfigSchema {
 }
 #[allow(dead_code)]
 pub fn serialize_config_toml(map: &std::collections::HashMap<String, String>) -> String {
-    let mut keys: Vec<&String> = map.keys().collect();
-    keys.sort();
+    let mut entries: Vec<(&String, &String)> = map.iter().collect();
+    entries.sort_by(|a, b| a.0.cmp(b.0));
     let mut out = String::new();
     let mut current_section = String::new();
-    for key in keys {
+    for (key, val) in entries {
         let parts: Vec<&str> = key.splitn(2, '.').collect();
         if parts.len() == 2 {
             let section = parts[0];
@@ -493,14 +493,9 @@ pub fn serialize_config_toml(map: &std::collections::HashMap<String, String>) ->
                 out.push_str(&format!("[{}]\n", section));
                 current_section = section.to_string();
             }
-            let val = map.get(key).expect("key is from map.keys()");
             out.push_str(&format!("{} = \"{}\"\n", field, val));
         } else {
-            out.push_str(&format!(
-                "{} = \"{}\"\n",
-                key,
-                map.get(key).expect("key is from map.keys()")
-            ));
+            out.push_str(&format!("{} = \"{}\"\n", key, val));
         }
     }
     out
@@ -624,9 +619,9 @@ pub fn compute_config_stats(map: &std::collections::HashMap<String, String>) -> 
 }
 #[allow(dead_code)]
 pub fn render_config_as_table(map: &std::collections::HashMap<String, String>) -> String {
-    let mut keys: Vec<&String> = map.keys().collect();
-    keys.sort();
-    let max_key_len = keys.iter().map(|k| k.len()).max().unwrap_or(10);
+    let mut entries: Vec<(&String, &String)> = map.iter().collect();
+    entries.sort_by(|a, b| a.0.cmp(b.0));
+    let max_key_len = entries.iter().map(|(k, _)| k.len()).max().unwrap_or(10);
     let mut out = String::new();
     out.push_str(&format!(
         "{:<width$}  {}\n",
@@ -636,8 +631,7 @@ pub fn render_config_as_table(map: &std::collections::HashMap<String, String>) -
     ));
     out.push_str(&"-".repeat(max_key_len + 20));
     out.push('\n');
-    for key in keys {
-        let val = map.get(key).expect("key is from map.keys()");
+    for (key, val) in entries {
         out.push_str(&format!("{:<width$}  {}\n", key, val, width = max_key_len));
     }
     out
@@ -656,11 +650,10 @@ pub fn render_config_as_env(map: &std::collections::HashMap<String, String>) -> 
 }
 #[allow(dead_code)]
 pub fn render_config_as_json(map: &std::collections::HashMap<String, String>) -> String {
-    let mut keys: Vec<&String> = map.keys().collect();
-    keys.sort();
+    let mut entries: Vec<(&String, &String)> = map.iter().collect();
+    entries.sort_by(|a, b| a.0.cmp(b.0));
     let mut out = String::from("{\n");
-    for (i, key) in keys.iter().enumerate() {
-        let val = map.get(*key).expect("key is from map.keys()");
+    for (i, (key, val)) in entries.iter().enumerate() {
         let comma = if i + 1 < map.len() { "," } else { "" };
         out.push_str(&format!("  \"{}\": \"{}\"{}\n", key, val, comma));
     }
@@ -1125,3 +1118,5 @@ mod config_fingerprint_tests {
         assert_ne!(f1, f2);
     }
 }
+#[cfg(test)]
+mod render_tests;

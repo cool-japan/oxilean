@@ -53,21 +53,14 @@ pub fn mk_and_chain(exprs: &[Expr]) -> Expr {
 /// An empty list yields `hash 0`.
 #[allow(dead_code)]
 pub fn mk_hash_combine(exprs: &[Expr]) -> Expr {
-    if exprs.is_empty() {
+    let Some((last, init)) = exprs.split_last() else {
         return Expr::App(
             Node::new(Expr::Const(Name::str("hash"), vec![])),
             Node::new(Expr::Lit(Literal::nat(0))),
         );
-    }
-    if exprs.len() == 1 {
-        return exprs[0].clone();
-    }
-    // Safety: exprs has at least 2 elements (empty and single-element cases handled above)
-    let mut result = exprs
-        .last()
-        .expect("exprs is non-empty after early returns")
-        .clone();
-    for e in exprs[..exprs.len() - 1].iter().rev() {
+    };
+    let mut result = last.clone();
+    for e in init.iter().rev() {
         result = Expr::App(
             Node::new(Expr::App(
                 Node::new(Expr::Const(Name::str("mixHash"), vec![])),

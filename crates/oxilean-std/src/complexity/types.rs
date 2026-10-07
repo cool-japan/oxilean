@@ -5,6 +5,19 @@
 use super::functions::*;
 use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 
+/// What a clause says under a partial assignment
+/// (see `DpllSolver::clause_status`).
+#[derive(Clone, Copy, Debug)]
+enum ClauseStatus {
+    /// Some literal is true.
+    Satisfied,
+    /// Every literal is assigned, and false.
+    Falsified,
+    /// Not satisfied, and exactly this literal is unassigned.
+    Unit(i32),
+    /// Not satisfied, and two or more literals are unassigned.
+    Open,
+}
 /// DPLL-based propositional SAT solver.
 /// Variables are 1..=n. Clauses are lists of literals (positive = var, negative = -var).
 pub struct DpllSolver {
@@ -43,31 +56,25 @@ impl DpllSolver {
         while changed {
             changed = false;
             for clause in &self.clauses {
-                let (unset, sat, unit_lit) = self.clause_status(clause, assignment);
-                if sat {
-                    continue;
-                }
-                if unset == 0 {
-                    return false;
-                }
-                if unset == 1 {
-                    let lit = unit_lit.expect(
-                        "unit_lit is Some: unset == 1 means exactly one unset literal was tracked",
-                    );
-                    let var = lit.unsigned_abs() as usize;
-                    let val = lit > 0;
-                    if assignment[var] == Some(!val) {
-                        return false;
+                match self.clause_status(clause, assignment) {
+                    ClauseStatus::Satisfied | ClauseStatus::Open => {}
+                    ClauseStatus::Falsified => return false,
+                    ClauseStatus::Unit(lit) => {
+                        let var = lit.unsigned_abs() as usize;
+                        let val = lit > 0;
+                        if assignment[var] == Some(!val) {
+                            return false;
+                        }
+                        assignment[var] = Some(val);
+                        changed = true;
                     }
-                    assignment[var] = Some(val);
-                    changed = true;
                 }
             }
         }
         if self
             .clauses
             .iter()
-            .all(|c| self.clause_status(c, assignment).1)
+            .all(|c| matches!(self.clause_status(c, assignment), ClauseStatus::Satisfied))
         {
             return true;
         }
@@ -86,29 +93,28 @@ impl DpllSolver {
         assignment[var] = None;
         false
     }
-    /// Returns (unset_count, is_satisfied, last_unset_literal)
-    fn clause_status(
-        &self,
-        clause: &[i32],
-        assignment: &[Option<bool>],
-    ) -> (usize, bool, Option<i32>) {
-        let mut unset = 0;
-        let mut last_unset = None;
+    /// What `clause` says under `assignment`: satisfied as soon as one of its
+    /// literals is true, otherwise falsified, unit or open by the number of
+    /// its unassigned literals (0, 1, or more).
+    fn clause_status(&self, clause: &[i32], assignment: &[Option<bool>]) -> ClauseStatus {
+        let mut status = ClauseStatus::Falsified;
         for &lit in clause {
             let var = lit.unsigned_abs() as usize;
             match assignment[var] {
                 None => {
-                    unset += 1;
-                    last_unset = Some(lit);
+                    status = match status {
+                        ClauseStatus::Falsified => ClauseStatus::Unit(lit),
+                        _ => ClauseStatus::Open,
+                    };
                 }
                 Some(val) => {
                     if (lit > 0) == val {
-                        return (0, true, None);
+                        return ClauseStatus::Satisfied;
                     }
                 }
             }
         }
-        (unset, false, last_unset)
+        status
     }
 }
 /// Evaluate a Boolean circuit on a given input assignment.
@@ -573,3 +579,5 @@ impl ResolutionProverSmall {
         None
     }
 }
+#[cfg(test)]
+mod clause_status_tests;

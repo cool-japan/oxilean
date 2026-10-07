@@ -839,10 +839,7 @@ pub(super) fn monomial_term_to_expr(
             Node::new(Expr::Lit(Literal::nat(den as u64))),
         )
     };
-    if mono.exponents.is_empty() {
-        return coeff_expr;
-    }
-    let var_expr = mono
+    let Some(var_expr) = mono
         .exponents
         .iter()
         .map(|(var_name, exp)| {
@@ -868,7 +865,10 @@ pub(super) fn monomial_term_to_expr(
                 Node::new(v),
             )
         })
-        .expect("exponents is non-empty; checked above before building var_expr");
+    else {
+        // No variable factors: the monomial is just its coefficient.
+        return coeff_expr;
+    };
     if num == 1 && den == 1 {
         var_expr
     } else {
@@ -1735,3 +1735,6 @@ mod tests {
         assert!(result.is_err());
     }
 }
+
+#[cfg(test)]
+mod monomial_tests;

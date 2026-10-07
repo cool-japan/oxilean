@@ -151,6 +151,22 @@ impl<T> PoolAllocator<T> {
         let (slab_idx, slot_idx) = self.free_list.pop()?;
         let slot_size = std::mem::size_of::<T>().max(1);
         let slot_ptr = self.slabs[slab_idx].slot_ptr(slot_idx, slot_size) as *mut T;
+        // SAFETY: every free-list entry names a slab that exists (`grow`
+        // pushes the new slab's index together with the slab; `clear`
+        // empties both lists) and a slot below that slab's capacity (`grow`
+        // and `reset` push `0..capacity`; `deallocate` pushes only an offset
+        // it found inside the slab's address range). The slab was allocated
+        // by `Slab::new` for `capacity` slots of `Layout::new::<T>()`, whose
+        // size is non-zero (`Slab::new` refuses a zero-sized layout), so
+        // `slot_size` is `size_of::<T>()` and `slot_idx * slot_size` is below
+        // the allocation's size, a product `Slab::new` computed with
+        // `checked_mul` (no overflow on a 32-bit `usize` either): the slot
+        // lies inside the live allocation `self.slabs` owns. The base is
+        // aligned to `align_of::<T>()` and the offset is a multiple of
+        // `size_of::<T>()`, itself a multiple of the alignment, so the slot
+        // is aligned for `T`. A free slot holds no live value (it was never
+        // handed out, or `deallocate`'s or `reset`'s contract ended its use),
+        // and `ptr::write` does not read or drop the bytes it overwrites.
         unsafe {
             ptr::write(slot_ptr, value);
         }
@@ -161,7 +177,10 @@ impl<T> PoolAllocator<T> {
     ///
     /// # Safety
     /// The pointer must have been returned by `allocate` on this pool and must
-    /// not have been deallocated already.
+    /// not have been deallocated already, and the pool must not have been
+    /// reset or cleared since it was returned (`reset` overwrites every slot
+    /// with zero bytes and `clear` frees the slabs, so after either the
+    /// pointer no longer refers to the value `allocate` wrote).
     pub unsafe fn deallocate(&mut self, ptr: NonNull<T>) {
         ptr::drop_in_place(ptr.as_ptr());
         let slot_size = std::mem::size_of::<T>().max(1);
@@ -217,6 +236,13 @@ impl<T> PoolAllocator<T> {
         for (slab_idx, slab) in self.slabs.iter().enumerate() {
             for slot_idx in (0..slab.capacity).rev() {
                 let p = slab.slot_ptr(slot_idx, slot_size);
+                // SAFETY: `slot_idx < slab.capacity` and `slot_size` is the
+                // non-zero size of the slab's slot layout, so the
+                // `slot_size` bytes at `p` lie inside the slab's live
+                // allocation (its size `capacity * slot_size` was computed
+                // with `checked_mul` in `Slab::new`); `u8` needs no
+                // alignment. The caller guarantees that nothing still uses
+                // the values being overwritten (this function's contract).
                 ptr::write_bytes(p, 0, slot_size);
                 self.free_list.push((slab_idx, slot_idx));
             }
@@ -379,6 +405,12 @@ impl Slab {
         }
         let total_size = slot_layout.size().checked_mul(capacity)?;
         let layout = Layout::from_size_align(total_size, slot_layout.align()).ok()?;
+        // SAFETY: `alloc` requires a layout of non-zero size: `capacity` and
+        // `slot_layout.size()` were both checked non-zero above, so their
+        // product `total_size` (computed with `checked_mul`) is non-zero, and
+        // `Layout::from_size_align` has checked the alignment (the slot
+        // layout's, a power of two) and that the size rounded up to it does
+        // not exceed `isize::MAX`. A null return becomes `None` below.
         let ptr = unsafe { alloc::alloc(layout) };
         let ptr = NonNull::new(ptr)?;
         Some(Self {
@@ -388,9 +420,13 @@ impl Slab {
         })
     }
     /// Get a pointer to the `index`-th slot.
+    ///
+    /// The address is computed with `wrapping_add`, which is safe for any
+    /// arguments; whoever writes through the pointer establishes that it is
+    /// in bounds (see `PoolAllocator::allocate` and `PoolAllocator::reset`).
     fn slot_ptr(&self, index: usize, slot_size: usize) -> *mut u8 {
         debug_assert!(index < self.capacity);
-        unsafe { self.ptr.as_ptr().add(index * slot_size) }
+        self.ptr.as_ptr().wrapping_add(index * slot_size)
     }
 }
 /// A sequence of pool snapshots for trend analysis.
@@ -850,7 +886,7 @@ impl ArenaAllocator {
             self.total_allocated += size;
             return Some(ptr);
         }
-        let needed = size + align - 1;
+        let needed = size.checked_add(align - 1)?;
         let new_size = self.chunk_size.max(needed);
         let mut chunk = vec![0u8; new_size];
         self.total_reserved += new_size;
@@ -858,6 +894,14 @@ impl ArenaAllocator {
         let aligned_offset = (base.wrapping_add(align - 1)) & !(align - 1);
         let padding = aligned_offset - base;
         debug_assert!(padding + size <= new_size);
+        // SAFETY: `chunk` is a live allocation of `new_size` bytes, and
+        // `new_size >= needed = size + align - 1` (the sum checked above).
+        // The rounding computes `x - (x & (align - 1))` for
+        // `x = base + align - 1`, which lies in `base..=base + align - 1` for
+        // every `align >= 1`, and the addition does not wrap because
+        // `base + new_size` is the end of that allocation. So
+        // `padding <= align - 1` and `padding + size <= new_size`, with
+        // `size >= 1` here: the offset stays inside the chunk.
         let ptr = unsafe { chunk.as_mut_ptr().add(padding) };
         self.offset = padding + size;
         self.chunks.push(chunk);
@@ -870,12 +914,21 @@ impl ArenaAllocator {
         let chunk = self.chunks.last_mut()?;
         let base = chunk.as_mut_ptr() as usize;
         let current = base + self.offset;
-        let aligned = (current.wrapping_add(align - 1)) & !(align - 1);
+        let aligned = current.checked_add(align - 1)? & !(align - 1);
         let padding = aligned - current;
-        let new_offset = self.offset + padding + size;
+        let new_offset = self.offset.checked_add(padding)?.checked_add(size)?;
         if new_offset > chunk.len() {
             return None;
         }
+        // SAFETY: `self.offset <= chunk.len()` for the last chunk: it is set
+        // only by the new-chunk path of `alloc_bytes` (to `padding + size`
+        // within the chunk it pushes), by this function (to a `new_offset`
+        // checked against `chunk.len()`), and to 0 by `new` and `reset`. The
+        // rounding lies in `current..=current + align - 1` (no wrap: the
+        // `checked_add`), so `padding <= align - 1`, and
+        // `self.offset + padding + size` was checked against `chunk.len()`
+        // without overflow; `alloc_bytes` calls this only for `size >= 1`,
+        // so `self.offset + padding` is inside the chunk's buffer.
         let ptr = unsafe { chunk.as_mut_ptr().add(self.offset + padding) };
         self.offset = new_offset;
         NonNull::new(ptr)
@@ -917,6 +970,17 @@ impl ArenaAllocator {
         let layout = Layout::new::<T>();
         let ptr = self.alloc_bytes(layout.size(), layout.align())?;
         let typed = ptr.as_ptr() as *mut T;
+        // SAFETY: `layout.align()` is a power of two, for which the rounding
+        // in `alloc_bytes` yields an address that is a multiple of it. For a
+        // zero-sized `T`, `alloc_bytes` returned the non-null address
+        // `layout.align()` itself, aligned and valid for a zero-sized write.
+        // Otherwise `typed` points at `size_of::<T>()` bytes inside a
+        // `Vec<u8>` buffer owned by `self.chunks`, which no other allocation
+        // overlaps (each allocation moves `self.offset` past itself, and only
+        // `reset` moves it back, invalidating earlier allocations as its
+        // documentation says); the buffer stays allocated until `reset` or
+        // the drop of `self` frees it. `ptr::write` does not read or drop the
+        // bytes it overwrites.
         unsafe {
             ptr::write(typed, value);
         }

@@ -607,16 +607,19 @@ pub fn bell_numbers(max_n: usize) -> Vec<u128> {
         return vec![1];
     }
     let mut row: Vec<u128> = vec![1];
+    // The last entry of `row`, which starts the next row of the triangle.
+    let mut row_last = 1u128;
     let mut bells = vec![1u128];
     for _ in 1..=max_n {
-        let mut next = vec![0u128; row.len() + 1];
-        next[0] = *row
-            .last()
-            .expect("row is non-empty: initialized with one element");
-        for j in 1..=row.len() {
-            next[j] = next[j - 1] + row[j - 1];
+        let mut next = Vec::with_capacity(row.len() + 1);
+        let mut acc = row_last;
+        next.push(acc);
+        bells.push(acc);
+        for &r in &row {
+            acc += r;
+            next.push(acc);
         }
-        bells.push(next[0]);
+        row_last = acc;
         row = next;
     }
     bells
@@ -1749,3 +1752,5 @@ mod tests_combinatorics_extended {
         assert_eq!(sunflower_threshold(2, 3), 8);
     }
 }
+#[cfg(test)]
+mod bell_tests;

@@ -302,13 +302,9 @@ pub(super) fn open_pis_as_mvars(
         let domain_inst = substitute_bvars_with_exprs(domain, &mvar_exprs);
         let (mvar_id, mvar_placeholder) = ctx.mk_fresh_expr_mvar(domain_inst, MetavarKind::Natural);
         mvar_ids.push(mvar_id);
+        let next_ty = substitute_bvar0(body, &mvar_placeholder);
         mvar_exprs.push(mvar_placeholder);
-        current_ty = substitute_bvar0(
-            body,
-            mvar_exprs
-                .last()
-                .expect("mvar_exprs is non-empty; we just pushed to it"),
-        );
+        current_ty = next_ty;
         count += 1;
     }
     let mut applied = Expr::Const(name.clone(), vec![]);

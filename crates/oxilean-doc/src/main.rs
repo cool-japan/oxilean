@@ -45,14 +45,15 @@ mod walker;
     name = "oxilean-doc",
     about = "Generate HTML documentation for OxiLean (.lean) source files",
     long_about = None,
-    version
+    version,
+    subcommand_negates_reqs = true
 )]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
 
     /// Input `.lean` source file (single-file mode, used when no subcommand given).
-    #[arg(value_name = "INPUT", required_unless_present = "command")]
+    #[arg(value_name = "INPUT", required = true)]
     input: Option<PathBuf>,
 
     /// Output HTML file (single-file mode).  Defaults to stdout when omitted.
@@ -90,14 +91,20 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    let cli = Cli::parse();
+    run_cli(Cli::parse())
+}
 
+fn run_cli(cli: Cli) -> Result<()> {
     match cli.command {
         Some(Command::Multi { inputs, output_dir }) => run_multi(inputs, &output_dir),
 
         None => {
-            // Single-file mode — `input` is guaranteed by `required_unless_present`.
-            let input = cli.input.expect("input required in single-file mode");
+            // Single-file mode: clap requires the input when no subcommand is
+            // given (`subcommand_negates_reqs`), and a `Cli` built in code
+            // without one is reported here.
+            let Some(input) = cli.input else {
+                anyhow::bail!("input required in single-file mode");
+            };
             run_single(input, cli.output, cli.title)
         }
     }
@@ -241,3 +248,6 @@ axiom nat_axiom : Nat
         );
     }
 }
+
+#[cfg(test)]
+mod cli_tests;

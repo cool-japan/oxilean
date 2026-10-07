@@ -289,6 +289,14 @@ pub fn build_env(env: &mut Environment) {
         .ok();
     }
 }
+/// The position of the first occurrence of every value in `points`.
+fn first_positions(points: &[usize]) -> HashMap<usize, usize> {
+    let mut first = HashMap::new();
+    for (idx, &p) in points.iter().enumerate() {
+        first.entry(p).or_insert(idx);
+    }
+    first
+}
 /// Run the Mapper algorithm.
 pub fn run_mapper(
     filter: &TomographicProjection,
@@ -377,25 +385,14 @@ pub fn run_mapper(
     }
     for ci in 0..cover.len() {
         for cj in (ci + 1)..cover.len() {
-            let common: HashSet<usize> = cover[ci]
-                .points
-                .iter()
-                .copied()
-                .collect::<HashSet<_>>()
-                .intersection(&cover[cj].points.iter().copied().collect::<HashSet<_>>())
-                .copied()
-                .collect();
-            for &p in &common {
-                let idx_i = cover[ci]
-                    .points
-                    .iter()
-                    .position(|&q| q == p)
-                    .expect("p is in cover[ci].points: p came from the intersection");
-                let idx_j = cover[cj]
-                    .points
-                    .iter()
-                    .position(|&q| q == p)
-                    .expect("p is in cover[cj].points: p came from the intersection");
+            // Each point of either element with its first position there; a
+            // point of `ci` with a position in `cj` too is a common point.
+            let first_i = first_positions(&cover[ci].points);
+            let first_j = first_positions(&cover[cj].points);
+            for (p, &idx_i) in &first_i {
+                let Some(&idx_j) = first_j.get(p) else {
+                    continue;
+                };
                 let cli = cover[ci].clusters[idx_i];
                 let clj = cover[cj].clusters[idx_j];
                 if let (Some(&ni), Some(&nj)) = (node_map.get(&(ci, cli)), node_map.get(&(cj, clj)))
@@ -950,3 +947,5 @@ mod tests {
         assert!(env.get(&Name::str("MorseComplex")).is_some());
     }
 }
+#[cfg(test)]
+mod mapper_edge_tests;
