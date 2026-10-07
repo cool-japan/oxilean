@@ -93,6 +93,62 @@ carries the same result property by property, with the site-by-site breakdown.
 44 unknown / 26 timeout / 2 unsupported.** (The wave-3 file had 42 rows over
 the same 11 harnesses; five of them were whole-harness `unsupported`.)
 
+### Evidence grade (re-measured 2026-10-07)
+
+Re-measured with a release CLI and driver built from the cargo-formal tree at
+`ab9eb83` (OxiZ 0.3.3, rustc `nightly-2026-06-20`, `--jobs 2`, a fresh
+`--target-dir`, `--no-cache`; exit status 0), on this package as it stands and
+the `oxilean-kernel` sources beside it, whose `bignat` module has not changed
+since the 2026-09-14 run. **All 72 rows above reproduce** as `EXPECTED.toml`
+reads them — a decided verdict exactly, `unknown` and `timeout` as one
+undecided class: 0 refuted, the same two whole-harness `unsupported` refusals,
+and the same three `proved` obligations
+(`shr_is_a_power_of_two_division_harness`'s `unwinding-assertion` at
+`../src/bignat/mod.rs:405:13` and `src/harness.rs:363:5`,
+`sub_is_truncating_and_ble_agrees_harness`'s at `../src/bignat/mod.rs:480:9`).
+The run raises **192 obligations** where the 2026-09-14 run raised 190: the
+encoder now lowers **35 dependency bodies (22 reachable)** where it lowered 24,
+and with them two `arith-overflow` sites inside `Vec::with_capacity`, at
+`../src/bignat/mod.rs:397:23` (`shr`) and `:474:19` (`sub_limbs`), each
+joining an existing row — `shr_is_a_power_of_two_division_harness`'s
+`arith-overflow`, undecided as before, and
+`sub_is_truncating_and_ble_agrees_harness`'s `arith-overflow`, undecided
+either way (`EXPECTED.toml` notes both rows). The same binaries raise the same
+192 obligations on the kernel sources at `d310843`, so the two new ones do not
+come from a source change. Counters: bmc **3 proved / 0 refuted /
+187 undecided / 2 unsupported** over 192 obligations (190 with a
+`vc/NNNN.smt2` reproduction), hygiene PASS. Three figures move with the
+host's load, as the load-sensitivity section below explains, and are given
+as one run's values with the range measured over the runs with the same
+binaries on 2026-10-06 and 2026-10-07, each on kernel sources with this
+`bignat` module: `solver-model-rejected: 34` (31 to 34 over twelve runs), and
+15 rows on the other side of the `unknown` / `timeout` line from the value
+recorded here (11 to 15 over the same twelve runs); the third is the
+`--evidence lrat` run's count below.
+
+Every `proved` obligation is **reproduction only (claim unmet)** under
+cargo-formal's default `claim-requires` (`lrat`, `oxilean-verify`,
+`external-replay`): the pinned solver's `unsat`, reproduced under a fixed seed
+and conflict budget, not an independently checked proof (`claim unmet 3 of 3
+proved`); and no row is `proved`, since each of the three shares a row with an
+undecided site. A default `cargo formal check` now cross-checks every proved
+obligation at bit level — bit-blasted, solved by `oxiz-sat`, its proof checked
+by `oxiz-proof` — before the verdict is published: all three are **folded**
+(the bit-level encoder reduced the assertion to the constant `false`, so the
+encoder itself agrees), **0 confirmed**, **0 contradicted** and **0 not
+confirmed**; no soundness incident. `cargo formal check --evidence lrat` (the
+same binaries, a fresh `--target-dir`, `--no-cache`) raises **0 soundness
+incidents** and **exits 0**, with the same 192 obligations and the same
+decided verdicts (0 undecided obligations on the other side of the `unknown`
+/ `timeout` line from the default run in this pair of runs; 0 to 3 across the
+five pairs of default and `--evidence lrat` runs measured on 2026-10-06 and
+2026-10-07): no obligation carries an LRAT certificate — the
+three proved ones are folded, which leaves no clause set to certify — and none
+is reported `proved vacuously`. OxiZ 0.3.3 has a documented
+wrong-`unsat` class (upstream U-Z19; cargo-formal's conformance fixture
+`u21_pinned_selector_two_define_funs`), which is why a reproduction alone is
+not a proof.
+
 ## Layer counters (the run's own numbers)
 
 ```

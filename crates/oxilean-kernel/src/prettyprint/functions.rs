@@ -43,37 +43,57 @@ pub(super) fn collect_app_args(expr: &Expr) -> (&Expr, Vec<&Expr>) {
     args.reverse();
     (e, args)
 }
+/// Writes what one fresh `ExprPrinter` produces: `build` makes the printer
+/// and `print` runs one of its printing methods.
+struct Printed<B, P> {
+    build: B,
+    print: P,
+}
+impl<B, P> std::fmt::Display for Printed<B, P>
+where
+    B: Fn() -> ExprPrinter,
+    P: Fn(&mut ExprPrinter) -> std::fmt::Result,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut printer = (self.build)();
+        (self.print)(&mut printer)?;
+        f.write_str(&printer.output())
+    }
+}
+/// The text one fresh `ExprPrinter` produces.
+fn printed(
+    build: impl Fn() -> ExprPrinter,
+    print: impl Fn(&mut ExprPrinter) -> std::fmt::Result,
+) -> String {
+    // `to_string` meets no error here, as `format!` would not: every `?` in
+    // `ExprPrinter` applies to a `write!` / `writeln!` into its `String`
+    // buffer or to another of its printing methods, and no code in this
+    // crate, which has no dependencies, constructs a `fmt::Error`; so an
+    // error could come only from a write into a `String` or into the
+    // `String`-backed `Formatter` of `to_string`, and neither fails.
+    Printed { build, print }.to_string()
+}
 /// Pretty print an expression with unicode symbols.
 pub fn print_expr(expr: &Expr) -> String {
-    let mut printer = ExprPrinter::new();
-    printer
-        .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
-    printer.output()
+    printed(ExprPrinter::new, |printer| printer.print(expr))
 }
 /// Pretty print an expression without unicode symbols.
 pub fn print_expr_ascii(expr: &Expr) -> String {
-    let mut printer = ExprPrinter::new().with_unicode(false);
-    printer
-        .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
-    printer.output()
+    printed(
+        || ExprPrinter::new().with_unicode(false),
+        |printer| printer.print(expr),
+    )
 }
 /// Pretty print with a specific configuration.
 pub fn print_expr_with_config(expr: &Expr, config: PrintConfig) -> String {
-    let mut printer = ExprPrinter::with_config(config);
-    printer
-        .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
-    printer.output()
+    printed(
+        || ExprPrinter::with_config(config.clone()),
+        |printer| printer.print(expr),
+    )
 }
 /// Pretty print a level expression.
 pub fn print_level(level: &Level) -> String {
-    let mut printer = ExprPrinter::new();
-    printer
-        .print_level(level)
-        .expect("pretty-printer must succeed on valid level");
-    printer.output()
+    printed(ExprPrinter::new, |printer| printer.print_level(level))
 }
 #[cfg(test)]
 mod tests {
@@ -860,3 +880,5 @@ mod tests_typed_utilities {
         assert!(!ms.is_cached());
     }
 }
+#[cfg(test)]
+mod wrapper_tests;

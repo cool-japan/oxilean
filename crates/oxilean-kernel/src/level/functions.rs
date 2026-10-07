@@ -216,19 +216,15 @@ pub fn normalize(l: &Level) -> Level {
                     });
                 }
             }
-            if merged.is_empty() {
-                Level::zero()
-            } else if merged.len() == 1 {
-                merged
-                    .into_iter()
-                    .next()
-                    .expect("merged set must be non-empty")
-            } else {
-                let mut result = merged.pop().expect("merged set must be non-empty");
-                while let Some(arg) = merged.pop() {
-                    result = Level::max(arg, result);
+            match merged.pop() {
+                None => Level::zero(),
+                Some(last) => {
+                    let mut result = last;
+                    while let Some(arg) = merged.pop() {
+                        result = Level::max(arg, result);
+                    }
+                    result
                 }
-                result
             }
         }
     }
@@ -1118,10 +1114,10 @@ mod tests_padding3 {
         let mut calc = StackCalc::new();
         calc.push(3);
         calc.push(4);
-        calc.add();
+        assert_eq!(calc.add(), Some(7));
         assert_eq!(calc.peek(), Some(7));
         calc.push(2);
-        calc.mul();
+        assert_eq!(calc.mul(), Some(14));
         assert_eq!(calc.peek(), Some(14));
     }
 }
@@ -1160,3 +1156,5 @@ mod tests_final_padding {
         assert_eq!(f.len(), 2);
     }
 }
+#[cfg(test)]
+mod normalize_merge_tests;

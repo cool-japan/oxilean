@@ -312,6 +312,29 @@
 # Reproduce with, from this directory:
 #
 #   FORMAL_DRIVER=<path>/formal-driver cargo formal check
+#
+# Re-measured 2026-10-07 with a release CLI and driver built from the
+# cargo-formal tree at ab9eb83; OxiZ 0.3.3, rustc nightly-2026-06-20,
+# --jobs 2, a fresh --target-dir, --no-cache; exit 0. Every row below
+# reproduces with `unknown` and `timeout` read as one undecided class: 0
+# refuted, the same 2 unsupported harnesses, the same 3 proved obligations.
+# The run raises 192 obligations (190 with a vc/NNNN.smt2 reproduction) where
+# the 2026-09-14 run raised 190: the encoder lowers 35 dependency bodies (22
+# reachable) where it lowered 24, and with them two `arith-overflow` sites
+# inside `Vec::with_capacity` (../src/bignat/mod.rs:397:23 and :474:19), each
+# joining an existing row -- see the dated notes on those two rows. The same
+# binaries raise the same 192 obligations on the kernel sources at d310843.
+# Counters: bmc 3 proved / 0 refuted / 187 undecided / 2 unsupported. Two
+# counters move with the host's load (see the README's load-sensitivity
+# section) and are this run's values with the range over twelve runs of the
+# same binaries on 2026-10-06 and 2026-10-07, each on kernel sources with this
+# bignat module: solver-model-rejected 34 (31 to 34), and 15 rows on the other
+# side of the unknown / timeout line from the value recorded below (11 to 15). Every proved obligation is "reproduction
+# only (claim unmet)" under the default `claim-requires`; the default run's
+# bit-level cross-check folds all three (0 confirmed, 0 contradicted, 0 not
+# confirmed, no incident); `cargo formal check --evidence lrat` raises 0
+# soundness incidents, exits 0, attaches no LRAT certificate (the three are
+# folded) and reports nothing `proved vacuously`.
 
 [[harness]]
 name = "from_limbs_normalizes_trailing_zeros_harness"
@@ -421,6 +444,10 @@ name = "sub_is_truncating_and_ble_agrees_harness"
 
 [harness.expected]
 # 1 site: ../src/bignat/mod.rs:481:18=bounded -- `u64::from(b1) + u64::from(b2)`
+# 2026-10-07: 2 sites -- :481:18 and ../src/bignat/mod.rs:474:19, the
+# capacity arithmetic inside `Vec::with_capacity` (raised since the encoder
+# lowers that body); both undecided, the value below left as measured on
+# 2026-09-14.
 "arith-overflow" = "unknown"
 # 1 site: ../src/bignat/mod.rs:481:18=timeout (same source site, distinct check)
 "arith-overflow-2" = "timeout"
@@ -487,6 +514,9 @@ name = "shr_is_a_power_of_two_division_harness"
 [harness.expected]
 # 6 sites: ../src/bignat/mod.rs:123:28=model-rejected, :124:17=timeout,
 # :124:24=bounded, :400:25=bounded, :401:21=bounded, :401:31=bounded
+# 2026-10-07: 7 sites -- the six above and ../src/bignat/mod.rs:397:23, the
+# capacity arithmetic inside `Vec::with_capacity` (raised since the encoder
+# lowers that body); all seven undecided.
 "arith-overflow" = "timeout"
 # 3 sites: ../src/bignat/mod.rs:123:28=model-rejected (23 423 ms, near the
 # boundary), :400:25=bounded, :401:21=bounded

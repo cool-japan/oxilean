@@ -272,51 +272,64 @@ mod tests {
 /// Build the `Bool` inductive type (no parameters, two constructors).
 #[allow(dead_code)]
 pub fn mk_bool_inductive() -> InductiveType {
-    InductiveTypeBuilder::new()
-        .name(Name::str("Bool"))
-        .ty(Expr::Sort(Level::succ(Level::zero())))
-        .intro_rule(
-            Name::str("Bool.true"),
-            Expr::Const(Name::str("Bool"), vec![]),
-        )
-        .intro_rule(
-            Name::str("Bool.false"),
-            Expr::Const(Name::str("Bool"), vec![]),
-        )
-        .build()
-        .expect("Bool inductive type build failed")
+    InductiveType::new(
+        Name::str("Bool"),
+        vec![],
+        0,
+        0,
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![
+            IntroRule {
+                name: Name::str("Bool.true"),
+                ty: Expr::Const(Name::str("Bool"), vec![]),
+            },
+            IntroRule {
+                name: Name::str("Bool.false"),
+                ty: Expr::Const(Name::str("Bool"), vec![]),
+            },
+        ],
+    )
 }
 /// Build the `Nat` inductive type.
 #[allow(dead_code)]
 pub fn mk_nat_inductive() -> InductiveType {
-    InductiveTypeBuilder::new()
-        .name(Name::str("Nat"))
-        .ty(Expr::Sort(Level::succ(Level::zero())))
-        .intro_rule(Name::str("Nat.zero"), Expr::Const(Name::str("Nat"), vec![]))
-        .intro_rule(
-            Name::str("Nat.succ"),
-            Expr::Pi(
-                crate::BinderInfo::Default,
-                Name::str("n"),
-                Node::new(Expr::Const(Name::str("Nat"), vec![])),
-                Node::new(Expr::Const(Name::str("Nat"), vec![])),
-            ),
-        )
-        .build()
-        .expect("Nat inductive type build failed")
+    InductiveType::new(
+        Name::str("Nat"),
+        vec![],
+        0,
+        0,
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![
+            IntroRule {
+                name: Name::str("Nat.zero"),
+                ty: Expr::Const(Name::str("Nat"), vec![]),
+            },
+            IntroRule {
+                name: Name::str("Nat.succ"),
+                ty: Expr::Pi(
+                    crate::BinderInfo::Default,
+                    Name::str("n"),
+                    Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                    Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                ),
+            },
+        ],
+    )
 }
 /// Build the `Unit` inductive type (single constructor, no fields).
 #[allow(dead_code)]
 pub fn mk_unit_inductive() -> InductiveType {
-    InductiveTypeBuilder::new()
-        .name(Name::str("Unit"))
-        .ty(Expr::Sort(Level::succ(Level::zero())))
-        .intro_rule(
-            Name::str("Unit.unit"),
-            Expr::Const(Name::str("Unit"), vec![]),
-        )
-        .build()
-        .expect("Unit inductive type build failed")
+    InductiveType::new(
+        Name::str("Unit"),
+        vec![],
+        0,
+        0,
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![IntroRule {
+            name: Name::str("Unit.unit"),
+            ty: Expr::Const(Name::str("Unit"), vec![]),
+        }],
+    )
 }
 /// Build the `Empty` inductive type (no constructors — ex falso).
 #[allow(dead_code)]
@@ -935,3 +948,5 @@ mod tests_extra_iterators {
         assert_eq!(*nev.last(), 30);
     }
 }
+#[cfg(test)]
+mod builtin_inductive_tests;

@@ -1708,10 +1708,10 @@ mod tests_padding3 {
         let mut calc = StackCalc::new();
         calc.push(3);
         calc.push(4);
-        calc.add();
+        assert_eq!(calc.add(), Some(7));
         assert_eq!(calc.peek(), Some(7));
         calc.push(2);
-        calc.mul();
+        assert_eq!(calc.mul(), Some(14));
         assert_eq!(calc.peek(), Some(14));
     }
 }

@@ -48,12 +48,7 @@ impl<T: Clone> MemoSlot<T> {
     }
     /// Returns the cached value, computing it with `f` if absent.
     pub fn get_or_compute(&mut self, f: impl FnOnce() -> T) -> &T {
-        if self.cached.is_none() {
-            self.cached = Some(f());
-        }
-        self.cached
-            .as_ref()
-            .expect("cached value must be initialized before access")
+        self.cached.get_or_insert_with(f)
     }
     /// Invalidates the cached value.
     pub fn invalidate(&mut self) {
@@ -461,12 +456,7 @@ impl<T> Slot<T> {
     }
     /// Fills the slot if empty, returning a reference to the value.
     pub fn get_or_fill_with(&mut self, f: impl FnOnce() -> T) -> &T {
-        if self.inner.is_none() {
-            self.inner = Some(f());
-        }
-        self.inner
-            .as_ref()
-            .expect("inner value must be initialized before access")
+        self.inner.get_or_insert_with(f)
     }
 }
 /// A pair of values useful for before/after comparisons.
@@ -1479,33 +1469,68 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> SimpleLruCache<K, V> {
     }
     /// Inserts or updates a key-value pair.
     pub fn put(&mut self, key: K, val: V) {
+        // `keys`, `vals` and `order` keep one length, with `order` holding
+        // each slot index once (most recently used first) and the length at
+        // most `capacity`, also when a call unwinds out of user code (`Clone`,
+        // `Hash` or `Eq` of `K`, the drop of a `K` or a `V`): `new` starts
+        // them empty, and every change below to a length or to `order` is a
+        // step that runs no user code and cannot fail, with its branch's user
+        // code (and the `reserve`s, which may panic) before the first such
+        // step or after the last. Every index in `map` is a slot index.
         if let Some(&idx) = self.map.get(&key) {
+            // `map.get` ran `Hash` / `Eq` before any change. The old value's
+            // drop runs in this assignment and changes no length.
             self.vals[idx] = val;
+            // `idx` is in `order` once, so `retain` removes one index and
+            // `insert` puts it back without growing the buffer.
             self.order.retain(|&x| x != idx);
             self.order.insert(0, idx);
             return;
         }
-        if self.keys.len() >= self.capacity {
-            let evict_idx = *self
-                .order
-                .last()
-                .expect("order list must be non-empty before eviction");
-            self.map.remove(&self.keys[evict_idx]);
-            self.order.pop();
-            self.keys[evict_idx] = key.clone();
-            self.vals[evict_idx] = val;
-            self.map.insert(key, evict_idx);
-            self.order.insert(0, evict_idx);
-        } else {
-            let idx = self.keys.len();
-            self.keys.push(key.clone());
-            self.vals.push(val);
-            self.map.insert(key, idx);
-            self.order.insert(0, idx);
+        match self.order.last() {
+            // A full cache has `order.len() == keys.len() >= capacity > 0`
+            // (`new` asserts `capacity > 0`), so its least recently used slot
+            // is `order.last()`.
+            Some(&evict_idx) if self.keys.len() >= self.capacity => {
+                // The user code that comes before any change: the clone that
+                // goes into the map, and `Hash` / `Eq` in removing the evicted
+                // key from the map (a panic there leaves the map as it was).
+                // The removed key is held and dropped at the end.
+                let map_key = key.clone();
+                let removed = self.map.remove_entry(&self.keys[evict_idx]);
+                // Moves that run no user code: the slot takes the new key and
+                // value, and `rotate_right` takes the evicted index from the
+                // back of `order` to the front. No length changes.
+                let old_key = std::mem::replace(&mut self.keys[evict_idx], key);
+                let old_val = std::mem::replace(&mut self.vals[evict_idx], val);
+                self.order.rotate_right(1);
+                // The user code that comes after: `Hash` / `Eq` in the map's
+                // insertion, then the drops of the evicted key and value.
+                self.map.insert(map_key, evict_idx);
+                drop((removed, old_key, old_val));
+            }
+            // Not full: a new slot. (With the lengths equal, `order` is never
+            // empty while `keys.len() >= capacity`.)
+            _ => {
+                let map_key = key.clone();
+                let idx = self.keys.len();
+                // Reserving first, the three appends below allocate nothing
+                // and cannot fail, so the lists grow together; `Hash` / `Eq`
+                // in the map's insertion run after them.
+                self.keys.reserve(1);
+                self.vals.reserve(1);
+                self.order.reserve(1);
+                self.keys.push(key);
+                self.vals.push(val);
+                self.order.insert(0, idx);
+                self.map.insert(map_key, idx);
+            }
         }
     }
     /// Returns a reference to the value for `key`, promoting it.
     pub fn get(&mut self, key: &K) -> Option<&V> {
+        // `map.get` runs `Hash` / `Eq` before any change; `idx` is in `order`
+        // once (see `put`), so `retain` and `insert` change no length.
         let idx = *self.map.get(key)?;
         self.order.retain(|&x| x != idx);
         self.order.insert(0, idx);
