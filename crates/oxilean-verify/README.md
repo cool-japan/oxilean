@@ -42,23 +42,45 @@ oxilean-verify path/to/Mathlib.Something.ndjson
 # run on a large corpus with adjusted memory/time limits
 oxilean-verify --limits corpus path/to/Init.ndjson
 
-# machine-readable JSON report to a file
-oxilean-verify --report report.json path/to/export.ndjson
+# machine-readable JSON report to a file (`--json -` writes it to stdout;
+# add --json-full for a per-declaration list)
+oxilean-verify --json report.json path/to/export.ndjson
 ```
 
 ## Library API
 
 ```rust
-use oxilean_verify::{verify_stream, LimitsPreset, VerifySummary};
-use oxilean_kernel::Environment;
+use std::fs::File;
+use std::io::BufReader;
 
-let ndjson: &[u8] = /* lean4export bytes */;
-let mut summary = VerifySummary::default();
-verify_stream(ndjson, LimitsPreset::Default, |decl| {
-    println!("{}: {}", decl.name, decl.verdict);
-    summary.tally(&decl);
-})?;
+use oxilean_verify::cli::LimitsPreset;
+use oxilean_verify::{verify_stream, Verdict, VerifyOptions, VERSION};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let reader = BufReader::new(File::open("export.ndjson")?);
+    let options = VerifyOptions {
+        // The CLI's default (untrusted-input) per-declaration budget.
+        per_decl_fuel: LimitsPreset::Default.decl_fuel(),
+        ..VerifyOptions::default()
+    };
+    let report = verify_stream(reader, VERSION, options, |event| match &event.verdict {
+        Verdict::Verified { .. } => {}
+        Verdict::Unsupported { feature } => println!("{}: unsupported ({feature})", event.name),
+        Verdict::Rejected { reason } => println!("{}: REJECTED: {reason}", event.name),
+    })?;
+    let s = &report.summary;
+    println!(
+        "{} verified · {} unsupported · {} rejected",
+        s.verified, s.unsupported, s.rejected
+    );
+    Ok(())
+}
 ```
+
+A per-declaration rejection is not an `Err`. It arrives as a
+`Verdict::Rejected` event and is counted in `report.summary`. `Err` means the
+file itself could not be read: it is broken, uses an unsupported format, or
+hit an I/O error.
 
 The same `verify_stream` function is used by the CLI and by
 `oxilean-verify-wasm` — the browser demo and the native binary drive identical

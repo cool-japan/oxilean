@@ -13,6 +13,38 @@
 
 ---
 
+## Status on the 0.1.4 tree (re-measured 2026-11-04, `86227a8`)
+
+Both builds were run on the same machine: Apple M3, 24 GB, macOS, one
+verification thread, `--limits corpus`, load average ≈4–5.
+
+| metric | 0.1.3 (crates.io) | 0.1.4 tree |
+|---|---|---|
+| Lean core `Init` (57,277 decls) | 35,424 verified · 21,853 unsupported · 0 rejected | **47,119 verified · 10,158 unsupported · 0 rejected** |
+| unsupported attribution | 1 nested-inductive root (`Lean.Syntax`) + 97 clone-fuel roots + 21,755 dependents | **643 clone-fuel roots + 9,515 dependents**; nested-inductive root cleared (C10) |
+| full-`Init` wall / peak RSS | 8 m 28 s / 3.5 GiB | 33 m 05 s / 2.1 GiB |
+| same-set throughput (`prelude-probe-u32`, 1,016 decls, both fully verified) | 3.03 s / 57 MB | 2.94 s / 35 MB |
+| `init-2000` slice | 1,905 · 95 · 0 in 8.4 s | 1,991 · 9 · 0 in 11.7 s |
+| wasm artifact (`gzip -9`, wasm-pack + `wasm-opt -Oz`) | 147,336 B | 168,728 B (~165 KB; 439,567 B raw) vs 400 KB budget |
+
+**Open on 0.1.4:**
+
+- [ ] **Decompose the full-`Init` wall-clock increase** (8 m 28 s → 33 m 05 s).
+  On the 1,016-declaration probe, throughput is unchanged. That points at the
+  work 0.1.4 adds: the 11,695 newly verified declarations, and the 643
+  clone-fuel roots, each of which runs to its budget before it is degraded.
+  The increase is not decomposed yet. Next step: a `--json-full`
+  per-declaration timing run on both builds.
+- [ ] **Resource-limit tail**: 643 roots now exceed the 2^26 corpus clone-fuel
+  budget (97 on 0.1.3). Most of them were previously hidden behind the
+  `Lean.Syntax` cascade.
+- [ ] **Re-run the lean4lean differential** on the 0.1.4 kernel. It was last
+  run during the 0.1.3 cycle, before C10.
+- [ ] **Refresh the committed demo artifact** (`web/verify-demo/pkg` is still the
+  0.1.3 build).
+
+---
+
 ## Campaign result (2026-07-15)
 
 The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
@@ -42,7 +74,8 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   the ~16 GiB corpus memory footprint.
 - **Nested inductives** (nested→mutual elaboration, `Lean.Syntax`): the single
   highest-leverage completeness item — would unlock up to 14,347 Syntax-only
-  followers of the 22,054 unsupported.
+  followers of the 22,054 unsupported. *(Done after the release: C10,
+  `b3c17f8`/`b3adf3f`, on the 0.1.4 tree. See the status section above.)*
 - **Resource-limit tail**: 175 legal-but-heavy roots stay in the NAMED
   resource-limit bucket at the 2^26 corpus fuel preset (spot-checked verified
   at 2^30 under a cage); raising the preset re-opens the C16b OOM, so it stays.
@@ -179,8 +212,16 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   *(Wave 2: multi-motive derivation + iota for mutual families
   (Tree/Forest pinned); sibling recursor names follow lean4export's
   `<T>.rec` convention.)*
-- [>] **C10. Nested inductives** — decorative bool flag; no nested-to-mutual
+- [x] **C10. Nested inductives** — decorative bool flag; no nested-to-mutual
   compilation. Implement, or emit named `unsupported` verdict (three-bucket rule). (`audit-recursors.md`)
+  *(Wave 5, after the 0.1.3 release: implemented in `b3c17f8`/`b3adf3f`.
+  Nested occurrences are specialised into an auxiliary mutual family, the
+  recursors are derived and restored over the real container, and every
+  exported recursor is re-verified by def-eq.
+  `crates/oxilean-kernel/src/inductive/nested.rs` still answers
+  `UnsupportedNestedInductive` for the shapes that stage does not handle.
+  `Init` went from 35,223 to 47,119 verified with 0 rejected; re-measured on
+  2026-11-04 at `86227a8`: 47,119 · 10,158 · 0.)*
   *(Wave 2: the second disjunct landed — positivity checking rejects nested
   occurrences with typed `KernelError::UnsupportedNestedInductive` for the
   verify CLI's `unsupported` bucket; nested→mutual compilation itself is

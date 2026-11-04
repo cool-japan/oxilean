@@ -17,7 +17,7 @@ OxiLean is a **memory-safe, high-performance Interactive Theorem Prover (ITP)** 
 - **1.35M+ lines of Rust** across 6,050 source files and 17 crates
 - **33,238 tests passing** -- comprehensive test suite with zero warnings (746 ignored)
 - **WASM support** -- Runs in the browser with no server required
-- **Full tactic framework** -- intro, apply, simp, ring, omega, and more
+- **Tactic framework** -- intro, apply, simp, ring, omega, and more. The decision procedures (omega, linarith, polyrith) rebuild a proof term from their certificate and have the kernel check it; a goal they cannot certify falls back to `sorry`
 - **Interactive REPL** -- Theorem proving from the command line
 - **oxilean-verify** -- Independent Lean 4 proof checker over lean4export files ("Kernel in a Tab")
 
@@ -40,33 +40,53 @@ Every declaration gets exactly one verdict; nothing is skipped silently:
 | Verdict | Meaning | Exit code |
 |---|---|---|
 | `verified` | checked against our independent implementation of the kernel rules and accepted | `0` (when nothing was rejected) |
-| `unsupported` | a **named** missing feature (e.g. `nested inductives`); the checker declines rather than guess | `0` (counted + named in the report) |
+| `unsupported` | a **named** missing feature or limit (e.g. a per-declaration resource limit); the checker declines rather than guess | `0` (counted + named in the report) |
 | `rejected` | **the alarm**: we checked it and it is *not* a proof | `1` |
 | — broken input file, bad flag, I/O error | "this file is broken" is a different conversation than "this proof is wrong" | `2` |
 
-### Result on Lean core (`Init`) — 2026-07-15 (structural sharing: 2026-07-16)
+### Result on Lean core (`Init`) — re-measured 2026-11-04
 
 Over **all 57,277 declarations** of Lean 4 core's `Init` export
-(v4.32.0-rc1, 6,453,270 NDJSON lines, 345 MB), in one process, one pass:
+(v4.32.0-rc1, 6,453,270 NDJSON lines, 345 MB), in one process, one pass,
+`--limits corpus`, on the 0.1.4 development tree (`86227a8`):
 
 ```
-35424 verified · 21853 unsupported · 0 rejected      (exit status 0)
+47119 verified · 10158 unsupported · 0 rejected      (exit status 0)
 ```
 
 | bucket | count | share |
 |---|---:|---:|
-| **verified** | 35,424 | 61.8% |
-| **unsupported** (named buckets) | 21,853 | 38.2% |
+| **verified** | 47,119 | 82.3% |
+| **unsupported** (named buckets) | 10,158 | 17.7% |
 | **rejected** | 0 | 0% |
 
-Qualifiers that must travel with the number: the unsupported bucket is
-dominated by a **single root cause** — one nested-inductive type
-(`Lean.Syntax`) whose dependency cascade accounts for the overwhelming majority
-of it; "0 rejected" means *nothing in Lean core was mis-flagged and the checker
-found no incorrect proof* — it does **not** mean everything was verified,
-because the checker refuses to guess.
+Qualifiers that must travel with the number:
 
-**Structural sharing (wave5, 2026-07-16).** The kernel `Expr` moved from a deep
+- **What is still unsupported.** The bucket is **643 roots** that exceed the
+  `corpus` preset's per-declaration clone-fuel budget (a named resource limit,
+  never a guess), plus the **9,515** declarations that depend on one of them.
+- **What changed since 0.1.3.** Nested inductives are now supported (see
+  [What's New in v0.1.4](#whats-new-in-v014-unreleased)). In 0.1.3, one
+  nested-inductive type (`Lean.Syntax`) and its dependency cascade accounted for
+  most of the unsupported bucket.
+- **What "0 rejected" means.** *Nothing in Lean core was mis-flagged, and the
+  checker found no incorrect proof.* It does **not** mean everything was
+  verified, because the checker refuses to guess.
+
+Both builds were measured on the same machine: Apple M3, 24 GB, macOS, one
+verification thread, load average ≈4–5 during the runs.
+
+| build | verified · unsupported · rejected | wall | peak RSS |
+|---|---|---:|---:|
+| 0.1.3 (crates.io) | 35,424 · 21,853 · 0 | 8 m 28 s | 3.5 GiB |
+| 0.1.4 tree (`86227a8`) | 47,119 · 10,158 · 0 | 33 m 05 s | 2.1 GiB |
+
+The 0.1.4 wall-clock increase has not been decomposed yet. On a
+1,016-declaration export that both builds verify in full, throughput is
+unchanged (3.03 s → 2.94 s), and peak RSS drops from 57 MB to 35 MB.
+
+**Structural sharing (wave5, 2026-07-16; measured on the 0.1.3 kernel on a 14 GiB
+Linux box).** The kernel `Expr` moved from a deep
 `Box` tree to reference-counted, cached-header `Node` edges (`Box<Expr>` →
 `Rc<Expr>` → a `Node` caching each subterm's `looseBVarRange` and rebuild-cost),
 and the export reader now materialises the shared DAG **once** (Init's
@@ -78,28 +98,34 @@ pre-sharing 35,223 (the +201 is exactly explained: with clones now O(1) refcount
 bumps the deterministic per-declaration fuel stops over-charging shared
 subterms, and the untouched-subtree substitution skip charges the *same* fuel a
 rebuild would, so declarations that previously hit the resource limit now
-verify — nothing regresses, `rejected` stays 0). The lean4lean per-declaration
-compute gap (below) predates this work and has not been re-measured on
-`Init.Prelude`. Full report of the pre-sharing run with the follower attribution
-table and reproduction command:
+verify — nothing regresses, `rejected` stays 0). Stage F (0.1.4) adds
+`Name`/`Level` interning on top. It only affects memory and moved no verdict.
+The lean4lean per-declaration compute gap (below) predates this work and has
+not been re-measured on `Init.Prelude`. Full report of the pre-sharing 0.1.3 run,
+with the follower attribution table and the reproduction command:
 [`docs/reports/2026-07-15-lean-core-init.md`](docs/reports/2026-07-15-lean-core-init.md).
 
-### Kernel in a Tab (WASM, 144 KB gzip)
+### Kernel in a Tab (WASM, ~165 KB gzip)
 
-The same checker compiles to a **144 KB gzipped** WASM artifact — 147,132 B
-measured at 0.1.3 (`oxilean-verify-wasm`: kernel + export + verify +
-wasm-bindgen only) — and runs
-entirely client-side — drop an `.ndjson` export on the page, watch streaming
-verdicts, **0 bytes uploaded**:
+The same checker compiles to a **~165 KB gzipped** WASM artifact
+(`oxilean-verify-wasm`: kernel + export + verify + wasm-bindgen only):
+
+- 0.1.4 tree, measured 2026-11-04: 168,728 B (`gzip -9`), 439,567 B raw. Built
+  the way the demo is built (`wasm-pack --release`, then `wasm-opt -Oz`).
+- 0.1.3, measured the same way: 147,336 B.
+
+The artifact runs entirely client-side: drop an `.ndjson` export on the page,
+watch the verdicts stream in, and **0 bytes are uploaded**.
 
 ```bash
 cd web/verify-demo
+./build.sh            # the committed pkg/ is still the 0.1.3 build
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
-No CDN, no framework, no server round-trips; the browser demo and the native
-binary drive the identical `verify_stream` code path.
+No CDN, no framework, no server round-trips. The browser demo and the native
+binary run the same `verify_stream` code.
 
 ### Differential testing vs lean4lean
 
@@ -112,10 +138,20 @@ the post-fix re-run joins at **0 disagreements** across 1,987 declarations.
 Caveats recorded in the harness README: lean4lean `master` pins Lean v4.29.0
 vs our v4.32.0-rc1 corpus (declaration-set skew lands in ONLY-ONE-SIDE, not
 DISAGREE), and lean4lean's default `replayFromImports` path segfaults on that
-toolchain, so the harness drives it with `--fresh`. Baseline throughput
-measured there: lean4lean ~3,280 decls/s vs oxilean-verify ~398 decls/s on the
-same `Init.Prelude` set (~8.2× slower — outside the 5× budget, tracked). See
-[`verify/differential/RESULTS-2026-07-12.md`](verify/differential/RESULTS-2026-07-12.md).
+toolchain, so the harness drives it with `--fresh`. The differential was last
+run during the 0.1.3 cycle, before nested inductives landed.
+
+Baseline throughput on the same `Init.Prelude` set:
+
+| checker | decls/s | source |
+|---|---:|---|
+| lean4lean | ~3,280 | [`RESULTS-2026-07-12.md`](verify/differential/RESULTS-2026-07-12.md) |
+| oxilean-verify 0.1.2 | ~376 | [`RESULTS-2026-07-12.md`](verify/differential/RESULTS-2026-07-12.md) |
+| oxilean-verify 0.1.3 | ~398 | `TODO_VERIFY.md` V7 |
+
+That is ~8× slower than lean4lean, outside the 5× budget, and tracked. Both
+oxilean-verify numbers were measured before structural sharing and have not
+been re-measured since.
 
 ### Pins
 
@@ -178,7 +214,7 @@ report format, and the unsupported-feature list: [`docs/VERIFY.md`](docs/VERIFY.
 | `oxilean-kernel` | 127,298 | 3,485 | Trusted Computing Base -- type checking core (zero external deps, `#![forbid(unsafe_code)]`) |
 | `oxilean-export` | 4,100 | 77 | lean4export NDJSON v3.1.0 reader + replay (TCB, zero external deps) |
 | `oxilean-verify` | 2,205 | 47 | Independent Lean 4 proof checker CLI (three-bucket verdicts) |
-| `oxilean-verify-wasm` | 399 | 4 | "Kernel in a Tab" WASM bindings (144 KB gzip) |
+| `oxilean-verify-wasm` | 399 | 4 | "Kernel in a Tab" WASM bindings (~165 KB gzip) |
 | `oxilean-meta` | 162,760 | 5,410 | Metavar-aware WHNF, unification, type class synthesis, tactics |
 | `oxilean-parse` | 67,245 | 2,341 | Concrete syntax to abstract syntax parser |
 | `oxilean-elab` | 101,970 | 3,497 | Surface syntax to kernel terms elaborator |
@@ -264,6 +300,27 @@ ox.free();
 Full API: `check`, `repl`, `completions`, `hoverInfo`, `format`, `sessionId`, `history`, `clearHistory`, `version`
 
 Supports bundler (webpack/vite), web (browser), and Node.js targets. See [oxilean-wasm README](crates/oxilean-wasm/README.md) for details.
+
+## What's New in v0.1.4 (unreleased)
+
+- **Nested inductives**: a nested inductive (for example `Lean.Syntax`, nested
+  through `Array`/`List`) is specialised into an auxiliary mutual family.
+  Recursors are derived on that family and restored over the real container,
+  and every exported recursor is re-verified by def-eq, never trusted. On Lean
+  core `Init`, verified rises from **35,424 to 47,119 (82.3%)**, still with
+  **0 rejected**.
+- **Structural sharing, Stage F**: `Name`/`Level` Rc-newtype interning. It is
+  memory-only and moved no verdict. Peak RSS on full `Init` falls from 3.5 GiB
+  to 2.1 GiB (same machine; see the table above).
+- **Hygiene**, as reported by `cargo formal check --layer hygiene`:
+  - The kernel goes from 297 findings to 19, and the workspace from 346 to 68.
+  - Three unsound paths reachable from safe code were closed:
+    `oxilean-elab`'s `validate_locals`, and `oxilean-runtime`'s `ThunkVec::get`
+    and `ArenaAllocator::alloc_bytes`.
+  - The `# Safety` contract of `PoolAllocator::deallocate` was tightened.
+  - `StackCalc::{add, sub, mul}` now return `Option<i64>` instead of panicking.
+    This is a public signature change.
+- **Dependencies**: OxiZ 0.3.4, plus current oxicode and oxiarc.
 
 ## What's New in v0.1.3
 
