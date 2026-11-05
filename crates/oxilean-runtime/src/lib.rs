@@ -37,7 +37,9 @@ pub mod arena;
 pub mod bytecode_interp;
 pub mod closure;
 pub mod distributed_rpc;
+pub mod driver;
 pub mod eval_error;
+pub mod extern_resolver;
 pub mod gc_strategies;
 pub mod io_runtime;
 pub mod lazy_eval;
@@ -63,6 +65,10 @@ pub use closure::{
 };
 pub use eval_error::{
     EvalError, EvalErrorBuilder, EvalErrorKind, EvalFrame, RuntimeError, SourceSpan,
+};
+pub use extern_resolver::{
+    dispatch_extern_const, dispatch_extern_decl, ExternDispatch, ExternResolver,
+    SharedExternResolver,
 };
 pub use io_runtime::{
     ConsoleOps, FileOps, IoError, IoErrorKind, IoExecutor, IoResult, IoRuntime, IoValue,
