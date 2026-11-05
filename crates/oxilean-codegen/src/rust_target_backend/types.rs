@@ -887,6 +887,18 @@ impl RustDominatorTree {
 pub struct RustTargetBackend {
     pub(super) fresh_counter: u64,
     pub(super) name_cache: HashMap<std::string::String, std::string::String>,
+    /// OX7 (1a, 2026-05-26): map from `LcnfVarId` →
+    /// kernel-name string for variables that represent
+    /// `Const(name, _)` references rather than ordinary
+    /// locals. Populated by callers via
+    /// [`set_const_names`](Self::set_const_names) before
+    /// [`emit_module`](Self::emit_module) /
+    /// [`compile_decl`](Self::compile_decl). When the
+    /// backend emits a `LcnfArg::Var(id)` whose ID is in
+    /// this map, the mangled name is used; otherwise the
+    /// usual `LcnfVarId::to_string()` (e.g. `_x4`) is
+    /// emitted.
+    pub(super) const_names: HashMap<crate::lcnf::types::LcnfVarId, std::string::String>,
 }
 impl RustTargetBackend {
     /// Create a new `RustTargetBackend`.
@@ -894,7 +906,19 @@ impl RustTargetBackend {
         RustTargetBackend {
             fresh_counter: 0,
             name_cache: HashMap::new(),
+            const_names: HashMap::new(),
         }
+    }
+    /// OX7 (1a, 2026-05-26): install the
+    /// `LcnfVarId → kernel-name` map for `Const`
+    /// references. Typically obtained from
+    /// [`crate::to_lcnf::decl_to_lcnf_with_const_names`].
+    /// Replaces any previously-installed map.
+    pub fn set_const_names(
+        &mut self,
+        const_names: HashMap<crate::lcnf::types::LcnfVarId, std::string::String>,
+    ) {
+        self.const_names = const_names;
     }
     /// Generate a fresh variable name.
     pub fn fresh_var(&mut self) -> std::string::String {
@@ -944,7 +968,39 @@ impl RustTargetBackend {
             }
             LcnfType::Ctor(name, args) => {
                 if args.is_empty() {
-                    RustType::Custom(name.clone())
+                    // OX7 (#2, 2026-05-26): Lean kernel
+                    // sized integer / float / Char primitive
+                    // types arrive here as 0-ary `Ctor("UInt64",
+                    // [])` etc. (`to_lcnf::convert_type` matches
+                    // `Const("UInt64")` → `Ctor("UInt64", [])`).
+                    // Map them to the native Rust scalar so
+                    // downstream code (function signatures,
+                    // arithmetic operations) compiles without
+                    // an extra `pub type UInt64 = …` alias.
+                    //
+                    // Names match Lean stdlib spelling, not
+                    // the mangled `UInt64` form (mangling
+                    // doesn't touch ASCII alnum chars, so the
+                    // two coincide for these primitives).
+                    match name.as_str() {
+                        "UInt8" => RustType::U8,
+                        "UInt16" => RustType::U16,
+                        "UInt32" => RustType::U32,
+                        "UInt64" => RustType::U64,
+                        "UInt128" => RustType::U128,
+                        "USize" => RustType::Usize,
+                        "Int8" => RustType::I8,
+                        "Int16" => RustType::I16,
+                        "Int32" => RustType::I32,
+                        "Int64" => RustType::I64,
+                        "Int128" => RustType::I128,
+                        "ISize" => RustType::Isize,
+                        "Float32" => RustType::F32,
+                        "Float64" => RustType::F64,
+                        "Char" => RustType::Char,
+                        "Bool" => RustType::Bool,
+                        _ => RustType::Custom(name.clone()),
+                    }
                 } else {
                     let a: Vec<_> = args.iter().map(Self::lcnf_to_rust_type).collect();
                     RustType::Generic(name.clone(), a)
@@ -960,10 +1016,176 @@ impl RustTargetBackend {
             LcnfLit::Str(s) => RustExpr::Lit(RustLit::Str(s.clone())),
         }
     }
+    /// OX7 String-literal coercion (2026-05-28) — string literals
+    /// land as `RustExpr::Lit(RustLit::Str(_))`, which emits as a
+    /// `&'static str`. When the surrounding context types the
+    /// binding as `RustType::RustString` (e.g. Lean
+    /// `def hello : String := "…"`), rustc rejects the implicit
+    /// `&str` → `String` coercion. Wrap the literal in
+    /// `.to_string()` only in that exact pattern; every other
+    /// expression / type combination passes through unchanged.
+    fn coerce_string_literal_if_needed(expr: RustExpr, ty: &RustType) -> RustExpr {
+        if !matches!(ty, RustType::RustString) {
+            return expr;
+        }
+        if !matches!(&expr, RustExpr::Lit(RustLit::Str(_))) {
+            return expr;
+        }
+        RustExpr::MethodCall {
+            receiver: Box::new(expr),
+            method: "to_string".to_string(),
+            args: Vec::new(),
+        }
+    }
+    /// OX7 typeclass step (2026-05-27) — when an
+    /// LCNF `App(func, args)` (whether at `LetValue::App`
+    /// or `Expr::TailCall` position) targets a head
+    /// whose kernel name is a Lean stdlib
+    /// typeclass-projection identifier
+    /// (`HAdd.hAdd`, `HSub.hSub`, …), lower the call to
+    /// a native Rust [`RustExpr::BinOp`] /
+    /// [`RustExpr::UnaryOp`] instead of an opaque
+    /// `RustExpr::Call(_x4, …)`. Returns `None` when the
+    /// head isn't a known projection — caller falls
+    /// back to the regular Call lowering.
+    ///
+    /// The kernel-name lookup goes through
+    /// `self.const_names`, populated via
+    /// `set_const_names`. Names there are already
+    /// `mangle_name`d (`.` → `_`), so the match table
+    /// keys carry the mangled spelling.
+    /// Reconstruct the `f64` behind an `OfScientific.ofScientific`
+    /// application: `mantissa * 10 ^ (if negExp then -exp else exp)`.
+    ///
+    /// Returns `None` unless all three arguments have the literal shape
+    /// the encoder produces, so a genuine call with computed arguments
+    /// is left alone rather than silently mis-folded.
+    fn fold_of_scientific(
+        &self,
+        mantissa: &LcnfArg,
+        neg_exp: &LcnfArg,
+        exp: &LcnfArg,
+    ) -> Option<f64> {
+        let nat = |a: &LcnfArg| match a {
+            LcnfArg::Lit(LcnfLit::Nat(n)) => Some(*n),
+            _ => None,
+        };
+        let m = nat(mantissa)?;
+        let e = i32::try_from(nat(exp)?).ok()?;
+        let negative = match neg_exp {
+            LcnfArg::Var(id) => bool_ctor_to_native(self.const_names.get(id)?)?,
+            _ => return None,
+        };
+        #[allow(clippy::cast_precision_loss)] // a source literal's mantissa
+        let m = m as f64;
+        Some(m * 10f64.powi(if negative { -e } else { e }))
+    }
+
+    fn try_builtin_app(&mut self, func: &LcnfArg, args: &[LcnfArg]) -> Option<RustExpr> {
+        let LcnfArg::Var(id) = func else { return None };
+        let mangled = self.const_names.get(id)?.clone();
+        // Float literal: `OfScientific.ofScientific m negExp e`, which
+        // is how both Lean and `oxilean-elab` encode one, since the
+        // kernel's `Literal` has no float case. Fold it back to a
+        // native literal — otherwise it emits a call to a function that
+        // does not exist.
+        if mangled == "OfScientific_ofScientific" && args.len() == 3 {
+            if let Some(f) = self.fold_of_scientific(&args[0], &args[1], &args[2]) {
+                return Some(RustExpr::Lit(RustLit::Float(f)));
+            }
+        }
+        // Binary arithmetic / comparison.
+        if let Some(op) = tc_projection_to_rust_binop(&mangled) {
+            if args.len() == 2 {
+                let lhs = self.compile_arg(&args[0]);
+                let rhs = self.compile_arg(&args[1]);
+                return Some(RustExpr::BinOp {
+                    op: op.to_string(),
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                });
+            }
+        }
+        // Unary.
+        if let Some(op) = tc_projection_to_rust_unaryop(&mangled) {
+            if args.len() == 1 {
+                let operand = self.compile_arg(&args[0]);
+                return Some(RustExpr::UnaryOp {
+                    op: op.to_string(),
+                    operand: Box::new(operand),
+                });
+            }
+        }
+        // OX7 HPow method-call step (2026-05-25) — Lean's
+        // `^` desugars to `HPow.hPow lhs rhs` through the
+        // `HPow` typeclass projection. Rust has no native
+        // `**` binary operator, but every integer / float
+        // primitive ships an inherent `.pow(rhs)` method
+        // (`u64::pow`, `f64::powi`, etc.). Fold the
+        // 2-arg App into a native
+        // `RustExpr::MethodCall { receiver: lhs, method: "pow", args: [rhs] }`
+        // so the emitted crate doesn't reference an
+        // undefined `HPow_hPow` symbol.
+        //
+        // NOTE — Rust's integer `pow` expects `u32`
+        // exponent. The current fold emits the `rhs` raw,
+        // relying on the Lean-side type already matching
+        // (Nat literal → `RustLit::UInt`, which coerces
+        // to `u32` only when the literal fits and the
+        // surrounding context demands it). For the
+        // `def pow8 (n : UInt64) : UInt64 := n ^ 8`
+        // fixture, the exponent is a `Nat` literal that
+        // Rust accepts without an explicit cast. Other
+        // numeric types (signed integers' `i*::pow`,
+        // float `f*::powi` / `f*::powf`) need exponent
+        // typing that the current spike doesn't yet
+        // emit — tracked as a future-work item; the
+        // monomorphic UInt64 path is sufficient for the
+        // OX7 typeclass step.
+        if mangled == "HPow_hPow" && args.len() == 2 {
+            let lhs = self.compile_arg(&args[0]);
+            let rhs = self.compile_arg(&args[1]);
+            return Some(RustExpr::MethodCall {
+                receiver: Box::new(lhs),
+                method: "pow".to_string(),
+                args: vec![rhs],
+            });
+        }
+        // OX7 ite step (2026-05-25) — Lean's `if c then t
+        // else e` is desugared by oxilean-elab to
+        // `@ite α c inst t e` (see
+        // `oxilean_elab::elaborate::elaborate_if`), which
+        // arrives here as a 5-arg App with head
+        // `Const("ite")`. Fold it back to a native Rust
+        // `if c { t } else { e }` so the emitted crate
+        // doesn't reference an undefined `ite` symbol.
+        //
+        // Slot layout:
+        //   args[0] = α        (motive / result type — discarded)
+        //   args[1] = c        (Bool / Prop condition)
+        //   args[2] = inst     (Decidable c instance — discarded)
+        //   args[3] = t        (then branch)
+        //   args[4] = e        (else branch)
+        if mangled == "ite" && args.len() == 5 {
+            let cond = self.compile_arg(&args[1]);
+            let then_expr = self.compile_arg(&args[3]);
+            let else_expr = self.compile_arg(&args[4]);
+            return Some(RustExpr::If {
+                cond: Box::new(cond),
+                then_block: vec![RustStmt::ExprNoSemi(then_expr)],
+                else_block: Some(vec![RustStmt::ExprNoSemi(else_expr)]),
+            });
+        }
+        None
+    }
+
     /// Compile an LCNF let-value to a Rust expression.
     pub fn compile_let_value(&mut self, value: &LcnfLetValue) -> RustExpr {
         match value {
             LcnfLetValue::App(func, args) => {
+                if let Some(builtin) = self.try_builtin_app(func, args) {
+                    return builtin;
+                }
                 let func_expr = self.compile_arg(func);
                 let rust_args: Vec<_> = args.iter().map(|a| self.compile_arg(a)).collect();
                 RustExpr::Call(Box::new(func_expr), rust_args)
@@ -995,9 +1217,41 @@ impl RustTargetBackend {
         }
     }
     /// Compile an LCNF argument to a Rust expression.
+    ///
+    /// OX7 (1a): when `id` is registered in
+    /// [`const_names`](Self::const_names) (populated by
+    /// [`set_const_names`](Self::set_const_names)), emit
+    /// the kernel name mangled to a valid Rust
+    /// identifier (e.g. `Nat_add`) instead of the
+    /// internal placeholder (`_x4`).
     pub fn compile_arg(&mut self, arg: &LcnfArg) -> RustExpr {
         match arg {
-            LcnfArg::Var(id) => RustExpr::Var(id.to_string()),
+            LcnfArg::Var(id) => match self.const_names.get(id).cloned() {
+                Some(kernel_name) => {
+                    // OX7 Bool literal fold (2026-05-25) —
+                    // Lean's `Bool.true` / `Bool.false` reach
+                    // here as a zero-arg `Const(...)`
+                    // registered in `const_names` under the
+                    // mangled spelling `Bool_true` /
+                    // `Bool_false`. Without special-casing
+                    // they emit as a bare identifier
+                    // (`Bool_true`, possibly re-mangled to
+                    // `true_` for the keyword form `true`)
+                    // that doesn't resolve in Rust — the
+                    // emitted crate fails to link. Fold them
+                    // to native `RustLit::Bool` so the
+                    // corresponding Lean-level
+                    // `if true then … else …` surfaces as
+                    // `if true { … } else { … }` (after the
+                    // existing OX7 ite fold).
+                    if let Some(b) = bool_ctor_to_native(&kernel_name) {
+                        RustExpr::Lit(RustLit::Bool(b))
+                    } else {
+                        RustExpr::Var(self.mangle_name(&kernel_name))
+                    }
+                }
+                None => RustExpr::Var(id.to_string()),
+            },
             LcnfArg::Lit(lit) => Self::compile_lit(lit),
             LcnfArg::Erased => RustExpr::Lit(RustLit::Unit),
             LcnfArg::Type(_) => RustExpr::Lit(RustLit::Unit),
@@ -1016,6 +1270,7 @@ impl RustTargetBackend {
             } => {
                 let val_expr = self.compile_let_value(value);
                 let rust_ty = Self::lcnf_to_rust_type(ty);
+                let val_expr = Self::coerce_string_literal_if_needed(val_expr, &rust_ty);
                 stmts.push(RustStmt::Let {
                     pat: RustPattern::Var(id.to_string(), false),
                     ty: Some(rust_ty),
@@ -1024,6 +1279,9 @@ impl RustTargetBackend {
                 self.compile_expr(body, stmts)
             }
             LcnfExpr::TailCall(func, args) => {
+                if let Some(builtin) = self.try_builtin_app(func, args) {
+                    return builtin;
+                }
                 let func_expr = self.compile_arg(func);
                 let rust_args: Vec<_> = args.iter().map(|a| self.compile_arg(a)).collect();
                 RustExpr::Call(Box::new(func_expr), rust_args)
@@ -1215,11 +1473,7 @@ impl RustConstantFoldingHelper {
     }
     #[allow(dead_code)]
     pub fn fold_div_i64(a: i64, b: i64) -> Option<i64> {
-        if b == 0 {
-            None
-        } else {
-            a.checked_div(b)
-        }
+        if b == 0 { None } else { a.checked_div(b) }
     }
     #[allow(dead_code)]
     pub fn fold_add_f64(a: f64, b: f64) -> f64 {
@@ -1255,11 +1509,7 @@ impl RustConstantFoldingHelper {
     }
     #[allow(dead_code)]
     pub fn fold_rem_i64(a: i64, b: i64) -> Option<i64> {
-        if b == 0 {
-            None
-        } else {
-            Some(a % b)
-        }
+        if b == 0 { None } else { Some(a % b) }
     }
     #[allow(dead_code)]
     pub fn fold_bitand_i64(a: i64, b: i64) -> i64 {
@@ -1402,5 +1652,85 @@ impl RustPassConfig {
     pub fn max_iter(mut self, n: u32) -> Self {
         self.max_iterations = n;
         self
+    }
+}
+
+/// OX7 typeclass step (2026-05-27) — map a Lean stdlib
+/// arithmetic / comparison / bitwise typeclass-projection
+/// identifier (already mangled — `.` → `_`) to the native
+/// Rust binary-operator surface. Returns `None` when the
+/// projection isn't a 2-arg builtin (or isn't recognised).
+///
+/// Mirrors `leo4-oxilean-build::leo4_env_bootstrap::
+/// ARITHMETIC_TC_PROJECTIONS` and
+/// `leo4_translate::arith_op_to_tc_projection`.
+fn tc_projection_to_rust_binop(mangled: &str) -> Option<&'static str> {
+    match mangled {
+        // Arithmetic.
+        "HAdd_hAdd" => Some("+"),
+        "HSub_hSub" => Some("-"),
+        "HMul_hMul" => Some("*"),
+        "HDiv_hDiv" => Some("/"),
+        "HMod_hMod" => Some("%"),
+        // Bitwise.
+        "HAnd_hAnd" => Some("&"),
+        "HOr_hOr" => Some("|"),
+        "HXor_hXor" => Some("^"),
+        "HShiftLeft_hShiftLeft" => Some("<<"),
+        "HShiftRight_hShiftRight" => Some(">>"),
+        // Comparison.
+        "LT_lt" => Some("<"),
+        "LE_le" => Some("<="),
+        "BEq_beq" => Some("=="),
+        // leo4's translate layer lowers surface `=` to `Eq.eq` and
+        // `≠` to `Not.not (Eq.eq a b)`; without this arm both emit a
+        // call to an undefined `Eq_eq`.
+        "Eq_eq" => Some("=="),
+        _ => None,
+    }
+}
+
+/// OX7 typeclass step (2026-05-27) — map a Lean stdlib
+/// unary typeclass-projection identifier (already
+/// mangled) to the native Rust unary-operator surface.
+/// `HPow.hPow` is binary but doesn't fit native Rust
+/// `BinOp` (Rust has no `**`) — folded into a
+/// `RustExpr::MethodCall { method: "pow", … }` by the
+/// `HPow_hPow` arm of `try_builtin_app` (OX7 HPow
+/// method-call step, 2026-05-25). Other numeric types
+/// (signed `i*::pow`, float `f*::powi` / `f*::powf`)
+/// are future work.
+fn tc_projection_to_rust_unaryop(mangled: &str) -> Option<&'static str> {
+    match mangled {
+        "Neg_neg" => Some("-"),
+        "Not_not" => Some("!"),
+        _ => None,
+    }
+}
+
+/// OX7 Bool literal fold (2026-05-25) — map a Lean
+/// `Bool.true` / `Bool.false` const reference (mangled
+/// at the `to_lcnf` boundary to `Bool_true` /
+/// `Bool_false`) to the corresponding native Rust
+/// `bool` literal. Returns `None` for any other kernel
+/// name — callers fall back to the regular `Var`
+/// lowering.
+///
+/// Rationale: there is no Rust definition of
+/// `Bool_true` (or `true_`, the form `mangle_name`
+/// would produce if the namespace prefix were
+/// stripped — `true` collides with the Rust keyword),
+/// so referencing it produces a link-time error. The
+/// fold runs in [`RustTargetBackend::compile_arg`]'s
+/// `LcnfArg::Var` arm, before `mangle_name`, so it
+/// catches both the composite-name spelling
+/// (`Bool_true`) and the hypothetical short-name
+/// spelling (`true`/`false` → keyword-escaped to
+/// `true_`/`false_`).
+fn bool_ctor_to_native(kernel_name: &str) -> Option<bool> {
+    match kernel_name {
+        "Bool_true" | "true" | "true_" => Some(true),
+        "Bool_false" | "false" | "false_" => Some(false),
+        _ => None,
     }
 }

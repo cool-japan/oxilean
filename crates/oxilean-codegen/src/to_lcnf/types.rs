@@ -39,8 +39,28 @@ pub struct ToLcnfState {
     pub(super) next_var: u64,
     /// Map from kernel name strings to LCNF variable IDs.
     pub(super) name_map: HashMap<String, LcnfVarId>,
-    /// Map from kernel name strings to LCNF types.
+    /// Signatures of the constants this declaration may refer to,
+    /// keyed by *mangled* kernel name.
+    ///
+    /// Supplied by the caller — see [`env_const_types`] — because
+    /// `to_lcnf` converts one declaration at a time and otherwise has
+    /// no way to learn the type of a constant declared elsewhere.
+    /// Empty for the environment-less entry points, in which case
+    /// application results fall back to `LcnfType::Object` exactly as
+    /// before.
+    ///
+    /// [`env_const_types`]: super::env_const_types
     pub(super) type_map: HashMap<String, LcnfType>,
+    /// Types of the LCNF variables bound so far: parameters, `let`
+    /// bindings, and constant references whose signature was known.
+    ///
+    /// Consulted by [`app_result_type`] to type an application whose
+    /// head is a typeclass projection with no usable signature (Lean's
+    /// `HAdd.hAdd` and friends reach `to_lcnf` as bare axioms), where
+    /// the result type has to come from the operands instead.
+    ///
+    /// [`app_result_type`]: super::app_result_type
+    pub(super) var_types: HashMap<LcnfVarId, LcnfType>,
     /// Accumulated lifted function declarations.
     pub(super) lifted_funs: Vec<LcnfFunDecl>,
     /// The conversion configuration.
@@ -73,6 +93,7 @@ impl ToLcnfState {
             next_var: 0,
             name_map: HashMap::new(),
             type_map: HashMap::new(),
+            var_types: HashMap::new(),
             lifted_funs: Vec::new(),
             config: config.clone(),
             depth: 0,
@@ -143,6 +164,27 @@ impl ToLcnfState {
     pub(super) fn lookup_name(&self, name: &str) -> Option<LcnfVarId> {
         self.name_map.get(name).copied()
     }
+    /// Remember that `id` holds a value of type `ty`.
+    ///
+    /// `Object` is the "no information" type in LCNF, so recording it
+    /// would be indistinguishable from recording nothing — and worse,
+    /// would let a later, better-typed binding for the same id be
+    /// masked. It is dropped instead, which keeps
+    /// [`ToLcnfState::var_type`]'s `None` meaning exactly "unknown".
+    pub(super) fn record_var_type(&mut self, id: LcnfVarId, ty: &LcnfType) {
+        if matches!(ty, LcnfType::Object) {
+            return;
+        }
+        self.var_types.insert(id, ty.clone());
+    }
+    /// The known type of an LCNF variable, if any.
+    pub(super) fn var_type(&self, id: LcnfVarId) -> Option<&LcnfType> {
+        self.var_types.get(&id)
+    }
+    /// The declared type of a constant, keyed by mangled kernel name.
+    pub(super) fn const_type(&self, mangled: &str) -> Option<&LcnfType> {
+        self.type_map.get(mangled)
+    }
     /// Register a name as proof-sorted (will be erased if erase_proofs is enabled).
     pub(super) fn mark_as_proof(&mut self, name: &str) {
         self.proof_names.insert(name.to_string());
@@ -198,10 +240,33 @@ impl ToLcnfState {
         } else {
             format!("_x{}", id.0)
         };
+        self.record_var_type(id, &ty);
         self.pending_lets.push_back((id, name, ty, value));
         self.stats.let_bindings_generated += 1;
         self.metadata.let_bindings += 1;
         id
+    }
+    /// Give an already-pending `let` binding a better type.
+    ///
+    /// `convert_let` learns the declared type of a `let` binder *after*
+    /// the value has been lowered and bound, so this is the only way to
+    /// get `let m : UInt8 := 1 + 1` typed from the annotation rather
+    /// than from operands that cannot answer.
+    ///
+    /// Only upgrades `Object` — a type inferred from the value is
+    /// evidence, and a declared type that disagrees with it is a
+    /// mis-elaboration this pass should not paper over.
+    pub(super) fn retype_pending(&mut self, id: LcnfVarId, ty: &LcnfType) {
+        if matches!(ty, LcnfType::Object) {
+            return;
+        }
+        for slot in &mut self.pending_lets {
+            if slot.0 == id && matches!(slot.2, LcnfType::Object) {
+                slot.2 = ty.clone();
+                self.var_types.insert(id, ty.clone());
+                return;
+            }
+        }
     }
     /// Get the conversion statistics so far.
     pub(super) fn get_stats(&self) -> &ConversionStats {
