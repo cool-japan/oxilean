@@ -18,7 +18,7 @@ fn test_con_source_negated_goal() {
     // hyp_name == None indicates the negated goal
     let source = ConSource {
         hyp_name: None,
-        hyp_type: Expr::Sort(Level::Zero),
+        hyp_type: Expr::Sort(Level::zero()),
         orient: ConOrient::GeZero,
     };
     assert!(source.hyp_name.is_none());

@@ -564,7 +564,7 @@ impl PseudospectralMethod {
     }
     /// Aliasing condition: the 2/3-rule requires N_phys ≥ (3/2) N_modes.
     pub fn aliasing_condition(&self) -> usize {
-        (3 * self.num_modes + 1) / 2
+        (3 * self.num_modes).div_ceil(2)
     }
     /// Recommended dealiasing padding (number of additional physical points).
     pub fn dealiasing_rule(&self) -> usize {

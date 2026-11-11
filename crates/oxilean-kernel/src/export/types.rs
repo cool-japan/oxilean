@@ -221,9 +221,9 @@ impl ModuleDependencyGraph {
             order.push(node.clone());
             for (other, deps) in &self.edges {
                 if deps.contains(&node) {
-                    let deg = in_degree
-                        .get_mut(other)
-                        .expect("node must exist in in_degree map");
+                    let deg = in_degree.get_mut(other).ok_or_else(|| {
+                        format!("module `{other}` is missing from the in-degree map")
+                    })?;
                     *deg = deg.saturating_sub(1);
                     if *deg == 0 {
                         queue.push_back(other.clone());
@@ -256,37 +256,44 @@ impl ModuleDependencyGraph {
 /// A versioned record that stores a history of values.
 #[allow(dead_code)]
 pub struct VersionedRecord<T: Clone> {
-    history: Vec<T>,
+    /// Every earlier value, oldest first: version `n` is `earlier[n]`.
+    earlier: Vec<T>,
+    /// The latest value (version `earlier.len()`), declared last so it drops last.
+    current: T,
 }
 #[allow(dead_code)]
 impl<T: Clone> VersionedRecord<T> {
     /// Creates a new record with an initial value.
     pub fn new(initial: T) -> Self {
         Self {
-            history: vec![initial],
+            earlier: Vec::new(),
+            current: initial,
         }
     }
     /// Updates the record with a new version.
     pub fn update(&mut self, val: T) {
-        self.history.push(val);
+        let previous = std::mem::replace(&mut self.current, val);
+        self.earlier.push(previous);
     }
     /// Returns the current (latest) value.
     pub fn current(&self) -> &T {
-        self.history
-            .last()
-            .expect("VersionedRecord history is always non-empty after construction")
+        &self.current
     }
     /// Returns the value at version `n` (0-indexed), or `None`.
     pub fn at_version(&self, n: usize) -> Option<&T> {
-        self.history.get(n)
+        match self.earlier.get(n) {
+            Some(value) => Some(value),
+            None if n == self.earlier.len() => Some(&self.current),
+            None => None,
+        }
     }
     /// Returns the version number of the current value.
     pub fn version(&self) -> usize {
-        self.history.len() - 1
+        self.earlier.len()
     }
     /// Returns `true` if more than one version exists.
     pub fn has_history(&self) -> bool {
-        self.history.len() > 1
+        !self.earlier.is_empty()
     }
 }
 /// A non-empty list (at least one element guaranteed).
@@ -1169,3 +1176,5 @@ impl<T> FocusStack<T> {
         self.items.is_empty()
     }
 }
+#[cfg(test)]
+mod topo_order_tests;

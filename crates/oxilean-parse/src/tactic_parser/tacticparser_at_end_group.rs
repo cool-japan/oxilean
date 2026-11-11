@@ -13,6 +13,6 @@ impl<'a> TacticParser<'a> {
         self.pos >= self.tokens.len()
             || self
                 .current()
-                .map_or(true, |t| matches!(t.kind, TokenKind::Eof))
+                .is_none_or(|t| matches!(t.kind, TokenKind::Eof))
     }
 }

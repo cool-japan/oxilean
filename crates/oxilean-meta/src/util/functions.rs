@@ -10,7 +10,7 @@ use super::types::{
 };
 use crate::basic::{MVarId, MetaContext, MVAR_FVAR_OFFSET};
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Expr, FVarId, Level};
+use oxilean_kernel::{BinderInfo, Expr, FVarId, Level, LevelView};
 
 /// Collect all free variable IDs in an expression.
 pub fn collect_fvars(expr: &Expr) -> Vec<FVarId> {
@@ -263,7 +263,7 @@ pub fn count_lambdas(expr: &Expr) -> usize {
 }
 /// Check if an expression is a proposition (simplified).
 pub fn is_prop_expr(expr: &Expr) -> bool {
-    matches!(expr, Expr::Sort(Level::Zero))
+    matches!(expr, Expr::Sort(l) if matches!(l.view(), LevelView::Zero))
 }
 /// Apply `for_each` to every subexpression.
 pub fn for_each_expr<F>(expr: &Expr, f: &mut F)
@@ -435,7 +435,7 @@ mod tests {
         let ty = Expr::Pi(
             BinderInfo::Implicit,
             Name::str("α"),
-            Node::new(Expr::Sort(Level::Param(Name::str("u")))),
+            Node::new(Expr::Sort(Level::param(Name::str("u")))),
             Node::new(Expr::Pi(
                 BinderInfo::Default,
                 Name::str("a"),
@@ -526,8 +526,8 @@ mod tests {
     }
     #[test]
     fn test_is_prop_expr() {
-        assert!(is_prop_expr(&Expr::Sort(Level::Zero)));
-        assert!(!is_prop_expr(&Expr::Sort(Level::succ(Level::Zero))));
+        assert!(is_prop_expr(&Expr::Sort(Level::zero())));
+        assert!(!is_prop_expr(&Expr::Sort(Level::succ(Level::zero()))));
     }
 }
 /// Structural equality check (syntactic, no definitional equality).
@@ -646,7 +646,7 @@ pub fn eta_expand(expr: &Expr, n: usize) -> Expr {
     if n == 0 {
         return expr.clone();
     }
-    let dummy_ty = Expr::Sort(Level::Zero);
+    let dummy_ty = Expr::Sort(Level::zero());
     let mut result = shift_bvars_up(expr, n as u32);
     for i in 0..n {
         result = Expr::App(Node::new(result), Node::new(Expr::BVar((n - 1 - i) as u32)));
@@ -693,12 +693,12 @@ pub(super) fn collect_level_params_impl(expr: &Expr, params: &mut Vec<oxilean_ke
     }
 }
 pub(super) fn collect_level_param_names(level: &Level, params: &mut Vec<oxilean_kernel::Name>) {
-    match level {
-        Level::Param(name) if !params.contains(name) => {
+    match level.view() {
+        LevelView::Param(name) if !params.contains(name) => {
             params.push(name.clone());
         }
-        Level::Succ(l) => collect_level_param_names(l, params),
-        Level::Max(l1, l2) | Level::IMax(l1, l2) => {
+        LevelView::Succ(l) => collect_level_param_names(l, params),
+        LevelView::Max(l1, l2) | LevelView::IMax(l1, l2) => {
             collect_level_param_names(l1, params);
             collect_level_param_names(l2, params);
         }
@@ -879,7 +879,7 @@ mod extended_tests {
     }
     #[test]
     fn test_collect_level_params_param() {
-        let expr = Expr::Sort(Level::Param(Name::str("u")));
+        let expr = Expr::Sort(Level::param(Name::str("u")));
         let params = collect_level_params(&expr);
         assert_eq!(params.len(), 1);
         assert_eq!(params[0], Name::str("u"));

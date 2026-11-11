@@ -14,7 +14,7 @@ pub(super) fn type1() -> Expr {
 pub(super) fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )
@@ -34,10 +34,10 @@ pub fn v_param() -> Name {
     Name::str("v")
 }
 pub(super) fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(u_param()))
+    Expr::Sort(Level::param(u_param()))
 }
 pub fn sort_v() -> Expr {
-    Expr::Sort(Level::Param(v_param()))
+    Expr::Sort(Level::param(v_param()))
 }
 pub fn rel_ty(alpha_bvar: u32) -> Expr {
     arrow(
@@ -744,8 +744,8 @@ pub fn build_wellfounded_env(env: &mut Environment) -> Result<(), String> {
             Node::new(arrow(
                 arrow(Expr::BVar(0), sort_v()),
                 Expr::Sort(Level::max(
-                    Level::Param(Name::str("u")),
-                    Level::Param(Name::str("v")),
+                    Level::param(Name::str("u")),
+                    Level::param(Name::str("v")),
                 )),
             )),
         ),

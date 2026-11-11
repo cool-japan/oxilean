@@ -642,11 +642,12 @@ pub fn option_swap<A, B>(opt: Option<(A, B)>) -> Option<(B, A)> {
 /// Return the value inside an `Option`, or insert `value` if `None`.
 #[allow(dead_code)]
 pub fn option_get_or_insert<T: Clone>(opt: &mut Option<T>, value: T) -> T {
-    if opt.is_none() {
-        *opt = Some(value.clone());
-        value
-    } else {
-        opt.clone().expect("opt is Some: checked by is_none guard")
+    match opt {
+        Some(existing) => existing.clone(),
+        None => {
+            *opt = Some(value.clone());
+            value
+        }
     }
 }
 /// A simple priority-based option selection.
@@ -1644,3 +1645,5 @@ pub fn register_option_extended_axioms(env: &mut Environment) -> Result<(), Stri
     opt_ext_lift_a2(env)?;
     Ok(())
 }
+#[cfg(test)]
+mod get_or_insert_tests;

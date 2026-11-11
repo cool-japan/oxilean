@@ -989,7 +989,7 @@ mod tests_extended {
     use super::*;
     use crate::metavar::*;
     fn sort() -> Expr {
-        Expr::Sort(oxilean_kernel::Level::Zero)
+        Expr::Sort(oxilean_kernel::Level::zero())
     }
     fn mk_fvar(id: u64) -> Expr {
         Expr::FVar(FVarId(id))

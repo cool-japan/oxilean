@@ -14,6 +14,5 @@ keywords = ["lean", "build", "compiler", "project", "dependencies"]
 categories = ["development-tools"]
 
 [dependencies]
-oxilean-kernel = { workspace = true }
 oxilean-parse = { workspace = true }
 toml = { workspace = true }

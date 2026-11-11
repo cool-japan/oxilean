@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
+use oxilean_kernel::{BinderInfo, Expr, Level, LevelView, Literal, Name};
 use std::collections::{HashMap, HashSet};
 
 use super::types::{
@@ -280,7 +280,7 @@ pub fn elaborate_universe_cmd(
         }
         result.add_decl(CommandDecl {
             name: name.clone(),
-            ty: Expr::Sort(Level::succ(Level::Param(name))),
+            ty: Expr::Sort(Level::succ(Level::param(name))),
             val: None,
             is_universe: true,
         });
@@ -333,7 +333,7 @@ pub fn elaborate_check_cmd(
 /// Produce a human-readable, single-line string for an expression.
 fn pretty_expr(expr: &Expr) -> String {
     match expr {
-        Expr::Sort(Level::Zero) => "Prop".to_string(),
+        Expr::Sort(l) if matches!(l.view(), LevelView::Zero) => "Prop".to_string(),
         Expr::Sort(_) => "Type".to_string(),
         Expr::Lit(Literal::Nat(n)) => format!("{}", n),
         Expr::Lit(oxilean_kernel::Literal::Str(s)) => format!("\"{}\"", s),
@@ -375,7 +375,7 @@ fn pretty_expr(expr: &Expr) -> String {
 /// for complex cases.
 fn describe_type(expr: &Expr) -> String {
     match expr {
-        Expr::Sort(Level::Zero) => "Prop".to_string(),
+        Expr::Sort(l) if matches!(l.view(), LevelView::Zero) => "Prop".to_string(),
         Expr::Sort(_) => "Type".to_string(),
         Expr::Lit(Literal::Nat(_)) => "Nat".to_string(),
         Expr::Lit(oxilean_kernel::Literal::Str(_)) => "String".to_string(),
@@ -525,14 +525,11 @@ pub fn resolve_name(name: &str, state: &CommandState) -> Vec<Name> {
 }
 /// Check if a name resolves to exactly one definition.
 pub fn resolve_unique_name(name: &str, state: &CommandState) -> Result<Name, CommandError> {
-    let candidates = resolve_name(name, state);
-    match candidates.len() {
-        0 => Err(CommandError::NameNotFound(name.to_string())),
-        1 => Ok(candidates
-            .into_iter()
-            .next()
-            .expect("candidates has exactly one element")),
-        _ => Err(CommandError::ElabError(format!(
+    let mut candidates = resolve_name(name, state).into_iter();
+    match (candidates.next(), candidates.next()) {
+        (None, _) => Err(CommandError::NameNotFound(name.to_string())),
+        (Some(only), None) => Ok(only),
+        (Some(_), Some(_)) => Err(CommandError::ElabError(format!(
             "ambiguous name '{}': multiple definitions found",
             name
         ))),
@@ -1396,3 +1393,5 @@ mod command_throughput_tests {
         assert!(s.contains("100.0%"));
     }
 }
+#[cfg(test)]
+mod unique_name_tests;

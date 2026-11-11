@@ -2,8 +2,9 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::node_memo::NodeMemo;
 use crate::Node;
-use crate::{Expr, FVarId, Level, Name};
+use crate::{Expr, FVarId, Level, LevelView, Name};
 use std::rc::Rc;
 
 use super::types::{
@@ -81,6 +82,35 @@ pub fn mk_app_refs(f: Expr, args: &[&Expr]) -> Expr {
         Expr::App(Node::new(acc), Node::new((*arg).clone()))
     })
 }
+/// The arguments of an application spine as the shared allocations the
+/// spine holds them in: `get_app_arg_nodes(f a1 a2 a3)` returns
+/// `[a1, a2, a3]`.
+///
+/// What [`get_app_args`] returns, without losing the allocation: a caller
+/// that rebuilds a spine from these ([`mk_app_nodes`]) shares each argument
+/// instead of copying its root into a new allocation.
+pub(crate) fn get_app_arg_nodes(e: &Expr) -> Vec<&Node> {
+    let mut args = Vec::new();
+    let mut cur = e;
+    while let Expr::App(f, a) = cur {
+        args.push(a);
+        cur = f;
+    }
+    args.reverse();
+    args
+}
+/// Construct an application from a function and arguments held as shared
+/// allocations: each argument goes into the result as the allocation it
+/// already is.
+///
+/// One unit of fuel per application built — each is one new allocation
+/// (see [`crate::fuel`]).
+pub(crate) fn mk_app_nodes(f: Expr, args: &[&Node]) -> Expr {
+    // `usize` is at most 64 bits wide on every supported target.
+    crate::fuel::charge(args.len() as u64);
+    args.iter()
+        .fold(f, |acc, arg| Expr::App(Node::new(acc), (*arg).clone()))
+}
 /// Construct an application from a function and a range of arguments.
 ///
 /// `mk_app_range(f, args, 1, 3)` returns `f args[1] args[2]`.
@@ -93,8 +123,11 @@ pub fn mk_app_range(f: Expr, args: &[Expr], begin: usize, end: usize) -> Expr {
 ///
 /// A bound variable is "loose" if its de Bruijn index refers to a binder
 /// that is not part of the expression.
+///
+/// O(1): a term has a loose bound variable exactly when its cached
+/// `looseBVarRange` ([`Expr::range`]) is not zero.
 pub fn has_loose_bvars(e: &Expr) -> bool {
-    has_loose_bvar_ge(e, 0)
+    e.range() > 0
 }
 /// Check if an expression has a loose bound variable with index >= `depth`.
 pub fn has_loose_bvar_ge(e: &Expr, depth: u32) -> bool {
@@ -113,16 +146,46 @@ pub fn has_loose_bvar_ge(e: &Expr, depth: u32) -> bool {
         Expr::Proj(_, _, e) => has_loose_bvar_ge(e, depth),
     }
 }
-/// Check whether an expression has at most `cap` AST nodes, with an early
-/// exit as soon as the cap is exceeded (iterative — safe on terms whose
-/// depth would overflow the stack).
+/// Check whether an expression has at most `cap` AST nodes (counted as a
+/// tree: a shared subterm counts once per occurrence).
 ///
 /// Used to keep giant intermediate terms out of the whnf / def-eq caches:
 /// retaining every multi-million-node reduction step is what turned Lean
 /// core's `Int.add_mul_ediv_right` into a multi-GiB peak (Init corpus,
 /// C16). Skipping cache *retention* for oversized terms never changes any
 /// verdict — only memoisation.
+///
+/// The answer is usually read off the term's cached rebuild cost, in O(1).
+/// That cost ([`Expr::rebuild_cost`]) counts every node of the tree once
+/// and every leaf once more, so `size <= cost <= 2 * size`:
+///
+/// * `cost <= cap` — the size is within the cap (unless the cost is the
+///   saturated value, which only says "at least this much");
+/// * `cost > 2 * cap` — the size is over it. (The cost is stored saturated
+///   at [`REBUILD_COST_MAX`](crate::expr::REBUILD_COST_MAX); a saturated
+///   cost only understates the true one, so this bound still holds.)
+///
+/// Only a term whose cost falls between the two is counted, by a walk that
+/// visits at most `cap + 1` nodes. Every
+/// def-eq step and every whnf result asks this question of its terms, and
+/// counting each of them was a tenth of the run time of a Mathlib replay
+/// once hashing no longer walked them.
 pub fn expr_size_within(e: &Expr, cap: usize) -> bool {
+    let cost = u64::from(e.rebuild_cost());
+    // `usize` is at most 64 bits wide on every supported target.
+    let cap_wide = cap as u64;
+    if cost < u64::from(crate::expr::REBUILD_COST_MAX) && cost <= cap_wide {
+        return true;
+    }
+    if cost > cap_wide.saturating_mul(2) {
+        return false;
+    }
+    expr_size_within_by_walk(e, cap)
+}
+/// [`expr_size_within`] by counting: walks the term, with an early exit as
+/// soon as the cap is exceeded (iterative — safe on terms whose depth would
+/// overflow the stack).
+fn expr_size_within_by_walk(e: &Expr, cap: usize) -> bool {
     let mut remaining = cap;
     let mut stack: Vec<&Expr> = vec![e];
     while let Some(cur) = stack.pop() {
@@ -183,17 +246,10 @@ pub fn has_fvar(e: &Expr, fvar: FVarId) -> bool {
     }
 }
 /// Check if an expression contains any free variables.
+///
+/// O(1): read off the flag every shared subterm caches (see [`Node`]).
 pub fn has_any_fvar(e: &Expr) -> bool {
-    match e {
-        Expr::FVar(_) => true,
-        Expr::Sort(_) | Expr::BVar(_) | Expr::Const(_, _) | Expr::Lit(_) => false,
-        Expr::App(f, a) => has_any_fvar(f) || has_any_fvar(a),
-        Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
-            has_any_fvar(ty) || has_any_fvar(body)
-        }
-        Expr::Let(_, ty, val, body) => has_any_fvar(ty) || has_any_fvar(val) || has_any_fvar(body),
-        Expr::Proj(_, _, e) => has_any_fvar(e),
-    }
+    e.has_fvar()
 }
 /// Traverse every sub-expression, calling `f` on each.
 ///
@@ -303,62 +359,92 @@ pub fn collect_consts(e: &Expr) -> Vec<Name> {
 ///
 /// Increments the index of all loose bound variables (with index >= `offset`)
 /// by `n`. Used when inserting an expression under additional binders.
+///
+/// The result shares with `e` every subterm that has no such variable — the
+/// same allocation, not a copy — and a shared subterm that does is lifted
+/// once per binder depth, like `subst::instantiate`. One unit
+/// of fuel per subterm the walk reaches.
 pub fn lift_loose_bvars(e: &Expr, n: u32, offset: u32) -> Expr {
-    if n == 0 {
+    if n == 0 || e.range() <= offset {
+        // Nothing to add, or no loose bound variable at or above `offset`.
         return e.clone();
     }
-    lift_loose_bvars_aux(e, n, offset)
-}
-fn lift_loose_bvars_aux(e: &Expr, n: u32, depth: u32) -> Expr {
-    // Stage E-2 (structural sharing): the lift shifts loose bvars with index
-    // >= depth. `e.range()` (O(1) cached looseBVarRange) <= depth means there
-    // are none, so `e` is unchanged — share it instead of rebuilding. Charge the
-    // exact fuel a no-skip rebuild would (`rebuild_cost`, minus the one unit the
-    // `e.clone()` below charges) so fuel — and every verdict — is unchanged.
-    if e.range() <= depth {
-        crate::fuel::charge(u64::from(e.rebuild_cost().saturating_sub(1)));
-        return e.clone();
-    }
-    // C16b: one fuel unit per visited (rebuilt) node; see subst::instantiate_at.
+    let mut walk = Lift {
+        by: n,
+        lifted: NodeMemo::new(),
+    };
     crate::fuel::charge(1);
-    match e {
-        Expr::BVar(idx) => {
-            if *idx >= depth {
-                Expr::BVar(idx + n)
-            } else {
-                e.clone()
+    walk.rebuild(e, offset)
+}
+
+/// One [`lift_loose_bvars`] call.
+struct Lift<'term> {
+    /// How much is added to each loose index.
+    by: u32,
+    /// The lifted form of each shared subterm the walk has finished, by
+    /// subterm and depth.
+    lifted: NodeMemo<'term, Node>,
+}
+
+impl<'term> Lift<'term> {
+    /// The lift applied to a child edge under `depth` binders.
+    fn node(&mut self, node: &'term Node, depth: u32) -> Node {
+        crate::fuel::charge(1);
+        if node.range() <= depth {
+            // No loose bound variable at or above `depth`: untouched.
+            return node.clone();
+        }
+        if matches!(&**node, Expr::BVar(_)) {
+            // A leaf is cheaper to redo than to look up.
+            return Node::new(self.rebuild(node, depth));
+        }
+        let shared = node.is_shared();
+        if shared {
+            if let Some(done) = self.lifted.get(node, depth) {
+                return done.clone();
             }
         }
-        Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => e.clone(),
-        Expr::App(f, a) => {
-            let f_new = lift_loose_bvars_aux(f, n, depth);
-            let a_new = lift_loose_bvars_aux(a, n, depth);
-            Expr::App(Node::new(f_new), Node::new(a_new))
+        let result = Node::new(self.rebuild(node, depth));
+        if shared {
+            self.lifted.insert(node, depth, result.clone());
         }
-        Expr::Lam(bi, name, ty, body) => {
-            let ty_new = lift_loose_bvars_aux(ty, n, depth);
-            let body_new = lift_loose_bvars_aux(body, n, depth + 1);
-            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
-        }
-        Expr::Pi(bi, name, ty, body) => {
-            let ty_new = lift_loose_bvars_aux(ty, n, depth);
-            let body_new = lift_loose_bvars_aux(body, n, depth + 1);
-            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
-        }
-        Expr::Let(name, ty, val, body) => {
-            let ty_new = lift_loose_bvars_aux(ty, n, depth);
-            let val_new = lift_loose_bvars_aux(val, n, depth);
-            let body_new = lift_loose_bvars_aux(body, n, depth + 1);
-            Expr::Let(
+        result
+    }
+
+    /// Rebuild `e`, which has a loose bound variable at or above `depth`.
+    fn rebuild(&mut self, e: &'term Expr, depth: u32) -> Expr {
+        match e {
+            Expr::BVar(idx) => {
+                if *idx >= depth {
+                    // An index that cannot be raised by `by` stays as high as
+                    // an index goes: above every binder there can be, so it
+                    // stays loose instead of wrapping round to a bound one.
+                    Expr::BVar(idx.saturating_add(self.by))
+                } else {
+                    e.clone()
+                }
+            }
+            Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => e.clone(),
+            Expr::App(f, a) => Expr::App(self.node(f, depth), self.node(a, depth)),
+            Expr::Lam(bi, name, ty, body) => Expr::Lam(
+                *bi,
                 name.clone(),
-                Node::new(ty_new),
-                Node::new(val_new),
-                Node::new(body_new),
-            )
-        }
-        Expr::Proj(name, idx, inner) => {
-            let inner_new = lift_loose_bvars_aux(inner, n, depth);
-            Expr::Proj(name.clone(), *idx, Node::new(inner_new))
+                self.node(ty, depth),
+                self.node(body, depth + 1),
+            ),
+            Expr::Pi(bi, name, ty, body) => Expr::Pi(
+                *bi,
+                name.clone(),
+                self.node(ty, depth),
+                self.node(body, depth + 1),
+            ),
+            Expr::Let(name, ty, val, body) => Expr::Let(
+                name.clone(),
+                self.node(ty, depth),
+                self.node(val, depth),
+                self.node(body, depth + 1),
+            ),
+            Expr::Proj(name, idx, inner) => Expr::Proj(name.clone(), *idx, self.node(inner, depth)),
         }
     }
 }
@@ -413,52 +499,27 @@ pub fn strip_pis(e: &Expr, n: u32) -> &Expr {
 }
 /// Check if a level has metavariables.
 pub fn level_has_mvar(l: &Level) -> bool {
-    match l {
-        Level::MVar(_) => true,
-        Level::Succ(l) => level_has_mvar(l),
-        Level::Max(l1, l2) | Level::IMax(l1, l2) => level_has_mvar(l1) || level_has_mvar(l2),
-        Level::Zero | Level::Param(_) => false,
+    match l.view() {
+        LevelView::MVar(_) => true,
+        LevelView::Succ(l) => level_has_mvar(l),
+        LevelView::Max(l1, l2) | LevelView::IMax(l1, l2) => {
+            level_has_mvar(l1) || level_has_mvar(l2)
+        }
+        LevelView::Zero | LevelView::Param(_) => false,
     }
 }
 /// Check if an expression has universe level metavariables.
+///
+/// O(1) in the size of the term: read off the flag every shared subterm
+/// caches (see [`Node`]); a `Sort` or a `Const` looks through its own levels.
 pub fn has_level_mvar(e: &Expr) -> bool {
-    match e {
-        Expr::Sort(l) => level_has_mvar(l),
-        Expr::Const(_, ls) => ls.iter().any(level_has_mvar),
-        Expr::App(f, a) => has_level_mvar(f) || has_level_mvar(a),
-        Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
-            has_level_mvar(ty) || has_level_mvar(body)
-        }
-        Expr::Let(_, ty, val, body) => {
-            has_level_mvar(ty) || has_level_mvar(val) || has_level_mvar(body)
-        }
-        Expr::Proj(_, _, e) => has_level_mvar(e),
-        Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => false,
-    }
+    e.has_level_mvar()
 }
-/// Check if an expression contains any level parameters.
+/// Check if an expression has universe level parameters.
+///
+/// O(1) in the size of the term, as [`has_level_mvar`].
 pub fn has_level_param(e: &Expr) -> bool {
-    match e {
-        Expr::Sort(l) => level_has_param(l),
-        Expr::Const(_, ls) => ls.iter().any(level_has_param),
-        Expr::App(f, a) => has_level_param(f) || has_level_param(a),
-        Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
-            has_level_param(ty) || has_level_param(body)
-        }
-        Expr::Let(_, ty, val, body) => {
-            has_level_param(ty) || has_level_param(val) || has_level_param(body)
-        }
-        Expr::Proj(_, _, e) => has_level_param(e),
-        Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => false,
-    }
-}
-fn level_has_param(l: &Level) -> bool {
-    match l {
-        Level::Param(_) => true,
-        Level::Succ(l) => level_has_param(l),
-        Level::Max(l1, l2) | Level::IMax(l1, l2) => level_has_param(l1) || level_has_param(l2),
-        Level::Zero | Level::MVar(_) => false,
-    }
+    e.has_level_param()
 }
 /// Compute the "weight" of an expression (rough size metric).
 pub fn expr_weight(e: &Expr) -> usize {
@@ -481,7 +542,7 @@ pub fn is_app_of(e: &Expr, name: &Name) -> bool {
 pub fn mk_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         crate::BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(lift_loose_bvars(&b, 1, 0)),
     )
@@ -539,6 +600,163 @@ pub fn sort() -> Expr {
 /// Shorthand: `Type 0` = `Sort 1`.
 pub fn type0() -> Expr {
     Expr::Sort(crate::Level::succ(crate::Level::zero()))
+}
+#[cfg(test)]
+mod size_tests {
+    use super::*;
+    use crate::{BinderInfo, Level, Literal};
+
+    fn leaf(i: u32) -> Expr {
+        match i % 5 {
+            0 => Expr::BVar(i),
+            1 => Expr::Const(Name::str("c"), vec![Level::zero()]),
+            2 => Expr::Sort(Level::zero()),
+            3 => Expr::Lit(Literal::nat(u64::from(i))),
+            _ => Expr::FVar(crate::FVarId(u64::from(i))),
+        }
+    }
+
+    /// Terms of every constructor and many shapes: unary chains (the size
+    /// is close to the cost), wide applications (the size is close to half
+    /// the cost) and everything between.
+    fn shapes() -> Vec<Expr> {
+        let mut terms: Vec<Expr> = (0..5).map(leaf).collect();
+        // Projection chains: one leaf, any number of internal nodes.
+        let mut chain = leaf(1);
+        for i in 0..12 {
+            chain = Expr::Proj(Name::str("S"), i, Node::new(chain));
+            terms.push(chain.clone());
+        }
+        // Left-nested application spines: as many leaves as internal nodes.
+        let mut spine = leaf(1);
+        for i in 0..12 {
+            spine = Expr::App(Node::new(spine), Node::new(leaf(i)));
+            terms.push(spine.clone());
+        }
+        // Balanced trees with shared children (the size counts every
+        // occurrence).
+        let mut tree = leaf(0);
+        for _ in 0..8 {
+            let shared = Node::new(tree);
+            tree = Expr::App(shared.clone(), shared);
+            terms.push(tree.clone());
+        }
+        // Binders and lets over the above.
+        for i in 0..6usize {
+            let ty = Node::new(terms[i * 3].clone());
+            let body = Node::new(terms[i * 5 + 1].clone());
+            terms.push(Expr::Lam(
+                BinderInfo::Default,
+                Name::str("x"),
+                ty.clone(),
+                body.clone(),
+            ));
+            terms.push(Expr::Pi(
+                BinderInfo::Implicit,
+                Name::str("x"),
+                ty.clone(),
+                body.clone(),
+            ));
+            terms.push(Expr::Let(Name::str("x"), ty.clone(), body.clone(), ty));
+        }
+        terms
+    }
+
+    /// The number of nodes of the tree, by plain recursion.
+    fn size(e: &Expr) -> usize {
+        match e {
+            Expr::Sort(_) | Expr::BVar(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => 1,
+            Expr::App(f, a) => 1 + size(f) + size(a),
+            Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => 1 + size(ty) + size(body),
+            Expr::Let(_, ty, val, body) => 1 + size(ty) + size(val) + size(body),
+            Expr::Proj(_, _, inner) => 1 + size(inner),
+        }
+    }
+
+    #[test]
+    fn the_cached_cost_brackets_the_size() {
+        for (i, term) in shapes().iter().enumerate() {
+            let n = size(term) as u64;
+            let cost = u64::from(term.rebuild_cost());
+            assert!(
+                n <= cost && cost <= 2 * n,
+                "term {i}: size {n}, cost {cost}"
+            );
+        }
+    }
+
+    #[test]
+    fn size_within_agrees_with_counting_at_every_cap() {
+        let terms = shapes();
+        let mut by_cost = 0usize;
+        let mut by_walk = 0usize;
+        for (i, term) in terms.iter().enumerate() {
+            let n = size(term);
+            let cost = term.rebuild_cost() as usize;
+            for cap in (0..=2 * n + 3).chain([4096, usize::MAX / 2, usize::MAX]) {
+                let expected = n <= cap;
+                assert_eq!(
+                    expr_size_within(term, cap),
+                    expected,
+                    "term {i} (size {n}, cost {cost}) at cap {cap}"
+                );
+                assert_eq!(
+                    expr_size_within_by_walk(term, cap),
+                    expected,
+                    "walk: term {i} (size {n}) at cap {cap}"
+                );
+                if cost <= cap || cost > 2 * cap {
+                    by_cost += 1;
+                } else {
+                    by_walk += 1;
+                }
+            }
+        }
+        // Both ways of answering are exercised.
+        assert!(by_cost > 1000, "{by_cost} caps decided by the cost");
+        assert!(by_walk > 1000, "{by_walk} caps decided by counting");
+    }
+
+    #[test]
+    fn a_saturated_cost_never_reads_as_small() {
+        use crate::expr::REBUILD_COST_MAX;
+        // 40 levels of a doubling tower: 2^41 - 1 nodes, the cost saturated.
+        let mut tower = leaf(0);
+        for _ in 0..40 {
+            let shared = Node::new(tower);
+            tower = Expr::App(shared.clone(), shared);
+        }
+        assert_eq!(tower.rebuild_cost(), REBUILD_COST_MAX);
+        // Over every cap the caches use, and over a cap the saturated cost
+        // itself would pass.
+        assert!(!expr_size_within(&tower, 0));
+        assert!(!expr_size_within(&tower, 4096));
+        assert!(!expr_size_within(
+            &tower,
+            (REBUILD_COST_MAX as usize) / 2 - 1
+        ));
+        // 28 levels: 2^29 - 1 nodes, the cost saturated as well (it counts
+        // every leaf twice); a cap of 2^27 is under half the saturated cost,
+        // so the answer is still O(1).
+        let mut smaller = leaf(0);
+        for _ in 0..28 {
+            let shared = Node::new(smaller);
+            smaller = Expr::App(shared.clone(), shared);
+        }
+        assert_eq!(smaller.rebuild_cost(), REBUILD_COST_MAX);
+        assert!(!expr_size_within(&smaller, 1 << 27));
+        // One level short of saturating: the cost is exact and decides.
+        let mut exact = leaf(0);
+        for _ in 0..26 {
+            let shared = Node::new(exact);
+            exact = Expr::App(shared.clone(), shared);
+        }
+        // 2^26 leaves counted twice and 2^26 - 1 applications once.
+        assert_eq!(exact.rebuild_cost(), 3 * (1 << 26) - 1);
+        assert!(exact.rebuild_cost() < REBUILD_COST_MAX);
+        assert!(expr_size_within(&exact, 3 * (1 << 26)));
+        assert!(!expr_size_within(&exact, 1 << 20));
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -742,12 +960,12 @@ pub fn is_sort(e: &Expr) -> bool {
 /// Check if the expression is `Sort(Level::Zero)` (i.e. `Prop`).
 #[inline]
 pub fn is_prop(e: &Expr) -> bool {
-    matches!(e, Expr::Sort(l) if matches!(l, Level::Zero))
+    matches!(e, Expr::Sort(l) if matches!(l.view(), LevelView::Zero))
 }
 /// Check if the expression is `Sort(Level::Succ(Level::Zero))` (i.e. `Type 0`).
 #[inline]
 pub fn is_type0(e: &Expr) -> bool {
-    matches!(e, Expr::Sort(Level::Succ(inner)) if matches!(inner.as_ref(), Level::Zero))
+    matches!(e, Expr::Sort(l) if matches!(l.view(), LevelView::Succ(inner) if matches!(inner.view(), LevelView::Zero)))
 }
 /// Check if the expression is a lambda abstraction.
 #[inline]
@@ -883,7 +1101,7 @@ pub fn mk_pi_n(binders: &[(crate::BinderInfo, Expr)], ret: Expr) -> Expr {
     binders.iter().rev().fold(ret, |acc, (bi, ty)| {
         Expr::Pi(
             *bi,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(ty.clone()),
             Node::new(acc),
         )
@@ -894,7 +1112,7 @@ pub fn mk_lam_n(binders: &[(crate::BinderInfo, Expr)], body: Expr) -> Expr {
     binders.iter().rev().fold(body, |acc, (bi, ty)| {
         Expr::Lam(
             *bi,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(ty.clone()),
             Node::new(acc),
         )
@@ -924,7 +1142,7 @@ mod extended_tests {
         Expr::Const(Name::str("Nat"), vec![])
     }
     fn prop() -> Expr {
-        Expr::Sort(Level::Zero)
+        Expr::Sort(Level::zero())
     }
     fn bv(i: u32) -> Expr {
         Expr::BVar(i)
@@ -937,20 +1155,20 @@ mod extended_tests {
     #[test]
     fn test_is_sort() {
         assert!(is_sort(&prop()));
-        assert!(is_sort(&Expr::Sort(Level::Succ(Box::new(Level::Zero)))));
+        assert!(is_sort(&Expr::Sort(Level::succ(Level::zero()))));
         assert!(!is_sort(&nat()));
     }
     #[test]
     fn test_is_lambda_pi() {
         let lam = Expr::Lam(
             BinderInfo::Default,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(prop()),
             Node::new(bv(0)),
         );
         let pi = Expr::Pi(
             BinderInfo::Default,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(prop()),
             Node::new(bv(0)),
         );
@@ -968,8 +1186,8 @@ mod extended_tests {
     }
     #[test]
     fn test_get_sort_level() {
-        let s = Expr::Sort(Level::Zero);
-        assert_eq!(get_sort_level(&s), Some(&Level::Zero));
+        let s = Expr::Sort(Level::zero());
+        assert_eq!(get_sort_level(&s), Some(&Level::zero()));
         assert_eq!(get_sort_level(&nat()), None);
     }
     #[test]
@@ -985,7 +1203,7 @@ mod extended_tests {
     #[test]
     fn test_decompose_let() {
         let e = Expr::Let(
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(nat()),
             Node::new(bv(0)),
             Node::new(bv(0)),
@@ -999,7 +1217,7 @@ mod extended_tests {
     fn test_decompose_pi() {
         let e = Expr::Pi(
             BinderInfo::Default,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(nat()),
             Node::new(prop()),
         );
@@ -1012,7 +1230,7 @@ mod extended_tests {
     fn test_decompose_lam() {
         let e = Expr::Lam(
             BinderInfo::Implicit,
-            crate::Name::Anonymous,
+            crate::Name::anonymous(),
             Node::new(nat()),
             Node::new(bv(0)),
         );
@@ -1321,10 +1539,10 @@ mod tests_padding3 {
         let mut calc = StackCalc::new();
         calc.push(3);
         calc.push(4);
-        calc.add();
+        assert_eq!(calc.add(), Some(7));
         assert_eq!(calc.peek(), Some(7));
         calc.push(2);
-        calc.mul();
+        assert_eq!(calc.mul(), Some(14));
         assert_eq!(calc.peek(), Some(14));
     }
 }

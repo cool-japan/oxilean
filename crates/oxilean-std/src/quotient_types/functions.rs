@@ -45,11 +45,11 @@ pub fn type1() -> Expr {
     Expr::Sort(Level::succ(Level::succ(Level::zero())))
 }
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 #[allow(dead_code)]
 pub fn sort_v() -> Expr {
-    Expr::Sort(Level::Param(Name::str("v")))
+    Expr::Sort(Level::param(Name::str("v")))
 }
 pub fn bvar(n: u32) -> Expr {
     Expr::BVar(n)
@@ -57,7 +57,7 @@ pub fn bvar(n: u32) -> Expr {
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )

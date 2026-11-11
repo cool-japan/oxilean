@@ -501,9 +501,12 @@ fn merge_modified(raw: Vec<DeclEdit>) -> Vec<DeclEdit> {
         let key = (name.clone(), kind_s.clone());
         if let Some(ins_queue) = inserted_by_key.get_mut(&key) {
             // Pair up deleted and inserted edits, in FIFO order.
-            while !del_queue.is_empty() && !ins_queue.is_empty() {
-                let (del_pos, del_edit) = del_queue.pop_front().expect("non-empty");
-                let (ins_pos, ins_edit) = ins_queue.pop_front().expect("non-empty");
+            while let Some((del_pos, del_edit)) = del_queue.pop_front() {
+                let Some((ins_pos, ins_edit)) = ins_queue.pop_front() else {
+                    // No inserted edit left to pair with: put the deleted one back.
+                    del_queue.push_front((del_pos, del_edit));
+                    break;
+                };
 
                 // Only merge if they are actually a body-change (body hashes differ).
                 if del_edit.fingerprint.body_hash != ins_edit.fingerprint.body_hash {
@@ -795,3 +798,6 @@ mod tests {
         result
     }
 }
+
+#[cfg(test)]
+mod merge_tests;

@@ -415,7 +415,7 @@ pub fn write_bools(w: &mut OleanWriter, bools: &[bool]) {
 #[allow(dead_code)]
 pub fn read_bools(r: &mut OleanReader<'_>) -> Result<Vec<bool>, OleanError> {
     let n = r.read_u32()? as usize;
-    let bytes_needed = (n + 7) / 8;
+    let bytes_needed = n.div_ceil(8);
     let mut bools = Vec::with_capacity(n);
     for byte_idx in 0..bytes_needed {
         let byte = r.read_u8()?;
@@ -1110,7 +1110,7 @@ pub fn to_hex(data: &[u8]) -> String {
 /// Decode a hexadecimal string to bytes.
 #[allow(dead_code)]
 pub fn from_hex(s: &str) -> Option<Vec<u8>> {
-    if s.len() % 2 != 0 {
+    if !s.len().is_multiple_of(2) {
         return None;
     }
     (0..s.len() / 2)

@@ -16,10 +16,27 @@ use super::types::{
 
 /// Create a canonical pair ordering for cache lookups.
 ///
-/// We need `(a, b)` and `(b, a)` to map to the same cache key.
-/// We use a deterministic ordering based on expression debug representation.
+/// We need `(a, b)` and `(b, a)` to map to the same cache key, so the pair is
+/// put in one fixed order whichever way round it arrives. The order is that
+/// of the two terms' structural hashes — an O(1) read each (see
+/// [`crate::structural_hash`]), the same in every run.
+///
+/// Two terms with the same hash are either equal, in which case both orders
+/// are the same pair, or a hash collision between different terms. For that
+/// case the comparison falls back to the terms' `Debug` text, which is a
+/// total order on distinct terms: the order is still fixed, at the cost this
+/// function used to pay on EVERY call — formatting both terms in full, which
+/// was over a quarter of the run time of a Mathlib replay.
+///
+/// Only membership of the pair in a set depends on this order; which of the
+/// two terms comes first is never observed.
 pub(super) fn canonicalize_pair(a: Expr, b: Expr) -> (Expr, Expr) {
-    if format!("{:?}", a) <= format!("{:?}", b) {
+    let in_order = match a.structural_hash().cmp(&b.structural_hash()) {
+        std::cmp::Ordering::Less => true,
+        std::cmp::Ordering::Greater => false,
+        std::cmp::Ordering::Equal => a == b || format!("{:?}", a) <= format!("{:?}", b),
+    };
+    if in_order {
         (a, b)
     } else {
         (b, a)
@@ -37,6 +54,47 @@ mod tests {
     }
     fn int() -> Expr {
         Expr::Const(Name::str("Int"), vec![])
+    }
+    #[test]
+    fn test_canonical_pair_ignores_argument_order() {
+        use crate::Node;
+        let app = |f: Expr, a: Expr| Expr::App(Node::new(f), Node::new(a));
+        let terms = [
+            nat(),
+            bool_expr(),
+            int(),
+            Expr::BVar(0),
+            Expr::BVar(1),
+            Expr::Sort(Level::zero()),
+            app(nat(), bool_expr()),
+            app(bool_expr(), nat()),
+            app(app(nat(), int()), Expr::BVar(0)),
+        ];
+        for a in &terms {
+            for b in &terms {
+                let forward = canonicalize_pair(a.clone(), b.clone());
+                let backward = canonicalize_pair(b.clone(), a.clone());
+                assert_eq!(forward, backward, "pair ({a}, {b})");
+                // The pair holds the two terms, in one order or the other.
+                assert!(
+                    (forward.0 == *a && forward.1 == *b) || (forward.0 == *b && forward.1 == *a),
+                    "pair ({a}, {b}) became ({}, {})",
+                    forward.0,
+                    forward.1
+                );
+            }
+        }
+        // … so a verdict recorded one way round is found the other way round.
+        let mut mgr = EquivManager::new();
+        for (i, a) in terms.iter().enumerate() {
+            for b in &terms[i + 1..] {
+                mgr.add_failure(a, b);
+                assert!(
+                    mgr.is_failure(b, a),
+                    "failure ({a}, {b}) not found reversed"
+                );
+            }
+        }
     }
     #[test]
     fn test_equiv_reflexive() {

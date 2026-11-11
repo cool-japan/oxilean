@@ -829,7 +829,7 @@ impl MorseCriticalPointData {
     }
     /// The contribution to the Euler characteristic: (−1)^{Morse index}.
     pub fn euler_contribution(&self) -> i64 {
-        if self.morse_index % 2 == 0 {
+        if self.morse_index.is_multiple_of(2) {
             1
         } else {
             -1

@@ -141,7 +141,10 @@ impl ModulePath {
     }
     /// Create a module path from a dot-separated string.
     pub fn parse_dot_separated(s: &str) -> Self {
-        s.parse().expect("ModulePath::from_str is infallible")
+        match s.parse::<ModulePath>() {
+            Ok(path) => path,
+            Err(never) => match never {},
+        }
     }
     /// Create a module path from a `Name`.
     pub fn from_name(name: &Name) -> Self {

@@ -141,10 +141,7 @@ pub fn discharge_all(
 ) -> Option<Vec<Expr>> {
     let mut proofs = Vec::with_capacity(goals.len());
     for goal in goals {
-        match discharge_side_goal(goal, strategy, theorems, config, ctx) {
-            Some(p) => proofs.push(p),
-            None => return None,
-        }
+        proofs.push(discharge_side_goal(goal, strategy, theorems, config, ctx)?);
     }
     Some(proofs)
 }

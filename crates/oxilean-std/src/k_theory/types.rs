@@ -856,9 +856,9 @@ impl KGroupComputation {
         let mut factors = Vec::new();
         let mut d = 2u64;
         while d * d <= n {
-            if n % d == 0 {
+            if n.is_multiple_of(d) {
                 let mut exp = 0u32;
-                while n % d == 0 {
+                while n.is_multiple_of(d) {
                     exp += 1;
                     n /= d;
                 }

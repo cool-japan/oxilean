@@ -57,18 +57,10 @@ impl NewtonPolytope {
     pub fn volume(&self) -> f64 {
         match self.dimension {
             1 => {
-                if self.vertices.is_empty() {
-                    return 0.0;
-                }
                 let vals: Vec<i32> = self.vertices.iter().map(|v| v[0]).collect();
-                let mn = *vals
-                    .iter()
-                    .min()
-                    .expect("vals is non-empty: vertices.is_empty() check returned early");
-                let mx = *vals
-                    .iter()
-                    .max()
-                    .expect("vals is non-empty: vertices.is_empty() check returned early");
+                let (Some(&mn), Some(&mx)) = (vals.iter().min(), vals.iter().max()) else {
+                    return 0.0;
+                };
                 (mx - mn) as f64
             }
             2 => {
@@ -868,7 +860,7 @@ impl DrinfeldModule {
     /// An ordinary Drinfeld module of rank r has r distinct period lattice
     /// generators; equivalently, its Hasse invariant is non-zero.
     pub fn is_ordinary(&self) -> bool {
-        self.rank <= 1 || self.characteristic % 2 != 0
+        self.rank <= 1 || !self.characteristic.is_multiple_of(2)
     }
     /// Returns `true` if the Drinfeld module is supersingular.
     ///
@@ -1458,7 +1450,7 @@ impl PAdicValuation {
         }
         let mut n = n.unsigned_abs();
         let mut k = 0i64;
-        while n % self.p == 0 {
+        while n.is_multiple_of(self.p) {
             n /= self.p;
             k += 1;
         }

@@ -364,25 +364,20 @@ fn build_ite(cond: &Expr, then_: &Expr, else_: &Expr) -> Expr {
 }
 /// Build a simple match expression (as nested if-then-else or recursor application).
 fn build_match(scrutinee: &Expr, arms: &[(Name, Expr)]) -> Expr {
-    if arms.is_empty() {
+    let Some(((_last_pat, last_body), earlier_arms)) = arms.split_last() else {
         return Expr::Const(Name::str("absurd"), vec![]);
-    }
-    if arms.len() == 1 {
-        let (_pat, body) = &arms[0];
+    };
+    if earlier_arms.is_empty() {
         return Expr::Let(
             Name::str("_"),
             Node::new(Expr::Const(Name::str("_"), vec![])),
             Node::new(scrutinee.clone()),
-            Node::new(body.clone()),
+            Node::new(last_body.clone()),
         );
     }
     let match_name = Name::str("_match");
-    let mut result = arms
-        .last()
-        .expect("arms is non-empty (checked above)")
-        .1
-        .clone();
-    for (pat, body) in arms.iter().rev().skip(1) {
+    let mut result = last_body.clone();
+    for (pat, body) in earlier_arms.iter().rev() {
         let eq_check = Expr::App(
             Node::new(Expr::App(
                 Node::new(Expr::Const(Name::str("BEq.beq"), vec![])),
@@ -1289,3 +1284,5 @@ mod do_notation_ext_tests {
         assert_eq!(max_do_nesting(&block), 1);
     }
 }
+#[cfg(test)]
+mod match_build_tests;

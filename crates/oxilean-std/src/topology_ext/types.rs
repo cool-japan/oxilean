@@ -355,7 +355,7 @@ impl UltrametricBallTree {
         let p = self.prime as u64;
         let mut val = 0i32;
         let mut m = n;
-        while m % p == 0 {
+        while m.is_multiple_of(p) {
             val += 1;
             m /= p;
         }
@@ -654,11 +654,7 @@ impl ProObjectLimit {
             for j in 0..next_level_size {
                 let parent = proj[j];
                 for thread in &threads {
-                    if *thread
-                        .last()
-                        .expect("threads are always non-empty: initialized with vec![i]")
-                        == parent
-                    {
+                    if thread.last() == Some(&parent) {
                         let mut new_thread = thread.clone();
                         new_thread.push(j);
                         new_threads.push(new_thread);

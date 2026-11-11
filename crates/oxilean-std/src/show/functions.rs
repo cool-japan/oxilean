@@ -664,7 +664,7 @@ pub fn build_show_env(env: &mut oxilean_kernel::Environment) -> Result<(), Strin
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let show_of = |ty: Expr| -> Expr { app(cst("Show"), ty) };

@@ -134,6 +134,10 @@ fn check_univ_param_hygiene_parts<'a>(
 
     // (2) + (3): walk type and value.
     for expr in exprs {
+        // (0) closed terms only, and none deeper than this thread's limit
+        // (where it has one) — before anything below walks the term.
+        check_term_depth(name, expr)?;
+        check_closed_term(name, expr)?;
         // (3) metavariables.
         if crate::expr_util::has_level_mvar(expr) {
             return Err(KernelError::Other(format!(
@@ -155,49 +159,138 @@ fn check_univ_param_hygiene_parts<'a>(
     }
     Ok(())
 }
+/// A term of a kernel-checked declaration — its type, its value, a recursor
+/// rule — must be CLOSED: no free variable and no loose bound variable.
+/// Lean's kernel makes the same check before it looks at a declaration
+/// (`check_no_metavar_no_fvar`).
+///
+/// Free variables are the checker's own device: it mints one for each
+/// binder it opens, by number, and types what it finds under the binder
+/// against it. A declaration that arrives already containing a free variable
+/// can only be naming one of those numbers. Under a binder the checker
+/// happens to have opened with that number the variable passes for the
+/// bound one — and the declaration would then go into the environment with
+/// the free variable still in it, to be unfolded later in a context where
+/// the same number means something else. Since the checker remembers the
+/// types it has inferred ([`TypeChecker::infer_type`]), such a variable
+/// would also keep its type AFTER its binder closed:
+/// `(fun (x : False) => x) (FVar 0)` would check as a proof of `False`.
+/// No export can spell a free variable — the format has no record for one —
+/// so this concerns a declaration built through the Rust API; it is refused
+/// here, before any of it is typed. Both facts are read off the term in O(1).
+#[allow(clippy::result_large_err)]
+pub(crate) fn check_closed_term(name: &crate::Name, expr: &crate::Expr) -> Result<(), KernelError> {
+    if crate::expr_util::has_any_fvar(expr) {
+        return Err(KernelError::Other(format!(
+            "declaration {}: free variable in kernel-checked declaration",
+            name
+        )));
+    }
+    if crate::expr_util::has_loose_bvars(expr) {
+        return Err(KernelError::Other(format!(
+            "declaration {}: loose bound variable in kernel-checked declaration",
+            name
+        )));
+    }
+    Ok(())
+}
+/// A term of a declaration offered for checking — its type, its value, a
+/// recursor rule — must not be deeper than the limit of
+/// [`crate::fuel::set_term_depth_limit`], where one is set and the depth of
+/// terms is tracked ([`crate::fuel::TERM_DEPTH_TRACKED`]).
+///
+/// The limit stands for the stack of the thread the kernel runs on: every
+/// walk of a term is a recursion as deep as the term. A term built WHILE a
+/// declaration is checked spends the budget when it crosses the limit; this
+/// is the same refusal for a term that arrives already too deep, made
+/// before any of it is walked (the depth is read off the root in O(1)). The
+/// error is not a verdict on the declaration: the limit is recorded
+/// ([`crate::fuel::term_depth_limit_hit`]), and the caller reports a
+/// resource limit.
+#[allow(clippy::result_large_err)]
+pub(crate) fn check_term_depth(name: &crate::Name, expr: &crate::Expr) -> Result<(), KernelError> {
+    #[cfg(feature = "term-depth")]
+    {
+        let depth = expr.depth();
+        if crate::fuel::term_depth_limit().is_some_and(|limit| depth > limit) {
+            crate::fuel::note_term_depth(depth);
+            return Err(KernelError::Other(format!(
+                "declaration {name}: a term {depth} deep is over the term-depth limit"
+            )));
+        }
+    }
+    #[cfg(not(feature = "term-depth"))]
+    let _ = (name, expr);
+    Ok(())
+}
 /// Collect all `Level::Param` names referenced anywhere in an expression,
 /// including inside `Proj`'s struct expression (which the declaration-module
 /// collector skips). Deduplicated.
+///
+/// Every shared subterm is looked at once (the set of addresses already
+/// seen — sound for the duration of this walk, during which `expr` is
+/// borrowed and none of its subterms can be freed), and a subterm that
+/// mentions no universe parameter is not entered at all (the fact is cached
+/// on the node). A declaration whose value is a few thousand shared nodes
+/// used to be walked here as the millions of nodes of its tree.
 pub(super) fn collect_expr_level_params(expr: &crate::Expr, out: &mut Vec<crate::Name>) {
-    use crate::Expr;
-    match expr {
-        Expr::Sort(l) => collect_level_params_in_level(l, out),
-        Expr::Const(_, levels) => {
-            for l in levels {
-                collect_level_params_in_level(l, out);
+    use crate::{Expr, Node};
+    let mut seen: std::collections::HashSet<*const Expr, crate::node_memo::WordBuildHasher> =
+        std::collections::HashSet::default();
+    let mut pending: Vec<&Node> = Vec::new();
+    let mut current: Option<&Expr> = Some(expr);
+    loop {
+        let cur = match current.take() {
+            Some(cur) => cur,
+            None => match pending.pop() {
+                Some(node) => {
+                    if !node.has_level_param() || !seen.insert(node.as_ptr()) {
+                        continue;
+                    }
+                    node
+                }
+                None => break,
+            },
+        };
+        match cur {
+            Expr::Sort(l) => collect_level_params_in_level(l, out),
+            Expr::Const(_, levels) => {
+                for l in levels {
+                    collect_level_params_in_level(l, out);
+                }
             }
+            Expr::App(f, a) => {
+                pending.push(a);
+                pending.push(f);
+            }
+            Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
+                pending.push(body);
+                pending.push(ty);
+            }
+            Expr::Let(_, ty, val, body) => {
+                pending.push(body);
+                pending.push(val);
+                pending.push(ty);
+            }
+            Expr::Proj(_, _, e) => pending.push(e),
+            Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => {}
         }
-        Expr::App(f, a) => {
-            collect_expr_level_params(f, out);
-            collect_expr_level_params(a, out);
-        }
-        Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
-            collect_expr_level_params(ty, out);
-            collect_expr_level_params(body, out);
-        }
-        Expr::Let(_, ty, val, body) => {
-            collect_expr_level_params(ty, out);
-            collect_expr_level_params(val, out);
-            collect_expr_level_params(body, out);
-        }
-        Expr::Proj(_, _, e) => collect_expr_level_params(e, out),
-        Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => {}
     }
 }
 fn collect_level_params_in_level(l: &crate::Level, out: &mut Vec<crate::Name>) {
-    use crate::Level;
-    match l {
-        Level::Param(n) => {
+    use crate::LevelView;
+    match l.view() {
+        LevelView::Param(n) => {
             if !out.contains(n) {
                 out.push(n.clone());
             }
         }
-        Level::Succ(inner) => collect_level_params_in_level(inner, out),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Succ(inner) => collect_level_params_in_level(inner, out),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_params_in_level(a, out);
             collect_level_params_in_level(b, out);
         }
-        Level::Zero | Level::MVar(_) => {}
+        LevelView::Zero | LevelView::MVar(_) => {}
     }
 }
 /// Check multiple declarations in sequence.
@@ -258,6 +351,12 @@ pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<()
             check_constructor_val(env, cv)?;
         }
         ConstantInfo::Recursor(rv) => {
+            // The rule right-hand sides are terms of the declaration too
+            // (closed lambdas over params, motives, minors and fields).
+            for rule in &rv.rules {
+                check_term_depth(&name, &rule.rhs)?;
+                check_closed_term(&name, &rule.rhs)?;
+            }
             check_recursor_val(env, rv)?;
         }
         ConstantInfo::Quotient(qv) => {
@@ -1381,10 +1480,10 @@ mod tests_padding3 {
         let mut calc = StackCalc::new();
         calc.push(3);
         calc.push(4);
-        calc.add();
+        assert_eq!(calc.add(), Some(7));
         assert_eq!(calc.peek(), Some(7));
         calc.push(2);
-        calc.mul();
+        assert_eq!(calc.mul(), Some(14));
         assert_eq!(calc.peek(), Some(14));
     }
 }

@@ -227,14 +227,9 @@ pub fn s_polynomial(f: &Polynomial, g: &Polynomial) -> Polynomial {
 pub fn reduce(f: &Polynomial, divisors: &[Polynomial]) -> Polynomial {
     let mut remainder = Polynomial::zero(f.nvars, f.order.clone());
     let mut p = f.clone();
-    while !p.is_zero() {
-        let lm_p = p
-            .leading_monomial()
-            .expect("p is non-zero: checked by while loop condition")
-            .clone();
-        let lc_p = p
-            .leading_coeff()
-            .expect("p is non-zero: checked by while loop condition");
+    // Both read the first term of `p`, so they are `None` together, exactly
+    // when `p` is zero.
+    while let (Some(lm_p), Some(lc_p)) = (p.leading_monomial().cloned(), p.leading_coeff()) {
         let mut divided = false;
         for g in divisors {
             if let Some(lm_g) = g.leading_monomial() {

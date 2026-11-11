@@ -60,7 +60,7 @@ impl SimpleLemmaIndex {
             .iter()
             .filter(|(name, sig)| {
                 let name_ok = name_prefix.is_empty() || name.starts_with(name_prefix);
-                let type_ok = ty_query.map_or(true, |q| q.matches(sig));
+                let type_ok = ty_query.is_none_or(|q| q.matches(sig));
                 name_ok && type_ok
             })
             .map(|(name, _)| name.as_str())

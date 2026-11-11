@@ -453,7 +453,7 @@ impl EllipticCurveLFunction {
     /// Approximate the leading coefficient in the Taylor expansion at s=1:
     /// L(E, s) ~ c_r (s-1)^r + ... near s=1 where r = analytic rank.
     pub fn leading_coefficient_sign(&self) -> i32 {
-        if self.analytic_rank % 2 == 0 {
+        if self.analytic_rank.is_multiple_of(2) {
             1
         } else {
             -1
@@ -733,7 +733,7 @@ impl DirichletConvolution {
             return 0.0;
         }
         (1..=n)
-            .filter(|&d| n % d == 0)
+            .filter(|&d| n.is_multiple_of(d))
             .map(|d| f(d) * g(n / d))
             .sum()
     }

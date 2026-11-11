@@ -104,15 +104,100 @@ ever needed.
 ### One declaration can never OOM the process
 
 Each `--limits` preset carries a deterministic **per-declaration resource
-budget**, measured in kernel `Expr` nodes cloned (the single chokepoint through
-which every reduction-side term duplication flows): 2^24 for `default`, 2^26
-for `corpus`. A declaration that exhausts its budget is reported as
-**unsupported** with the named feature
-`resource limit exceeded: per-declaration clone-fuel budget` — never as
-rejected (the kernel degrades conservatively once fuel runs out: reduction goes
-stuck, definitional equality decides only syntactic equality, so no wrong
-verdict is possible in either direction). The cutoff is deterministic: the same
-declaration with the same budget always lands in the same bucket.
+budget**, measured in units of kernel work: 2^24 for `default`, 2^26 for
+`corpus`. A unit is one subterm that one of the kernel's term builders —
+substitution, lifting, abstraction, universe instantiation, a clone — reaches,
+whether it rebuilds the subterm or shares it; every node the kernel allocates
+is charged one. On a 2023 laptop core a unit is a few tens of nanoseconds, so
+the two budgets are about half a second and two seconds of work, and they bound
+the nodes one declaration can have live at 16.8 and 67 million (72 bytes each).
+The heaviest declaration of Lean core `Init` takes 6.7 million units.
+
+A declaration that exhausts its budget is reported as **unsupported** with the
+named feature `resource limit exceeded: per-declaration clone-fuel budget` —
+never as rejected (the kernel degrades conservatively once the budget runs out:
+reduction goes stuck, definitional equality decides only syntactic equality, so
+no wrong verdict is possible in either direction). The cutoff is deterministic:
+the same declaration with the same budget always lands in the same bucket. (The
+feature string keeps the name the unit had through 0.1.3, when it counted cloned
+nodes of terms held as trees.)
+
+The `corpus` preset also arms a wall-clock deadline of 30 seconds per
+declaration, for work that charges nothing (a universe-level comparison can
+take exponential time without building a term). A declaration still running
+then is reported under the same named feature. Unlike the budget this limit
+depends on the machine; no declaration of Lean core `Init` or of the Mathlib
+slice the README reports comes within a factor of a hundred of it.
+
+The reducer has two limits of its own: a cap on the *nesting depth* of
+reduction (a stack guard) and a cap on the *length* of one head-reduction chain
+(10,000 steps). The second is what lets definitional equality give up on a
+reduction that is going nowhere and try another route. A reduction cut short by
+either cap is not a normal form, so a failure that follows it is not a verdict
+on the proof.
+
+When the chain cap fired and the declaration then failed, the checker repeats
+the check under a fresh budget with that cap lifted. The budget bounds the chain
+instead — every head-reduction step charges it — so a long chain of cheap steps
+(a `decide` proof iterating `Nat.rec` tens of thousands of times) runs to its
+normal form, and the declaration is verified, rejected, or reported as over
+budget on its merits. A declaration that fails after the nesting-depth guard
+fired is reported as **unsupported** with the named feature
+`resource limit exceeded: reduction depth or step limit` — again never as
+rejected, and deterministically. (A library user who arms no budget at all gets
+that verdict for the chain cap too: with no budget nothing else would stop a
+runaway chain, so the check is not repeated without the cap.)
+
+### A small stack: two limits the command-line tool does not set
+
+The kernel is recursive. A reduction nested inside another — the major premise
+of a recursor, the structure of a projection, an argument of a literal
+operation — holds a frame of the native stack until it is done, and so does
+every level of a term while the term is walked: to substitute into it, to infer
+its type, to compare it with another, to release it. `oxilean-verify` runs on
+the thread described above and limits neither; how deep it goes is a matter of
+the stack it was given.
+
+A caller that cannot give the kernel such a stack — a WebAssembly module runs
+on its host's, about a megabyte in a browser, which it can neither enlarge nor
+measure — sets two limits on its thread before it reads a file. Both are off by
+default.
+
+| Limit | Set with | What is over it | Reported as `unsupported` with |
+|---|---|---|---|
+| nesting of reductions | `oxilean_kernel::fuel::set_reduction_nesting_limit` | a reduction that would nest deeper is not started; its term comes back unreduced | `resource limit exceeded: reduction depth or step limit` |
+| depth of terms | `oxilean_kernel::fuel::set_term_depth_limit` | a declaration with a deeper term is not read into memory; a term that grows deeper while a declaration is checked spends that declaration's budget | `resource limit exceeded: term depth` |
+
+Neither is ever a verdict: a term returned unreduced is still the same term, so
+nothing can be verified that should not be, and a failure that follows a limit
+is reported as that limit, never as `rejected`. Both are deterministic — they
+depend on the terms, not on how much stack happened to be free. The two
+fixtures `NestedReduction` and `DeepTerm` each carry a false theorem that Lean's
+kernel rejects; the tests replay them under every limit from zero up and
+require that it is never verified and that no sound declaration is ever
+rejected.
+
+The depth limit has two halves. The reader knows the depth of every expression
+of a file from its tables and refuses a declaration with one too deep, in any
+build. A term that is BUILT too deep — an argument a recursion adds to at every
+step is hundreds of levels deep after hundreds of steps — is only noticed by a
+kernel that tracks the depth of its terms: the `term-depth` feature of
+`oxilean-kernel` (forwarded by `oxilean-export` and `oxilean-verify`). It costs
+four bytes per shared subterm, which is why it is not on by default.
+
+The WebAssembly build (`oxilean-verify-wasm`) has the feature on and sets both
+limits: 256 nested reductions, terms 512 deep. Measured under node 26 (V8, 984 KB
+of stack by default, as in Chrome), a level of nested reduction takes 0.80 KB of
+the engine's stack and a level of a term being compared 0.86 KB; the deepest
+combinations the limits allow ran in 312 KB, and Lean core `Init` and the
+Mathlib slice replay with half the engine's stack and half the module's own.
+Under these limits both corpora get, declaration for declaration, the verdicts
+of the native tool (`Init` keeps its verdicts down to a limit of 64 nested
+reductions, and needs terms between 256 and 512 deep). What the limits cost is
+evaluation by structural
+recursion more than about 250 steps deep, and terms more than 512 levels deep —
+a list literal of more than about 500 elements: `unsupported` in a browser,
+checked by the command-line tool.
 
 ### Example transcript
 

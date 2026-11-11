@@ -413,7 +413,7 @@ impl MotivicSphere {
     ///
     /// χ_mot(S^{p,q}) = 1 - (-1)^p T^q where T is the Tate class.
     pub fn euler_char_sign(&self) -> i64 {
-        if self.top_degree % 2 == 0 {
+        if self.top_degree.is_multiple_of(2) {
             2
         } else {
             0
@@ -543,7 +543,7 @@ impl ZetaFunction {
     /// Create the zeta function of a genus-g curve over F_q.
     pub fn curve(variety: impl Into<String>, q: u64, genus: usize) -> Self {
         let mut coeffs = vec![1i64];
-        coeffs.extend(std::iter::repeat(0i64).take(genus));
+        coeffs.extend(std::iter::repeat_n(0i64, genus));
         Self {
             variety: variety.into(),
             field_size: q,

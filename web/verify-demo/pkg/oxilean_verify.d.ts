@@ -116,7 +116,7 @@ export class VerifySession {
      * page reads the file as bytes rather than decoded text, so the exact file
      * fingerprint is preserved.
      */
-    push_bytes(chunk: Uint8Array): void;
+    push_bytes(chunk: Uint8Array | number[]): void;
     /**
      * Append one text chunk (a slice of the dropped file) to the session.
      *
@@ -208,6 +208,19 @@ export function lean_toolchain(): string;
 export function ndjson_format_version(): string;
 
 /**
+ * How many reductions the kernel may nest inside one another in this build;
+ * a declaration that needs more is `unsupported`
+ * (`resource limit exceeded: reduction depth or step limit`).
+ */
+export function reduction_nesting_limit(): number;
+
+/**
+ * How deep a term may be in this build; a declaration with a deeper one, or
+ * that builds one, is `unsupported` (`resource limit exceeded: term depth`).
+ */
+export function term_depth_limit(): number;
+
+/**
  * This tool's version string (`CARGO_PKG_VERSION` of `oxilean-verify`).
  */
 export function verify_version(): string;
@@ -231,6 +244,8 @@ export interface InitOutput {
     readonly lean4export_commit: () => [number, number];
     readonly lean_toolchain: () => [number, number];
     readonly ndjson_format_version: () => [number, number];
+    readonly reduction_nesting_limit: () => number;
+    readonly term_depth_limit: () => number;
     readonly verify_version: () => [number, number];
     readonly verifysession_byte_len: (a: number) => number;
     readonly verifysession_finish: (a: number, b: any, c: number, d: number) => [number, number, number];

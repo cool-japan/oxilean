@@ -1026,9 +1026,9 @@ impl DependencyAnalyzer {
                     batch.push(current.clone());
                     for (name, deps) in self.dependencies.iter() {
                         if deps.contains(&current) {
-                            let deg = in_degree
-                                .get_mut(name)
-                                .expect("name is from dependencies so it exists in in_degree");
+                            let deg = in_degree.get_mut(name).ok_or_else(|| {
+                                format!("elaboration plan: no in-degree entry for `{}`", name)
+                            })?;
                             *deg -= 1;
                             if *deg == 0 {
                                 queue.push_back(name.clone());

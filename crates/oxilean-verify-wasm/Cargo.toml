@@ -7,6 +7,8 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 rust-version.workspace = true
+# Browser artifact for web/verify-demo (built with wasm-pack); not published to crates.io -- see ~/work/pub_oxilean.sh.
+publish = false
 documentation = "https://docs.rs/oxilean-verify-wasm"
 description = "Kernel in a Tab: WebAssembly bindings for the independent oxilean-verify Lean 4 proof checker"
 readme = "README.md"
@@ -35,6 +37,13 @@ oxilean-export = { workspace = true }
 oxilean-verify = { workspace = true }
 wasm-bindgen = { workspace = true }
 js-sys = { workspace = true }
+
+# In the browser the kernel must track the depth of its terms: the limit this
+# crate puts on it (`TERM_DEPTH_LIMIT` in src/lib.rs) is what keeps a term too
+# deep for the host's stack from being walked. For wasm32 only — a native
+# build of the workspace must not pick the feature up through this crate.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+oxilean-kernel = { workspace = true, features = ["term-depth"] }
 
 # Size-tuned release profile for THIS crate's wasm output. opt-level = "z"
 # (optimize aggressively for size) and thin LTO shrink the module; the workspace

@@ -17,8 +17,8 @@
 //! through to `false` (for `leq`) / keep the node (for the constructors), never
 //! producing a wrong answer.
 
-use super::types::Level;
-use crate::Name;
+use super::types::{Level, LevelView};
+use crate::{Name, NameView};
 
 /// Structural total order on [`Name`], replacing the previous
 /// `Name::to_string()` comparison.
@@ -32,16 +32,18 @@ use crate::Name;
 pub(super) fn name_cmp(a: &Name, b: &Name) -> std::cmp::Ordering {
     use std::cmp::Ordering;
     fn tag(n: &Name) -> u8 {
-        match n {
-            Name::Anonymous => 0,
-            Name::Str(_, _) => 1,
-            Name::Num(_, _) => 2,
+        match n.view() {
+            NameView::Anonymous => 0,
+            NameView::Str(_, _) => 1,
+            NameView::Num(_, _) => 2,
         }
     }
-    match (a, b) {
-        (Name::Anonymous, Name::Anonymous) => Ordering::Equal,
-        (Name::Str(p1, s1), Name::Str(p2, s2)) => name_cmp(p1, p2).then_with(|| s1.cmp(s2)),
-        (Name::Num(p1, n1), Name::Num(p2, n2)) => name_cmp(p1, p2).then_with(|| n1.cmp(n2)),
+    match (a.view(), b.view()) {
+        (NameView::Anonymous, NameView::Anonymous) => Ordering::Equal,
+        (NameView::Str(p1, s1), NameView::Str(p2, s2)) => name_cmp(p1, p2).then_with(|| s1.cmp(s2)),
+        (NameView::Num(p1, n1), NameView::Num(p2, n2)) => {
+            name_cmp(p1, p2).then_with(|| n1.cmp(&n2))
+        }
         _ => tag(a).cmp(&tag(b)),
     }
 }
@@ -90,7 +92,7 @@ pub fn mk_max(l1: Level, l2: Level) -> Level {
 pub fn mk_imax(l1: Level, l2: Level) -> Level {
     if l2.is_zero() {
         // imax(_, 0) = 0.
-        return Level::Zero;
+        return Level::zero();
     }
     if l2.is_not_zero() {
         // imax(l1, l2) = max(l1, l2) when l2 is provably >= 1.
@@ -109,8 +111,8 @@ pub fn mk_imax(l1: Level, l2: Level) -> Level {
 
 /// Decompose `l` into `(base, offset)` with `l = succ^offset(base)`.
 fn to_offset(l: &Level) -> (&Level, u32) {
-    match l {
-        Level::Succ(inner) => {
+    match l.view() {
+        LevelView::Succ(inner) => {
             let (base, k) = to_offset(inner);
             (base, k + 1)
         }
@@ -157,31 +159,31 @@ pub(super) fn is_leq_core(l1: &Level, l2: &Level, diff: i64) -> bool {
     // `leq_core`. The order is load-bearing: `succ` and left-`max` are stripped
     // first, then the right-`max` disjunction fires ONLY for a `Param`/`Zero`
     // left side, and finally the `imax` param case-split / distribution.
-    match (l1, l2) {
+    match (l1.view(), l2.view()) {
         // Decisive zero/param cases (guarded so they only fire when they settle
         // the question; otherwise we fall through to succ-stripping so the other
         // side's offset is accounted for).
         //
         // `0 <= l2 + diff` holds for all assignments when `diff >= 0`
         // (since `l2 >= 0`); when `diff < 0` it depends on `l2`, so fall through.
-        (Level::Zero, _) if diff >= 0 => true,
+        (LevelView::Zero, _) if diff >= 0 => true,
         // `l1 <= 0 + diff` with `diff < 0` is impossible (`l1 >= 0`); fall
         // through when `diff >= 0`.
-        (_, Level::Zero) if diff < 0 => false,
+        (_, LevelView::Zero) if diff < 0 => false,
         // Two params: comparable only if identical, and then only if `diff >= 0`.
-        (Level::Param(a), Level::Param(b)) => a == b && diff >= 0,
+        (LevelView::Param(a), LevelView::Param(b)) => a == b && diff >= 0,
         // `param <= 0 + diff` is impossible when the param could be arbitrarily
         // large (guard `diff < 0` handled above; here `diff >= 0` but a param can
         // exceed any fixed bound) — so `false`.
-        (Level::Param(_), Level::Zero) => false,
+        (LevelView::Param(_), LevelView::Zero) => false,
         // `0 <= param + diff`: with `diff >= 0` already returned true above;
         // reaching here means `diff < 0`, and a param can be `0`, so `false`.
-        (Level::Zero, Level::Param(_)) => false,
+        (LevelView::Zero, LevelView::Param(_)) => false,
         // Successor on either side: adjust the balance.
-        (Level::Succ(a), _) => is_leq_core(a, l2, diff - 1),
-        (_, Level::Succ(b)) => is_leq_core(l1, b, diff + 1),
+        (LevelView::Succ(a), _) => is_leq_core(a, l2, diff - 1),
+        (_, LevelView::Succ(b)) => is_leq_core(l1, b, diff + 1),
         // max on the left: max(a,b) <= l2 iff a <= l2 and b <= l2.
-        (Level::Max(a, b), _) => is_leq_core(a, l2, diff) && is_leq_core(b, l2, diff),
+        (LevelView::Max(a, b), _) => is_leq_core(a, l2, diff) && is_leq_core(b, l2, diff),
         // max on the right — ONLY when the left side is a Param, Zero or MVar
         // leaf. (Max-left is handled above; an imax-left must NOT take this
         // disjunctive shortcut, which is incomplete for it, and falls through to
@@ -195,9 +197,9 @@ pub(super) fn is_leq_core(l1: &Level, l2: &Level, diff: i64) -> bool {
         // one at `v >= 1`). Case-split on such a param FIRST; once both sides
         // are semantically imax-free, the disjunction is complete for an
         // atomic left side.
-        (Level::Param(_) | Level::Zero | Level::MVar(_), Level::Max(a, b)) => {
+        (LevelView::Param(_) | LevelView::Zero | LevelView::MVar(_), LevelView::Max(a, b)) => {
             if let Some(name) = find_split_param(l2) {
-                let param = Level::Param(name.clone());
+                let param = Level::param(name.clone());
                 imax_param_split(l1, l2, &param, diff)
             } else {
                 is_leq_core(l1, a, diff) || is_leq_core(l1, b, diff)
@@ -208,14 +210,14 @@ pub(super) fn is_leq_core(l1: &Level, l2: &Level, diff: i64) -> bool {
         // what keeps the `p := succ p` branch of the case-split terminating:
         // after substitution the imax rhs becomes `succ p` (non-zero), which
         // this arm rewrites to a `max`, removing the imax.
-        (Level::IMax(a, b), _) => {
+        (LevelView::IMax(a, b), _) => {
             let simplified = simplify_imax(a, b);
             match simplified {
                 Some(s) => is_leq_core(&s, l2, diff),
                 None => imax_param_split(l1, l2, b, diff),
             }
         }
-        (_, Level::IMax(a, b)) => {
+        (_, LevelView::IMax(a, b)) => {
             let simplified = simplify_imax(a, b);
             match simplified {
                 Some(s) => is_leq_core(l1, &s, diff),
@@ -256,11 +258,11 @@ pub(super) fn is_leq_core(l1: &Level, l2: &Level, diff: i64) -> bool {
 /// leaf would have made `is_not_zero` true), hence constant — it cannot make
 /// a disjunct choice assignment-dependent and needs no split.
 fn find_split_param(l: &Level) -> Option<&Name> {
-    match l {
-        Level::Zero | Level::Param(_) | Level::MVar(_) => None,
-        Level::Succ(a) => find_split_param(a),
-        Level::Max(a, b) => find_split_param(a).or_else(|| find_split_param(b)),
-        Level::IMax(a, b) => {
+    match l.view() {
+        LevelView::Zero | LevelView::Param(_) | LevelView::MVar(_) => None,
+        LevelView::Succ(a) => find_split_param(a),
+        LevelView::Max(a, b) => find_split_param(a).or_else(|| find_split_param(b)),
+        LevelView::IMax(a, b) => {
             if !b.is_zero() && !b.is_not_zero() {
                 if let Some(n) = first_crit_param(b) {
                     return Some(n);
@@ -279,26 +281,26 @@ fn find_split_param(l: &Level) -> Option<&Name> {
 /// leaf on such a path controls the outcome; `Succ` (never zero) and `Zero`
 /// leaves are constants.
 fn first_crit_param(l: &Level) -> Option<&Name> {
-    match l {
-        Level::Param(n) => Some(n),
-        Level::Zero | Level::Succ(_) | Level::MVar(_) => None,
-        Level::Max(a, b) => first_crit_param(a).or_else(|| first_crit_param(b)),
-        Level::IMax(_, b) => first_crit_param(b),
+    match l.view() {
+        LevelView::Param(n) => Some(n),
+        LevelView::Zero | LevelView::Succ(_) | LevelView::MVar(_) => None,
+        LevelView::Max(a, b) => first_crit_param(a).or_else(|| first_crit_param(b)),
+        LevelView::IMax(_, b) => first_crit_param(b),
     }
 }
 
 /// Perform the `imax`-rhs-is-`Param` case-split for `l1 <= l2` at balance
 /// `diff`. `param` is the boxed `Param` (the imax's second argument).
 fn imax_param_split(l1: &Level, l2: &Level, param: &Level, diff: i64) -> bool {
-    let name = match param {
-        Level::Param(n) => n.clone(),
+    let name = match param.view() {
+        LevelView::Param(n) => n.clone(),
         _ => return false,
     };
     // p := 0 collapses the imax(s) to their impredicative-zero value.
-    let zero_l1 = subst_param(l1, &name, &Level::Zero);
-    let zero_l2 = subst_param(l2, &name, &Level::Zero);
+    let zero_l1 = subst_param(l1, &name, &Level::zero());
+    let zero_l2 = subst_param(l2, &name, &Level::zero());
     // p := succ p forces the imax(s) into `max` form.
-    let succ = Level::succ(Level::Param(name.clone()));
+    let succ = Level::succ(Level::param(name.clone()));
     let succ_l1 = subst_param(l1, &name, &succ);
     let succ_l2 = subst_param(l2, &name, &succ);
     is_leq_core(&zero_l1, &zero_l2, diff) && is_leq_core(&succ_l1, &succ_l2, diff)
@@ -319,19 +321,19 @@ fn imax_param_split(l1: &Level, l2: &Level, param: &Level, diff: i64) -> bool {
 ///   `d != 0`)
 fn simplify_imax(a: &Level, b: &Level) -> Option<Level> {
     if b.is_zero() {
-        return Some(Level::Zero);
+        return Some(Level::zero());
     }
     if b.is_not_zero() {
         return Some(Level::max(a.clone(), b.clone()));
     }
-    match b {
-        Level::Max(c, d) => Some(Level::max(
-            Level::imax(a.clone(), (**c).clone()),
-            Level::imax(a.clone(), (**d).clone()),
+    match b.view() {
+        LevelView::Max(c, d) => Some(Level::max(
+            Level::imax(a.clone(), c.clone()),
+            Level::imax(a.clone(), d.clone()),
         )),
-        Level::IMax(c, d) => Some(Level::max(
-            Level::imax(a.clone(), (**d).clone()),
-            Level::imax((**c).clone(), (**d).clone()),
+        LevelView::IMax(c, d) => Some(Level::max(
+            Level::imax(a.clone(), d.clone()),
+            Level::imax(c.clone(), d.clone()),
         )),
         // Bare Param -> needs case-split; bare MVar -> conservative fallback.
         _ => None,
@@ -340,11 +342,15 @@ fn simplify_imax(a: &Level, b: &Level) -> Option<Level> {
 
 /// Substitute `Param(name)` with `value` everywhere in `l`.
 fn subst_param(l: &Level, name: &Name, value: &Level) -> Level {
-    match l {
-        Level::Param(n) if n == name => value.clone(),
-        Level::Param(_) | Level::Zero | Level::MVar(_) => l.clone(),
-        Level::Succ(inner) => Level::succ(subst_param(inner, name, value)),
-        Level::Max(a, b) => Level::max(subst_param(a, name, value), subst_param(b, name, value)),
-        Level::IMax(a, b) => Level::imax(subst_param(a, name, value), subst_param(b, name, value)),
+    match l.view() {
+        LevelView::Param(n) if n == name => value.clone(),
+        LevelView::Param(_) | LevelView::Zero | LevelView::MVar(_) => l.clone(),
+        LevelView::Succ(inner) => Level::succ(subst_param(inner, name, value)),
+        LevelView::Max(a, b) => {
+            Level::max(subst_param(a, name, value), subst_param(b, name, value))
+        }
+        LevelView::IMax(a, b) => {
+            Level::imax(subst_param(a, name, value), subst_param(b, name, value))
+        }
     }
 }

@@ -1299,3 +1299,5 @@ mod tests {
         let _ = result;
     }
 }
+#[cfg(test)]
+mod completion_tests;

@@ -895,11 +895,10 @@ impl Lean4NameConverter {
     /// Rules: non-empty, starts with a letter or underscore, subsequent chars
     /// are alphanumeric, underscore, prime `'`, or dot `.` (for namespacing).
     pub fn is_valid_oxilean_name(name: &str) -> bool {
-        if name.is_empty() {
-            return false;
-        }
         let mut chars = name.chars();
-        let first = chars.next().expect("name is non-empty (checked above)");
+        let Some(first) = chars.next() else {
+            return false;
+        };
         if !first.is_alphabetic() && first != '_' {
             return false;
         }

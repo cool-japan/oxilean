@@ -15,7 +15,7 @@ impl fmt::Display for BitVec {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "0x")?;
         let w = self.width.as_usize();
-        let hex_digits = (w + 3) / 4;
+        let hex_digits = w.div_ceil(4);
         let val = self.to_u128();
         write!(f, "{:0>width$x}", val, width = hex_digits)?;
         write!(f, "#{}", self.width)

@@ -17,7 +17,8 @@ via `oxilean-build`.
 | `oxilake check` | Build without emitting code (type-check only) |
 | `oxilake test` | Build and report per-declaration check status |
 | `oxilake run` | Build then execute `Main` |
-| `oxilake fmt` | Format all source files |
+| `oxilake fmt` | Format all source files (`--check` reports without writing) |
+| `oxilake clean` | Remove cached build artifacts |
 
 ## Manifest format (`oxilake.toml`)
 
@@ -48,11 +49,11 @@ tested independently, respecting the inter-package dependency graph.
 
 ```toml
 [dependencies]
-oxilake = "0.1.3"
+oxilake = "0.1.4"
 ```
 
 - License: Apache-2.0
 - Edition: 2021
-- Rust version: 1.70+
+- Rust version: 1.89+
 
 Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.

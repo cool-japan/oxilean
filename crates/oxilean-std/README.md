@@ -9,7 +9,7 @@ The OxiLean standard library provides essential inductive types, type classes, a
 
 The library is organized into primitive types (`Nat`, `Bool`, `List`, `Option`, `Result`), algebraic type classes (`Eq`, `Ord`, `Functor`, `Monad`, `Monoid`), and core theorems covering equality, logic, arithmetic, and ordering.
 
-416,133 SLOC -- the largest crate in the OxiLean workspace, providing comprehensive standard library coverage (1,105 source files, 7,934 tests passing).
+442,733 SLOC -- the largest crate in the OxiLean workspace, providing comprehensive standard library coverage (1,232 source files, 7,977 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -59,11 +59,11 @@ Ad-hoc polymorphism via type classes mirrors the Lean 4 `Std` hierarchy:
 
 Reusable lemmas grouped by subject:
 
-- **`eq.rs`** -- `Eq.refl`, `Eq.symm`, `Eq.trans`, congruence
-- **`logic.rs` / `prop.rs`** -- `And`, `Or`, `Not`, `Iff`, classical axioms
-- **`nat.rs`** -- arithmetic (`add_comm`, `mul_assoc`, `zero_add`, ...)
-- **`int.rs`** -- integer arithmetic and order
-- **`ord.rs` / `order.rs`** -- ordering properties and monotonicity lemmas
+- **`eq/`** -- `Eq.refl`, `Eq.symm`, `Eq.trans`, congruence
+- **`logic/` / `prop/`** -- `And`, `Or`, `Not`, `Iff`, classical axioms
+- **`nat/`** -- arithmetic (`add_comm`, `mul_assoc`, `zero_add`, ...)
+- **`int/`** -- integer arithmetic and order
+- **`ord/` / `order/`** -- ordering properties and monotonicity lemmas
 
 ## Usage
 
@@ -71,7 +71,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-std = "0.1.3"
+oxilean-std = "0.1.4"
 ```
 
 Example OxiLean proof using standard library theorems:

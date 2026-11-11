@@ -244,14 +244,9 @@ impl SpectralTripleData {
     /// Check that the supplied eigenvalues are consistent with compact resolvent
     /// (eigenvalues must accumulate only at +∞).
     pub fn resolvent_is_compact(&self) -> bool {
-        if self.dirac_eigenvalues.len() < 2 {
+        let [first, .., last] = self.dirac_eigenvalues.as_slice() else {
             return true;
-        }
-        let last = *self
-            .dirac_eigenvalues
-            .last()
-            .expect("dirac_eigenvalues has at least 2 elements: checked by early return");
-        let first = self.dirac_eigenvalues[0];
+        };
         last > first
     }
     /// Estimate the metric dimension from the growth rate λ_n ~ C · n^{1/p}.
@@ -394,7 +389,7 @@ impl SemicircleDistribution {
     }
     #[allow(dead_code)]
     pub fn moments(&self, n: usize) -> f64 {
-        if n % 2 != 0 {
+        if !n.is_multiple_of(2) {
             return 0.0;
         }
         let k = n / 2;
@@ -709,7 +704,7 @@ impl SpectralTriple {
     /// A spectral triple is even when there exists a Z/2-grading γ on H
     /// that commutes with all a ∈ A and anti-commutes with D.
     pub fn is_even(&self) -> bool {
-        self.dimension % 2 == 0
+        self.dimension.is_multiple_of(2)
     }
     /// A spectral triple is real when there exists an anti-linear isometry J
     /// (real structure) satisfying the commutation relations for the given dimension.
@@ -959,3 +954,5 @@ impl ConnesDistance {
         d_phi_chi <= d_phi_psi + d_psi_chi + 1e-10
     }
 }
+#[cfg(test)]
+mod resolvent_tests;

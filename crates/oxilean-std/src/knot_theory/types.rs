@@ -309,7 +309,7 @@ impl Knot {
         if self.crossing_number == 0 {
             return 0;
         }
-        (self.crossing_number + 1) / 2
+        self.crossing_number.div_ceil(2)
     }
     /// Unknotting number (simplified estimate).
     pub fn unknotting_number(&self) -> u32 {

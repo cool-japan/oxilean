@@ -745,19 +745,16 @@ pub struct GlslSwizzleValidator;
 impl GlslSwizzleValidator {
     /// Validate a swizzle mask for a vector of `components` elements.
     pub fn validate(mask: &str, components: usize) -> Result<usize, String> {
-        if mask.is_empty() || mask.len() > 4 {
-            return Err(format!(
-                "swizzle mask length {} is not in [1,4]",
-                mask.len()
-            ));
+        let length_error = || format!("swizzle mask length {} is not in [1,4]", mask.len());
+        if mask.len() > 4 {
+            return Err(length_error());
         }
         let xyzw = ['x', 'y', 'z', 'w'];
         let rgba = ['r', 'g', 'b', 'a'];
         let stpq = ['s', 't', 'p', 'q'];
-        let first = mask
-            .chars()
-            .next()
-            .expect("mask is non-empty; checked at function entry");
+        let Some(first) = mask.chars().next() else {
+            return Err(length_error());
+        };
         let set: &[char] = if xyzw.contains(&first) {
             &xyzw[..components]
         } else if rgba.contains(&first) {
@@ -831,3 +828,6 @@ impl GLSLExtPassConfig {
         self.debug > 0
     }
 }
+
+#[cfg(test)]
+mod swizzle_tests;

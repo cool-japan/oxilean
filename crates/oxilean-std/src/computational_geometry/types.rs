@@ -332,19 +332,24 @@ pub struct ConvexHull2D {
 #[allow(dead_code)]
 impl ConvexHull2D {
     pub fn compute(points: Vec<(f64, f64)>) -> Self {
+        let n = points.len();
+        let Some(start) = (0..n).min_by(|&i, &j| {
+            points[i]
+                .0
+                .partial_cmp(&points[j].0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) else {
+            // No points: the empty hull, as one or two points below give a
+            // hull of all their indices.
+            return ConvexHull2D {
+                points,
+                hull: Vec::new(),
+            };
+        };
         if points.len() < 3 {
             let hull: Vec<usize> = (0..points.len()).collect();
             return ConvexHull2D { points, hull };
         }
-        let n = points.len();
-        let start = (0..n)
-            .min_by(|&i, &j| {
-                points[i]
-                    .0
-                    .partial_cmp(&points[j].0)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .expect("points is non-empty: checked by n < 3 guard");
         let mut hull = Vec::new();
         let mut current = start;
         loop {

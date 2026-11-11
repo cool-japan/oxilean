@@ -374,7 +374,7 @@ impl Polynomial {
         } else {
             let half = self.power(n / 2);
             let result = half.multiply(&half);
-            if n % 2 == 0 {
+            if n.is_multiple_of(2) {
                 result
             } else {
                 result.multiply(self)

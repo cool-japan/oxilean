@@ -46,7 +46,9 @@ use crate::instantiate::instantiate_type_lparams;
 use crate::level::{is_equivalent, is_geq, normalize as normalize_level};
 use crate::subst::instantiate;
 use crate::Node;
-use crate::{BinderInfo, Environment, Expr, FVarId, KernelError, Level, Name, TypeChecker};
+use crate::{
+    BinderInfo, Environment, Expr, FVarId, KernelError, Level, LevelView, Name, TypeChecker,
+};
 use std::rc::Rc;
 
 /// A single inductive type inside a (possibly mutual) family declaration.
@@ -81,7 +83,7 @@ impl InductiveSpec {
     fn effective_rec_name(&self) -> Name {
         self.rec_name
             .clone()
-            .unwrap_or_else(|| Name::Str(Box::new(self.name.clone()), "rec".to_string()))
+            .unwrap_or_else(|| Name::mk_str(self.name.clone(), "rec"))
     }
 }
 
@@ -259,7 +261,7 @@ fn close(binders: &[Binder], body: &Expr, lam: bool, bi_override: Option<BinderI
 // Small syntactic helpers.
 // ---------------------------------------------------------------------------
 
-fn has_const_occ(e: &Expr, names: &[Name]) -> bool {
+pub(crate) fn has_const_occ(e: &Expr, names: &[Name]) -> bool {
     match e {
         Expr::Const(n, _) => names.contains(n),
         Expr::BVar(_) | Expr::FVar(_) | Expr::Sort(_) | Expr::Lit(_) => false,
@@ -275,19 +277,19 @@ fn has_const_occ(e: &Expr, names: &[Name]) -> bool {
 }
 
 fn collect_level_param_names(l: &Level, out: &mut Vec<Name>) {
-    match l {
-        Level::Zero => {}
-        Level::Succ(a) => collect_level_param_names(a, out),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+    match l.view() {
+        LevelView::Zero => {}
+        LevelView::Succ(a) => collect_level_param_names(a, out),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_param_names(a, out);
             collect_level_param_names(b, out);
         }
-        Level::Param(n) => {
+        LevelView::Param(n) => {
             if !out.contains(n) {
                 out.push(n.clone());
             }
         }
-        Level::MVar(_) => {}
+        LevelView::MVar(_) => {}
     }
 }
 
@@ -1030,6 +1032,24 @@ fn derive_family_core(
 // Public entry points.
 // ---------------------------------------------------------------------------
 
+/// Every type a family is declared with — the inductive types and the
+/// constructor types — must be a closed term: no free variable, no loose
+/// bound variable (see `check::check_closed_term`). And none may be deeper
+/// than this thread's term-depth limit, where it has one (see
+/// `check::check_term_depth`).
+#[allow(clippy::result_large_err)]
+pub(crate) fn check_specs_closed(specs: &[InductiveSpec]) -> Result<(), KernelError> {
+    for spec in specs {
+        crate::check::check_term_depth(&spec.name, &spec.ty)?;
+        crate::check::check_closed_term(&spec.name, &spec.ty)?;
+        for (ctor_name, ctor_ty) in &spec.ctors {
+            crate::check::check_term_depth(ctor_name, ctor_ty)?;
+            crate::check::check_closed_term(ctor_name, ctor_ty)?;
+        }
+    }
+    Ok(())
+}
+
 #[allow(clippy::result_large_err)]
 fn check_distinct_ctor_names(specs: &[InductiveSpec]) -> Result<(), KernelError> {
     let mut seen: Vec<&Name> = Vec::new();
@@ -1064,6 +1084,7 @@ pub fn check_and_derive_family(
     specs: &[InductiveSpec],
 ) -> Result<DerivedFamily, KernelError> {
     check_distinct_ctor_names(specs)?;
+    check_specs_closed(specs)?;
     let family_names: Vec<Name> = specs.iter().map(|s| s.name.clone()).collect();
 
     // Stage the type constants so constructor types can mention them.
@@ -1434,7 +1455,7 @@ pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result
         } else if flat_style {
             Name::str(format!("{}.rec", tname))
         } else {
-            Name::Str(Box::new(tname.clone()), "rec".to_string())
+            Name::mk_str(tname.clone(), "rec")
         };
         specs.push(InductiveSpec {
             name: tname.clone(),
@@ -1461,7 +1482,11 @@ pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result
     )))
 }
 
-fn recursor_matches(tc: &mut TypeChecker<'_>, d: &RecursorVal, rv: &RecursorVal) -> bool {
+pub(crate) fn recursor_matches(
+    tc: &mut TypeChecker<'_>,
+    d: &RecursorVal,
+    rv: &RecursorVal,
+) -> bool {
     if d.common.level_params.len() != rv.common.level_params.len() {
         return false;
     }

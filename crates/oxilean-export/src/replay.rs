@@ -157,7 +157,9 @@ pub const NESTED_INDUCTIVES: &str = "nested inductives";
 
 /// The named feature reported when a declaration exceeded the deterministic
 /// per-declaration resource budget ([`Replayer::set_per_decl_fuel`], measured
-/// in kernel `Expr` nodes cloned — see `oxilean_kernel::fuel`).
+/// in units of kernel work — the subterms its term builders reach; see
+/// `oxilean_kernel::fuel`). The string is part of the report format and
+/// keeps the name the unit had when it counted cloned nodes.
 ///
 /// This is a **named unsupported** verdict, never a rejection: the kernel
 /// degrades conservatively when fuel runs out (stuck reduction, syntactic
@@ -165,6 +167,35 @@ pub const NESTED_INDUCTIVES: &str = "nested inductives";
 /// resources", not "this is not a proof". Deterministic: the same
 /// declaration with the same budget always lands in the same bucket.
 pub const RESOURCE_LIMIT: &str = "resource limit exceeded: per-declaration clone-fuel budget";
+
+/// Named unsupported feature: the kernel's reducer stopped a reduction at one
+/// of its own limits and the declaration then failed to check.
+///
+/// The reducer caps the NESTING depth of reduction (a stack guard) and the
+/// LENGTH of one head-reduction chain. A reduction cut short by either cap
+/// returns a term that is not a normal form, so a comparison that fails
+/// afterwards says nothing about the proof. A [`Replayer`] with a
+/// per-declaration budget repeats such a declaration with the chain cap
+/// lifted — the budget bounds the chain instead (see `oxilean_kernel::fuel`) —
+/// so under a budget only the nesting-depth guard leads here; with no budget
+/// the chain cap does too. Like [`RESOURCE_LIMIT`] this is a **named
+/// unsupported** verdict, never a rejection, and it is deterministic.
+pub const REDUCTION_LIMIT: &str = "resource limit exceeded: reduction depth or step limit";
+
+/// Named unsupported feature: a term of the declaration, or one built while
+/// checking it, is deeper than the checking thread allows
+/// (`oxilean_kernel::fuel::set_term_depth_limit`).
+///
+/// The kernel walks terms by recursion, so the deepest term it holds decides
+/// how much native stack it needs. Where that stack is small and cannot be
+/// enlarged — a WebAssembly build runs on its host's, about a megabyte in a
+/// browser — the kernel is given a limit on the depth of its terms (the
+/// WebAssembly build of `oxilean-verify` sets 512; the command-line tool
+/// sets none), and a declaration over it is not checked further. Like
+/// [`RESOURCE_LIMIT`] this is a **named unsupported** verdict, never a
+/// rejection, and it is deterministic: it depends on the terms, not on how
+/// much stack happened to be free.
+pub const TERM_DEPTH_LIMIT: &str = "resource limit exceeded: term depth";
 
 /// A stateful replayer: an initially **empty** kernel [`Environment`] plus the
 /// bookkeeping needed for honest three-bucket reporting:
@@ -184,8 +215,8 @@ pub struct Replayer {
     env: Environment,
     deferred: HashSet<Name>,
     rejected: HashSet<Name>,
-    /// Deterministic per-declaration resource budget, in kernel `Expr` nodes
-    /// cloned (`None` = unlimited). See [`RESOURCE_LIMIT`].
+    /// Deterministic per-declaration resource budget, in units of kernel work
+    /// (`None` = unlimited). See [`RESOURCE_LIMIT`].
     per_decl_fuel: Option<u64>,
     /// Wall-clock per-declaration deadline (`None` = none). Backstop for
     /// reduction/def-eq loops that make no metered progress; an expired
@@ -216,8 +247,9 @@ impl Replayer {
         })
     }
 
-    /// Set the deterministic per-declaration resource budget, in kernel
-    /// `Expr` nodes cloned (`None` = unlimited, the default).
+    /// Set the deterministic per-declaration resource budget, in units of
+    /// kernel work — the subterms the kernel's term builders reach, see
+    /// `oxilean_kernel::fuel` (`None` = unlimited, the default).
     ///
     /// When a declaration exhausts the budget the kernel degrades
     /// conservatively (stuck reduction, syntactic def-eq only — never a
@@ -248,17 +280,23 @@ impl Replayer {
         &self.env
     }
 
-    /// Replay one declaration.
-    pub fn replay(&mut self, decl: &ExportDecl) -> ReplayEntry {
+    /// Arm the per-declaration budgets for one attempt at a declaration:
+    /// fuel, deadline, cleared latches, the reducer's chain cap on.
+    fn arm_budgets(&self) {
         oxilean_kernel::fuel::set_budget(self.per_decl_fuel);
         oxilean_kernel::deadline::set_deadline(self.per_decl_time_budget);
+    }
+
+    /// Replay one declaration.
+    pub fn replay(&mut self, decl: &ExportDecl) -> ReplayEntry {
+        self.arm_budgets();
         let name = decl.primary_name();
         let kind = decl.kind_label();
         let outcome = match decl {
-            ExportDecl::Axiom(v) => self.check(ConstantInfo::Axiom(v.clone()), &name),
-            ExportDecl::Definition(v) => self.check(ConstantInfo::Definition(v.clone()), &name),
-            ExportDecl::Theorem(v) => self.check(ConstantInfo::Theorem(v.clone()), &name),
-            ExportDecl::Opaque(v) => self.check(ConstantInfo::Opaque(v.clone()), &name),
+            ExportDecl::Axiom(v) => self.check(|| ConstantInfo::Axiom(v.clone()), &name),
+            ExportDecl::Definition(v) => self.check(|| ConstantInfo::Definition(v.clone()), &name),
+            ExportDecl::Theorem(v) => self.check(|| ConstantInfo::Theorem(v.clone()), &name),
+            ExportDecl::Opaque(v) => self.check(|| ConstantInfo::Opaque(v.clone()), &name),
             ExportDecl::Quot(v) => {
                 let res = replay_quot_core(&mut self.env, v);
                 self.finish_group(std::slice::from_ref(&v.common.name), res)
@@ -288,16 +326,55 @@ impl Replayer {
     /// Run `check_constant_info` and map its result to a [`ReplayOutcome`],
     /// cascading deferrals/rejections for unknown constants whose declarations
     /// were themselves unsupported/rejected.
-    fn check(&mut self, ci: ConstantInfo, own_name: &Name) -> ReplayOutcome {
-        if let ConstantInfo::Axiom(av) = &ci {
+    ///
+    /// `make` builds the declaration to check; it is called once per attempt.
+    ///
+    /// A second attempt is made in exactly one situation: the first one
+    /// FAILED, the reducer's chain cap had fired during it, and the budget is
+    /// not spent. The cap cuts a head-reduction chain off after a fixed
+    /// number of steps, which is what lets definitional equality give up on a
+    /// reduction that is going nowhere — but the chain it cut may instead be
+    /// a long, cheap computation the proof depends on (a `decide` proof
+    /// iterating `Nat.rec` tens of thousands of times), and then the failure
+    /// says nothing about the proof. The second attempt runs under a fresh
+    /// budget with the cap lifted, so the budget alone bounds the chain. Its
+    /// result is the declaration's result: checked, a genuine rejection, or a
+    /// named resource limit. Nothing was added to the environment by the
+    /// failed first attempt, so the second starts from the same state.
+    fn check<F: Fn() -> ConstantInfo>(&mut self, make: F, own_name: &Name) -> ReplayOutcome {
+        let first_ci = make();
+        if let ConstantInfo::Axiom(av) = &first_ci {
             if let Some(reason) = validate_quot_sound_axiom(&self.env, av) {
                 self.rejected.insert(own_name.clone());
                 return ReplayOutcome::Rejected { reason };
             }
         }
-        match check_constant_info(&mut self.env, ci) {
+        let mut result = check_constant_info(&mut self.env, first_ci);
+        if let Err(e) = &result {
+            let cap_cut_a_chain = oxilean_kernel::fuel::reduction_limit_hit()
+                && !oxilean_kernel::fuel::is_exhausted()
+                && oxilean_kernel::fuel::is_metered();
+            if cap_cut_a_chain && !self.has_known_cause(e) {
+                self.arm_budgets();
+                oxilean_kernel::fuel::set_reduction_cap(false);
+                result = check_constant_info(&mut self.env, make());
+                oxilean_kernel::fuel::set_reduction_cap(true);
+            }
+        }
+        match result {
             Ok(()) => ReplayOutcome::Checked,
             Err(e) => self.map_failure(std::slice::from_ref(own_name), SeamFailure::Kernel(e)),
+        }
+    }
+
+    /// Whether a kernel error is already accounted for by an earlier
+    /// declaration: an unknown constant that was itself deferred or rejected.
+    fn has_known_cause(&self, e: &KernelError) -> bool {
+        match e {
+            KernelError::UnknownConstant(n) => {
+                self.deferred.contains(n) || self.rejected.contains(n)
+            }
+            _ => false,
         }
     }
 
@@ -311,6 +388,31 @@ impl Replayer {
     }
 
     fn map_failure(&mut self, own_names: &[Name], failure: SeamFailure) -> ReplayOutcome {
+        // A failure at a resource limit is a NAMED unsupported verdict, never
+        // a rejection. With the fuel budget or the deadline spent the kernel
+        // degraded conservatively (stuck reduction, syntactic def-eq only),
+        // so the error only means "this build refused to spend more resources
+        // on this declaration". The same holds when the reducer cut a
+        // reduction short at one of its own limits — the nesting depth, or
+        // the chain length where the check could not be repeated without
+        // that cap (no budget armed; see `Self::check`): the term it
+        // returned is not a normal form, so the comparison that failed
+        // afterwards is not a verdict either. Genuine kernel verdicts
+        // reached *before* a limit are unaffected (the latches only set when
+        // a limit is actually crossed), and the known-cause outcomes — a
+        // named unsupported feature, a dependency that was itself deferred
+        // or rejected — take precedence.
+        let known_cause = match &failure {
+            SeamFailure::Unsupported(_) => true,
+            SeamFailure::Kernel(e) => self.has_known_cause(e),
+            SeamFailure::Reason(_) => false,
+        };
+        if !known_cause {
+            if let Some(feature) = resource_limit_feature() {
+                self.defer_all(own_names);
+                return ReplayOutcome::Unsupported { feature };
+            }
+        }
         match failure {
             SeamFailure::Unsupported(feature) => {
                 self.defer_all(own_names);
@@ -326,22 +428,6 @@ impl Replayer {
                 self.reject_all(own_names);
                 ReplayOutcome::Rejected {
                     reason: format!("depends on rejected declaration '{n}'"),
-                }
-            }
-            // A failure with the resource budget exhausted is a NAMED
-            // unsupported verdict, never a rejection: the kernel degraded
-            // conservatively once fuel ran out (stuck reduction, syntactic
-            // def-eq only), so the error only means "this build refused to
-            // spend more resources on this declaration". Genuine kernel
-            // verdicts reached *before* exhaustion are unaffected (the flag
-            // only latches when the budget is actually crossed), and the
-            // known-cause cascades above take precedence.
-            SeamFailure::Kernel(_) | SeamFailure::Reason(_)
-                if oxilean_kernel::fuel::is_exhausted() =>
-            {
-                self.defer_all(own_names);
-                ReplayOutcome::Unsupported {
-                    feature: RESOURCE_LIMIT,
                 }
             }
             SeamFailure::Kernel(e) => {
@@ -415,6 +501,10 @@ pub fn replay_file(file: &ExportFile) -> ReplayReport {
 /// cascade — prefer [`Replayer`] for whole files).
 #[must_use]
 pub fn replay_decl(env: &mut Environment, decl: &ExportDecl) -> ReplayEntry {
+    // This entry point arms no budget of its own (the caller may have armed
+    // one), but a reduction-limit hit left over from an earlier declaration
+    // must not be read as this declaration's.
+    oxilean_kernel::fuel::clear_reduction_limit();
     let name = decl.primary_name();
     let kind = decl.kind_label();
     let outcome = match decl {
@@ -433,6 +523,25 @@ pub fn replay_decl(env: &mut Environment, decl: &ExportDecl) -> ReplayEntry {
     }
 }
 
+/// The named resource-limit feature that accounts for a failure, if the
+/// current declaration ran into one: [`TERM_DEPTH_LIMIT`] when a term was
+/// deeper than the thread allows (which also spends the budget, so it is
+/// asked first), [`RESOURCE_LIMIT`] when the fuel budget or the deadline is
+/// spent, [`REDUCTION_LIMIT`] when the reducer cut a reduction short at one
+/// of its own limits. A failure reached in any of these states is not a
+/// verdict on the proof.
+fn resource_limit_feature() -> Option<&'static str> {
+    if oxilean_kernel::fuel::term_depth_limit_hit() {
+        Some(TERM_DEPTH_LIMIT)
+    } else if oxilean_kernel::fuel::is_exhausted() {
+        Some(RESOURCE_LIMIT)
+    } else if oxilean_kernel::fuel::reduction_limit_hit() {
+        Some(REDUCTION_LIMIT)
+    } else {
+        None
+    }
+}
+
 /// Run `check_constant_info` and map its result to a [`ReplayOutcome`].
 fn check_one(env: &mut Environment, ci: ConstantInfo) -> ReplayOutcome {
     if let ConstantInfo::Axiom(av) = &ci {
@@ -442,8 +551,11 @@ fn check_one(env: &mut Environment, ci: ConstantInfo) -> ReplayOutcome {
     }
     match check_constant_info(env, ci) {
         Ok(()) => ReplayOutcome::Checked,
-        Err(e) => ReplayOutcome::Rejected {
-            reason: render_kernel_error(&e),
+        Err(e) => match resource_limit_feature() {
+            Some(feature) => ReplayOutcome::Unsupported { feature },
+            None => ReplayOutcome::Rejected {
+                reason: render_kernel_error(&e),
+            },
         },
     }
 }
@@ -611,18 +723,15 @@ fn validate_quot_sound_axiom(env: &Environment, av: &AxiomVal) -> Option<String>
 /// (`verify_recursor_val`) and a mismatch is a rejection, never a silent
 /// substitution.
 ///
-/// Nested inductives (either flagged by the exporter via `num_nested` or
-/// detected by the kernel's positivity check as
+/// Nested inductives (exporter-flagged `num_nested > 0`) are specialized into
+/// an auxiliary mutual family, derived, and their recursors restored over the
+/// real container; every exported recursor is then re-verified by def-eq
+/// (`verify_nested_bundle`). Shapes this stage cannot un-nest (and any nesting
+/// the kernel's positivity check surfaces as
 /// `KernelError::UnsupportedNestedInductive`) are reported as the named
 /// unsupported feature [`NESTED_INDUCTIVES`].
 #[allow(clippy::result_large_err)] // KernelError is large; replay is not a hot error path
 fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(), SeamFailure> {
-    // Named unsupported: nested inductives. The exporter flag gives the
-    // earliest classification; the kernel's positivity check independently
-    // catches unflagged nesting below (never a wrong accept).
-    if b.types.iter().any(|t| t.num_nested > 0) {
-        return Err(SeamFailure::Unsupported(NESTED_INDUCTIVES));
-    }
     let first = b
         .types
         .first()
@@ -660,6 +769,21 @@ fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(
             t.common.ty.clone(),
             ctors,
         ));
+    }
+    // Nested inductives (exporter-flagged `num_nested > 0`): specialize into an
+    // auxiliary mutual family, derive, restore the recursors over the real
+    // container, and require every EXPORTED recursor to def-eq the kernel's
+    // re-derivation (`verify_nested_bundle`). A shape this stage cannot un-nest
+    // surfaces as `UnsupportedNestedInductive` → the named unsupported feature.
+    if b.types.iter().any(|t| t.num_nested > 0) {
+        let family =
+            oxilean_kernel::verify_nested_bundle(env, &lparams, num_params, &specs, &b.recs)
+                .map_err(map_inductive_kernel_error)?;
+        for ci in family.into_constant_infos() {
+            env.add_constant(ci)
+                .map_err(|e| SeamFailure::Reason(e.to_string()))?;
+        }
+        return Ok(());
     }
     // Atomicity pre-check: fully check + derive the family against the current
     // environment WITHOUT modifying it. A bundle that fails here installs
@@ -723,22 +847,35 @@ pub struct ReplayLimits {
     /// outcome unchanged.
     pub per_decl_time_budget: Option<Duration>,
     /// Optional **hard, deterministic** per-declaration resource budget, in
-    /// kernel `Expr` nodes cloned (see [`Replayer::set_per_decl_fuel`] and
+    /// units of kernel work (see [`Replayer::set_per_decl_fuel`] and
     /// [`RESOURCE_LIMIT`]). `None` = unlimited.
     pub per_decl_fuel: Option<u64>,
 }
 
-/// The default per-declaration clone-fuel budget for untrusted input
-/// (`ReplayLimits::default()`): 2^24 ≈ 16.8M cloned nodes, empirically
-/// ≲ 1 GiB of peak term memory.
+/// The default per-declaration budget for untrusted input
+/// (`ReplayLimits::default()`): 2^24 ≈ 16.8M units of kernel work (see
+/// `oxilean_kernel::fuel`) — about half a second on a 2023 laptop core.
+///
+/// A unit is a subterm one of the kernel's term builders reaches; every
+/// node the kernel allocates is charged one, so a declaration can have at
+/// most this many nodes of its own live at once (72 bytes each: 1.2 GiB,
+/// and what the caches' tables add), and in practice a small part of that —
+/// most units are subterms shared, not allocated.
+///
+/// Calibration (2026-11-11): the heaviest declaration of Lean core `Init`,
+/// the `omega` certificate `Array.extract_append._proof_1_1`, takes 6.7M
+/// units, and no declaration of `Init` or of the Mathlib slice takes more
+/// than half this budget.
 pub const DEFAULT_DECL_FUEL: u64 = 1 << 24;
 
-/// The per-declaration clone-fuel budget of the corpus preset
-/// ([`ReplayLimits::corpus`]): 2^26 ≈ 67M cloned nodes. Calibrated against
-/// the heaviest known Lean-core declaration (`Int.add_mul_ediv_right`,
-/// ~26M nodes / ~0.9 GiB peak after the iterative-whnf work) with ~2.5×
-/// headroom; a runaway declaration is cut off around a few GiB instead of
-/// exhausting the machine.
+/// The per-declaration budget of the corpus preset
+/// ([`ReplayLimits::corpus`]): 2^26 ≈ 67M units of kernel work — about two
+/// seconds on a 2023 laptop core, ten times the heaviest declaration of
+/// Lean core `Init` (see [`DEFAULT_DECL_FUEL`]). A declaration that runs
+/// through all of it is cut off with at most 67M nodes of its own
+/// (4.8 GiB at 72 bytes each); the ones observed doing so
+/// (a `List.foldl` over 200,000 elements evaluated by the kernel) peaked
+/// at 0.5 GiB.
 pub const CORPUS_DECL_FUEL: u64 = 1 << 26;
 
 impl Default for ReplayLimits {
@@ -838,7 +975,7 @@ pub fn replay_streaming<R: BufRead>(reader: R, limits: ReplayLimits) -> ExportRe
         let is_new_max = stats
             .max_decl_time
             .as_ref()
-            .map_or(true, |(_, best)| elapsed > *best);
+            .is_none_or(|(_, best)| elapsed > *best);
         if is_new_max {
             stats.max_decl_time = Some((entry.name.clone(), elapsed));
         }
@@ -881,15 +1018,26 @@ pub mod wave3b {
     };
 
     /// Map a stateless seam result onto an outcome (no cascade: an
-    /// `UnknownConstant` failure is a plain rejection here).
+    /// `UnknownConstant` failure is a plain rejection here). A failure
+    /// reached at a resource limit is a named unsupported verdict, as in
+    /// the stateful replayer.
     fn stateless_outcome(res: Result<(), SeamFailure>) -> ReplayOutcome {
-        match res {
-            Ok(()) => ReplayOutcome::Checked,
-            Err(SeamFailure::Unsupported(feature)) => ReplayOutcome::Unsupported { feature },
-            Err(SeamFailure::Kernel(e)) => ReplayOutcome::Rejected {
+        let failure = match res {
+            Ok(()) => return ReplayOutcome::Checked,
+            Err(SeamFailure::Unsupported(feature)) => {
+                return ReplayOutcome::Unsupported { feature }
+            }
+            Err(failure) => failure,
+        };
+        if let Some(feature) = super::resource_limit_feature() {
+            return ReplayOutcome::Unsupported { feature };
+        }
+        match failure {
+            SeamFailure::Unsupported(feature) => ReplayOutcome::Unsupported { feature },
+            SeamFailure::Kernel(e) => ReplayOutcome::Rejected {
                 reason: super::render_kernel_error(&e),
             },
-            Err(SeamFailure::Reason(reason)) => ReplayOutcome::Rejected { reason },
+            SeamFailure::Reason(reason) => ReplayOutcome::Rejected { reason },
         }
     }
 
@@ -898,6 +1046,7 @@ pub mod wave3b {
     /// the installed canonical primitive. See the module docs.
     #[must_use]
     pub fn replay_quot(env: &mut Environment, decl: &ExportDecl) -> ReplayOutcome {
+        oxilean_kernel::fuel::clear_reduction_limit();
         match decl {
             ExportDecl::Quot(qv) => stateless_outcome(replay_quot_core(env, qv)),
             other => ReplayOutcome::Rejected {
@@ -914,6 +1063,7 @@ pub mod wave3b {
     /// recursors. See the module docs.
     #[must_use]
     pub fn replay_inductive(env: &mut Environment, decl: &ExportDecl) -> ReplayOutcome {
+        oxilean_kernel::fuel::clear_reduction_limit();
         match decl {
             ExportDecl::Inductive(b) => stateless_outcome(replay_inductive_core(env, b)),
             other => ReplayOutcome::Rejected {

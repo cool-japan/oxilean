@@ -128,7 +128,7 @@ impl BatchTransformer {
     /// queued expressions, returning the results and clearing the queue.
     pub fn batch_substitute(&mut self, depth: usize, replacement: &Expr) -> Vec<Expr> {
         let rep_hash = ExprHash::of(replacement);
-        let exprs: Vec<Expr> = self.transform_queue.drain(..).collect();
+        let exprs: Vec<Expr> = std::mem::take(&mut self.transform_queue);
         exprs
             .into_iter()
             .map(|e| {
@@ -144,7 +144,7 @@ impl BatchTransformer {
     /// Beta-reduce all queued expressions (top-level only), returning results
     /// and clearing the queue.
     pub fn batch_beta_reduce(&mut self) -> Vec<Expr> {
-        let exprs: Vec<Expr> = self.transform_queue.drain(..).collect();
+        let exprs: Vec<Expr> = std::mem::take(&mut self.transform_queue);
         exprs
             .into_iter()
             .map(|e| {
@@ -156,7 +156,7 @@ impl BatchTransformer {
     }
     /// Drain the queue, returning the expressions unchanged.
     pub fn flush(&mut self) -> Vec<Expr> {
-        self.transform_queue.drain(..).collect()
+        std::mem::take(&mut self.transform_queue)
     }
 }
 #[allow(dead_code)]

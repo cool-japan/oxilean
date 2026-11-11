@@ -1,11 +1,11 @@
 # oxilean-elab — TODO
 
 > Task list for the elaborator crate.
-> Last updated: 2026-05-29
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
-- [x] Module structure (466 files, ~92,415 SLOC total)
+- [x] Module structure (514 files, ~103,291 SLOC total)
 - [x] `MetaVarId` type (u64 wrapper with derive traits)
 - [x] Re-exports in `lib.rs`
 
@@ -329,3 +329,9 @@ None. All previously tracked issues have been resolved as of 2026-03-09.
   - **Design:** After the syntactic cycle check in `try_cycle_from`, add Strategy 2: if `acc_lhs` and `acc_rhs` are both `Expr::Lit(Literal::Int(_))` and arithmetic contradiction holds, build `not_lemma acc_lhs acc_rhs (Eq.refl.{1} Bool Bool.false) acc_proof` and kernel-gate. Added `mk_app4`, `extract_int_lit`, `mk_bool_false_rfl` helpers. Also fixed a kernel naming inconsistency: `bool_result` in `reduce/functions.rs` now returns flat `Name::str("Bool.false")` (matching builtin env registration) instead of hierarchical `Name::str("Bool").append_str("false")`.
   - **Files:** `crates/oxilean-elab/src/tactic/proof_recon/farkas.rs`, `crates/oxilean-std/src/omega_helper/mod.rs`, `crates/oxilean-kernel/src/reduce/functions.rs`.
   - **Tests:** 3 new tests: Le chain (0 ≤ x ≤ -1 → contradiction), all-Le (2 ≤ x ≤ 1 → contradiction), Lt+Le (1 < x ≤ 0 → contradiction). All assert Some + non-sorry + kernel-verifies.
+
+## v0.1.4 (released 2026-11-12)
+
+- Hygiene pass (commit 930c328): `.unwrap()` / `.expect()` outside tests 29 -> 5 in this crate; no public signature changed
+- Unsound path closed: `context::validate_locals` kept a transmuted `&str` of a per-iteration `String` as a `HashMap` key (use-after-free under Miri; a plain test printed garbage names); it now keys by `String`, pinned by `context/functions/name_count_tests.rs`, red on the previous sources. The elab coercion-cache cast is also gone (one `unsafe` site fewer)
+- MSRV 1.89 clippy suggestions applied (commit 3c75335)

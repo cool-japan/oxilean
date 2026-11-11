@@ -737,6 +737,227 @@ fn iota_whnf_major_premise() {
     assert_eq!(whnf(&env, &rec_app), nat_lit(102));
 }
 
+/// A PARTIAL application of a recursor exposed by head reduction is one
+/// application with the outer arguments. `pred : Nat → Nat := Nat.rec 0
+/// (fun n _ => n)` has a value short of its major premise; in `pred 5` the
+/// major is `pred`'s own argument. Before the fix the exposed `Nat.rec …`
+/// was stepped on its own, found stuck, and `pred 5` came back unreduced —
+/// a valid `pred (Nat.succ n) = n := rfl` was rejected. (The recursor form
+/// of the quotient case pinned in `quotient_reduction.rs`, section (h).)
+#[test]
+fn partial_recursor_behind_a_constant_reduces_with_the_outer_major() {
+    let mut env = builtin_env();
+    let u = Level::succ(Level::zero());
+    // `@Nat.rec (fun _ => Nat) 0 (fun n _ => n)` — three arguments, no major.
+    let partial = app(
+        Expr::Const(Name::str("Nat.rec"), vec![u]),
+        &[
+            const_nat_motive(nat()),
+            nat_lit(0),
+            lam("n", nat(), lam("ih", nat(), Expr::BVar(1))),
+        ],
+    );
+    check_constant_info(
+        &mut env,
+        ConstantInfo::Definition(DefinitionVal {
+            common: ConstantVal {
+                name: Name::str("pred"),
+                level_params: vec![],
+                ty: pi(BinderInfo::Default, "_", nat(), nat()),
+            },
+            value: partial,
+            hints: ReducibilityHint::Regular(1),
+            safety: DefinitionSafety::Safe,
+            all: vec![Name::str("pred")],
+        }),
+    )
+    .expect("pred must typecheck");
+    check_constant_info(
+        &mut env,
+        ConstantInfo::Axiom(AxiomVal {
+            common: ConstantVal {
+                name: Name::str("k"),
+                level_params: vec![],
+                ty: nat(),
+            },
+            is_unsafe: false,
+        }),
+    )
+    .expect("k must typecheck");
+
+    assert_eq!(whnf(&env, &app(cnst("pred"), &[nat_lit(5)])), nat_lit(4));
+    assert_eq!(whnf(&env, &app(cnst("pred"), &[nat_lit(0)])), nat_lit(0));
+    // A symbolic major: `pred (Nat.succ k) ≡ k` for an opaque `k`.
+    let pred_succ_k = app(cnst("pred"), &[app(cnst("Nat.succ"), &[cnst("k")])]);
+    assert_eq!(whnf(&env, &pred_succ_k), cnst("k"));
+    let mut tc = TypeChecker::new(&env);
+    assert!(
+        tc.is_def_eq(&pred_succ_k, &cnst("k")),
+        "pred (Nat.succ k) ≡ k on the def-eq path"
+    );
+    // A major that is not a constructor leaves the recursor stuck, with the
+    // outer argument kept: `pred k` is `Nat.rec … k`.
+    let stuck = whnf(&env, &app(cnst("pred"), &[cnst("k")]));
+    assert_eq!(
+        stuck,
+        app(
+            Expr::Const(Name::str("Nat.rec"), vec![Level::succ(Level::zero())]),
+            &[
+                const_nat_motive(nat()),
+                nat_lit(0),
+                lam("n", nat(), lam("ih", nat(), Expr::BVar(1))),
+                cnst("k"),
+            ],
+        )
+    );
+}
+
+/// `Nat.rec true (fun _ b => b) n : Bool` — the step returns its induction
+/// hypothesis unchanged, so reducing it is ONE head-reduction chain (iota,
+/// then beta, per iteration) over a term that never grows.
+fn ih_chain(n: u64) -> Expr {
+    app(
+        Expr::Const(Name::str("Nat.rec"), vec![Level::succ(Level::zero())]),
+        &[
+            lam("_", nat(), cnst("Bool")),
+            cnst("Bool.true"),
+            lam("n", nat(), lam("ih", cnst("Bool"), Expr::BVar(0))),
+            nat_lit(n),
+        ],
+    )
+}
+
+/// The reducer's chain cap is on by default, budget or not: a chain several
+/// times longer than the cap (10,000 steps) stops short of its normal form,
+/// and the truncation is RECORDED, so that a caller reports the failure
+/// that follows as a resource limit — or repeats the check — and never as
+/// a rejection. Before the fix the truncation left no trace, and a valid
+/// `decide` proof over such a chain was REJECTED.
+#[test]
+fn long_reduction_chain_is_capped_and_recorded_by_default() {
+    use oxilean_kernel::{deadline, fuel};
+
+    let env = builtin_env();
+    for budget in [None, Some(1 << 24)] {
+        fuel::set_budget(budget);
+        deadline::set_deadline(None);
+
+        // Under the cap: a normal form, nothing recorded.
+        assert_eq!(whnf(&env, &ih_chain(1_000)), cnst("Bool.true"));
+        assert!(!fuel::reduction_limit_hit(), "budget {budget:?}");
+
+        // Over the cap: the reducer stops short of the normal form and says so.
+        let truncated = whnf(&env, &ih_chain(20_000));
+        let limit_hit = fuel::reduction_limit_hit();
+        let exhausted = fuel::is_exhausted();
+        fuel::set_budget(None);
+        assert_ne!(truncated, cnst("Bool.true"), "budget {budget:?}");
+        assert!(
+            limit_hit,
+            "budget {budget:?}: the truncation must be recorded"
+        );
+        assert!(!exhausted, "budget {budget:?}: the record degrades nothing");
+
+        // What it returned is a partial reduct — still definitionally the
+        // same term, so nothing unsound was produced: finishing the job with
+        // the cap lifted gives `true`.
+        fuel::set_budget(Some(1 << 24));
+        fuel::set_reduction_cap(false);
+        let finished = whnf(&env, &truncated);
+        fuel::set_budget(None);
+        assert_eq!(finished, cnst("Bool.true"), "budget {budget:?}");
+    }
+}
+
+/// With the cap lifted under a budget, the BUDGET bounds the chain: it runs
+/// to its normal form, well within the budget, and nothing is recorded.
+/// This is the second attempt a replayer makes after a capped check failed.
+#[test]
+fn long_reduction_chain_runs_to_the_end_with_the_cap_lifted_under_a_budget() {
+    use oxilean_kernel::fuel;
+
+    let env = builtin_env();
+    fuel::set_budget(Some(1 << 24));
+    fuel::set_reduction_cap(false);
+    let reduced = whnf(&env, &ih_chain(20_000));
+    let exhausted = fuel::is_exhausted();
+    let limit_hit = fuel::reduction_limit_hit();
+    fuel::set_budget(None);
+
+    assert_eq!(reduced, cnst("Bool.true"), "the chain must run to `true`");
+    assert!(!exhausted, "the chain is far below the budget");
+    assert!(!limit_hit, "no reducer limit applies to it");
+}
+
+/// Lifting the cap is honoured only under a budget: with none armed nothing
+/// else would stop a runaway chain, so the cap still applies.
+#[test]
+fn chain_cap_cannot_be_lifted_without_a_budget() {
+    use oxilean_kernel::{deadline, fuel};
+
+    let env = builtin_env();
+    fuel::set_budget(None);
+    deadline::set_deadline(None);
+    fuel::set_reduction_cap(false);
+    let truncated = whnf(&env, &ih_chain(20_000));
+    let limit_hit = fuel::reduction_limit_hit();
+    fuel::set_budget(None);
+
+    assert_ne!(truncated, cnst("Bool.true"));
+    assert!(limit_hit);
+}
+
+/// The nesting-depth guard (a stack guard, applied whether or not the chain
+/// cap is lifted) records the truncation as well.
+#[test]
+fn nesting_depth_guard_records_the_truncation() {
+    use oxilean_kernel::fuel;
+
+    let env = builtin_env();
+    // `pred (pred (… (pred 40) …))`, 40 deep, with `pred` written as a
+    // recursor application: reducing each level needs the WHNF of its major
+    // premise, one nested reduction per level.
+    let pred = |major: Expr| {
+        app(
+            Expr::Const(Name::str("Nat.rec"), vec![Level::succ(Level::zero())]),
+            &[
+                const_nat_motive(nat()),
+                nat_lit(0),
+                lam("n", nat(), lam("ih", nat(), Expr::BVar(1))),
+                major,
+            ],
+        )
+    };
+    let mut term = nat_lit(40);
+    for _ in 0..40 {
+        term = pred(term);
+    }
+
+    // Deep enough: `40 - 40 = 0`, nothing recorded.
+    fuel::set_budget(Some(1 << 24));
+    let full = Reducer::with_max_depth(1_000).whnf_env(&term, &env);
+    let limit_hit = fuel::reduction_limit_hit();
+    fuel::set_budget(None);
+    assert_eq!(full, nat_lit(0));
+    assert!(!limit_hit);
+
+    // Too shallow: the innermost majors are never reduced, the result is not
+    // a literal, and the truncation is recorded — with the chain cap on or
+    // lifted.
+    for cap in [true, false] {
+        fuel::set_budget(Some(1 << 24));
+        fuel::set_reduction_cap(cap);
+        let shallow = Reducer::with_max_depth(8).whnf_env(&term, &env);
+        let limit_hit = fuel::reduction_limit_hit();
+        fuel::set_budget(None);
+        assert_ne!(shallow, nat_lit(0), "chain cap {cap}");
+        assert!(
+            limit_hit,
+            "chain cap {cap}: the depth guard must be recorded"
+        );
+    }
+}
+
 /// K-like reduction (pins C7): `Eq.rec` reduces both on a literal
 /// `Eq.refl` major premise and on a *stuck* proof term (an axiom) whose
 /// type is a definitionally-refl equation.
@@ -856,6 +1077,104 @@ fn k_reduction_does_not_fire_on_non_refl_type() {
         result,
         cnst("mval"),
         "0 = 1 is not definitionally refl; the term must stay stuck"
+    );
+}
+
+/// The K guard compares the major premise's type with the canonical
+/// constructor's type in a NESTED checker seeded with the surrounding
+/// checker's locals. A binder that nested comparison opens must get a free
+/// variable distinct from every seeded local, or the two are confused.
+///
+/// Here `c` is the first binder the outer def-eq opens, and the hypothesis is
+/// `h : (fun y => g c y) = (fun y => g y c)` — endpoints that are NOT
+/// definitionally equal. If the nested def-eq opens `y` with `c`'s id, both
+/// bodies become `g c c`, the guard passes, K fires on a variable `h`, and
+/// `Eq.rec m h` wrongly reduces to `m`: a wrong ACCEPT of
+/// `(fun c h m => Eq.rec m h) ≡ (fun c h m => m)`, which Lean's kernel
+/// rejects.
+#[test]
+fn k_guard_does_not_confuse_an_outer_local_with_a_nested_binder() {
+    let mut env = builtin_env();
+    let one = Level::succ(Level::zero());
+    for (name, ty) in [
+        ("A", Expr::Sort(one.clone())),
+        (
+            "g",
+            pi(
+                BinderInfo::Default,
+                "_",
+                cnst("A"),
+                pi(BinderInfo::Default, "_", cnst("A"), cnst("A")),
+            ),
+        ),
+    ] {
+        check_constant_info(
+            &mut env,
+            ConstantInfo::Axiom(AxiomVal {
+                common: ConstantVal {
+                    name: Name::str(name),
+                    level_params: vec![],
+                    ty,
+                },
+                is_unsafe: false,
+            }),
+        )
+        .expect("axiom must typecheck");
+    }
+    let a_to_a = || pi(BinderInfo::Default, "_", cnst("A"), cnst("A"));
+    let eq = |lhs: Expr, rhs: Expr| {
+        app(
+            Expr::Const(Name::str("Eq"), vec![one.clone()]),
+            &[a_to_a(), lhs, rhs],
+        )
+    };
+    // `fun y => g c y` and `fun y => g y c`, with `c` the bound variable
+    // `c_idx` OUTSIDE the lambda (so `c_idx + 1` inside it).
+    let lhs = |c_idx: u32| {
+        lam(
+            "y",
+            cnst("A"),
+            app(cnst("g"), &[Expr::BVar(c_idx + 1), Expr::BVar(0)]),
+        )
+    };
+    let rhs = |c_idx: u32| {
+        lam(
+            "y",
+            cnst("A"),
+            app(cnst("g"), &[Expr::BVar(0), Expr::BVar(c_idx + 1)]),
+        )
+    };
+    // Under `c h m`: c = #2, h = #1, m = #0. The motive is constant:
+    // `fun (b : A → A) (_ : lhs = b) => Nat` (under `b`, c = #3).
+    let motive = lam("b", a_to_a(), lam("t", eq(lhs(3), Expr::BVar(0)), nat()));
+    let eq_rec = app(
+        Expr::Const(Name::str("Eq.rec"), vec![one.clone(), one.clone()]),
+        &[
+            a_to_a(),
+            lhs(2),
+            motive,
+            Expr::BVar(0),
+            rhs(2),
+            Expr::BVar(1),
+        ],
+    );
+    let under_c_h_m = |body: Expr| {
+        lam(
+            "c",
+            cnst("A"),
+            lam("h", eq(lhs(0), rhs(0)), lam("m", nat(), body)),
+        )
+    };
+    let transported = under_c_h_m(eq_rec);
+    let plain = under_c_h_m(Expr::BVar(0));
+
+    let mut tc = TypeChecker::new(&env);
+    tc.infer_type(&transported)
+        .expect("the transported term must typecheck");
+    assert!(
+        !tc.is_def_eq(&transported, &plain),
+        "`Eq.rec m h` with `h : (fun y => g c y) = (fun y => g y c)` is stuck: \
+         the endpoints are not definitionally equal, so K must not fire"
     );
 }
 
@@ -1002,8 +1321,8 @@ fn mutual_tree_forest() {
         .expect("mutual Tree/Forest must be accepted");
 
     // Family metadata mirrors the fixture: 2 motives, 4 minors, per-type rules.
-    let tree_rec_name = Name::Str(Box::new(tree.clone()), "rec".to_string());
-    let forest_rec_name = Name::Str(Box::new(forest.clone()), "rec".to_string());
+    let tree_rec_name = Name::mk_str(tree.clone(), "rec".to_string());
+    let forest_rec_name = Name::mk_str(forest.clone(), "rec".to_string());
     let trec = env
         .get_recursor_val(&tree_rec_name)
         .expect("Tree.rec")

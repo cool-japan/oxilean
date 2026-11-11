@@ -3,6 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::rc::Rc;
 
 /// A clock that measures elapsed time in a loop.
 #[allow(dead_code)]
@@ -174,26 +175,29 @@ impl<V: Clone> NameTrie<V> {
     }
     /// Insert a name-value pair into the trie.
     pub fn insert(&mut self, name: &Name, value: V) {
-        match name {
-            Name::Anonymous => {
+        match name.view() {
+            NameView::Anonymous => {
                 self.value = Some(value);
             }
-            Name::Str(parent, s) => {
-                let child = if let Some(idx) = self.string_children.iter().position(|(k, _)| k == s)
+            NameView::Str(parent, s) => {
+                let child = if let Some(idx) = self
+                    .string_children
+                    .iter()
+                    .position(|(k, _)| k.as_str() == s)
                 {
                     &mut self.string_children[idx].1
                 } else {
-                    self.string_children.push((s.clone(), NameTrie::new()));
+                    self.string_children.push((s.to_string(), NameTrie::new()));
                     let last = self.string_children.len() - 1;
                     &mut self.string_children[last].1
                 };
                 child.insert(parent, value);
             }
-            Name::Num(parent, n) => {
-                let child = if let Some(idx) = self.num_children.iter().position(|(k, _)| k == n) {
+            NameView::Num(parent, n) => {
+                let child = if let Some(idx) = self.num_children.iter().position(|(k, _)| *k == n) {
                     &mut self.num_children[idx].1
                 } else {
-                    self.num_children.push((*n, NameTrie::new()));
+                    self.num_children.push((n, NameTrie::new()));
                     let last = self.num_children.len() - 1;
                     &mut self.num_children[last].1
                 };
@@ -203,21 +207,21 @@ impl<V: Clone> NameTrie<V> {
     }
     /// Look up a name in the trie.
     pub fn lookup(&self, name: &Name) -> Option<&V> {
-        match name {
-            Name::Anonymous => self.value.as_ref(),
-            Name::Str(parent, s) => {
+        match name.view() {
+            NameView::Anonymous => self.value.as_ref(),
+            NameView::Str(parent, s) => {
                 let child = self
                     .string_children
                     .iter()
-                    .find(|(k, _)| k == s)
+                    .find(|(k, _)| k.as_str() == s)
                     .map(|(_, v)| v)?;
                 child.lookup(parent)
             }
-            Name::Num(parent, n) => {
+            NameView::Num(parent, n) => {
                 let child = self
                     .num_children
                     .iter()
-                    .find(|(k, _)| k == n)
+                    .find(|(k, _)| *k == n)
                     .map(|(_, v)| v)?;
                 child.lookup(parent)
             }
@@ -237,7 +241,7 @@ impl<V: Clone> NameTrie<V> {
     /// Collect all (name, value) pairs in the trie.
     pub fn to_vec(&self) -> Vec<(Name, V)> {
         let mut result = Vec::new();
-        self.collect_all(Name::Anonymous, &mut result);
+        self.collect_all(Name::anonymous(), &mut result);
         result
     }
     fn collect_all(&self, prefix: Name, result: &mut Vec<(Name, V)>) {
@@ -704,35 +708,165 @@ impl<A: std::hash::Hash + Eq + Clone, B: std::hash::Hash + Eq + Clone> BiMap<A, 
 }
 /// A hierarchical name.
 ///
-/// Names are used to identify constants, inductives, and other declarations.
-/// They form a tree structure: `Nat.add.comm` is represented as
-/// `Str(Str(Str(Anonymous, "Nat"), "add"), "comm")`.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
-pub enum Name {
+/// Names identify constants, inductives, and other declarations. They form a
+/// tree: `Nat.add.comm` is `Str(Str(Str(Anonymous, "Nat"), "add"), "comm")`.
+///
+/// Structural sharing (wave5 Stage F): `Name` is a newtype over a
+/// reference-counted cell holding its outermost component (`NameKind`), so
+/// cloning a whole name — e.g. the name held by every `Const` referencing a
+/// constant — is an O(1) refcount bump, not a deep copy of the component chain.
+/// The parent link inside `NameKind` is itself a `Name`, so a name shares its
+/// entire prefix with any longer name built on it: at Mathlib scale (millions of
+/// recurring names and prefixes) residency is proportional to the number of
+/// *distinct* names, not to how many times each is referenced.
+///
+/// Each name also stores a hash of its own structure, computed when it is
+/// built from its parent's stored hash and its last component (see the
+/// kernel-private `structural_hash` module) — so an `Expr` that mentions a
+/// name (a `Const`, a binder, a projection) folds it into its own hash in O(1), without
+/// walking the component chain.
+///
+/// Equality is exactly structural: the same allocation is equal, different
+/// stored hashes are different (equal names always hash equal), and otherwise
+/// the components are compared. `Hash` writes the components as it always did
+/// (not the stored hash), so a `HashMap<Name, _>` behaves as before.
+///
+/// Match on the outermost component through [`Name::view`]: a
+/// `match name.view() { NameView::Str(parent, s) => .. }` reads like the former
+/// `match name { Name::Str(parent, s) => .. }`.
+#[derive(Clone)]
+pub struct Name(Rc<NameCell>);
+
+/// The shared allocation behind a [`Name`]: its component kind, and the hash
+/// of its structure.
+///
+/// Invariant: `hash` is the structural hash of `kind`, set where the cell is
+/// built ([`Name::anonymous`], [`Name::mk_str`], [`Name::mk_num`]) and never
+/// changed — a `Name` gives no mutable access to its cell.
+struct NameCell {
+    hash: u64,
+    kind: NameKind,
+}
+
+impl PartialEq for Name {
+    #[inline]
+    fn eq(&self, other: &Name) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+            || (self.0.hash == other.0.hash && self.0.kind == other.0.kind)
+    }
+}
+impl Eq for Name {}
+impl std::hash::Hash for Name {
+    /// Writes the component chain, exactly as the derived implementation did
+    /// when `Name` wrapped the component kind directly.
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.kind.hash(state);
+    }
+}
+impl std::fmt::Debug for Name {
+    /// Formats as `Name(<kind>)` — the output of the derived implementation
+    /// when `Name` wrapped the component kind directly. Code that hashes or
+    /// orders terms by their `Debug` text depends on this spelling.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Name").field(&self.0.kind).finish()
+    }
+}
+impl Default for Name {
+    /// The anonymous name.
+    fn default() -> Self {
+        Name::anonymous()
+    }
+}
+
+/// The component kind behind a [`Name`]. Private: construct through [`Name`]'s
+/// constructors and inspect through [`Name::view`] and the accessor methods.
+#[derive(PartialEq, Eq, Hash, Debug, Default)]
+enum NameKind {
     /// The anonymous (root) name.
     #[default]
     Anonymous,
     /// A string component: parent name + string.
-    Str(Box<Name>, String),
+    Str(Name, String),
     /// A numeric component: parent name + number.
-    Num(Box<Name>, u64),
+    Num(Name, u64),
 }
+
+/// A borrowed view of a [`Name`]'s outermost component, for pattern matching.
+///
+/// Obtained from [`Name::view`]; mirrors the former public `Name` enum shape.
+pub enum NameView<'a> {
+    /// The anonymous (root) name.
+    Anonymous,
+    /// A string component: parent name + string.
+    Str(&'a Name, &'a str),
+    /// A numeric component: parent name + number.
+    Num(&'a Name, u64),
+}
+
 impl Name {
+    /// Borrow this name's outermost component for matching. O(1).
+    #[inline]
+    pub fn view(&self) -> NameView<'_> {
+        match &self.0.kind {
+            NameKind::Anonymous => NameView::Anonymous,
+            NameKind::Str(parent, s) => NameView::Str(parent, s.as_str()),
+            NameKind::Num(parent, n) => NameView::Num(parent, *n),
+        }
+    }
+    /// The hash of this name's structure, stored when the name was built.
+    /// O(1). Equal names have equal hashes; see [`crate::structural_hash`].
+    #[inline]
+    #[must_use]
+    pub(crate) fn structural_hash(&self) -> u64 {
+        self.0.hash
+    }
+    /// The anonymous (root) name.
+    #[inline]
+    pub fn anonymous() -> Name {
+        Name(Rc::new(NameCell {
+            hash: crate::structural_hash::NAME_ANONYMOUS,
+            kind: NameKind::Anonymous,
+        }))
+    }
+    /// Construct `parent.s` (string component). O(1) in the length of the
+    /// name — shares `parent` and reads its stored hash.
+    #[inline]
+    pub fn mk_str(parent: Name, s: impl Into<String>) -> Name {
+        use crate::structural_hash::{mix, mix_bytes, NAME_STR};
+        let s: String = s.into();
+        let hash = mix_bytes(mix(NAME_STR, parent.0.hash), s.as_bytes());
+        Name(Rc::new(NameCell {
+            hash,
+            kind: NameKind::Str(parent, s),
+        }))
+    }
+    /// Construct `parent.n` (numeric component). O(1) — shares `parent` and
+    /// reads its stored hash.
+    #[inline]
+    pub fn mk_num(parent: Name, n: u64) -> Name {
+        use crate::structural_hash::{mix, NAME_NUM};
+        let hash = mix(mix(NAME_NUM, parent.0.hash), n);
+        Name(Rc::new(NameCell {
+            hash,
+            kind: NameKind::Num(parent, n),
+        }))
+    }
     /// Create a simple string name (no parent).
     pub fn str(s: impl Into<String>) -> Self {
-        Name::Str(Box::new(Name::Anonymous), s.into())
+        Name::mk_str(Name::anonymous(), s)
     }
     /// Append a string component to this name.
     pub fn append_str(self, s: impl Into<String>) -> Self {
-        Name::Str(Box::new(self), s.into())
+        Name::mk_str(self, s)
     }
     /// Append a numeric component to this name.
     pub fn append_num(self, n: u64) -> Self {
-        Name::Num(Box::new(self), n)
+        Name::mk_num(self, n)
     }
     /// Check if this is the anonymous name.
     pub fn is_anonymous(&self) -> bool {
-        matches!(self, Name::Anonymous)
+        matches!(&self.0.kind, NameKind::Anonymous)
     }
     /// Create a `Name` from a dot-separated string.
     ///
@@ -742,7 +876,7 @@ impl Name {
     pub fn from_str(s: &str) -> Self {
         let mut parts = s.split('.');
         let first = match parts.next() {
-            None | Some("") => return Name::Anonymous,
+            None | Some("") => return Name::anonymous(),
             Some(f) => f,
         };
         let mut name = Name::str(first);
@@ -763,50 +897,50 @@ impl Name {
     /// `Anonymous` has depth 0, `Name::str("Nat")` has depth 1,
     /// `Name::str("Nat").append_str("add")` has depth 2.
     pub fn depth(&self) -> usize {
-        match self {
-            Name::Anonymous => 0,
-            Name::Str(parent, _) | Name::Num(parent, _) => 1 + parent.depth(),
+        match &self.0.kind {
+            NameKind::Anonymous => 0,
+            NameKind::Str(parent, _) | NameKind::Num(parent, _) => 1 + parent.depth(),
         }
     }
     /// Return the last string component of this name, if any.
     ///
     /// For `Nat.add`, returns `Some("add")`.
     pub fn last_str(&self) -> Option<&str> {
-        match self {
-            Name::Anonymous => None,
-            Name::Str(_, s) => Some(s.as_str()),
-            Name::Num(parent, _) => parent.last_str(),
+        match &self.0.kind {
+            NameKind::Anonymous => None,
+            NameKind::Str(_, s) => Some(s.as_str()),
+            NameKind::Num(parent, _) => parent.last_str(),
         }
     }
     /// Return the last numeric component, if any.
     pub fn last_num(&self) -> Option<u64> {
-        match self {
-            Name::Num(_, n) => Some(*n),
-            Name::Str(parent, _) => parent.last_num(),
-            Name::Anonymous => None,
+        match &self.0.kind {
+            NameKind::Num(_, n) => Some(*n),
+            NameKind::Str(parent, _) => parent.last_num(),
+            NameKind::Anonymous => None,
         }
     }
     /// Return the root (top-level) component as a string.
     ///
     /// For `Nat.add.comm`, returns `"Nat"`.
     pub fn root(&self) -> Option<&str> {
-        match self {
-            Name::Anonymous => None,
-            Name::Str(parent, s) => {
+        match &self.0.kind {
+            NameKind::Anonymous => None,
+            NameKind::Str(parent, s) => {
                 if parent.is_anonymous() {
                     Some(s.as_str())
                 } else {
                     parent.root()
                 }
             }
-            Name::Num(parent, _) => parent.root(),
+            NameKind::Num(parent, _) => parent.root(),
         }
     }
     /// Return the parent name (prefix with last component removed).
     pub fn prefix(&self) -> Name {
-        match self {
-            Name::Anonymous => Name::Anonymous,
-            Name::Str(parent, _) | Name::Num(parent, _) => *parent.clone(),
+        match &self.0.kind {
+            NameKind::Anonymous => Name::anonymous(),
+            NameKind::Str(parent, _) | NameKind::Num(parent, _) => parent.clone(),
         }
     }
     /// Check whether this name has `prefix` as a (strict) prefix.
@@ -816,17 +950,16 @@ impl Name {
         if self == prefix {
             return false;
         }
-        let mut current = self;
+        let mut current = self.clone();
         loop {
-            match current {
-                Name::Anonymous => return false,
-                Name::Str(parent, _) | Name::Num(parent, _) => {
-                    if parent.as_ref() == prefix {
-                        return true;
-                    }
-                    current = parent;
-                }
+            let parent = match &current.0.kind {
+                NameKind::Anonymous => return false,
+                NameKind::Str(parent, _) | NameKind::Num(parent, _) => parent.clone(),
+            };
+            if &parent == prefix {
+                return true;
             }
+            current = parent;
         }
     }
     /// Collect all components from root to leaf.
@@ -834,19 +967,20 @@ impl Name {
     /// Returns a vector of `(is_num, string_or_num)` pairs.
     pub fn components(&self) -> Vec<String> {
         let mut comps = Vec::new();
-        let mut current = self;
+        let mut current = self.clone();
         loop {
-            match current {
-                Name::Anonymous => break,
-                Name::Str(parent, s) => {
+            let parent = match &current.0.kind {
+                NameKind::Anonymous => break,
+                NameKind::Str(parent, s) => {
                     comps.push(s.clone());
-                    current = parent;
+                    parent.clone()
                 }
-                Name::Num(parent, n) => {
+                NameKind::Num(parent, n) => {
                     comps.push(n.to_string());
-                    current = parent;
+                    parent.clone()
                 }
-            }
+            };
+            current = parent;
         }
         comps.reverse();
         comps
@@ -855,7 +989,7 @@ impl Name {
     ///
     /// Numeric strings are converted to `Num` components.
     pub fn from_components(comps: &[String]) -> Self {
-        let mut name = Name::Anonymous;
+        let mut name = Name::anonymous();
         for comp in comps {
             if let Ok(n) = comp.parse::<u64>() {
                 name = name.append_num(n);
@@ -869,10 +1003,11 @@ impl Name {
     ///
     /// If the name ends in a numeric component, appends `new_last` instead.
     pub fn replace_last(self, new_last: impl Into<String>) -> Self {
-        match self {
-            Name::Anonymous => Name::str(new_last),
-            Name::Str(parent, _) => Name::Str(parent, new_last.into()),
-            Name::Num(parent, _) => Name::Str(parent, new_last.into()),
+        match &self.0.kind {
+            NameKind::Anonymous => Name::str(new_last),
+            NameKind::Str(parent, _) | NameKind::Num(parent, _) => {
+                Name::mk_str(parent.clone(), new_last)
+            }
         }
     }
     /// Produce a "fresh" version of this name by appending a suffix number.
@@ -921,11 +1056,11 @@ impl Name {
     }
     /// Check whether this name is a string name (last component is a string).
     pub fn is_str_name(&self) -> bool {
-        matches!(self, Name::Str(_, _))
+        matches!(&self.0.kind, NameKind::Str(_, _))
     }
     /// Check whether this name is a numeric name (last component is a number).
     pub fn is_num_name(&self) -> bool {
-        matches!(self, Name::Num(_, _))
+        matches!(&self.0.kind, NameKind::Num(_, _))
     }
 }
 /// A bidirectional mapping between names and numeric IDs.
@@ -1016,7 +1151,7 @@ pub struct SparseBitSet {
 impl SparseBitSet {
     /// Creates a new bit set that can hold at least `capacity` bits.
     pub fn new(capacity: usize) -> Self {
-        let words = (capacity + 63) / 64;
+        let words = capacity.div_ceil(64);
         Self {
             words: vec![0u64; words],
         }
@@ -1379,33 +1514,68 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> SimpleLruCache<K, V> {
     }
     /// Inserts or updates a key-value pair.
     pub fn put(&mut self, key: K, val: V) {
+        // `keys`, `vals` and `order` keep one length, with `order` holding
+        // each slot index once (most recently used first) and the length at
+        // most `capacity`, also when a call unwinds out of user code (`Clone`,
+        // `Hash` or `Eq` of `K`, the drop of a `K` or a `V`): `new` starts
+        // them empty, and every change below to a length or to `order` is a
+        // step that runs no user code and cannot fail, with its branch's user
+        // code (and the `reserve`s, which may panic) before the first such
+        // step or after the last. Every index in `map` is a slot index.
         if let Some(&idx) = self.map.get(&key) {
+            // `map.get` ran `Hash` / `Eq` before any change. The old value's
+            // drop runs in this assignment and changes no length.
             self.vals[idx] = val;
+            // `idx` is in `order` once, so `retain` removes one index and
+            // `insert` puts it back without growing the buffer.
             self.order.retain(|&x| x != idx);
             self.order.insert(0, idx);
             return;
         }
-        if self.keys.len() >= self.capacity {
-            let evict_idx = *self
-                .order
-                .last()
-                .expect("order list must be non-empty before eviction");
-            self.map.remove(&self.keys[evict_idx]);
-            self.order.pop();
-            self.keys[evict_idx] = key.clone();
-            self.vals[evict_idx] = val;
-            self.map.insert(key, evict_idx);
-            self.order.insert(0, evict_idx);
-        } else {
-            let idx = self.keys.len();
-            self.keys.push(key.clone());
-            self.vals.push(val);
-            self.map.insert(key, idx);
-            self.order.insert(0, idx);
+        match self.order.last() {
+            // A full cache has `order.len() == keys.len() >= capacity > 0`
+            // (`new` asserts `capacity > 0`), so its least recently used slot
+            // is `order.last()`.
+            Some(&evict_idx) if self.keys.len() >= self.capacity => {
+                // The user code that comes before any change: the clone that
+                // goes into the map, and `Hash` / `Eq` in removing the evicted
+                // key from the map (a panic there leaves the map as it was).
+                // The removed key is held and dropped at the end.
+                let map_key = key.clone();
+                let removed = self.map.remove_entry(&self.keys[evict_idx]);
+                // Moves that run no user code: the slot takes the new key and
+                // value, and `rotate_right` takes the evicted index from the
+                // back of `order` to the front. No length changes.
+                let old_key = std::mem::replace(&mut self.keys[evict_idx], key);
+                let old_val = std::mem::replace(&mut self.vals[evict_idx], val);
+                self.order.rotate_right(1);
+                // The user code that comes after: `Hash` / `Eq` in the map's
+                // insertion, then the drops of the evicted key and value.
+                self.map.insert(map_key, evict_idx);
+                drop((removed, old_key, old_val));
+            }
+            // Not full: a new slot. (With the lengths equal, `order` is never
+            // empty while `keys.len() >= capacity`.)
+            _ => {
+                let map_key = key.clone();
+                let idx = self.keys.len();
+                // Reserving first, the three appends below allocate nothing
+                // and cannot fail, so the lists grow together; `Hash` / `Eq`
+                // in the map's insertion run after them.
+                self.keys.reserve(1);
+                self.vals.reserve(1);
+                self.order.reserve(1);
+                self.keys.push(key);
+                self.vals.push(val);
+                self.order.insert(0, idx);
+                self.map.insert(map_key, idx);
+            }
         }
     }
     /// Returns a reference to the value for `key`, promoting it.
     pub fn get(&mut self, key: &K) -> Option<&V> {
+        // `map.get` runs `Hash` / `Eq` before any change; `idx` is in `order`
+        // once (see `put`), so `retain` and `insert` change no length.
         let idx = *self.map.get(key)?;
         self.order.retain(|&x| x != idx);
         self.order.insert(0, idx);
@@ -1450,12 +1620,7 @@ impl<T> Slot<T> {
     }
     /// Fills the slot if empty, returning a reference to the value.
     pub fn get_or_fill_with(&mut self, f: impl FnOnce() -> T) -> &T {
-        if self.inner.is_none() {
-            self.inner = Some(f());
-        }
-        self.inner
-            .as_ref()
-            .expect("inner value must be initialized before access")
+        self.inner.get_or_insert_with(f)
     }
 }
 /// Generates fresh unique names.
@@ -1650,12 +1815,7 @@ impl<T: Clone> MemoSlot<T> {
     }
     /// Returns the cached value, computing it with `f` if absent.
     pub fn get_or_compute(&mut self, f: impl FnOnce() -> T) -> &T {
-        if self.cached.is_none() {
-            self.cached = Some(f());
-        }
-        self.cached
-            .as_ref()
-            .expect("cached value must be initialized before access")
+        self.cached.get_or_insert_with(f)
     }
     /// Invalidates the cached value.
     pub fn invalidate(&mut self) {

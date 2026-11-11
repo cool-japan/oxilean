@@ -1,9 +1,12 @@
 //! Auto-generated module structure
 
+mod cache;
 pub mod flatsubstitution_traits;
 pub mod focusstack_traits;
 pub mod functions;
 pub mod labelset_traits;
+#[cfg(test)]
+mod local_scope_tests;
 pub mod pathbuf_traits;
 pub mod rewriteruleset_traits;
 pub mod smallmap_traits;

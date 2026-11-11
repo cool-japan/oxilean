@@ -885,12 +885,12 @@ pub fn miller_rabin(n: u64, witnesses: &[u64]) -> bool {
     if n == 2 || n == 3 {
         return true;
     }
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         return false;
     }
     let mut d = n - 1;
     let mut r = 0u32;
-    while d % 2 == 0 {
+    while d.is_multiple_of(2) {
         d /= 2;
         r += 1;
     }

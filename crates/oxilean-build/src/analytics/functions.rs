@@ -131,10 +131,9 @@ fn dfs_finish(adj: &[Vec<usize>], start: usize, visited: &mut [bool], order: &mu
         let node = *node;
         let i = *idx;
         if i < adj[node].len() {
-            // Safety: stack is guaranteed non-empty here (inside while let Some on stack.last_mut())
-            *stack
-                .last_mut()
-                .expect("stack is non-empty inside while let Some loop") = (node, i + 1);
+            // Advance the cursor of the frame on top of the stack, the one
+            // `last_mut` just returned.
+            *idx = i + 1;
             let next = adj[node][i];
             if !visited[next] {
                 visited[next] = true;

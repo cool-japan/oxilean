@@ -120,10 +120,7 @@ impl<'a> SearchEngine<'a> {
             Ok(g) => g,
             Err(_) => return None,
         };
-        let target = match ctx.get_mvar_type(goal) {
-            Some(t) => ctx.instantiate_mvars(t),
-            None => return None,
-        };
+        let target = ctx.instantiate_mvars(ctx.get_mvar_type(goal)?);
         let candidate_expr = &candidate.expr;
         let arity = candidate.estimated_subgoals;
         let arg_types = candidate

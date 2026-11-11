@@ -517,7 +517,7 @@ pub fn fib_fast_doubling(n: u64) -> (u128, u128) {
     let (a, b) = fib_fast_doubling(n / 2);
     let c = a.wrapping_mul(b.wrapping_mul(2).wrapping_sub(a));
     let d = a * a + b * b;
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         (c, d)
     } else {
         (d, c.wrapping_add(d))
@@ -576,7 +576,7 @@ pub fn stirling1_row(n: usize) -> Vec<i128> {
         .iter()
         .enumerate()
         .map(|(k, &v)| {
-            if (n + k) % 2 == 0 {
+            if (n + k).is_multiple_of(2) {
                 v as i128
             } else {
                 -(v as i128)
@@ -607,16 +607,19 @@ pub fn bell_numbers(max_n: usize) -> Vec<u128> {
         return vec![1];
     }
     let mut row: Vec<u128> = vec![1];
+    // The last entry of `row`, which starts the next row of the triangle.
+    let mut row_last = 1u128;
     let mut bells = vec![1u128];
     for _ in 1..=max_n {
-        let mut next = vec![0u128; row.len() + 1];
-        next[0] = *row
-            .last()
-            .expect("row is non-empty: initialized with one element");
-        for j in 1..=row.len() {
-            next[j] = next[j - 1] + row[j - 1];
+        let mut next = Vec::with_capacity(row.len() + 1);
+        let mut acc = row_last;
+        next.push(acc);
+        bells.push(acc);
+        for &r in &row {
+            acc += r;
+            next.push(acc);
         }
-        bells.push(next[0]);
+        row_last = acc;
         row = next;
     }
     bells
@@ -1222,8 +1225,8 @@ pub fn euler_phi(n: u64) -> u64 {
     let mut m = n;
     let mut p = 2u64;
     while p * p <= m {
-        if m % p == 0 {
-            while m % p == 0 {
+        if m.is_multiple_of(p) {
+            while m.is_multiple_of(p) {
                 m /= p;
             }
             result -= result / p;
@@ -1567,7 +1570,7 @@ pub fn chromatic_cycle_graph(n: u64, k: i64) -> i64 {
     }
     let k1 = k - 1;
     let pow_pos = k1.pow(n as u32);
-    let sign = if n % 2 == 0 { 1i64 } else { -1i64 };
+    let sign = if n.is_multiple_of(2) { 1i64 } else { -1i64 };
     pow_pos + sign * k1
 }
 /// Chromatic polynomial of a tree T_n (n vertices): k * (k-1)^{n-1}.
@@ -1749,3 +1752,5 @@ mod tests_combinatorics_extended {
         assert_eq!(sunflower_threshold(2, 3), 8);
     }
 }
+#[cfg(test)]
+mod bell_tests;

@@ -417,8 +417,9 @@ impl Lexer {
             if self.peek() == Some('e') || self.peek() == Some('E') {
                 frac_str.push('e');
                 self.advance();
-                if self.peek() == Some('+') || self.peek() == Some('-') {
-                    frac_str.push(self.advance().expect("peek confirmed '+' or '-' exists"));
+                if let Some(sign @ ('+' | '-')) = self.peek() {
+                    self.advance();
+                    frac_str.push(sign);
                 }
                 while let Some(ch) = self.peek() {
                     if ch.is_ascii_digit() {
@@ -440,8 +441,9 @@ impl Lexer {
             exp_str.push_str(&int_str);
             exp_str.push('e');
             self.advance();
-            if self.peek() == Some('+') || self.peek() == Some('-') {
-                exp_str.push(self.advance().expect("peek confirmed '+' or '-' exists"));
+            if let Some(sign @ ('+' | '-')) = self.peek() {
+                self.advance();
+                exp_str.push(sign);
             }
             while let Some(ch) = self.peek() {
                 if ch.is_ascii_digit() {
@@ -1415,3 +1417,6 @@ impl LineMap {
         self.line_starts.len()
     }
 }
+
+#[cfg(test)]
+mod exponent_tests;

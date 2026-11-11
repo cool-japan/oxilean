@@ -499,11 +499,11 @@ pub fn hp_energy(sequence: &[HPResidue], moves: &[LatticeMove]) -> i32 {
         return 0;
     }
     let mut positions: Vec<(i32, i32)> = Vec::with_capacity(sequence.len());
-    positions.push((0, 0));
+    // `current` is always the most recently pushed position.
+    let mut current = (0, 0);
+    positions.push(current);
     for &mv in moves {
-        let (x, y) = *positions
-            .last()
-            .expect("positions is non-empty: initialized with one element");
+        let (x, y) = current;
         let next = match mv {
             LatticeMove::Up => (x, y + 1),
             LatticeMove::Down => (x, y - 1),
@@ -511,6 +511,7 @@ pub fn hp_energy(sequence: &[HPResidue], moves: &[LatticeMove]) -> i32 {
             LatticeMove::Right => (x + 1, y),
         };
         positions.push(next);
+        current = next;
     }
     let mut energy = 0i32;
     let n = positions.len();
@@ -1298,3 +1299,5 @@ mod extended_bio_tests {
         assert!(cpg.viterbi_description().contains("Viterbi"));
     }
 }
+#[cfg(test)]
+mod hp_energy_tests;

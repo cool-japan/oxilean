@@ -1,11 +1,11 @@
 # oxilean-codegen — TODO
 
 > Task list for the code generation crate.
-> Last updated: 2026-05-03
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
-**Status**: COMPLETE — ~243,915 SLOC implemented across 1,074 source files
+**Status**: COMPLETE — ~248,329 SLOC implemented across 1,226 source files
 
 ### Code Generation Backends
 - [x] Rust code generation
@@ -35,7 +35,7 @@
 
 ## 🐛 Known Issues
 
-None reported. All tests passing.
+None reported.
 
 ---
 
@@ -61,3 +61,9 @@ None reported. All tests passing.
   - **Prerequisites:** oxilean-doc crate (Ring 0) — implement after doc-gen exists
   - **Tests:** Golden DocIR for a fixture module
   - **Risk:** CompiledModule AST may not preserve doc comments — needs to be plumbed through from parse stage
+
+## v0.1.4 (released 2026-11-12)
+
+- [x] Hygiene pass (commit 930c328): `.unwrap()` / `.expect()` outside tests 35 -> 4. The native back end's linear-scan allocator now holds (interval, register) pairs, and the Ruby and EVM emitters build their constants and text by construction. The commit names Tarjan's stack pops among the calls deliberately left.
+- [x] MSRV 1.89 clippy suggestions applied.
+- [x] New tests cover the register allocator, Tarjan's SCC (`opt_inline`), topological ordering (`opt_passes`), Prolog quoting and Ruby emission.

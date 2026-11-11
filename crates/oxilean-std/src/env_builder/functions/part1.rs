@@ -952,12 +952,12 @@ pub fn lam_ext(name: &str, dom: Expr, body: Expr) -> Expr {
 /// Build `Sort(Level::Param("u"))` — a polymorphic sort.
 #[allow(dead_code)]
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 /// Build `Sort(Level::Param("v"))`.
 #[allow(dead_code)]
 pub fn sort_v() -> Expr {
-    Expr::Sort(Level::Param(Name::str("v")))
+    Expr::Sort(Level::param(Name::str("v")))
 }
 /// Build a chain of non-dependent pi-types: A₁ → A₂ → … → ret.
 #[allow(dead_code)]
@@ -967,7 +967,7 @@ pub fn pi_chain(domains: Vec<Expr>, ret: Expr) -> Expr {
 /// Build a `Const` with one universe parameter `u`.
 #[allow(dead_code)]
 pub fn var_u(name: &str) -> Expr {
-    Expr::Const(Name::str(name), vec![Level::Param(Name::str("u"))])
+    Expr::Const(Name::str(name), vec![Level::param(Name::str("u"))])
 }
 /// Add propositional logic connectives (True, False, And, Or, Not, Iff, And.intro, etc.)
 #[allow(dead_code)]

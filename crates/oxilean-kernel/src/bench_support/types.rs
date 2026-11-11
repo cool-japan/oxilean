@@ -572,22 +572,14 @@ impl ThroughputTracker {
     }
     /// Returns the estimated throughput in items per second.
     pub fn items_per_sec(&self) -> f64 {
-        if self.events.len() < 2 {
+        // `next` and `next_back` both yield an instant exactly when the window
+        // holds at least two events; with fewer there is no interval.
+        let mut instants = self.events.iter().map(|(t, _)| *t);
+        let (Some(first), Some(last)) = (instants.next(), instants.next_back()) else {
             return 0.0;
-        }
+        };
         let total_items: u64 = self.events.iter().map(|(_, c)| c).sum();
-        let duration = self
-            .events
-            .back()
-            .expect("events non-empty: checked len >= 2 above")
-            .0
-            .duration_since(
-                self.events
-                    .front()
-                    .expect("events non-empty: checked len >= 2 above")
-                    .0,
-            )
-            .as_secs_f64();
+        let duration = last.duration_since(first).as_secs_f64();
         if duration < f64::EPSILON {
             return 0.0;
         }
@@ -1744,3 +1736,5 @@ impl BenchFilter {
         !self.excludes.iter().any(|p| name.contains(p.as_str()))
     }
 }
+#[cfg(test)]
+mod throughput_tests;

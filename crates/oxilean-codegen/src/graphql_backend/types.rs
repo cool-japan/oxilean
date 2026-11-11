@@ -1555,7 +1555,7 @@ impl GQLMockDataGenerator {
                 format!("{:.2}", (self.seed as f64) * 0.1)
             }
             GQLType::Scalar(s) if s == "Boolean" => {
-                if self.seed % 2 == 0 {
+                if self.seed.is_multiple_of(2) {
                     "true".to_string()
                 } else {
                     "false".to_string()

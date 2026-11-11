@@ -12,7 +12,7 @@ fn dcs_ext_finset_membership(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let dec_of = |p: Expr| -> Expr { app(cst("Decidable"), p) };
@@ -131,7 +131,7 @@ fn dcs_ext_witness_extraction(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -241,7 +241,7 @@ fn dcs_ext_predicates_membership(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -341,7 +341,7 @@ pub fn register_decidable_extended_axioms(env: &mut oxilean_kernel::Environment)
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let _app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };

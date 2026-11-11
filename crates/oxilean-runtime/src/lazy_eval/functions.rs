@@ -861,3 +861,5 @@ mod extra_lazy_tests {
         assert_eq!(cell.get(), Some(&99));
     }
 }
+#[cfg(test)]
+mod thunkvec_state_tests;

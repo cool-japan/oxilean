@@ -15,7 +15,7 @@
 use std::fmt;
 use std::fmt::Write as FmtWrite;
 
-use crate::{BinderInfo, ConstantInfo, Expr, Level, Name};
+use crate::{BinderInfo, ConstantInfo, Expr, Level, LevelView, Name};
 
 // ── Indentation style ─────────────────────────────────────────────────────────
 
@@ -363,9 +363,9 @@ impl PrettyPrinter {
     }
 
     fn write_level(&self, buf: &mut String, level: &Level) -> fmt::Result {
-        match level {
-            Level::Zero => write!(buf, "0"),
-            Level::Succ(inner) => {
+        match level.view() {
+            LevelView::Zero => write!(buf, "0"),
+            LevelView::Succ(inner) => {
                 if let Some(n) = level_to_nat(level) {
                     write!(buf, "{}", n)
                 } else {
@@ -374,22 +374,22 @@ impl PrettyPrinter {
                     write!(buf, ")")
                 }
             }
-            Level::Max(a, b) => {
+            LevelView::Max(a, b) => {
                 write!(buf, "max(")?;
                 self.write_level(buf, a)?;
                 write!(buf, ", ")?;
                 self.write_level(buf, b)?;
                 write!(buf, ")")
             }
-            Level::IMax(a, b) => {
+            LevelView::IMax(a, b) => {
                 write!(buf, "imax(")?;
                 self.write_level(buf, a)?;
                 write!(buf, ", ")?;
                 self.write_level(buf, b)?;
                 write!(buf, ")")
             }
-            Level::Param(name) => self.write_name(buf, name),
-            Level::MVar(id) => write!(buf, "?u{}", id.0),
+            LevelView::Param(name) => self.write_name(buf, name),
+            LevelView::MVar(id) => write!(buf, "?u{}", id.0),
         }
     }
 
@@ -690,9 +690,9 @@ pub(super) fn collect_app(expr: &Expr) -> (&Expr, Vec<&Expr>) {
 
 /// Convert a universe level to a natural number, if it is a concrete numeral.
 pub(super) fn level_to_nat(level: &Level) -> Option<u32> {
-    match level {
-        Level::Zero => Some(0),
-        Level::Succ(inner) => level_to_nat(inner).map(|n| n + 1),
+    match level.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(inner) => level_to_nat(inner).map(|n| n + 1),
         _ => None,
     }
 }

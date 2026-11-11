@@ -54,7 +54,7 @@ pub fn von_mangoldt_function(n: u64) -> f64 {
     }
     let p = smallest_prime_factor(n);
     let mut m = n;
-    while m % p == 0 {
+    while m.is_multiple_of(p) {
         m /= p;
     }
     if m == 1 {
@@ -80,8 +80,8 @@ pub fn euler_totient(n: u64) -> u64 {
     let mut m = n;
     let mut p = 2u64;
     while p * p <= m {
-        if m % p == 0 {
-            while m % p == 0 {
+        if m.is_multiple_of(p) {
+            while m.is_multiple_of(p) {
                 m /= p;
             }
             result -= result / p;
@@ -107,10 +107,10 @@ pub fn mobius_function(n: u64) -> i32 {
     let mut factor_count = 0i32;
     let mut p = 2u64;
     while p * p <= m {
-        if m % p == 0 {
+        if m.is_multiple_of(p) {
             factor_count += 1;
             m /= p;
-            if m % p == 0 {
+            if m.is_multiple_of(p) {
                 return 0;
             }
         }
@@ -135,7 +135,7 @@ pub fn liouville_function(n: u64) -> i32 {
     let mut omega = 0u32;
     let mut p = 2u64;
     while p * p <= m {
-        while m % p == 0 {
+        while m.is_multiple_of(p) {
             omega += 1;
             m /= p;
         }
@@ -144,7 +144,7 @@ pub fn liouville_function(n: u64) -> i32 {
     if m > 1 {
         omega += 1;
     }
-    if omega % 2 == 0 {
+    if omega.is_multiple_of(2) {
         1
     } else {
         -1
@@ -155,7 +155,10 @@ pub fn divisor_sigma(n: u64, k: u32) -> u64 {
     if n == 0 {
         return 0;
     }
-    (1..=n).filter(|&d| n % d == 0).map(|d| d.pow(k)).sum()
+    (1..=n)
+        .filter(|&d| n.is_multiple_of(d))
+        .map(|d| d.pow(k))
+        .sum()
 }
 /// Returns the statement of the Mobius inversion theorem.
 pub fn mobius_inversion_theorem() -> &'static str {
@@ -186,7 +189,7 @@ pub fn gcd(a: u64, b: u64) -> u64 {
 pub fn smallest_prime_factor(n: u64) -> u64 {
     let mut p = 2u64;
     while p * p <= n {
-        if n % p == 0 {
+        if n.is_multiple_of(p) {
             return p;
         }
         p += 1;
@@ -844,8 +847,8 @@ pub fn euler_totient_f64(q: u64) -> f64 {
     let mut n = q;
     let mut p = 2u64;
     while p * p <= n {
-        if n % p == 0 {
-            while n % p == 0 {
+        if n.is_multiple_of(p) {
+            while n.is_multiple_of(p) {
                 n /= p;
             }
             result *= 1.0 - 1.0 / (p as f64);

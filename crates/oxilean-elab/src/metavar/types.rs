@@ -960,18 +960,13 @@ impl MetaEqClass {
     }
     /// Find the representative of a meta's class (with path compression).
     pub fn find(&mut self, id: u64) -> u64 {
-        self.add(id);
-        // Safety: self.add(id) guarantees the key exists in self.parent
-        let parent = *self
-            .parent
-            .get(&id)
-            .expect("id was just added via self.add");
+        self.rank.entry(id).or_insert(0);
+        let parent = *self.parent.entry(id).or_insert(id);
         if parent == id {
             id
         } else {
             let root = self.find(parent);
-            // Safety: self.add(id) guarantees the key exists
-            *self.parent.get_mut(&id).expect("id was added via self.add") = root;
+            self.parent.insert(id, root);
             root
         }
     }
@@ -984,14 +979,15 @@ impl MetaEqClass {
         }
         let rank_a = *self.rank.get(&ra).unwrap_or(&0);
         let rank_b = *self.rank.get(&rb).unwrap_or(&0);
-        // Safety: find() calls add() which guarantees keys exist in self.parent
+        // `find` has entered both roots in `parent` and `rank`, so each
+        // `insert` and `entry` below updates an existing entry.
         if rank_a < rank_b {
-            *self.parent.get_mut(&ra).expect("ra was added via find") = rb;
+            self.parent.insert(ra, rb);
         } else if rank_a > rank_b {
-            *self.parent.get_mut(&rb).expect("rb was added via find") = ra;
+            self.parent.insert(rb, ra);
         } else {
-            *self.parent.get_mut(&rb).expect("rb was added via find") = ra;
-            *self.rank.get_mut(&ra).expect("ra was added via find") += 1;
+            self.parent.insert(rb, ra);
+            *self.rank.entry(ra).or_insert(0) += 1;
         }
     }
     /// Whether two metas are in the same equivalence class.
@@ -1008,3 +1004,5 @@ impl MetaEqClass {
         roots.len()
     }
 }
+#[cfg(test)]
+mod union_find_tests;

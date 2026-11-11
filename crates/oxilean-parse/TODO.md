@@ -1,7 +1,7 @@
 # oxilean-parse — TODO
 
 > Task list for the parser crate.
-> Last updated: 2026-05-03
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
@@ -159,7 +159,7 @@
 
 - [x] Indentation tracking for `where` blocks
 - [x] Guard expressions in match arms (elaborated via `ite` desugaring in `elaborate.rs`)
-- [x] `parse_file()` top-level wrapper (implemented in `lib.rs:589`)
+- [x] `parse_file()` top-level wrapper (implemented in `core_types/functions.rs` and `parse_types.rs`)
 - [x] Round-trip tests: parse → pretty-print → parse = same AST
 - [x] Golden file tests: `.oxilean` files with expected AST output
 
@@ -177,7 +177,7 @@
 
 ## 📝 Note
 
-The original stub files (`token.rs`, `lexer.rs`, `ast.rs`, `parser.rs`, `error.rs`) remain as empty compatibility shims. All real implementations are in the `_impl` suffixed files and additional modules (`tactic_parser.rs`, `command_parser.rs`, `pattern_compiler.rs`, `macro_parser.rs`, `notation.rs`, `module.rs`, `pretty_printer.rs`, `source_map.rs`, `repl_parser.rs`).
+The primary implementations live in the `_impl` modules (`tokens`, `lexer`, `ast_impl`, `parser_impl`, `error_impl`) and in `tactic_parser`, `command`, `pattern`, `macro_parser`, `notation_system`, `module`, `prettyprint`, `sourcemap` and `repl_parser`. The older modules `token`, `ast`, `parser` and `error` remain as a parallel layer (re-exported as `OldSurfaceExpr` / `OldParseError`).
 
 ## v0.1.3 LSP Incremental Improvements
 
@@ -202,3 +202,9 @@ The original stub files (`token.rs`, `lexer.rs`, `ast.rs`, `parser.rs`, `error.r
   - **Files:** `crates/oxilean-parse/src/incremental/` (new ast_diff module + mod.rs re-export).
   - **Tests:** identical → all Unchanged; single insert/delete/modify → exactly that edit; reorder handled; property test: applying the edit script transforms old decl-seq into new.
   - **Risk:** fingerprint must NOT hash spans (span-independent). Full recursive Expr-subtree diff stays deferred.
+
+## v0.1.4 (released 2026-11-12)
+
+- Hygiene pass (commit 930c328): `.unwrap()` / `.expect()` outside tests 28 -> 1 in this crate, no public signature changed; each closure is covered by a new test (34 files touched, e.g. `lexer/types/exponent_tests.rs`, `prettyprint/functions/wrapper_tests.rs`, `incremental/ast_diff/merge_tests.rs`)
+- MSRV 1.89 clippy suggestions applied (commit 3c75335)
+- Known observation left as is: `Parser::parse_calc` cannot pass its first step (listed in the commit 930c328 message)

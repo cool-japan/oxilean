@@ -7,6 +7,7 @@ pub mod inductiveenv_traits;
 pub mod inductiveerror_traits;
 pub mod inductivetypebuilder_traits;
 pub mod labelset_traits;
+pub mod nested;
 pub mod smallmap_traits;
 pub mod statsummary_traits;
 pub mod transformstat_traits;
@@ -24,6 +25,10 @@ pub use inductiveenv_traits::*;
 pub use inductiveerror_traits::*;
 pub use inductivetypebuilder_traits::*;
 pub use labelset_traits::*;
+pub use nested::{
+    check_and_derive_family_nested, detect as detect_nested, restore as restore_nested,
+    specialize as specialize_nested, verify_nested_bundle, AuxMap, ExpandedFamily, NestedOcc,
+};
 pub use smallmap_traits::*;
 pub use statsummary_traits::*;
 pub use transformstat_traits::*;

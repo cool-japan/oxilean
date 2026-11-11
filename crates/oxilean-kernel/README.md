@@ -11,9 +11,29 @@ The kernel is the core responsible for type checking in the Calculus of Inductiv
 
 - **Zero external dependencies** -- only `std` is used
 - **No `unsafe` code** -- enforced by `#![forbid(unsafe_code)]`
-- **115,444 SLOC** -- comprehensive implementation (904 source files)
-- **3,492 tests passing** -- comprehensive coverage
+- **126,740 SLOC** -- comprehensive implementation (965 source files under `src/`)
+- **3,742 tests passing** -- comprehensive coverage
 - **WASM-compatible** -- no system calls
+- **MSRV 1.89**
+
+```toml
+[dependencies]
+oxilean-kernel = "0.1.4"
+```
+
+### Cargo features
+
+| Feature | Default | Effect |
+|---------|---------|--------|
+| `term-depth` | off | Track the depth of every shared subterm (four extra bytes each) so that `fuel::set_term_depth_limit` can report a term too deep for the caller's stack as a resource limit instead of overflowing it. `oxilean-verify-wasm` turns it on for `wasm32`. |
+
+### Resource limits (`fuel`)
+
+`fuel::set_reduction_nesting_limit` / `reduction_nesting_limit` bound how many
+reductions may nest inside one another; `fuel::set_term_depth_limit` /
+`term_depth_limit` / `term_depth_limit_hit` bound term depth (needs the
+`term-depth` feature to be enforced). Over a limit, the check ends as a
+resource limit, never as a type error.
 
 ## Module Overview
 
@@ -48,13 +68,15 @@ let val: &MyType = arena.get(idx);
 
 ### `Name`
 
-Hierarchical names representing identifiers like `Nat.add.comm`:
+Hierarchical names representing identifiers like `Nat.add.comm`. `Name` is an
+interned `Rc` newtype with a structural hash stored at construction (0.1.4,
+"Stage F"); match on it through `Name::view()`:
 
 ```rust
-enum Name {
+enum NameView<'a> {
     Anonymous,
-    Str(Box<Name>, String),
-    Num(Box<Name>, u64),
+    Str(&'a Name, &'a str),
+    Num(&'a Name, u64),
 }
 // Convenience macro:
 let n = name!("Nat", "add", "comm");  // -> Nat.add.comm
@@ -62,15 +84,18 @@ let n = name!("Nat", "add", "comm");  // -> Nat.add.comm
 
 ### `Level`
 
-Universe levels for the sort hierarchy `Prop : Type 0 : Type 1 : ...`:
+Universe levels for the sort hierarchy `Prop : Type 0 : Type 1 : ...`. Like
+`Name`, `Level` is an `Rc` newtype with a stored hash; match on it through
+`Level::view()`:
 
 ```rust
-enum Level {
+enum LevelView<'a> {
     Zero,                          // 0 (Prop)
-    Succ(Box<Level>),              // u + 1
-    Max(Box<Level>, Box<Level>),   // max(u, v)
-    IMax(Box<Level>, Box<Level>),  // imax(u, v) = 0 if v=0, else max(u,v)
-    Param(Name),                   // universe parameter
+    Succ(&'a Level),               // u + 1
+    Max(&'a Level, &'a Level),     // max(u, v)
+    IMax(&'a Level, &'a Level),    // imax(u, v) = 0 if v=0, else max(u,v)
+    Param(&'a Name),               // universe parameter
+    MVar(LevelMVarId),             // universe metavariable (unification)
 }
 ```
 
@@ -91,15 +116,27 @@ The core expression type -- all terms in the type theory:
 | `Lit(Literal)` | Literal | `42`, `"hello"` |
 | `Proj(Name, u32, Node)` | Projection | `s.1` |
 
-Child edges are `Node` — a transparent wrapper over `Rc<Expr>` that caches each
-subterm's `looseBVarRange` and rebuild-cost for structural sharing (wave5), so
-`clone` is an O(1) refcount bump and a substitution can skip an untouched
-subtree in O(1). `Node` `Deref`s to `Expr`, so pattern matching is unchanged.
+Child edges are `Node` — a transparent wrapper over a shared allocation that
+caches each subterm's `looseBVarRange`, rebuild-cost (saturating at
+`expr::REBUILD_COST_MAX`) and structural hash, so `clone` is an O(1) refcount
+bump, hashing a term is O(1), and a substitution can skip an untouched subtree
+in O(1). `Node` `Deref`s to `Expr`, so pattern matching is unchanged. Build one
+with `Node::new(expr)`; identity is `Node::ptr_eq` / `Node::as_ptr` (the
+0.1.3 `Node::rc()` is gone).
+
+### Performance and checking (0.1.4)
+
+- `instantiate`, `lift`, `abstract` and universe instantiation walk terms as
+  they are shared: a shared subterm is rebuilt once per walk, not once per path.
+- Type inference remembers what it has typed (a type-inference cache), and
+  definitional equality tries congruence first (`f a ≡ f b`) before unfolding.
+- Nested inductives are elaborated to mutual inductives.
+- `check_constant_info` checks that a constant's terms are closed.
 
 ## Usage
 
 ```rust
-use oxilean_kernel::{Name, Level, Expr, BinderInfo, Arena, Idx, name};
+use oxilean_kernel::{Name, Level, Expr, BinderInfo, Node, name};
 
 // Create Prop (Sort 0)
 let prop = Expr::Sort(Level::zero());
@@ -112,12 +149,12 @@ let alpha = Name::str("alpha");
 let id_type = Expr::Pi(
     BinderInfo::Implicit,
     alpha.clone(),
-    Box::new(type0),
-    Box::new(Expr::Pi(
+    Node::new(type0),
+    Node::new(Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
-        Box::new(Expr::BVar(0)),
-        Box::new(Expr::BVar(1)),
+        Name::anonymous(),
+        Node::new(Expr::BVar(0)),
+        Node::new(Expr::BVar(1)),
     )),
 );
 ```

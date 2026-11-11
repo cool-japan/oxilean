@@ -18,7 +18,7 @@ impl WeinsteinManifold {
     /// Create a Weinstein manifold with given dimension and handle indices.
     pub fn new(dimension: usize, handle_indices: Vec<usize>) -> Self {
         assert!(
-            dimension % 2 == 0,
+            dimension.is_multiple_of(2),
             "Weinstein manifolds have even dimension"
         );
         let n = dimension / 2;
@@ -319,13 +319,13 @@ impl SymplecticForm {
             manifold: format!("R^{dim}"),
             dimension: dim,
             is_closed: true,
-            is_nondegenerate: dim % 2 == 0,
+            is_nondegenerate: dim.is_multiple_of(2),
         }
     }
     /// Darboux theorem: locally every symplectic form looks like Σ dqᵢ ∧ dpᵢ.
     /// Returns true when the form is a genuine symplectic form (closed + non-degenerate).
     pub fn darboux_theorem(&self) -> bool {
-        self.is_closed && self.is_nondegenerate && self.dimension % 2 == 0
+        self.is_closed && self.is_nondegenerate && self.dimension.is_multiple_of(2)
     }
     /// Liouville volume: the integral of ωⁿ/n! over the manifold (placeholder).
     pub fn volume(&self) -> f64 {
@@ -1212,7 +1212,10 @@ pub struct LiouvilleManifold {
 #[allow(dead_code)]
 impl LiouvilleManifold {
     pub fn new(name: &str, dim: usize) -> Self {
-        assert!(dim % 2 == 0, "Liouville manifold has even dimension");
+        assert!(
+            dim.is_multiple_of(2),
+            "Liouville manifold has even dimension"
+        );
         Self {
             name: name.to_string(),
             dimension: dim,
@@ -1757,7 +1760,7 @@ impl SymplecticManifoldEx {
     /// Create a new symplectic manifold with the given dimension and exactness.
     pub fn new(dimension: usize, is_exact: bool) -> Self {
         assert!(
-            dimension % 2 == 0,
+            dimension.is_multiple_of(2),
             "Symplectic manifolds must have even dimension"
         );
         Self {

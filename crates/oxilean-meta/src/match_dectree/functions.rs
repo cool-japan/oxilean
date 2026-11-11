@@ -697,7 +697,7 @@ pub fn simplify_tree(tree: DecisionTree) -> DecisionTree {
                             & b.subtree, DecisionTree::Leaf { arm_idx, .. } if * arm_idx
                             == idx
                         )
-                    }) && simplified_default.as_ref().map_or(true, |d| {
+                    }) && simplified_default.as_ref().is_none_or(|d| {
                         matches!(
                             d.as_ref(), DecisionTree::Leaf { arm_idx, .. } if * arm_idx
                             == idx

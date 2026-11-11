@@ -334,7 +334,7 @@ pub fn fin_pair_to_index(i: Fin, j: Fin) -> Option<Fin> {
 }
 /// Decompose a `Fin (m * n)` into `(Fin m, Fin n)`.
 pub fn fin_index_to_pair(k: Fin, col_bound: usize) -> Option<(Fin, Fin)> {
-    if col_bound == 0 || k.bound % col_bound != 0 {
+    if col_bound == 0 || !k.bound.is_multiple_of(col_bound) {
         return None;
     }
     let row_bound = k.bound / col_bound;
@@ -1591,7 +1591,7 @@ pub fn fin_ext_stirling_second(n: usize, k: usize) -> u64 {
     }
     let mut sum: i64 = 0;
     for j in 0..=k {
-        let sign: i64 = if (k - j) % 2 == 0 { 1 } else { -1 };
+        let sign: i64 = if (k - j).is_multiple_of(2) { 1 } else { -1 };
         let binom = fin_ext_binomial(k, j) as i64;
         let power = (j as i64).pow(n as u32);
         sum += sign * binom * power;
@@ -1609,8 +1609,8 @@ pub fn fin_ext_euler_phi(n: usize) -> usize {
     let mut p = 2usize;
     let mut m = n;
     while p * p <= m {
-        if m % p == 0 {
-            while m % p == 0 {
+        if m.is_multiple_of(p) {
+            while m.is_multiple_of(p) {
                 m /= p;
             }
             result -= result / p;

@@ -620,15 +620,15 @@ pub fn verify_topos_axioms(topos: &ElementaryToposData) -> Vec<String> {
     }
 
     // 2. Terminal object must be registered.
-    if topos.terminal.is_none() {
-        violations.push("No terminal object designated".into());
-    } else {
-        let t_id = topos.terminal.expect("checked above");
-        if topos.object(t_id).is_none() {
-            violations.push(format!(
-                "Terminal object id {} not found in object list",
-                t_id
-            ));
+    match topos.terminal {
+        None => violations.push("No terminal object designated".into()),
+        Some(t_id) => {
+            if topos.object(t_id).is_none() {
+                violations.push(format!(
+                    "Terminal object id {} not found in object list",
+                    t_id
+                ));
+            }
         }
     }
 

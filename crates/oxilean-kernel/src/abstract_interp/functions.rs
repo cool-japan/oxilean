@@ -646,15 +646,9 @@ pub fn abstract_div(a: &Interval, b: &Interval) -> Interval {
     if b.contains(0) {
         return Interval::top();
     }
-    let combos = [a.lo / b.lo, a.lo / b.hi, a.hi / b.lo, a.hi / b.hi];
-    let lo = *combos
-        .iter()
-        .min()
-        .expect("combos iterator must be non-empty");
-    let hi = *combos
-        .iter()
-        .max()
-        .expect("combos iterator must be non-empty");
+    let [c0, c1, c2, c3] = [a.lo / b.lo, a.lo / b.hi, a.hi / b.lo, a.hi / b.hi];
+    let lo = c0.min(c1).min(c2).min(c3);
+    let hi = c0.max(c1).max(c2).max(c3);
     Interval::new(lo, hi)
 }
 #[cfg(test)]
@@ -675,3 +669,5 @@ mod tests_abstract_div {
         assert!(result.is_top());
     }
 }
+#[cfg(test)]
+mod abstract_div_tests;

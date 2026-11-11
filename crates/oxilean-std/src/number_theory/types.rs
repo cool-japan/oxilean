@@ -116,7 +116,7 @@ impl EllipticCurvePointCounting {
     pub fn is_nonsingular(&self) -> bool {
         let a3 = mod_mul(mod_mul(self.a, self.a, self.p), self.a, self.p);
         let b2 = mod_mul(self.b, self.b, self.p);
-        (4 * a3 + 27 * b2) % self.p != 0
+        !(4 * a3 + 27 * b2).is_multiple_of(self.p)
     }
     /// Count all affine points plus the point at infinity.
     pub fn count_points(&self) -> u64 {
@@ -242,7 +242,7 @@ impl QuadraticSieve {
             return None;
         }
         for &p in &self.factor_base {
-            if p >= 2 && self.n % p == 0 {
+            if p >= 2 && self.n.is_multiple_of(p) {
                 return Some(p);
             }
         }

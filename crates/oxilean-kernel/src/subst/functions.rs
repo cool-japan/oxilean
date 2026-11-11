@@ -2,6 +2,7 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use crate::node_memo::NodeMemo;
 use crate::Node;
 use crate::{Expr, FVarId};
 use std::collections::HashMap;
@@ -24,82 +25,225 @@ use super::types::{
 /// referring to the same outer binder (otherwise it would be captured by the
 /// inner binders — the classic de Bruijn capture bug, exposed by open-term
 /// reduction such as iota under a `Pi` body during def-eq).
+///
+/// # Sharing
+///
+/// The result shares with `body` every subterm the substitution does not
+/// reach, and keeps what `body` shares:
+///
+/// * a subterm with no loose bound variable at or above the current depth
+///   (`range <= depth`, read off the [`Node`] in O(1)) is returned as the
+///   SAME allocation, not copied;
+/// * a subterm that IS rebuilt and has several owners is rebuilt once per
+///   depth it is reached at — the result is remembered for the walk
+///   (the kernel-private `node_memo` module) and the second path to it gets
+///   the same allocation;
+/// * `arg` goes in as one allocation per binder depth, however many times
+///   the variable occurs there.
+///
+/// So substituting into a term of `n` distinct nodes builds at most `n` new
+/// ones per depth, whatever the term's size as a tree.
+///
+/// # Fuel
+///
+/// One unit per subterm the walk reaches, whether it rebuilds it, shares it
+/// unchanged or finds it in the memo (see [`crate::fuel`]). Every node the
+/// walk allocates is therefore charged.
 pub fn instantiate(body: &Expr, arg: &Expr) -> Expr {
-    instantiate_at(body, arg, 0)
-}
-fn instantiate_at(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
-    // Stage E-2 (structural sharing): this substitution only ever touches loose
-    // bvars with index >= depth. `expr.range()` (the O(1) cached
-    // `looseBVarRange`, read from the child `Node` edges) is `1 + the largest
-    // loose bvar`, so `range <= depth` means "no such bvar exists" — `expr` is
-    // unchanged and we share it via `expr.clone()` (a shallow clone whose `Node`
-    // children are refcount bumps) instead of rebuilding the subtree. This tames
-    // the `let`-tower / `Int.add_mul_ediv_right` blow-up: the closed value is
-    // shared, not re-materialized at every binder level. Correctness is pinned
-    // by the `instantiate_skip_matches_reference` differential test below.
-    //
-    // Fuel MUST stay identical to the no-skip baseline, or a fuel-limited decl
-    // reduces further (or less) than before and can flip its verdict — the exact
-    // failure the reverted Stage-D/E-draft skips hit (a false rejection + a
-    // checking-time OOM on `Char.succ?_eq` / the `WellFounded` family). So we
-    // charge precisely what the no-skip recursion would have (`rebuild_cost`);
-    // the `-1` is the one unit `expr.clone()` itself charges just below.
-    if expr.range() <= depth {
-        crate::fuel::charge(u64::from(expr.rebuild_cost().saturating_sub(1)));
-        return expr.clone();
+    if body.range() == 0 {
+        // Closed: no variable to replace and none to shift down.
+        return body.clone();
     }
-    // C16b: substitution is the kernel's dominant term *builder*. Rebuilt
-    // spine nodes never pass through `Expr::clone`, so an explosive
-    // substitution (e.g. a `let`-tower duplicating its value at every level)
-    // could allocate multi-GiB while burning no clone-fuel at all. Charging
-    // one unit per visited node makes the per-declaration budget an upper
-    // bound on substitution-driven allocation; the exhaustion latch is then
-    // observed by `infer_type`/`whnf`/`is_def_eq` at their next step. The
-    // result term itself is always exact — fuel never truncates a term.
-    crate::fuel::charge(1);
-    match expr {
-        Expr::BVar(n) => {
-            if *n == depth {
-                crate::expr_util::lift_loose_bvars(arg, depth, 0)
-            } else if *n > depth {
-                Expr::BVar(*n - 1)
-            } else {
-                expr.clone()
+    let mut walk = Instantiate {
+        args: Args::Terms(std::slice::from_ref(&arg)),
+        rebuilt: NodeMemo::new(),
+        lifted: Vec::new(),
+    };
+    walk.expr(body, 0)
+}
+
+/// Instantiate the `args.len()` outermost loose bound variables of `body`
+/// at once: `BVar(0)` with the LAST argument, `BVar(1)` with the one before
+/// it, and so on, shifting every other loose variable down by `args.len()`.
+///
+/// This is what `(λx₁ … xₙ. body) a₁ … aₙ` reduces to — `body` being what
+/// stands under the `n` binders and `args` being `[a₁, …, aₙ]` — and equal to
+/// `n` nested calls of [`instantiate`], in one walk of `body` instead of `n`.
+/// Sharing and fuel are as documented on [`instantiate`]. An argument that
+/// needs no lifting goes into the result as the allocation the caller holds.
+pub(crate) fn instantiate_rev_nodes(body: &Expr, args: &[&Node]) -> Expr {
+    if args.is_empty() || body.range() == 0 {
+        return body.clone();
+    }
+    let mut walk = Instantiate {
+        args: Args::Nodes(args),
+        rebuilt: NodeMemo::new(),
+        lifted: Vec::new(),
+    };
+    walk.expr(body, 0)
+}
+
+/// The arguments of one substitution, outermost binder first.
+enum Args<'arg> {
+    /// Terms the caller holds by reference.
+    Terms(&'arg [&'arg Expr]),
+    /// Subterms the caller holds as shared allocations.
+    Nodes(&'arg [&'arg Node]),
+}
+
+impl Args<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Args::Terms(terms) => terms.len(),
+            Args::Nodes(nodes) => nodes.len(),
+        }
+    }
+
+    /// Argument `index` as it must appear under `depth` binders, as an
+    /// allocation: the caller's own when it needs no lifting.
+    fn lifted(&self, index: usize, depth: u32) -> Node {
+        match self {
+            Args::Terms(terms) => {
+                Node::new(crate::expr_util::lift_loose_bvars(terms[index], depth, 0))
+            }
+            Args::Nodes(nodes) => {
+                let node = nodes[index];
+                if depth == 0 || node.range() == 0 {
+                    node.clone()
+                } else {
+                    Node::new(crate::expr_util::lift_loose_bvars(node, depth, 0))
+                }
             }
         }
-        Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
-        Expr::App(f, a) => {
-            let f_new = instantiate_at(f, arg, depth);
-            let a_new = instantiate_at(a, arg, depth);
-            Expr::App(Node::new(f_new), Node::new(a_new))
+    }
+
+    /// Argument `index` as it must appear under `depth` binders, as a term.
+    fn lifted_term(&self, index: usize, depth: u32) -> Expr {
+        let term: &Expr = match self {
+            Args::Terms(terms) => terms[index],
+            Args::Nodes(nodes) => nodes[index],
+        };
+        crate::expr_util::lift_loose_bvars(term, depth, 0)
+    }
+}
+
+/// One substitution: the arguments, and what the walk has built so far.
+struct Instantiate<'term, 'arg> {
+    /// What replaces the outermost loose variables of the body: the last
+    /// argument replaces `BVar(0)`.
+    args: Args<'arg>,
+    /// The rebuilt form of each shared subterm of the body the walk has
+    /// finished, by subterm and depth.
+    rebuilt: NodeMemo<'term, Node>,
+    /// Each argument lifted to each binder depth its variable has been met
+    /// at, by (depth, argument). Almost always a handful of entries, hence
+    /// a list.
+    lifted: Vec<(u32, usize, Node)>,
+}
+
+impl<'term> Instantiate<'term, '_> {
+    /// Which argument replaces `BVar(index)` under `depth` binders, if it is
+    /// one of the substituted variables. (`index >= depth` is the caller's.)
+    fn arg_index(&self, index: u32, depth: u32) -> Option<usize> {
+        let count = self.args.len();
+        // `usize` is at least 32 bits wide on every supported target.
+        let offset = (index - depth) as usize;
+        (offset < count).then(|| count - 1 - offset)
+    }
+
+    /// How far a loose variable that is NOT substituted moves down.
+    fn shift(&self) -> u32 {
+        // More arguments than a `u32` can count cannot be reached: each one
+        // is a binder of the body. Saturating keeps the arithmetic total.
+        u32::try_from(self.args.len()).unwrap_or(u32::MAX)
+    }
+
+    /// The substitution applied to a child edge at binder depth `depth`.
+    fn node(&mut self, node: &'term Node, depth: u32) -> Node {
+        crate::fuel::charge(1);
+        if node.range() <= depth {
+            // No loose bound variable at or above `depth`: untouched.
+            return node.clone();
         }
-        Expr::Lam(bi, name, ty, body) => {
-            let ty_new = instantiate_at(ty, arg, depth);
-            let body_new = instantiate_at(body, arg, depth + 1);
-            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
+        if let Expr::BVar(index) = &**node {
+            // `range > depth` for a variable means `index >= depth`: one of
+            // the substituted variables, or one bound further out.
+            return match self.arg_index(*index, depth) {
+                Some(which) => self.arg_at(which, depth),
+                None => Node::new(Expr::BVar(index.saturating_sub(self.shift()))),
+            };
         }
-        Expr::Pi(bi, name, ty, body) => {
-            let ty_new = instantiate_at(ty, arg, depth);
-            let body_new = instantiate_at(body, arg, depth + 1);
-            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
+        let shared = node.is_shared();
+        if shared {
+            if let Some(done) = self.rebuilt.get(node, depth) {
+                return done.clone();
+            }
         }
-        Expr::Let(name, ty, val, body) => {
-            let ty_new = instantiate_at(ty, arg, depth);
-            let val_new = instantiate_at(val, arg, depth);
-            let body_new = instantiate_at(body, arg, depth + 1);
-            Expr::Let(
+        let result = Node::new(self.rebuild(node, depth));
+        if shared {
+            self.rebuilt.insert(node, depth, result.clone());
+        }
+        result
+    }
+
+    /// Argument `which` as it must appear under `depth` binders: lifted once
+    /// per depth and shared by every occurrence of its variable there.
+    fn arg_at(&mut self, which: usize, depth: u32) -> Node {
+        if let Some((_, _, lifted)) = self
+            .lifted
+            .iter()
+            .find(|(d, w, _)| *d == depth && *w == which)
+        {
+            return lifted.clone();
+        }
+        let lifted = self.args.lifted(which, depth);
+        self.lifted.push((depth, which, lifted.clone()));
+        lifted
+    }
+
+    /// The substitution applied to the body itself.
+    fn expr(&mut self, expr: &'term Expr, depth: u32) -> Expr {
+        crate::fuel::charge(1);
+        self.rebuild(expr, depth)
+    }
+
+    /// Rebuild `expr`, which has a loose bound variable at or above `depth`.
+    fn rebuild(&mut self, expr: &'term Expr, depth: u32) -> Expr {
+        match expr {
+            Expr::BVar(n) => {
+                if *n < depth {
+                    return expr.clone();
+                }
+                match self.arg_index(*n, depth) {
+                    Some(which) => self.args.lifted_term(which, depth),
+                    None => Expr::BVar(n.saturating_sub(self.shift())),
+                }
+            }
+            Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
+            Expr::App(f, a) => Expr::App(self.node(f, depth), self.node(a, depth)),
+            Expr::Lam(bi, name, ty, body) => Expr::Lam(
+                *bi,
                 name.clone(),
-                Node::new(ty_new),
-                Node::new(val_new),
-                Node::new(body_new),
-            )
-        }
-        Expr::Proj(name, idx, e) => {
-            let e_new = instantiate_at(e, arg, depth);
-            Expr::Proj(name.clone(), *idx, Node::new(e_new))
+                self.node(ty, depth),
+                self.node(body, depth + 1),
+            ),
+            Expr::Pi(bi, name, ty, body) => Expr::Pi(
+                *bi,
+                name.clone(),
+                self.node(ty, depth),
+                self.node(body, depth + 1),
+            ),
+            Expr::Let(name, ty, val, body) => Expr::Let(
+                name.clone(),
+                self.node(ty, depth),
+                self.node(val, depth),
+                self.node(body, depth + 1),
+            ),
+            Expr::Proj(name, idx, e) => Expr::Proj(name.clone(), *idx, self.node(e, depth)),
         }
     }
 }
+
 /// Replace FVar with BVar(0), shifting up loose (unbound) BVars.
 ///
 /// This is the inverse of instantiation, used when forming binders.
@@ -107,421 +251,133 @@ fn instantiate_at(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
 /// unchanged; only loose BVars — which refer to binders outside `expr`
 /// and therefore move one binder further away when the new binder is
 /// wrapped around the result — are shifted by one.
+///
+/// # Sharing
+///
+/// A subterm the abstraction leaves as it is — it holds neither the
+/// variable nor a loose bound variable to shift — is the SAME allocation in
+/// the result, and a shared subterm that does change is rebuilt once per
+/// depth (as in [`instantiate`]). A subterm with no free variable at all and
+/// no loose bound variable at or above the current depth is passed over
+/// without being visited (both facts are read off the [`Node`]).
+///
+/// # Fuel
+///
+/// One unit per subterm the walk reaches (see [`crate::fuel`]).
 pub fn abstract_expr(expr: &Expr, fvar: FVarId) -> Expr {
-    abstract_at(expr, fvar, 0)
-}
-fn abstract_at(expr: &Expr, fvar: FVarId, depth: u32) -> Expr {
-    // C16b: see `instantiate_at` — one fuel unit per visited (rebuilt) node.
+    let mut walk = Abstract {
+        fvar,
+        done: NodeMemo::new(),
+    };
     crate::fuel::charge(1);
-    match expr {
-        Expr::FVar(id) if *id == fvar => Expr::BVar(depth),
-        Expr::BVar(n) => {
-            if *n >= depth {
-                // Loose: bound outside `expr`; the new binder adds one level.
-                Expr::BVar(*n + 1)
-            } else {
-                // Bound inside `expr`: unchanged.
-                Expr::BVar(*n)
-            }
-        }
-        Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
-        Expr::App(f, a) => {
-            let f_new = abstract_at(f, fvar, depth);
-            let a_new = abstract_at(a, fvar, depth);
-            Expr::App(Node::new(f_new), Node::new(a_new))
-        }
-        Expr::Lam(bi, name, ty, body) => {
-            let ty_new = abstract_at(ty, fvar, depth);
-            let body_new = abstract_at(body, fvar, depth + 1);
-            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
-        }
-        Expr::Pi(bi, name, ty, body) => {
-            let ty_new = abstract_at(ty, fvar, depth);
-            let body_new = abstract_at(body, fvar, depth + 1);
-            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
-        }
-        Expr::Let(name, ty, val, body) => {
-            let ty_new = abstract_at(ty, fvar, depth);
-            let val_new = abstract_at(val, fvar, depth);
-            let body_new = abstract_at(body, fvar, depth + 1);
-            Expr::Let(
-                name.clone(),
-                Node::new(ty_new),
-                Node::new(val_new),
-                Node::new(body_new),
-            )
-        }
-        Expr::Proj(name, idx, e) => {
-            let e_new = abstract_at(e, fvar, depth);
-            Expr::Proj(name.clone(), *idx, Node::new(e_new))
-        }
+    match walk.rebuild(expr, 0) {
+        Some(changed) => changed,
+        None => expr.clone(),
     }
 }
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{BinderInfo, Level, Name};
 
-    // --- Stage E-2 differential test: the structural-sharing skip in
-    // `instantiate`/`lift_loose_bvars` must produce results IDENTICAL to a
-    // straightforward no-skip reference, on many random OPEN terms. This is the
-    // guard the reverted Stage-D attempt lacked — a subtle skip bug there slid
-    // past every hand-written test and only surfaced as a corpus rejection.
+/// One [`abstract_expr`] call. `None` stands for "unchanged" throughout: the
+/// caller keeps the subterm it already holds.
+struct Abstract<'term> {
+    fvar: FVarId,
+    /// The outcome for each shared subterm the walk has finished, by subterm
+    /// and depth.
+    done: NodeMemo<'term, Option<Node>>,
+}
 
-    /// Reference lift with NO range-skip.
-    fn lift_ref(e: &Expr, n: u32, depth: u32) -> Expr {
-        if n == 0 {
-            return e.clone();
+impl<'term> Abstract<'term> {
+    /// The abstraction applied to a child edge under `depth` binders;
+    /// `None` when it leaves the subterm as it is.
+    fn node(&mut self, node: &'term Node, depth: u32) -> Option<Node> {
+        crate::fuel::charge(1);
+        if !node.has_fvar() && node.range() <= depth {
+            // Neither the variable nor a loose bound variable to shift.
+            return None;
         }
-        match e {
-            Expr::BVar(idx) => {
-                if *idx >= depth {
-                    Expr::BVar(idx + n)
-                } else {
-                    e.clone()
-                }
+        if matches!(&**node, Expr::FVar(_) | Expr::BVar(_)) {
+            // A leaf is cheaper to redo than to look up.
+            return self.rebuild(node, depth).map(Node::new);
+        }
+        let shared = node.is_shared();
+        if shared {
+            if let Some(done) = self.done.get(node, depth) {
+                return done.clone();
             }
-            Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => e.clone(),
-            Expr::App(f, a) => Expr::App(
-                Node::new(lift_ref(f, n, depth)),
-                Node::new(lift_ref(a, n, depth)),
-            ),
-            Expr::Lam(bi, nm, ty, b) => Expr::Lam(
-                *bi,
-                nm.clone(),
-                Node::new(lift_ref(ty, n, depth)),
-                Node::new(lift_ref(b, n, depth + 1)),
-            ),
-            Expr::Pi(bi, nm, ty, b) => Expr::Pi(
-                *bi,
-                nm.clone(),
-                Node::new(lift_ref(ty, n, depth)),
-                Node::new(lift_ref(b, n, depth + 1)),
-            ),
-            Expr::Let(nm, ty, v, b) => Expr::Let(
-                nm.clone(),
-                Node::new(lift_ref(ty, n, depth)),
-                Node::new(lift_ref(v, n, depth)),
-                Node::new(lift_ref(b, n, depth + 1)),
-            ),
-            Expr::Proj(nm, i, x) => Expr::Proj(nm.clone(), *i, Node::new(lift_ref(x, n, depth))),
         }
+        let result = self.rebuild(node, depth).map(Node::new);
+        if shared {
+            self.done.insert(node, depth, result.clone());
+        }
+        result
     }
 
-    /// Reference instantiate with NO range-skip.
-    fn inst_ref(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
+    /// Rebuild `expr` under `depth` binders; `None` when nothing in it
+    /// changes.
+    fn rebuild(&mut self, expr: &'term Expr, depth: u32) -> Option<Expr> {
         match expr {
-            Expr::BVar(k) => {
-                if *k == depth {
-                    lift_ref(arg, depth, 0)
-                } else if *k > depth {
-                    Expr::BVar(k - 1)
-                } else {
-                    expr.clone()
-                }
+            Expr::FVar(id) if *id == self.fvar => Some(Expr::BVar(depth)),
+            // Loose: bound outside `expr`; the new binder adds one level.
+            // (An index that cannot be incremented stays where it is: it is
+            // above every binder there can be, so it stays loose.)
+            Expr::BVar(n) if *n >= depth => Some(Expr::BVar(n.saturating_add(1))),
+            Expr::BVar(_) | Expr::FVar(_) | Expr::Sort(_) | Expr::Const(_, _) | Expr::Lit(_) => {
+                None
             }
-            Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
-            Expr::App(f, a) => Expr::App(
-                Node::new(inst_ref(f, arg, depth)),
-                Node::new(inst_ref(a, arg, depth)),
-            ),
-            Expr::Lam(bi, nm, ty, b) => Expr::Lam(
-                *bi,
-                nm.clone(),
-                Node::new(inst_ref(ty, arg, depth)),
-                Node::new(inst_ref(b, arg, depth + 1)),
-            ),
-            Expr::Pi(bi, nm, ty, b) => Expr::Pi(
-                *bi,
-                nm.clone(),
-                Node::new(inst_ref(ty, arg, depth)),
-                Node::new(inst_ref(b, arg, depth + 1)),
-            ),
-            Expr::Let(nm, ty, v, b) => Expr::Let(
-                nm.clone(),
-                Node::new(inst_ref(ty, arg, depth)),
-                Node::new(inst_ref(v, arg, depth)),
-                Node::new(inst_ref(b, arg, depth + 1)),
-            ),
-            Expr::Proj(nm, i, x) => Expr::Proj(nm.clone(), *i, Node::new(inst_ref(x, arg, depth))),
-        }
-    }
-
-    fn lcg(s: &mut u64) -> u64 {
-        *s = s
-            .wrapping_mul(6_364_136_223_846_793_005)
-            .wrapping_add(1_442_695_040_888_963_407);
-        *s >> 33
-    }
-
-    /// Generate a random term with up to `fuel` depth, referencing up to
-    /// `binders` enclosing binders plus a few LOOSE bvars beyond them.
-    fn gen(s: &mut u64, fuel: u32, binders: u32) -> Expr {
-        if fuel == 0 || lcg(s) % 100 < 35 {
-            match lcg(s) % 4 {
-                0 => Expr::BVar((lcg(s) as u32) % (binders + 3)),
-                1 => Expr::Sort(Level::zero()),
-                2 => Expr::FVar(FVarId(lcg(s) % 4)),
-                _ => Expr::Const(Name::str("c"), Vec::new()),
-            }
-        } else {
-            match lcg(s) % 5 {
-                0 => Expr::App(
-                    Node::new(gen(s, fuel - 1, binders)),
-                    Node::new(gen(s, fuel - 1, binders)),
-                ),
-                1 => Expr::Lam(
-                    BinderInfo::Default,
-                    Name::str("x"),
-                    Node::new(gen(s, fuel - 1, binders)),
-                    Node::new(gen(s, fuel - 1, binders + 1)),
-                ),
-                2 => Expr::Pi(
-                    BinderInfo::Default,
-                    Name::str("x"),
-                    Node::new(gen(s, fuel - 1, binders)),
-                    Node::new(gen(s, fuel - 1, binders + 1)),
-                ),
-                3 => Expr::Let(
-                    Name::str("x"),
-                    Node::new(gen(s, fuel - 1, binders)),
-                    Node::new(gen(s, fuel - 1, binders)),
-                    Node::new(gen(s, fuel - 1, binders + 1)),
-                ),
-                _ => Expr::Proj(Name::str("S"), 0, Node::new(gen(s, fuel - 1, binders))),
-            }
-        }
-    }
-
-    #[test]
-    fn instantiate_skip_matches_reference() {
-        let mut s: u64 = 0x1234_5678_9abc_def0;
-        for _ in 0..3000 {
-            let body = gen(&mut s, 5, 1);
-            let arg = gen(&mut s, 4, 0);
-            let got = instantiate(&body, &arg);
-            let want = inst_ref(&body, &arg, 0);
-            assert_eq!(
-                got, want,
-                "instantiate range-skip diverged from reference\nbody={body:?}\narg={arg:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn lift_skip_matches_reference() {
-        let mut s: u64 = 0xdead_beef_cafe_babe;
-        for _ in 0..3000 {
-            let e = gen(&mut s, 5, 0);
-            let n = 1 + (lcg(&mut s) as u32 % 3);
-            let off = lcg(&mut s) as u32 % 3;
-            let got = crate::expr_util::lift_loose_bvars(&e, n, off);
-            let want = lift_ref(&e, n, off);
-            assert_eq!(
-                got, want,
-                "lift range-skip diverged from reference\ne={e:?} n={n} off={off}"
-            );
-        }
-    }
-
-    /// `Expr::range()` (the cached looseBVarRange) must equal a direct
-    /// recomputation from scratch.
-    #[test]
-    fn cached_range_matches_recomputation() {
-        fn recompute(e: &Expr) -> u32 {
-            match e {
-                Expr::BVar(n) => n.saturating_add(1),
-                Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => 0,
-                Expr::App(f, a) => recompute(f).max(recompute(a)),
-                Expr::Lam(_, _, ty, b) | Expr::Pi(_, _, ty, b) => {
-                    recompute(ty).max(recompute(b).saturating_sub(1))
-                }
-                Expr::Let(_, ty, v, b) => recompute(ty)
-                    .max(recompute(v))
-                    .max(recompute(b).saturating_sub(1)),
-                Expr::Proj(_, _, x) => recompute(x),
-            }
-        }
-        let mut s: u64 = 0x0f0f_0f0f_1234_9999;
-        for _ in 0..3000 {
-            let e = gen(&mut s, 6, 0);
-            assert_eq!(e.range(), recompute(&e), "cached range wrong for {e:?}");
-        }
-    }
-
-    /// `Expr::rebuild_cost()` (cached) must equal a from-scratch recomputation,
-    /// so the fuel charged on a skip exactly matches the no-skip baseline.
-    #[test]
-    fn cached_rebuild_cost_matches_recomputation() {
-        fn recompute(e: &Expr) -> u32 {
-            match e {
-                Expr::Sort(_)
-                | Expr::BVar(_)
-                | Expr::FVar(_)
-                | Expr::Const(_, _)
-                | Expr::Lit(_) => 2,
-                Expr::App(f, a) => 1u32
-                    .saturating_add(recompute(f))
-                    .saturating_add(recompute(a)),
-                Expr::Lam(_, _, ty, b) | Expr::Pi(_, _, ty, b) => 1u32
-                    .saturating_add(recompute(ty))
-                    .saturating_add(recompute(b)),
-                Expr::Let(_, ty, v, b) => 1u32
-                    .saturating_add(recompute(ty))
-                    .saturating_add(recompute(v))
-                    .saturating_add(recompute(b)),
-                Expr::Proj(_, _, x) => 1u32.saturating_add(recompute(x)),
-            }
-        }
-        let mut s: u64 = 0xabcd_1234_5678_ef01;
-        for _ in 0..3000 {
-            let e = gen(&mut s, 6, 0);
-            assert_eq!(
-                e.rebuild_cost(),
-                recompute(&e),
-                "cached cost wrong for {e:?}"
-            );
-        }
-    }
-
-    /// The structural-sharing skip must charge EXACTLY the fuel a no-skip
-    /// substitution would, so a fuel-limited declaration behaves identically.
-    #[test]
-    fn instantiate_skip_preserves_fuel() {
-        // Reference instantiate that charges fuel the pre-skip way: one unit per
-        // visited node, and (via `Expr::clone`) one per returned leaf.
-        fn inst_ref_fueled(expr: &Expr, arg: &Expr, depth: u32) -> Expr {
-            crate::fuel::charge(1);
-            match expr {
-                Expr::BVar(k) => {
-                    if *k == depth {
-                        lift_ref_fueled(arg, depth, 0)
-                    } else if *k > depth {
-                        Expr::BVar(k - 1)
-                    } else {
-                        expr.clone()
-                    }
-                }
-                Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => expr.clone(),
-                Expr::App(f, a) => Expr::App(
-                    Node::new(inst_ref_fueled(f, arg, depth)),
-                    Node::new(inst_ref_fueled(a, arg, depth)),
-                ),
-                Expr::Lam(bi, nm, ty, b) => Expr::Lam(
-                    *bi,
-                    nm.clone(),
-                    Node::new(inst_ref_fueled(ty, arg, depth)),
-                    Node::new(inst_ref_fueled(b, arg, depth + 1)),
-                ),
-                Expr::Pi(bi, nm, ty, b) => Expr::Pi(
-                    *bi,
-                    nm.clone(),
-                    Node::new(inst_ref_fueled(ty, arg, depth)),
-                    Node::new(inst_ref_fueled(b, arg, depth + 1)),
-                ),
-                Expr::Let(nm, ty, v, b) => Expr::Let(
-                    nm.clone(),
-                    Node::new(inst_ref_fueled(ty, arg, depth)),
-                    Node::new(inst_ref_fueled(v, arg, depth)),
-                    Node::new(inst_ref_fueled(b, arg, depth + 1)),
-                ),
-                Expr::Proj(nm, i, x) => {
-                    Expr::Proj(nm.clone(), *i, Node::new(inst_ref_fueled(x, arg, depth)))
-                }
-            }
-        }
-        fn lift_ref_fueled(e: &Expr, n: u32, depth: u32) -> Expr {
-            if n == 0 {
-                return e.clone();
-            }
-            crate::fuel::charge(1);
-            match e {
-                Expr::BVar(idx) => {
-                    if *idx >= depth {
-                        Expr::BVar(idx + n)
-                    } else {
-                        e.clone()
-                    }
-                }
-                Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => e.clone(),
-                Expr::App(f, a) => Expr::App(
-                    Node::new(lift_ref_fueled(f, n, depth)),
-                    Node::new(lift_ref_fueled(a, n, depth)),
-                ),
-                Expr::Lam(bi, nm, ty, b) => Expr::Lam(
-                    *bi,
-                    nm.clone(),
-                    Node::new(lift_ref_fueled(ty, n, depth)),
-                    Node::new(lift_ref_fueled(b, n, depth + 1)),
-                ),
-                Expr::Pi(bi, nm, ty, b) => Expr::Pi(
-                    *bi,
-                    nm.clone(),
-                    Node::new(lift_ref_fueled(ty, n, depth)),
-                    Node::new(lift_ref_fueled(b, n, depth + 1)),
-                ),
-                Expr::Let(nm, ty, v, b) => Expr::Let(
-                    nm.clone(),
-                    Node::new(lift_ref_fueled(ty, n, depth)),
-                    Node::new(lift_ref_fueled(v, n, depth)),
-                    Node::new(lift_ref_fueled(b, n, depth + 1)),
-                ),
-                Expr::Proj(nm, i, x) => {
-                    Expr::Proj(nm.clone(), *i, Node::new(lift_ref_fueled(x, n, depth)))
-                }
-            }
-        }
-        let mut s: u64 = 0x5555_aaaa_3333_cccc;
-        for _ in 0..3000 {
-            let body = gen(&mut s, 5, 1);
-            let arg = gen(&mut s, 4, 0);
-            crate::fuel::set_budget(Some(u64::MAX));
-            let _ = instantiate(&body, &arg);
-            let fuel_skip = crate::fuel::used();
-            crate::fuel::set_budget(Some(u64::MAX));
-            let _ = inst_ref_fueled(&body, &arg, 0);
-            let fuel_ref = crate::fuel::used();
-            assert_eq!(
-                fuel_skip, fuel_ref,
-                "skip charged {fuel_skip} but no-skip charges {fuel_ref}\nbody={body:?}\narg={arg:?}"
-            );
-        }
-        crate::fuel::set_budget(None);
-    }
-
-    #[test]
-    fn test_instantiate_simple() {
-        let bvar0 = Expr::BVar(0);
-        let fvar = Expr::FVar(FVarId(1));
-        let result = instantiate(&bvar0, &fvar);
-        assert_eq!(result, fvar);
-    }
-    #[test]
-    fn test_instantiate_shift_down() {
-        let bvar1 = Expr::BVar(1);
-        let arg = Expr::FVar(FVarId(1));
-        let result = instantiate(&bvar1, &arg);
-        assert_eq!(result, Expr::BVar(0));
-    }
-    #[test]
-    fn test_abstract_roundtrip() {
-        let fvar_id = FVarId(42);
-        let fvar = Expr::FVar(fvar_id);
-        let abstracted = abstract_expr(&fvar, fvar_id);
-        let back = instantiate(&abstracted, &fvar);
-        assert_eq!(back, fvar);
-    }
-    #[test]
-    fn test_instantiate_app() {
-        let app = Expr::App(Node::new(Expr::BVar(0)), Node::new(Expr::BVar(1)));
-        let arg = Expr::FVar(FVarId(99));
-        let result = instantiate(&app, &arg);
-        match result {
             Expr::App(f, a) => {
-                assert_eq!(*f, arg);
-                assert_eq!(*a, Expr::BVar(0));
+                let f_new = self.node(f, depth);
+                let a_new = self.node(a, depth);
+                if f_new.is_none() && a_new.is_none() {
+                    return None;
+                }
+                Some(Expr::App(
+                    f_new.unwrap_or_else(|| f.clone()),
+                    a_new.unwrap_or_else(|| a.clone()),
+                ))
             }
-            _ => panic!("Expected App"),
+            Expr::Lam(bi, name, ty, body) => {
+                let ty_new = self.node(ty, depth);
+                let body_new = self.node(body, depth + 1);
+                if ty_new.is_none() && body_new.is_none() {
+                    return None;
+                }
+                Some(Expr::Lam(
+                    *bi,
+                    name.clone(),
+                    ty_new.unwrap_or_else(|| ty.clone()),
+                    body_new.unwrap_or_else(|| body.clone()),
+                ))
+            }
+            Expr::Pi(bi, name, ty, body) => {
+                let ty_new = self.node(ty, depth);
+                let body_new = self.node(body, depth + 1);
+                if ty_new.is_none() && body_new.is_none() {
+                    return None;
+                }
+                Some(Expr::Pi(
+                    *bi,
+                    name.clone(),
+                    ty_new.unwrap_or_else(|| ty.clone()),
+                    body_new.unwrap_or_else(|| body.clone()),
+                ))
+            }
+            Expr::Let(name, ty, val, body) => {
+                let ty_new = self.node(ty, depth);
+                let val_new = self.node(val, depth);
+                let body_new = self.node(body, depth + 1);
+                if ty_new.is_none() && val_new.is_none() && body_new.is_none() {
+                    return None;
+                }
+                Some(Expr::Let(
+                    name.clone(),
+                    ty_new.unwrap_or_else(|| ty.clone()),
+                    val_new.unwrap_or_else(|| val.clone()),
+                    body_new.unwrap_or_else(|| body.clone()),
+                ))
+            }
+            Expr::Proj(name, idx, e) => {
+                let e_new = self.node(e, depth)?;
+                Some(Expr::Proj(name.clone(), *idx, e_new))
+            }
         }
     }
 }
@@ -1118,7 +974,7 @@ pub fn peel_lambdas(e: &Expr, n: usize) -> (Vec<(crate::Name, crate::BinderInfo,
     let mut cur = e;
     for _ in 0..n {
         if let Expr::Lam(bi, _, ty, body) = cur {
-            binders.push((crate::Name::Anonymous, *bi, ty.clone()));
+            binders.push((crate::Name::anonymous(), *bi, ty.clone()));
             cur = body;
         } else {
             break;
@@ -1708,10 +1564,10 @@ mod tests_padding3 {
         let mut calc = StackCalc::new();
         calc.push(3);
         calc.push(4);
-        calc.add();
+        assert_eq!(calc.add(), Some(7));
         assert_eq!(calc.peek(), Some(7));
         calc.push(2);
-        calc.mul();
+        assert_eq!(calc.mul(), Some(14));
         assert_eq!(calc.peek(), Some(14));
     }
 }

@@ -112,7 +112,7 @@ pub fn format_count(n: u64) -> String {
     let digits: Vec<char> = s.chars().collect();
     let len = digits.len();
     for (i, ch) in digits.iter().enumerate() {
-        if i > 0 && (len - i) % 3 == 0 {
+        if i > 0 && (len - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(*ch);

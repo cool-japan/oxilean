@@ -208,13 +208,7 @@ pub(super) fn is_set_type(ty: &Expr) -> bool {
 }
 /// Check whether the equality type is a known structure.
 pub(super) fn is_struct_type(ty: &Expr) -> Option<Name> {
-    get_head_const_name(ty).and_then(|name| {
-        if known_struct_ext(&name).is_some() {
-            Some(name)
-        } else {
-            None
-        }
-    })
+    get_head_const_name(ty).filter(|name| known_struct_ext(name).is_some())
 }
 /// Classify the type of an equality goal for ext dispatch.
 pub(super) fn classify_eq_type(eq_type: &Expr) -> EqTypeClass {
@@ -238,8 +232,8 @@ pub(super) fn known_struct_ext(name: &Name) -> Option<StructExtInfo> {
             Name::str("Prod"),
             vec![Name::str("fst"), Name::str("snd")],
             vec![
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
+                Expr::Sort(Level::succ(Level::zero())),
+                Expr::Sort(Level::succ(Level::zero())),
             ],
             2,
         )),
@@ -247,8 +241,8 @@ pub(super) fn known_struct_ext(name: &Name) -> Option<StructExtInfo> {
             Name::str("PProd"),
             vec![Name::str("fst"), Name::str("snd")],
             vec![
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
+                Expr::Sort(Level::succ(Level::zero())),
+                Expr::Sort(Level::succ(Level::zero())),
             ],
             2,
         )),
@@ -256,15 +250,15 @@ pub(super) fn known_struct_ext(name: &Name) -> Option<StructExtInfo> {
             Name::str("Sigma"),
             vec![Name::str("fst"), Name::str("snd")],
             vec![
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
-                Expr::Sort(Level::Succ(Box::new(Level::Zero))),
+                Expr::Sort(Level::succ(Level::zero())),
+                Expr::Sort(Level::succ(Level::zero())),
             ],
             2,
         )),
         "Subtype" => Some(StructExtInfo::new(
             Name::str("Subtype"),
             vec![Name::str("val")],
-            vec![Expr::Sort(Level::Succ(Box::new(Level::Zero)))],
+            vec![Expr::Sort(Level::succ(Level::zero()))],
             2,
         )),
         "And" => Some(StructExtInfo::new(

@@ -33,6 +33,7 @@ use crate::convert::{parse_index, Obj};
 use crate::error::{ExportError, ExportResult, Position};
 use crate::json::{self, JsonValue};
 use crate::model::{ExportDecl, InductiveBundle, Meta, OversizedVal};
+use crate::replay::TERM_DEPTH_LIMIT;
 
 /// Default cumulative materialization budget, in expression/level tree nodes.
 ///
@@ -331,8 +332,16 @@ struct Reader {
     lsizes: Vec<u64>,
     enodes: Vec<ENode>,
     esizes: Vec<u64>,
+    /// The limit on the depth of a term that the thread had when this read
+    /// began (`oxilean_kernel::fuel::term_depth_limit`; `None`, the default,
+    /// is no limit): a term deeper than it is never materialized.
+    term_depth_limit: Option<u32>,
+    /// With such a limit, the depth of each expression (the number of nodes
+    /// on its longest path down to a leaf), read off its children's as it
+    /// is defined. Without one the table is not kept.
+    edepths: Vec<u32>,
     /// Structural sharing (wave5 Stage B): file-global memo mapping each export
-    /// DAG id to the single `Rc<Expr>` it materializes to. An id referenced by
+    /// DAG id to the single shared [`Node`] it materializes to. An id referenced by
     /// many parents (or many declarations) is built once and shared by
     /// refcount, so materialization cost and residency are proportional to the
     /// number of *distinct* reachable nodes, not the exploded tree size.
@@ -351,11 +360,13 @@ impl Reader {
     fn new(limits: Limits) -> Self {
         // Pre-seed: name[0] = anonymous, level[0] = zero. Exprs start empty.
         Self {
-            names: vec![Name::Anonymous],
+            names: vec![Name::anonymous()],
             lnodes: vec![LNode::Zero],
             lsizes: vec![1],
             enodes: Vec::new(),
             esizes: Vec::new(),
+            term_depth_limit: oxilean_kernel::fuel::term_depth_limit(),
+            edepths: Vec::new(),
             memo: Vec::new(),
             pending: Vec::new(),
             budget_left: limits.materialize_budget,
@@ -443,6 +454,22 @@ impl Reader {
                 .saturating_add(self.esize(*b)),
             ENode::Proj(_, _, s) => 1u64.saturating_add(self.esize(*s)),
         };
+        if self.term_depth_limit.is_some() {
+            let below = match &node {
+                ENode::BVar(_)
+                | ENode::NatLit(_)
+                | ENode::StrLit(_)
+                | ENode::Sort(_)
+                | ENode::Const(_, _) => 0,
+                ENode::App(f, a) => self.edepth(*f).max(self.edepth(*a)),
+                ENode::Lam(_, _, t, b) | ENode::Pi(_, _, t, b) => {
+                    self.edepth(*t).max(self.edepth(*b))
+                }
+                ENode::Let(_, t, v, b) => self.edepth(*t).max(self.edepth(*v)).max(self.edepth(*b)),
+                ENode::Proj(_, _, s) => self.edepth(*s),
+            };
+            self.edepths.push(below.saturating_add(1));
+        }
         self.enodes.push(node);
         self.esizes.push(size);
         Ok(())
@@ -454,6 +481,12 @@ impl Reader {
 
     fn esize(&self, idx: usize) -> u64 {
         self.esizes.get(idx).copied().unwrap_or(u64::MAX)
+    }
+
+    /// The depth of an expression (kept only under a term-depth limit; an
+    /// index the table does not have counts as too deep).
+    fn edepth(&self, idx: usize) -> u32 {
+        self.edepths.get(idx).copied().unwrap_or(u32::MAX)
     }
 
     /// Dense-insert precondition: the next assigned index must equal the
@@ -538,7 +571,7 @@ impl Reader {
     /// Materialize the kernel [`Expr`] for an expression index.
     ///
     /// Structural sharing (wave5 Stage B): a file-global memo maps each export
-    /// DAG id to the single `Rc<Expr>` it materializes to, so an id referenced
+    /// DAG id to the single shared [`Node`] it materializes to, so an id referenced
     /// by *N* parents (or reused across declarations) is built once and shared
     /// by refcount. Cost is therefore the number of *distinct* nodes newly
     /// constructed (memo misses), not the exploded tree size. The
@@ -547,7 +580,23 @@ impl Reader {
     /// fresh nodes (the memo entries built before the breach remain valid and
     /// shareable) and `dispatch` recovers the specific error into an
     /// [`ExportDecl::Oversized`](crate::ExportDecl::Oversized) event.
+    ///
+    /// An expression deeper than the checking thread allows
+    /// (`oxilean_kernel::fuel::set_term_depth_limit` — a thread with a small
+    /// stack; by default there is no limit — as it was when the read began)
+    /// is not materialized at all: every walk of a kernel term is a
+    /// recursion as deep as the term, its release included. The declaration
+    /// aborts with [`TERM_DEPTH_LIMIT`], which `dispatch` recovers into an
+    /// [`ExportDecl::Oversized`](crate::ExportDecl::Oversized) event as it
+    /// does a declaration over its budget. The depth is read off the table
+    /// in O(1).
     fn materialize_expr(&mut self, root: usize, pos: Position) -> ExportResult<Expr> {
+        if self
+            .term_depth_limit
+            .is_some_and(|limit| self.edepth(root) > limit)
+        {
+            return Err(ExportError::unsupported(pos, TERM_DEPTH_LIMIT));
+        }
         if self.memo.len() < self.enodes.len() {
             self.memo.resize(self.enodes.len(), None);
         }
@@ -822,15 +871,16 @@ impl Reader {
                     // only hold members of THIS record here — read_streaming
                     // drains it after every dispatch — so clearing it drops
                     // exactly the partially-read group.
+                    //
+                    // The same for a declaration with a term deeper than the
+                    // checking thread allows (`materialize_expr`).
                     Err(ExportError::Unsupported { feature, .. })
-                        if feature == DECL_BUDGET_FEATURE =>
+                        if feature == DECL_BUDGET_FEATURE || feature == TERM_DEPTH_LIMIT =>
                     {
                         self.pending.clear();
                         let names = self.decl_record_names(discriminator, &obj, pos)?;
-                        self.pending.push(ExportDecl::Oversized(OversizedVal {
-                            names,
-                            feature: DECL_BUDGET_FEATURE,
-                        }));
+                        self.pending
+                            .push(ExportDecl::Oversized(OversizedVal { names, feature }));
                         self.stats.decl_oversized += 1;
                         Ok(())
                     }

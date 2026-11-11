@@ -23,7 +23,7 @@ impl PAdicValuation {
         }
         let mut k = 0i64;
         let mut m = n.unsigned_abs();
-        while m % self.p == 0 {
+        while m.is_multiple_of(self.p) {
             m /= self.p;
             k += 1;
         }
@@ -215,12 +215,12 @@ impl LocalField {
     /// True if the extension is tamely ramified: e > 1 and p ∤ e.
     pub fn is_tamely_ramified(&self) -> bool {
         let e = self.ramification_index as u64;
-        e > 1 && e % self.p != 0
+        e > 1 && !e.is_multiple_of(self.p)
     }
     /// True if the extension is wildly ramified: p | e.
     pub fn is_wildly_ramified(&self) -> bool {
         let e = self.ramification_index as u64;
-        e % self.p == 0 && e > 1
+        e.is_multiple_of(self.p) && e > 1
     }
 }
 /// The Volkenborn integral (p-adic analogue of the Lebesgue integral on ℤ_p).
@@ -677,7 +677,7 @@ impl PAdicAbsoluteValue {
         }
         let mut m = n.unsigned_abs();
         let mut val = 0i32;
-        while m % self.p == 0 {
+        while m.is_multiple_of(self.p) {
             m /= self.p;
             val += 1;
         }
@@ -709,7 +709,7 @@ impl MahlerTransform {
         let mut result = 0.0f64;
         for j in 0..=k {
             let binom = mahler_binomial(k as i64, j);
-            let sign = if (k - j) % 2 == 0 { 1.0 } else { -1.0 };
+            let sign = if (k - j).is_multiple_of(2) { 1.0 } else { -1.0 };
             let fj = if j < self.coefficients.len() {
                 self.coefficients[j]
             } else {
@@ -1183,7 +1183,7 @@ impl PAdicNumber {
         }
         let mut val = 0i64;
         let mut m = n.unsigned_abs();
-        while m % p == 0 {
+        while m.is_multiple_of(p) {
             m /= p;
             val += 1;
         }

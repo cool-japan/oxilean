@@ -33,7 +33,7 @@ npm install @cooljapan/oxilean
 
 | Feature | Enables |
 |---------|---------|
-| `wasm` | `wasm-bindgen`, `serde`, `serde_json`, `serde-wasm-bindgen`, `js-sys` |
+| `wasm` | `wasm-bindgen`, `serde`, `serde-wasm-bindgen` |
 
 ## API
 
@@ -61,6 +61,10 @@ const hover = ox.hoverInfo(source, line, col); // string | null
 
 // Format source code
 const formatted = ox.format(source); // string
+
+// Incremental check (reuses cached results for unchanged declarations)
+const inc = ox.checkIncremental(source);
+// inc: { diagnostics: [...], recheck_count: number, cache_hit_count: number }
 
 // Properties
 ox.sessionId;       // getter -- unique session identifier
@@ -93,12 +97,15 @@ This creates:
 
 ## Dependencies
 
-All dependencies are optional and gated behind the `wasm` feature:
+The JS-glue dependencies are optional and gated behind the `wasm` feature:
 
-- `wasm-bindgen` 0.2.114
-- `serde` + `serde_json`
+- `wasm-bindgen` 0.2.130
+- `serde`
 - `serde-wasm-bindgen` 0.6.5
-- `js-sys` 0.3.83
+
+The crate always depends on `oxilean-kernel`, `oxilean-parse`, `oxilean-elab`
+and `oxiarc-deflate`. On wasm32 it also enables getrandom's `wasm_js` feature
+(getrandom 0.3 and 0.4) for transitive dependencies.
 
 ## Testing
 

@@ -42,13 +42,13 @@ impl FibonacciUtil {
             return vec![0];
         }
         let mut all_fibs = vec![1u64, 1];
-        while *all_fibs
-            .last()
-            .expect("all_fibs is non-empty: initialized with [1, 1]")
-            < n
-        {
-            let len = all_fibs.len();
-            all_fibs.push(all_fibs[len - 1].saturating_add(all_fibs[len - 2]));
+        // The two most recently pushed entries of `all_fibs`.
+        let (mut prev, mut last) = (1u64, 1u64);
+        while last < n {
+            let next = last.saturating_add(prev);
+            all_fibs.push(next);
+            prev = last;
+            last = next;
         }
         all_fibs.retain(|&x| x <= n);
         all_fibs.dedup();
@@ -77,8 +77,8 @@ impl ArithmeticFunctions {
         let mut temp = n;
         let mut p = 2u64;
         while p * p <= temp {
-            if temp % p == 0 {
-                while temp % p == 0 {
+            if temp.is_multiple_of(p) {
+                while temp.is_multiple_of(p) {
                     temp /= p;
                 }
                 result -= result / p;
@@ -98,10 +98,10 @@ impl ArithmeticFunctions {
         let mut num_prime_factors = 0i32;
         let mut p = 2u64;
         while p * p <= n {
-            if n % p == 0 {
+            if n.is_multiple_of(p) {
                 num_prime_factors += 1;
                 n /= p;
-                if n % p == 0 {
+                if n.is_multiple_of(p) {
                     return 0;
                 }
             }
@@ -121,14 +121,14 @@ impl ArithmeticFunctions {
         if n == 0 {
             return 0;
         }
-        (1..=n).filter(|&d| n % d == 0).count() as u64
+        (1..=n).filter(|&d| n.is_multiple_of(d)).count() as u64
     }
     /// Sum of divisors sigma(n).
     pub fn sum_of_divisors(n: u64) -> u64 {
         if n == 0 {
             return 0;
         }
-        (1..=n).filter(|&d| n % d == 0).sum()
+        (1..=n).filter(|&d| n.is_multiple_of(d)).sum()
     }
 }
 /// Collatz conjecture utilities.
@@ -141,7 +141,11 @@ impl CollatzUtil {
     pub fn sequence(mut n: u64) -> Vec<u64> {
         let mut seq = vec![n];
         while n != 1 {
-            n = if n % 2 == 0 { n / 2 } else { 3 * n + 1 };
+            n = if n.is_multiple_of(2) {
+                n / 2
+            } else {
+                3 * n + 1
+            };
             seq.push(n);
             if seq.len() > 10_000 {
                 break;
@@ -152,14 +156,12 @@ impl CollatzUtil {
     /// Stopping time: number of steps to reach 1.
     pub fn stopping_time(n: u64) -> Option<usize> {
         let seq = Self::sequence(n);
-        if *seq
-            .last()
-            .expect("seq is non-empty: sequence(n) always includes n")
-            == 1
-        {
+        if seq.last() == Some(&1) {
             Some(seq.len() - 1)
         } else {
             None
         }
     }
 }
+#[cfg(test)]
+mod sequence_tests;

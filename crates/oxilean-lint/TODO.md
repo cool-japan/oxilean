@@ -1,11 +1,11 @@
 # oxilean-lint — TODO
 
 > Task list for the linting system crate.
-> Last updated: 2026-05-03
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
-**Status**: COMPLETE — ~17,600 SLOC implemented across 121 source files
+**Status**: COMPLETE — ~22,179 SLOC implemented across 153 source files
 
 ### Linting Features
 - [x] Code quality checks
@@ -58,3 +58,8 @@ None reported. All tests passing.
   - **Tests:** Golden code action response for a lint with known auto-fix
   - **Risk:** LSP code action protocol requires specific `kind` strings — follow LSP 3.17 spec
   - **Note (2026-05-29):** Implementation tracked from oxilean-cli side. This cycle, add `fix_suggestion: Option<LintFixSuggestion>` to `LintDiagnostic` (or equivalent) if not already present — oxilean-cli needs this to convert lint diags to CodeAction text edits. See oxilean-cli/TODO.md for the full plan.
+
+## v0.1.4 (released 2026-11-12)
+
+- [x] Hygiene pass: `.unwrap()` / `.expect()` outside tests 3 → 0 (`framework/functions.rs`, `autofix/types.rs`), with a regression test (`framework/functions/case_tests.rs`)
+- [x] MSRV 1.89: clippy suggestions applied (3c75335)

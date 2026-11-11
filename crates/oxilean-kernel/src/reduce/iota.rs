@@ -23,7 +23,7 @@
 
 use crate::bignat::BigNat;
 use crate::declaration::RecursorVal;
-use crate::expr_util::{get_app_fn_args, mk_app, mk_app_refs};
+use crate::expr_util::{get_app_arg_nodes, get_app_fn, get_app_fn_args, mk_app, mk_app_nodes};
 use crate::instantiate::instantiate_type_lparams;
 use crate::Node;
 use crate::{Environment, Expr, Level, Literal, Name, TypeChecker};
@@ -135,18 +135,18 @@ pub(crate) fn str_lit_expansion(s: &str, env: &Environment) -> Option<Expr> {
 /// build the canonical constructor application `I.mk As`, and use it as the
 /// major premise when its type is definitionally equal to the major's type.
 /// The major is typed in a checker seeded with `locals` — the free-variable
-/// context mirrored from the surrounding checker (Lean's kernel uses its
-/// local context here). Returns `None` (leaving the term stuck) whenever
-/// the major cannot be typed — safe incompleteness, never a wrong
-/// reduction.
+/// context mirrored from the surrounding checker: the variables in scope
+/// (Lean's kernel uses its local context here). Returns `None` (leaving the
+/// term stuck) whenever the major cannot be typed — safe incompleteness,
+/// never a wrong reduction.
 pub(super) fn to_ctor_when_k(
     rec_val: &RecursorVal,
     major: &Expr,
     env: &Environment,
-    locals: &std::collections::HashMap<u64, Expr>,
+    locals: &crate::local_types::LocalTypes,
 ) -> Option<Expr> {
     let ind_name = rec_val.all.first()?;
-    let mut tc = TypeChecker::with_fvar_types(env, locals);
+    let mut tc = TypeChecker::with_local_types(env, locals);
     let app_ty = tc.infer_type(major).ok()?;
     let app_ty = tc.whnf(&app_ty);
     let (head, ty_args) = get_app_fn_args(&app_ty);
@@ -193,7 +193,7 @@ pub(super) fn to_ctor_when_struct(
     rec_val: &RecursorVal,
     major: &Expr,
     env: &Environment,
-    locals: &std::collections::HashMap<u64, Expr>,
+    locals: &crate::local_types::LocalTypes,
 ) -> Option<Expr> {
     if rec_val.all.len() != 1 {
         return None;
@@ -209,7 +209,7 @@ pub(super) fn to_ctor_when_struct(
             return None;
         }
     }
-    let mut tc = TypeChecker::with_fvar_types(env, locals);
+    let mut tc = TypeChecker::with_local_types(env, locals);
     let e_ty = tc.infer_type(major).ok()?;
     let e_ty = tc.whnf(&e_ty);
     let (ty_head, ty_args) = get_app_fn_args(&e_ty);
@@ -253,12 +253,13 @@ pub(super) fn to_ctor_when_struct(
 pub(super) fn apply_recursor_rule(
     rec_val: &RecursorVal,
     rec_levels: &[Level],
-    rec_args: &[&Expr],
+    rec_args: &[&Node],
     major_idx: usize,
     major: &Expr,
     env: &Environment,
 ) -> Option<Expr> {
-    let (ctor_fn, ctor_args) = get_app_fn_args(major);
+    let ctor_fn = get_app_fn(major);
+    let ctor_args = get_app_arg_nodes(major);
     let ctor_name = match ctor_fn {
         Expr::Const(name, _) => name,
         _ => return None,
@@ -281,10 +282,10 @@ pub(super) fn apply_recursor_rule(
     if rec_args.len() < n_premises {
         return None;
     }
-    let mut r = mk_app_refs(rhs, &rec_args[..n_premises]);
+    let mut r = mk_app_nodes(rhs, &rec_args[..n_premises]);
     // The constructor's fields are the *last* `nfields` arguments.
-    r = mk_app_refs(r, &ctor_args[ctor_args.len() - nfields..]);
+    r = mk_app_nodes(r, &ctor_args[ctor_args.len() - nfields..]);
     // Never drop over-application: re-apply everything past the major.
-    r = mk_app_refs(r, &rec_args[major_idx + 1..]);
+    r = mk_app_nodes(r, &rec_args[major_idx + 1..]);
     Some(r)
 }

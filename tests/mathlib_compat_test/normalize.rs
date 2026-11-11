@@ -700,7 +700,7 @@ fn fix_empty_rhs_before_sorry(src: &str) -> String {
         ] {
             if trimmed.ends_with(op) {
                 let op_start = trimmed.len() - op.len();
-                return format!("{} _ {}", &src[..op_start].trim_end(), &src[sorry_pos..]);
+                return format!("{} _ {}", src[..op_start].trim_end(), &src[sorry_pos..]);
             }
         }
     }
@@ -5652,21 +5652,24 @@ fn normalize_anon_dot_method(src: &str) -> String {
     let mut i = 0;
     while i < len {
         // Match `(.method` or `( .method` (with optional space)
-        let dot_start;
-        if chars[i] == '(' && i + 2 < len && chars[i + 1] == '.' && chars[i + 2].is_alphabetic() {
-            dot_start = i + 2;
+        let dot_start = if chars[i] == '('
+            && i + 2 < len
+            && chars[i + 1] == '.'
+            && chars[i + 2].is_alphabetic()
+        {
+            i + 2
         } else if chars[i] == '('
             && i + 3 < len
             && chars[i + 1] == ' '
             && chars[i + 2] == '.'
             && chars[i + 3].is_alphabetic()
         {
-            dot_start = i + 3;
+            i + 3
         } else {
             result.push(chars[i]);
             i += 1;
             continue;
-        }
+        };
         {
             // Read the method name
             let mut j = dot_start;

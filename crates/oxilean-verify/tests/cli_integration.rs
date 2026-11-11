@@ -131,6 +131,123 @@ fn rejected_declaration_exits_one() {
 }
 
 #[test]
+fn declaration_lean_kernel_rejects_exits_one() {
+    // The committed negative fixture: a real lean4export file whose theorem
+    // `KGuardCollision.bad` Lean's own kernel rejects (see the fixture
+    // README). It must trip the alarm through the real binary. Before the
+    // free-variable id fix this run printed `4 verified · 0 unsupported ·
+    // 0 rejected` and exited 0.
+    let out = run(&["--quiet", fixture("KGuardCollision").to_str().unwrap()]);
+    assert_eq!(
+        code(&out),
+        1,
+        "a declaration Lean's kernel rejects must exit 1; stdout: {}",
+        stdout(&out)
+    );
+    assert_eq!(
+        parse_summary_counts(&stdout(&out)),
+        (3, 0, 1),
+        "KGuardCollision: 3 sound declarations verify, the bad theorem is rejected"
+    );
+
+    // And the rejection is attributed to that theorem.
+    let out = run(&[fixture("KGuardCollision").to_str().unwrap()]);
+    let text = stdout(&out);
+    let bad_line = text
+        .lines()
+        .find(|l| l.contains("KGuardCollision.bad"))
+        .unwrap_or_else(|| panic!("no line for KGuardCollision.bad in: {text}"));
+    assert!(
+        bad_line.contains("rejected"),
+        "KGuardCollision.bad must be the rejected declaration: {bad_line}"
+    );
+}
+
+#[test]
+fn congruence_first_fixture_verifies_all_but_the_theorem_lean_rejects() {
+    // The second committed negative fixture (see the fixture README):
+    // `CongruenceFirst.bad` equates one function applied to unequal
+    // arguments, and Lean's own kernel rejects it. The three sound theorems
+    // of the file need the arguments compared before the function is
+    // unfolded; they verify under the DEFAULT limits (before that they were
+    // `unsupported` even under `--limits corpus`).
+    let out = run(&["--quiet", fixture("CongruenceFirst").to_str().unwrap()]);
+    assert_eq!(
+        code(&out),
+        1,
+        "a declaration Lean's kernel rejects must exit 1; stdout: {}",
+        stdout(&out)
+    );
+    assert_eq!(
+        parse_summary_counts(&stdout(&out)),
+        (184, 0, 1),
+        "CongruenceFirst: 184 sound declarations verify, the bad theorem is rejected"
+    );
+
+    let out = run(&[fixture("CongruenceFirst").to_str().unwrap()]);
+    let text = stdout(&out);
+    let line_of = |name: &str| -> &str {
+        text.lines()
+            .find(|l| l.split_whitespace().any(|word| word == name))
+            .unwrap_or_else(|| panic!("no line for {name} in: {text}"))
+    };
+    assert!(
+        line_of("CongruenceFirst.bad").contains("rejected"),
+        "CongruenceFirst.bad must be the rejected declaration: {}",
+        line_of("CongruenceFirst.bad")
+    );
+    for name in [
+        "CongruenceFirst.same_function_equal_args",
+        "CongruenceFirst.mod_stuck_divisor",
+        "CongruenceFirst.short_fuel",
+    ] {
+        assert!(
+            !line_of(name).contains("rejected") && !line_of(name).contains("unsupported"),
+            "{name} must verify: {}",
+            line_of(name)
+        );
+    }
+}
+
+#[test]
+fn deep_fixtures_verify_on_the_tools_own_stack_and_their_false_theorems_are_rejected() {
+    // The third and fourth committed negative fixtures (see the fixture
+    // README). `NestedReduction` needs a reduction nested four hundred deep,
+    // `DeepTerm` walks a term three hundred levels deep; both are a matter
+    // of stack, and the tool runs on a thread with a stack of its own
+    // (`--stack-size`, 512 MiB by default) under no limit on either. Each
+    // file ends with a FALSE theorem Lean's kernel rejects, which takes the
+    // same depth to find out.
+    for (name, verified, bad) in [
+        ("NestedReduction", 64, "NestedReduction.bad"),
+        ("DeepTerm", 5, "DeepTerm.bad"),
+    ] {
+        let out = run(&["--quiet", fixture(name).to_str().unwrap()]);
+        assert_eq!(
+            code(&out),
+            1,
+            "{name}: a declaration Lean's kernel rejects must exit 1; stdout: {}",
+            stdout(&out)
+        );
+        assert_eq!(
+            parse_summary_counts(&stdout(&out)),
+            (verified, 0, 1),
+            "{name}: every sound declaration verifies, the false theorem is rejected"
+        );
+        let out = run(&[fixture(name).to_str().unwrap()]);
+        let text = stdout(&out);
+        let bad_line = text
+            .lines()
+            .find(|l| l.split_whitespace().any(|word| word == bad))
+            .unwrap_or_else(|| panic!("no line for {bad} in: {text}"));
+        assert!(
+            bad_line.contains("rejected"),
+            "{bad} must be the rejected declaration: {bad_line}"
+        );
+    }
+}
+
+#[test]
 fn malformed_input_exits_two_and_is_not_a_rejection() {
     let path = write_scratch("malformed", MALFORMED_EXPORT);
     let out = run(&[path.to_str().unwrap()]);
@@ -233,13 +350,17 @@ fn parse_summary_counts(text: &str) -> (usize, usize, usize) {
 /// investigate, never re-pin to make the table pretty.
 #[test]
 fn fixture_three_bucket_splits_are_pinned() {
-    let expected: [(&str, usize, usize, usize); 6] = [
+    let expected: [(&str, usize, usize, usize); 10] = [
         ("simple_add", 23, 0, 0),
         ("Nat.add_succ", 19, 0, 0),
         ("Tree_Forest", 1, 0, 0),
         ("Tree_Forest_full", 37, 0, 0),
         ("point_swap_swap", 16, 0, 0),
         ("Parity.isEven", 181, 0, 0),
+        ("Syntax", 269, 0, 0),
+        ("QuotPartialApp", 66, 0, 0),
+        ("ReductionChain", 36, 0, 0),
+        ("SharedSubterms", 60, 0, 0),
     ];
     for (name, verified, unsupported, rejected) in expected {
         let out = run(&["--quiet", fixture(name).to_str().unwrap()]);

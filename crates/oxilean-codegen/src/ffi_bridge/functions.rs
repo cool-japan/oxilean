@@ -584,7 +584,7 @@ pub const FFI_MAX_PARAMS: usize = 64;
 /// FFI alignment check
 #[allow(dead_code)]
 pub fn ffi_check_alignment(size: u64, align: u64) -> bool {
-    align.is_power_of_two() && size % align == 0
+    align.is_power_of_two() && size.is_multiple_of(align)
 }
 /// FFI type size (simplified)
 #[allow(dead_code)]

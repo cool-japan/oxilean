@@ -375,17 +375,9 @@ impl Curve3D {
     }
     /// Check if curve is closed: first ≈ last point
     pub fn is_closed(&self) -> bool {
-        if self.points.len() < 2 {
+        let [first, .., last] = self.points.as_slice() else {
             return false;
-        }
-        let first = self
-            .points
-            .first()
-            .expect("points has at least 2 elements: checked by early return");
-        let last = self
-            .points
-            .last()
-            .expect("points has at least 2 elements: checked by early return");
+        };
         norm3(&sub3(last, first)) < 1e-6
     }
     /// Frenet-Serret frame (T, N, B) at index i

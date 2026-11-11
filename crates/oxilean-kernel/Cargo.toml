@@ -22,10 +22,16 @@ path = "src/lib.rs"
 
 [dev-dependencies]
 # Test-only dependencies are allowed
-criterion = { version = "0.8", features = ["html_reports"] }
+criterion = { workspace = true }
 proptest.workspace = true
 # Differential-testing reference for the hand-written BigNat (never ships).
 num-bigint.workspace = true
 
 [features]
 default = []
+# Track the depth of every term, so that a limit on it can be enforced
+# (`fuel::set_term_depth_limit`): a caller whose stack is small can then have
+# a term too deep for it reported as a resource limit instead of overflowing
+# the stack. Off by default: it adds four bytes to every shared subterm.
+# (`oxilean-verify-wasm` turns it on — a browser's stack is about a megabyte.)
+term-depth = []

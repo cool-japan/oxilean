@@ -62,9 +62,9 @@ impl LimitsPreset {
         }
     }
 
-    /// The deterministic per-declaration resource budget (kernel `Expr`
-    /// nodes cloned) for this preset. A declaration exceeding it lands in
-    /// the *unsupported* bucket with the named
+    /// The deterministic per-declaration resource budget (units of kernel
+    /// work, see `oxilean_kernel::fuel`) for this preset. A declaration
+    /// exceeding it lands in the *unsupported* bucket with the named
     /// [`oxilean_export::RESOURCE_LIMIT`] feature — never in `rejected`,
     /// and never an OOM.
     #[must_use]
@@ -296,7 +296,9 @@ OPTIONS:\n    \
 --limits <PRESET>  materialization budget: 'default' (small, untrusted) or\n                       \
 'corpus' (large, for trusted whole-corpus exports); also\n                       \
 sets the per-declaration resource budget (a declaration\n                       \
-exceeding it is reported as unsupported, never rejected)\n    \
+exceeding it is reported as unsupported, never rejected);\n                       \
+'corpus' also arms a 30 s per-declaration wall-clock\n                       \
+deadline (likewise reported as unsupported, never rejected)\n    \
 --stack-size <MiB> stack size of the verification thread in MiB\n                       \
 (default 512; deep reduction chains in real corpora need\n                       \
 far more than the 8 MiB OS default — no ulimit needed)\n    \

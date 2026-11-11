@@ -23,7 +23,7 @@ A comprehensive guide to using OxiLean, the pure Rust Interactive Theorem Prover
 
 ### System Requirements
 
-- **Rust**: 1.70 or later
+- **Rust**: 1.89 or later
 - **Operating System**: Linux, macOS, or Windows (with WSL recommended)
 - **RAM**: 2GB minimum, 8GB+ recommended
 - **Disk Space**: 500MB for build artifacts
@@ -1279,11 +1279,11 @@ Shows version information:
 oxilean version
 
 Output:
-OxiLean version 0.1.1
-Kernel SLOC: ~113,179
-11 crates, 1.2M+ total SLOC
-Zero external dependencies in kernel
+OxiLean version 0.1.4
+Kernel: zero external dependencies, #![forbid(unsafe_code)]
 ```
+
+`oxilean --version` and `oxilean -V` print the same text.
 
 #### `oxilean help`
 
@@ -1297,7 +1297,15 @@ oxilean -h
 
 ### Additional Commands
 
-These commands are implemented and available:
+> **Note (0.1.4):** the `oxilean` binary dispatches only `check <file>`, `repl`,
+> `lsp`/`serve`, `playground`, `version`/`--version`/`-V`, `help`/`--help`/`-h`, or a bare
+> file path (treated as `check`). The subcommands and flags below are **not dispatched by the
+> `oxilean` binary in 0.1.4** (for example `oxilean build` fails with "Failed to read file
+> build"); `check` takes only a file argument and does not parse `--verbose`, `--json` or
+> `--profile`. The functionality is available through the `oxilake` package manager
+> (`oxilake new | build | check | test | run | fmt | clean`), the `oxilean-doc` binary
+> (HTML documentation), and as library modules in `oxilean-cli` / `oxilean-build` /
+> `oxilean-lint`. The listing is kept as the intended command surface.
 
 ```bash
 # Build project
@@ -1326,16 +1334,19 @@ oxilean lint
 
 ### Environment Variables
 
-```bash
-# Set kernel verbosity
-export OXILEAN_KERNEL_VERBOSE=1
+The 0.1.4 `oxilean` binary honours only one environment-dependent behaviour:
 
-# Set tactic timeout (milliseconds)
-export OXILEAN_TACTIC_TIMEOUT=5000
+- `HOME` (falling back to `USERPROFILE`): the REPL loads its command history from
+  `$HOME/.oxilean_history` when it starts and writes it back when it exits normally.
 
-# Enable kernel logging
-export RUST_LOG=oxilean_kernel=debug
-```
+The `OXILEAN_*` variables are **not** read by the 0.1.4 binary. The `oxilean-cli`
+config module defines `OXILEAN_VERBOSITY`, `OXILEAN_COLOR`, `OXILEAN_UNICODE`,
+`OXILEAN_MAX_ERRORS` and `OXILEAN_TIMEOUT` (in `config_from_env`), but nothing reachable from
+the binary's entry point calls it, so setting them has no effect. Likewise `COLUMNS`,
+`NO_COLOR` and `OXILEAN_HOME` appear in helper code that the binary never calls.
+The kernel has no dependencies and therefore no logger, so `RUST_LOG` has no effect on it.
+(Earlier versions of this guide listed `OXILEAN_KERNEL_VERBOSE` and `OXILEAN_TACTIC_TIMEOUT`;
+no code reads them.)
 
 ---
 
@@ -1350,9 +1361,10 @@ oxilean repl
 You'll see:
 
 ```
-OxiLean interactive theorem prover v0.1.1
+OxiLean REPL v0.1.4
 Type :help for help, :quit to exit
->
+
+oxilean[1]>
 ```
 
 ### Basic REPL Commands

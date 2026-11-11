@@ -12,18 +12,18 @@ use super::types::{
     LevelDefEqWorkQueue, LevelUnifResult, LevelUnifStats,
 };
 use crate::basic::MetaContext;
-use oxilean_kernel::{Level, LevelMVarId};
+use oxilean_kernel::{Level, LevelMVarId, LevelView};
 use std::collections::HashSet;
 
 /// Check if a level metavariable occurs in a level expression.
 pub(super) fn level_occurs_check(mvar_id: u64, level: &Level) -> bool {
-    match level {
-        Level::MVar(LevelMVarId(id)) => *id == mvar_id,
-        Level::Succ(inner) => level_occurs_check(mvar_id, inner),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+    match level.view() {
+        LevelView::MVar(LevelMVarId(id)) => id == mvar_id,
+        LevelView::Succ(inner) => level_occurs_check(mvar_id, inner),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             level_occurs_check(mvar_id, a) || level_occurs_check(mvar_id, b)
         }
-        Level::Zero | Level::Param(_) => false,
+        LevelView::Zero | LevelView::Param(_) => false,
     }
 }
 /// Collect unassigned level metavariables.
@@ -32,20 +32,20 @@ pub(super) fn collect_level_mvars_impl(
     ctx: &MetaContext,
     result: &mut HashSet<u64>,
 ) {
-    match level {
-        Level::MVar(LevelMVarId(id)) => {
-            if let Some(assigned) = ctx.get_level_assignment(*id) {
+    match level.view() {
+        LevelView::MVar(LevelMVarId(id)) => {
+            if let Some(assigned) = ctx.get_level_assignment(id) {
                 collect_level_mvars_impl(assigned, ctx, result);
             } else {
-                result.insert(*id);
+                result.insert(id);
             }
         }
-        Level::Succ(inner) => collect_level_mvars_impl(inner, ctx, result),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Succ(inner) => collect_level_mvars_impl(inner, ctx, result),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_mvars_impl(a, ctx, result);
             collect_level_mvars_impl(b, ctx, result);
         }
-        Level::Zero | Level::Param(_) => {}
+        LevelView::Zero | LevelView::Param(_) => {}
     }
 }
 #[allow(clippy::if_same_then_else)]
@@ -58,13 +58,13 @@ pub(super) fn collect_level_mvars_impl(
 /// - `imax(l, 0) = 0`
 /// - `imax(0, l) = l`
 pub(super) fn normalize_level(level: &Level) -> Level {
-    match level {
-        Level::Zero | Level::Param(_) | Level::MVar(_) => level.clone(),
-        Level::Succ(inner) => {
+    match level.view() {
+        LevelView::Zero | LevelView::Param(_) | LevelView::MVar(_) => level.clone(),
+        LevelView::Succ(inner) => {
             let inner_norm = normalize_level(inner);
             Level::succ(inner_norm)
         }
-        Level::Max(a, b) => {
+        LevelView::Max(a, b) => {
             let a_norm = normalize_level(a);
             let b_norm = normalize_level(b);
             if a_norm.is_zero() {
@@ -77,14 +77,14 @@ pub(super) fn normalize_level(level: &Level) -> Level {
                 Level::max(a_norm, b_norm)
             }
         }
-        Level::IMax(a, b) => {
+        LevelView::IMax(a, b) => {
             let a_norm = normalize_level(a);
             let b_norm = normalize_level(b);
             if b_norm.is_zero() {
                 Level::zero()
             } else if a_norm.is_zero() {
                 b_norm
-            } else if let Level::Succ(_) = &b_norm {
+            } else if matches!(b_norm.view(), LevelView::Succ(_)) {
                 Level::max(a_norm, b_norm)
             } else {
                 Level::imax(a_norm, b_norm)
@@ -185,11 +185,11 @@ mod tests {
     }
     #[test]
     fn test_level_occurs_check() {
-        assert!(level_occurs_check(0, &Level::MVar(LevelMVarId(0))));
-        assert!(!level_occurs_check(0, &Level::MVar(LevelMVarId(1))));
+        assert!(level_occurs_check(0, &Level::mvar(LevelMVarId(0))));
+        assert!(!level_occurs_check(0, &Level::mvar(LevelMVarId(1))));
         assert!(level_occurs_check(
             0,
-            &Level::succ(Level::MVar(LevelMVarId(0)))
+            &Level::succ(Level::mvar(LevelMVarId(0)))
         ));
         assert!(!level_occurs_check(0, &Level::zero()));
     }
@@ -198,8 +198,8 @@ mod tests {
         let ldeq = LevelDefEq::new();
         let ctx = mk_ctx();
         let level = Level::max(
-            Level::MVar(LevelMVarId(0)),
-            Level::succ(Level::MVar(LevelMVarId(1))),
+            Level::mvar(LevelMVarId(0)),
+            Level::succ(Level::mvar(LevelMVarId(1))),
         );
         let mvars = ldeq.collect_level_mvars(&level, &ctx);
         assert!(mvars.contains(&0));
@@ -221,7 +221,7 @@ mod tests {
             Level::succ(Level::param(Name::str("v"))),
         );
         let norm = normalize_level(&l);
-        assert!(matches!(norm, Level::Max(_, _)));
+        assert!(matches!(norm.view(), LevelView::Max(_, _)));
     }
 }
 /// Perform level unification.
@@ -242,33 +242,33 @@ pub fn level_unify(l1: &Level, l2: &Level, ctx: &mut MetaContext) -> LevelUnifRe
 }
 /// Check if a level has metavariables.
 pub fn has_level_mvars(l: &Level) -> bool {
-    match l {
-        Level::MVar(_) => true,
-        Level::Succ(inner) => has_level_mvars(inner),
-        Level::Max(a, b) | Level::IMax(a, b) => has_level_mvars(a) || has_level_mvars(b),
-        Level::Zero | Level::Param(_) => false,
+    match l.view() {
+        LevelView::MVar(_) => true,
+        LevelView::Succ(inner) => has_level_mvars(inner),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => has_level_mvars(a) || has_level_mvars(b),
+        LevelView::Zero | LevelView::Param(_) => false,
     }
 }
 /// Compute the minimum concrete value (lower bound).
 pub fn level_lower_bound(l: &Level) -> u32 {
-    match l {
-        Level::Zero => 0,
-        Level::Succ(inner) => level_lower_bound(inner) + 1,
-        Level::Max(a, b) => level_lower_bound(a).max(level_lower_bound(b)),
-        Level::IMax(_, _) => 0,
-        Level::Param(_) | Level::MVar(_) => 0,
+    match l.view() {
+        LevelView::Zero => 0,
+        LevelView::Succ(inner) => level_lower_bound(inner) + 1,
+        LevelView::Max(a, b) => level_lower_bound(a).max(level_lower_bound(b)),
+        LevelView::IMax(_, _) => 0,
+        LevelView::Param(_) | LevelView::MVar(_) => 0,
     }
 }
 /// Compute an upper bound (returns None if unbounded).
 pub fn level_upper_bound(l: &Level) -> Option<u32> {
-    match l {
-        Level::Zero => Some(0),
-        Level::Succ(inner) => level_upper_bound(inner).map(|n| n + 1),
-        Level::Max(a, b) => match (level_upper_bound(a), level_upper_bound(b)) {
+    match l.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(inner) => level_upper_bound(inner).map(|n| n + 1),
+        LevelView::Max(a, b) => match (level_upper_bound(a), level_upper_bound(b)) {
             (Some(x), Some(y)) => Some(x.max(y)),
             _ => None,
         },
-        Level::IMax(_, b) => {
+        LevelView::IMax(_, b) => {
             if let Some(b_ub) = level_upper_bound(b) {
                 if b_ub == 0 {
                     return Some(0);
@@ -276,44 +276,44 @@ pub fn level_upper_bound(l: &Level) -> Option<u32> {
             }
             None
         }
-        Level::Param(_) | Level::MVar(_) => None,
+        LevelView::Param(_) | LevelView::MVar(_) => None,
     }
 }
 /// Level simplification.
 pub fn simplify_level(l: &Level) -> Level {
-    match l {
-        Level::Max(a, b) => {
+    match l.view() {
+        LevelView::Max(a, b) => {
             let a_s = simplify_level(a);
             let b_s = simplify_level(b);
             if a_s == b_s {
                 return a_s;
             }
-            if matches!(a_s, Level::Zero) {
+            if matches!(a_s.view(), LevelView::Zero) {
                 return b_s;
             }
-            if matches!(b_s, Level::Zero) {
+            if matches!(b_s.view(), LevelView::Zero) {
                 return a_s;
             }
-            if let (Level::Succ(ia), Level::Succ(ib)) = (&a_s, &b_s) {
-                return Level::succ(simplify_level(&Level::max(*ia.clone(), *ib.clone())));
+            if let (LevelView::Succ(ia), LevelView::Succ(ib)) = (a_s.view(), b_s.view()) {
+                return Level::succ(simplify_level(&Level::max(ia.clone(), ib.clone())));
             }
             Level::max(a_s, b_s)
         }
-        Level::IMax(a, b) => {
+        LevelView::IMax(a, b) => {
             let a_s = simplify_level(a);
             let b_s = simplify_level(b);
-            if matches!(b_s, Level::Zero) {
+            if matches!(b_s.view(), LevelView::Zero) {
                 return Level::zero();
             }
-            if matches!(a_s, Level::Zero) {
+            if matches!(a_s.view(), LevelView::Zero) {
                 return b_s;
             }
-            if matches!(b_s, Level::Succ(_)) {
+            if matches!(b_s.view(), LevelView::Succ(_)) {
                 return simplify_level(&Level::max(a_s, b_s));
             }
             Level::imax(a_s, b_s)
         }
-        Level::Succ(inner) => Level::succ(simplify_level(inner)),
+        LevelView::Succ(inner) => Level::succ(simplify_level(inner)),
         _ => l.clone(),
     }
 }
@@ -373,7 +373,7 @@ mod extended_level_def_eq_tests {
     #[test]
     fn test_has_level_mvars() {
         assert!(!has_level_mvars(&Level::zero()));
-        assert!(has_level_mvars(&Level::MVar(oxilean_kernel::LevelMVarId(
+        assert!(has_level_mvars(&Level::mvar(oxilean_kernel::LevelMVarId(
             0
         ))));
     }
@@ -423,11 +423,11 @@ mod extended_level_def_eq_tests {
 /// Check whether a level contains any `Param` nodes.
 #[allow(dead_code)]
 pub fn has_level_params(l: &Level) -> bool {
-    match l {
-        Level::Param(_) => true,
-        Level::Succ(inner) => has_level_params(inner),
-        Level::Max(a, b) | Level::IMax(a, b) => has_level_params(a) || has_level_params(b),
-        Level::MVar(_) | Level::Zero => false,
+    match l.view() {
+        LevelView::Param(_) => true,
+        LevelView::Succ(inner) => has_level_params(inner),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => has_level_params(a) || has_level_params(b),
+        LevelView::MVar(_) | LevelView::Zero => false,
     }
 }
 /// Collect all `Param` names in a level expression.
@@ -438,30 +438,30 @@ pub fn collect_level_params(l: &Level) -> HashSet<oxilean_kernel::Name> {
     params
 }
 pub(super) fn collect_level_params_rec(l: &Level, acc: &mut HashSet<oxilean_kernel::Name>) {
-    match l {
-        Level::Param(n) => {
+    match l.view() {
+        LevelView::Param(n) => {
             acc.insert(n.clone());
         }
-        Level::Succ(inner) => collect_level_params_rec(inner, acc),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Succ(inner) => collect_level_params_rec(inner, acc),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_params_rec(a, acc);
             collect_level_params_rec(b, acc);
         }
-        Level::Zero | Level::MVar(_) => {}
+        LevelView::Zero | LevelView::MVar(_) => {}
     }
 }
 /// Substitute a `Param` name with a concrete level in a level expression.
 #[allow(dead_code)]
 pub fn subst_level_param(l: &Level, name: &oxilean_kernel::Name, replacement: &Level) -> Level {
-    match l {
-        Level::Param(n) if n == name => replacement.clone(),
-        Level::Zero | Level::Param(_) | Level::MVar(_) => l.clone(),
-        Level::Succ(inner) => Level::succ(subst_level_param(inner, name, replacement)),
-        Level::Max(a, b) => Level::max(
+    match l.view() {
+        LevelView::Param(n) if n == name => replacement.clone(),
+        LevelView::Zero | LevelView::Param(_) | LevelView::MVar(_) => l.clone(),
+        LevelView::Succ(inner) => Level::succ(subst_level_param(inner, name, replacement)),
+        LevelView::Max(a, b) => Level::max(
             subst_level_param(a, name, replacement),
             subst_level_param(b, name, replacement),
         ),
-        Level::IMax(a, b) => Level::imax(
+        LevelView::IMax(a, b) => Level::imax(
             subst_level_param(a, name, replacement),
             subst_level_param(b, name, replacement),
         ),
@@ -477,21 +477,18 @@ pub fn subst_level_params(l: &Level, subst: &[(oxilean_kernel::Name, Level)]) ->
 /// Count the number of `Succ` wrappers at the top level.
 #[allow(dead_code)]
 pub fn level_succ_depth(l: &Level) -> u32 {
-    let mut depth = 0u32;
-    let mut cur = l;
-    while let Level::Succ(inner) = cur {
-        depth += 1;
-        cur = inner;
+    match l.view() {
+        LevelView::Succ(inner) => 1 + level_succ_depth(inner),
+        _ => 0,
     }
-    depth
 }
 /// Peel off exactly `n` `Succ` layers; return `None` if there are fewer than `n`.
 #[allow(dead_code)]
 pub fn peel_level_succs(l: &Level, n: u32) -> Option<&Level> {
     let mut cur = l;
     for _ in 0..n {
-        match cur {
-            Level::Succ(inner) => cur = inner,
+        match cur.view() {
+            LevelView::Succ(inner) => cur = inner,
             _ => return None,
         }
     }
@@ -500,12 +497,12 @@ pub fn peel_level_succs(l: &Level, n: u32) -> Option<&Level> {
 /// Return a lower bound for a level (the minimum it can be, treating `Param` as 0).
 #[allow(dead_code)]
 pub fn level_min_value(l: &Level) -> u32 {
-    match l {
-        Level::Zero => 0,
-        Level::Succ(inner) => level_min_value(inner) + 1,
-        Level::Max(a, b) => level_min_value(a).max(level_min_value(b)),
-        Level::IMax(_, b) => level_min_value(b),
-        Level::Param(_) | Level::MVar(_) => 0,
+    match l.view() {
+        LevelView::Zero => 0,
+        LevelView::Succ(inner) => level_min_value(inner) + 1,
+        LevelView::Max(a, b) => level_min_value(a).max(level_min_value(b)),
+        LevelView::IMax(_, b) => level_min_value(b),
+        LevelView::Param(_) | LevelView::MVar(_) => 0,
     }
 }
 /// Check whether `l1` is guaranteed to be definitionally equal to `l2`
@@ -532,15 +529,15 @@ pub fn levels_definitely_distinct(l1: &Level, l2: &Level) -> bool {
 /// Convert a closed level (no Param/MVar) to a natural number.
 #[allow(dead_code)]
 pub fn level_to_nat_opt(l: &Level) -> Option<u32> {
-    match l {
-        Level::Zero => Some(0),
-        Level::Succ(inner) => level_to_nat_opt(inner).map(|n| n + 1),
-        Level::Max(a, b) => {
+    match l.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(inner) => level_to_nat_opt(inner).map(|n| n + 1),
+        LevelView::Max(a, b) => {
             let na = level_to_nat_opt(a)?;
             let nb = level_to_nat_opt(b)?;
             Some(na.max(nb))
         }
-        Level::IMax(a, b) => {
+        LevelView::IMax(a, b) => {
             let na = level_to_nat_opt(a)?;
             let nb = level_to_nat_opt(b)?;
             if nb == 0 {
@@ -549,19 +546,19 @@ pub fn level_to_nat_opt(l: &Level) -> Option<u32> {
                 Some(na.max(nb))
             }
         }
-        Level::Param(_) | Level::MVar(_) => None,
+        LevelView::Param(_) | LevelView::MVar(_) => None,
     }
 }
 /// Format a level as a human-readable string for debugging.
 #[allow(dead_code)]
 pub fn format_level(l: &Level) -> String {
-    match l {
-        Level::Zero => "0".to_string(),
-        Level::Succ(inner) => format!("(succ {})", format_level(inner)),
-        Level::Max(a, b) => format!("(max {} {})", format_level(a), format_level(b)),
-        Level::IMax(a, b) => format!("(imax {} {})", format_level(a), format_level(b)),
-        Level::Param(n) => n.to_string(),
-        Level::MVar(id) => format!("?{}", id.0),
+    match l.view() {
+        LevelView::Zero => "0".to_string(),
+        LevelView::Succ(inner) => format!("(succ {})", format_level(inner)),
+        LevelView::Max(a, b) => format!("(max {} {})", format_level(a), format_level(b)),
+        LevelView::IMax(a, b) => format!("(imax {} {})", format_level(a), format_level(b)),
+        LevelView::Param(n) => n.to_string(),
+        LevelView::MVar(id) => format!("?{}", id.0),
     }
 }
 #[cfg(test)]
@@ -649,7 +646,7 @@ mod level_def_eq_extra_tests {
     #[test]
     fn test_constraint_solver_propagate() {
         let mut solver = LevelConstraintSolver::new();
-        let mv = Level::MVar(LevelMVarId(0));
+        let mv = Level::mvar(LevelMVarId(0));
         let one = Level::succ(Level::zero());
         solver.add_eq(mv, one.clone());
         solver.propagate();

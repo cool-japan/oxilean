@@ -13,7 +13,8 @@
 #   1. verifies elan + the pinned Lean toolchain are installed,
 #   2. clones/pins lean4export at the exact commit and `lake build`s it,
 #   3. re-exports every corpus file into $CORPUS_DIR,
-#   4. copies the small fixtures (< 1 MB) into tests/fixtures/lean4export/,
+#   4. copies the small fixtures (< 1 MB) into tests/fixtures/lean4export/ —
+#      all but Nat.add_succ, which is exported to $CORPUS_DIR only (see step 4),
 #   5. writes a corpus README with the toolchain versions and per-file repro
 #      commands.
 #
@@ -134,12 +135,22 @@ if [[ "$FIXTURES_ONLY" == "0" ]]; then
 fi
 
 # --- 4. copy small fixtures into the repo ------------------------------------
+# Nat.add_succ is deliberately NOT copied. tests/fixtures/lean4export/
+# Nat.add_succ.ndjson is lean4export's own examples/Nat.add_succ.ndjson at the
+# pinned commit, byte for byte: format 3.0.0, Lean 4.27.0-rc1 — the one fixture
+# in the 3.0.0 record shapes ({"def":[{...}]}, {"thm":[{...}]},
+# inductiveVals/constructorVals/recursorVals), and the tests pin it as such.
+# The re-export above (format 3.1.0, Lean 4.32.0-rc1) is a different file with
+# one more declaration (Nat.add._f); copying it over the fixture drops the
+# 3.0.0 coverage and fails the pinned tests in oxilean-export and
+# oxilean-verify.
 echo "-- copying fixtures < 1 MB into $FIXTURE_DIR --"
 mkdir -p "$FIXTURE_DIR"
-for f in Nat.add_succ point_swap_swap Tree_Forest Tree_Forest_full simple_add Parity.isEven; do
+for f in point_swap_swap Tree_Forest Tree_Forest_full simple_add Parity.isEven; do
     src="$CORPUS_DIR/$f.ndjson"
     if [[ -f "$src" ]]; then
-        sz=$(stat -c%s "$src" 2>/dev/null || echo 0)
+        sz=$(wc -c < "$src" 2>/dev/null | tr -d ' ')
+        sz="${sz:-0}"
         if [[ "$sz" -lt 1048576 ]]; then
             cp "$src" "$FIXTURE_DIR/$f.ndjson"
             echo "   copied $f.ndjson ($sz bytes)"
@@ -173,7 +184,9 @@ scripts/regen-corpus.sh --skip-init   # everything except the huge Init export
 \`\`\`
 
 Init.ndjson is too large to commit; it lives here in $CORPUS_DIR only.
-Fixtures under 1 MB are copied into tests/fixtures/lean4export/ in the repo.
+Fixtures under 1 MB are copied into tests/fixtures/lean4export/ in the repo,
+except Nat.add_succ.ndjson: the repo keeps lean4export's own format-3.0.0
+example under that name (see step 4 of the script).
 EOF
 
 echo

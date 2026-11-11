@@ -8,8 +8,11 @@
 //! - `Display`
 //! - `PartialEq`
 //! - `Eq`
-//! - `Send`
-//! - `Sync`
+//!
+//! `Send` and `Sync` are the auto traits: `RtArc<T>` holds a single
+//! `std::sync::Arc<ArcInner<T>>`, and `ArcInner<T>` holds a `T` and an
+//! `AtomicU32`, so `RtArc<T>` is `Send` and `Sync` exactly when
+//! `T: Send + Sync` without an `unsafe impl`.
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
@@ -40,6 +43,5 @@ impl<T: PartialEq> PartialEq for RtArc<T> {
 
 impl<T: Eq> Eq for RtArc<T> {}
 
-unsafe impl<T: Send + Sync> Send for RtArc<T> {}
-
-unsafe impl<T: Send + Sync> Sync for RtArc<T> {}
+#[cfg(test)]
+mod auto_trait_tests;

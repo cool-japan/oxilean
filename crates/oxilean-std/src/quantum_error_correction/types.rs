@@ -323,7 +323,7 @@ impl PauliOperator {
                 anti += 1;
             }
         }
-        anti % 2 == 0
+        anti.is_multiple_of(2)
     }
     pub fn weight(&self) -> usize {
         (0..self.n_qubits)
@@ -739,7 +739,7 @@ impl SurfaceCodeDecoder {
         if p_phys >= p_th {
             return 0.5;
         }
-        let exponent = ((self.distance + 1) / 2) as f64;
+        let exponent = self.distance.div_ceil(2) as f64;
         (p_phys / p_th).powf(exponent)
     }
 }

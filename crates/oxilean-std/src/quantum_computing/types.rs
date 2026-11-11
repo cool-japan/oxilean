@@ -915,7 +915,7 @@ impl PauliString {
             .zip(other.paulis.iter())
             .filter(|(&a, &b)| !a.commutes_with(b))
             .count();
-        anti % 2 == 0
+        anti.is_multiple_of(2)
     }
 }
 /// Variational Quantum Eigensolver (VQE) configuration.

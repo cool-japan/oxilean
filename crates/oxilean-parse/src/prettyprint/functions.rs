@@ -35,43 +35,64 @@ pub mod prec {
     /// Atomic expressions (highest precedence)
     pub const ATOM: u32 = u32::MAX;
 }
+/// Writes what one fresh `PrettyPrinter` produces: `build` makes the printer
+/// and `print` runs one of its printing methods.
+struct Printed<B, P> {
+    build: B,
+    print: P,
+}
+impl<B, P> std::fmt::Display for Printed<B, P>
+where
+    B: Fn() -> PrettyPrinter,
+    P: Fn(&mut PrettyPrinter) -> std::fmt::Result,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut pp = (self.build)();
+        (self.print)(&mut pp)?;
+        f.write_str(&pp.output())
+    }
+}
+/// The text one fresh `PrettyPrinter` produces.
+fn printed(
+    build: impl Fn() -> PrettyPrinter,
+    print: impl Fn(&mut PrettyPrinter) -> std::fmt::Result,
+) -> String {
+    // `to_string` meets no error here, as `format!` would not: every `?` in
+    // `PrettyPrinter` applies to a `write!` / `writeln!` into its `String`
+    // buffer or to another of its printing methods, and neither this crate
+    // nor oxilean-kernel, its one dependency, constructs a `fmt::Error`; so
+    // an error could come only from a write into a `String` or into the
+    // `String`-backed `Formatter` of `to_string`, and neither fails.
+    Printed { build, print }.to_string()
+}
 /// Pretty print a surface expression to a string.
 pub fn print_expr(expr: &SurfaceExpr) -> String {
-    let mut pp = PrettyPrinter::new();
-    pp.print_expr(expr)
-        .expect("writing to String is infallible");
-    pp.output()
+    printed(PrettyPrinter::new, |pp| pp.print_expr(expr))
 }
 /// Pretty print a surface expression to a string using a given configuration.
 #[allow(dead_code)]
 pub fn print_expr_with_config(expr: &SurfaceExpr, config: PrettyConfig) -> String {
-    let mut pp = PrettyPrinter::with_config(config);
-    pp.print_expr(expr)
-        .expect("writing to String is infallible");
-    pp.output()
+    printed(
+        || PrettyPrinter::with_config(config.clone()),
+        |pp| pp.print_expr(expr),
+    )
 }
 /// Pretty print a declaration to a string.
 pub fn print_decl(decl: &Decl) -> String {
-    let mut pp = PrettyPrinter::new();
-    pp.print_decl(decl)
-        .expect("writing to String is infallible");
-    pp.output()
+    printed(PrettyPrinter::new, |pp| pp.print_decl(decl))
 }
 /// Pretty print a declaration to a string using a given configuration.
 #[allow(dead_code)]
 pub fn print_decl_with_config(decl: &Decl, config: PrettyConfig) -> String {
-    let mut pp = PrettyPrinter::with_config(config);
-    pp.print_decl(decl)
-        .expect("writing to String is infallible");
-    pp.output()
+    printed(
+        || PrettyPrinter::with_config(config.clone()),
+        |pp| pp.print_decl(decl),
+    )
 }
 /// Pretty print a pattern to a string.
 #[allow(dead_code)]
 pub fn print_pattern(pat: &Pattern) -> String {
-    let mut pp = PrettyPrinter::new();
-    pp.print_pattern(pat)
-        .expect("writing to String is infallible");
-    pp.output()
+    printed(PrettyPrinter::new, |pp| pp.print_pattern(pat))
 }
 #[cfg(test)]
 mod tests {
@@ -972,3 +993,5 @@ mod prettyprint_pad2 {
         assert_eq!(pad_left_char("42", 5, '0'), "00042");
     }
 }
+#[cfg(test)]
+mod wrapper_tests;

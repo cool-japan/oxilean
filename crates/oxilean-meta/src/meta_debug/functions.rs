@@ -11,7 +11,7 @@ use super::types::{
     MetaTracer, TraceEntry, TraceLevel, TraceLog,
 };
 use oxilean_kernel::Node;
-use oxilean_kernel::{Expr, Level};
+use oxilean_kernel::{Expr, Level, LevelView};
 
 /// Pretty-print an Expr in a compact S-expression style for debugging.
 ///
@@ -229,26 +229,25 @@ pub(super) fn has_open_bvar(e: &Expr, depth: u32) -> bool {
 }
 /// Format a Level for debugging.
 pub fn level_debug(l: &Level) -> String {
-    match l {
-        Level::Zero => "0".to_string(),
-        Level::Succ(inner) => {
+    match l.view() {
+        LevelView::Zero => "0".to_string(),
+        LevelView::Succ(inner) => {
             let mut n = 1u32;
-            let mut cur = inner.as_ref();
+            let mut cur = inner.clone();
             loop {
-                match cur {
-                    Level::Zero => return n.to_string(),
-                    Level::Succ(next) => {
-                        n += 1;
-                        cur = next.as_ref();
-                    }
-                    other => return format!("succ({})", level_debug(other)),
-                }
+                let next = match cur.view() {
+                    LevelView::Zero => return n.to_string(),
+                    LevelView::Succ(next) => next.clone(),
+                    _ => return format!("succ({})", level_debug(&cur)),
+                };
+                n += 1;
+                cur = next;
             }
         }
-        Level::Max(l1, l2) => format!("max({}, {})", level_debug(l1), level_debug(l2)),
-        Level::IMax(l1, l2) => format!("imax({}, {})", level_debug(l1), level_debug(l2)),
-        Level::Param(n) => format!("param({})", n),
-        Level::MVar(id) => format!("mvar({:?})", id),
+        LevelView::Max(l1, l2) => format!("max({}, {})", level_debug(l1), level_debug(l2)),
+        LevelView::IMax(l1, l2) => format!("imax({}, {})", level_debug(l1), level_debug(l2)),
+        LevelView::Param(n) => format!("param({})", n),
+        LevelView::MVar(id) => format!("mvar({:?})", id),
     }
 }
 /// Compare two expressions and return a list of differences.

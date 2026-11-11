@@ -524,6 +524,21 @@ impl BumpArena {
     pub fn stats(&self) -> &ArenaStats {
         &self.stats
     }
+    /// Move this arena's chunks, position and statistics into a new value,
+    /// leaving `self` with no chunks.
+    ///
+    /// Only for an arena about to be dropped: `ScopedArena`'s `Drop` hands
+    /// the arena back to its pool this way, and the emptied value is
+    /// dropped right after without any other use (every allocating method
+    /// expects at least one chunk).
+    pub(super) fn take_for_release(&mut self) -> BumpArena {
+        BumpArena {
+            chunks: std::mem::take(&mut self.chunks),
+            current_chunk: self.current_chunk,
+            chunk_size: self.chunk_size,
+            stats: std::mem::take(&mut self.stats),
+        }
+    }
     /// Shrink the arena, releasing unused chunks.
     pub fn shrink(&mut self) {
         let keep = self
@@ -918,8 +933,8 @@ impl ArenaExtStats {
 }
 /// An arena that automatically returns to a pool when dropped.
 pub struct ScopedArena<'pool> {
-    /// The underlying arena.
-    pub(super) arena: Option<BumpArena>,
+    /// The underlying arena; `Drop` moves its contents back to the pool.
+    pub(super) arena: BumpArena,
     /// The pool to return the arena to.
     pub(super) pool: &'pool mut ArenaPool,
 }
@@ -927,29 +942,19 @@ impl<'pool> ScopedArena<'pool> {
     /// Create a new scoped arena from a pool.
     pub fn new(pool: &'pool mut ArenaPool) -> Self {
         let arena = pool.acquire();
-        ScopedArena {
-            arena: Some(arena),
-            pool,
-        }
+        ScopedArena { arena, pool }
     }
     /// Allocate bytes in this arena.
     pub fn alloc(&mut self, size: usize) -> ArenaOffset {
-        self.arena
-            .as_mut()
-            .expect("ScopedArena is valid during its lifetime; arena is always Some before drop")
-            .alloc(size)
+        self.arena.alloc(size)
     }
     /// Get the underlying arena.
     pub fn arena(&self) -> &BumpArena {
-        self.arena
-            .as_ref()
-            .expect("ScopedArena is valid during its lifetime; arena is always Some before drop")
+        &self.arena
     }
     /// Get the underlying arena mutably.
     pub fn arena_mut(&mut self) -> &mut BumpArena {
-        self.arena
-            .as_mut()
-            .expect("ScopedArena is valid during its lifetime; arena is always Some before drop")
+        &mut self.arena
     }
 }
 /// An arena checkpoint (offset into a BumpArena).

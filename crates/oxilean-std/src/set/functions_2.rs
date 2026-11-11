@@ -778,11 +778,16 @@ pub fn bell_number(n: usize) -> u64 {
         return 1;
     }
     let mut row = vec![1u64];
+    // The last entry of `row`, which starts the next row of the triangle.
+    let mut row_last = 1u64;
     for _ in 1..=n {
-        let mut new_row = vec![*row.last().expect("row is non-empty: initialized with [1]")];
-        for j in 0..row.len() {
-            new_row.push(new_row[j] + row[j]);
+        let mut acc = row_last;
+        let mut new_row = vec![acc];
+        for &r in &row {
+            acc += r;
+            new_row.push(acc);
         }
+        row_last = acc;
         row = new_row;
     }
     row[0]
@@ -860,3 +865,5 @@ mod tests_set_extra {
         assert_eq!(bell_number(5), 52);
     }
 }
+#[cfg(test)]
+mod bell_number_tests;

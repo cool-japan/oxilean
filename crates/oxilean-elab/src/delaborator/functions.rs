@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, Literal, Name};
+use oxilean_kernel::{BinderInfo, Environment, Expr, FVarId, Level, LevelView, Literal, Name};
 use oxilean_parse::{Binder, BinderKind, Located, Span, SurfaceExpr};
 use std::collections::{HashMap, HashSet};
 
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn test_delab_sort() {
         let env = Environment::new();
-        let expr = Expr::Sort(Level::Zero);
+        let expr = Expr::Sort(Level::zero());
         let result = delab_to_string(&env, &expr);
         assert_eq!(result, "Prop");
     }
@@ -576,9 +576,9 @@ pub fn fresh_name(hint: &str, used: &HashSet<String>) -> String {
 /// Convert a kernel `Level` to a compact display string.
 #[allow(dead_code)]
 pub fn level_to_string(level: &Level) -> String {
-    match level {
-        Level::Zero => "0".to_owned(),
-        Level::Succ(inner) => {
+    match level.view() {
+        LevelView::Zero => "0".to_owned(),
+        LevelView::Succ(inner) => {
             let inner_str = level_to_string(inner);
             if let Ok(n) = inner_str.parse::<u32>() {
                 (n + 1).to_string()
@@ -586,12 +586,12 @@ pub fn level_to_string(level: &Level) -> String {
                 format!("{}.succ", inner_str)
             }
         }
-        Level::Max(a, b) => format!("max {} {}", level_to_string(a), level_to_string(b)),
-        Level::IMax(a, b) => {
+        LevelView::Max(a, b) => format!("max {} {}", level_to_string(a), level_to_string(b)),
+        LevelView::IMax(a, b) => {
             format!("imax {} {}", level_to_string(a), level_to_string(b))
         }
-        Level::Param(n) => n.to_string(),
-        Level::MVar(id) => format!("?u{}", id),
+        LevelView::Param(n) => n.to_string(),
+        LevelView::MVar(id) => format!("?u{}", id),
     }
 }
 /// Try to decode a `Nat.succ (Nat.succ ... Nat.zero)` chain as a u64 numeral.
@@ -1013,12 +1013,12 @@ mod delab_extended_tests {
     }
     #[test]
     fn test_level_to_string_succ() {
-        let l = Level::Succ(Box::new(Level::zero()));
+        let l = Level::succ(Level::zero());
         assert_eq!(level_to_string(&l), "1");
     }
     #[test]
     fn test_level_to_string_param() {
-        let l = Level::Param(Name::str("u"));
+        let l = Level::param(Name::str("u"));
         assert_eq!(level_to_string(&l), "u");
     }
     #[test]

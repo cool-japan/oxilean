@@ -528,7 +528,7 @@ impl PositivityTactic {
             Sign::Pos => Sign::Pos,
             Sign::Zero => Sign::Zero,
             Sign::Neg => {
-                if exp % 2 == 0 {
+                if exp.is_multiple_of(2) {
                     Sign::Pos
                 } else {
                     Sign::Neg
@@ -536,7 +536,7 @@ impl PositivityTactic {
             }
             Sign::Nonneg => Sign::Nonneg,
             Sign::Nonpos => {
-                if exp % 2 == 0 {
+                if exp.is_multiple_of(2) {
                     Sign::Nonneg
                 } else {
                     Sign::Nonpos

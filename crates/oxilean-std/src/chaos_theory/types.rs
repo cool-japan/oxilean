@@ -1405,12 +1405,9 @@ impl FeigenbaumLogisticMap {
     /// Check whether the estimated δ values are converging to FEIGENBAUM_DELTA.
     pub fn is_converging_to_feigenbaum(&self) -> bool {
         let deltas = self.estimated_delta();
-        if deltas.is_empty() {
+        let Some(&last) = deltas.last() else {
             return false;
-        }
-        let last = *deltas
-            .last()
-            .expect("deltas is non-empty: checked by early return");
+        };
         (last - FEIGENBAUM_DELTA).abs() < 0.5
     }
     /// Onset of chaos (accumulation point r_∞ ≈ 3.56995...).

@@ -674,7 +674,7 @@ mod infer_bidir_tests {
     }
     #[test]
     fn test_bidir_check_mode() {
-        let state = BiDirectionalInferState::check_mode(Expr::Sort(Level::Zero));
+        let state = BiDirectionalInferState::check_mode(Expr::Sort(Level::zero()));
         assert_eq!(state.mode(), InferMode::Check);
         assert!(state.expected_type().is_some());
     }

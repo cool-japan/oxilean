@@ -837,7 +837,7 @@ impl VirtualColumn {
     #[allow(dead_code)]
     #[allow(missing_docs)]
     pub fn is_aligned_to(&self, n: usize) -> bool {
-        n > 0 && self.column % n == 0
+        n > 0 && self.column.is_multiple_of(n)
     }
 }
 #[derive(Debug, Clone, Default)]
@@ -1151,7 +1151,7 @@ impl TabStopIterator {
         }
     }
     pub fn from_col(tab_width: usize, start_col: usize) -> Self {
-        let next_stop = if start_col % tab_width == 0 {
+        let next_stop = if start_col.is_multiple_of(tab_width) {
             start_col
         } else {
             (start_col / tab_width + 1) * tab_width
@@ -1446,7 +1446,7 @@ impl IndentationChecker {
         let tw = self.tab_width;
         let pw = prev.total_width(tw);
         let nw = next.total_width(tw);
-        if nw > pw && (nw - pw) % tw != 0 && tw > 0 {
+        if nw > pw && !(nw - pw).is_multiple_of(tw) && tw > 0 {
             self.errors
                 .push(IndentMismatchError::new(line_number, pw + tw, nw, context));
         }
@@ -1502,13 +1502,9 @@ impl IndentZipper {
     #[allow(dead_code)]
     #[allow(missing_docs)]
     pub fn move_up(&mut self) -> bool {
-        if self.above.is_empty() {
+        let Some(prev) = self.above.pop() else {
             return false;
-        }
-        let prev = self
-            .above
-            .pop()
-            .expect("above is non-empty per is_empty check above");
+        };
         self.below
             .insert(0, std::mem::replace(&mut self.focus, prev));
         true
@@ -1591,3 +1587,6 @@ impl ScopeTracker {
         }
     }
 }
+
+#[cfg(test)]
+mod zipper_tests;

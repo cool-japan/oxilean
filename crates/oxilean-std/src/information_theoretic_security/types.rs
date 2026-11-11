@@ -364,7 +364,7 @@ impl RandomnessExtractor {
             acc.wrapping_mul(257).wrapping_add(byte as u64)
         });
         let h = (a.wrapping_mul(x).wrapping_add(b)) % prime;
-        let out_bytes = (self.m + 7) / 8;
+        let out_bytes = self.m.div_ceil(8);
         (0..out_bytes)
             .map(|i| ((h >> (i % 8)) & 0xFF) as u8)
             .collect()

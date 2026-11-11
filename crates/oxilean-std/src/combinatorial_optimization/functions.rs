@@ -891,12 +891,11 @@ pub fn tsp_nearest_neighbor(dist: &[Vec<f64>]) -> (Vec<usize>, f64) {
     }
     let mut visited = vec![false; n];
     let mut tour = vec![0usize];
+    // `last` is always the most recently pushed vertex of `tour`.
+    let mut last = 0usize;
     visited[0] = true;
     let mut cost = 0.0;
     for _ in 1..n {
-        let last = *tour
-            .last()
-            .expect("tour is non-empty: initialized with element 0");
         let next = (0..n).filter(|&j| !visited[j]).min_by(|&a, &b| {
             dist[last][a]
                 .partial_cmp(&dist[last][b])
@@ -906,11 +905,10 @@ pub fn tsp_nearest_neighbor(dist: &[Vec<f64>]) -> (Vec<usize>, f64) {
             cost += dist[last][next];
             tour.push(next);
             visited[next] = true;
+            last = next;
         }
     }
-    cost += dist[*tour
-        .last()
-        .expect("tour is non-empty: initialized with element 0")][tour[0]];
+    cost += dist[last][tour[0]];
     (tour, cost)
 }
 /// Held-Karp DP lower bound (exact TSP for small n ≤ 20).
@@ -1200,3 +1198,5 @@ mod extended_comb_opt_tests {
         assert!(vr.christofides_description().contains("Christofides"));
     }
 }
+#[cfg(test)]
+mod nearest_neighbor_tests;

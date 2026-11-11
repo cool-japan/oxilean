@@ -585,13 +585,12 @@ pub type Weight = Vec<i32>;
 /// Generate all SSYT of given shape with alphabet {1..alphabet}.
 pub fn gen_all_ssyt(shape: &YoungDiagram, alphabet: usize) -> Vec<Vec<Vec<usize>>> {
     let num_rows = shape.parts.len();
-    if num_rows == 0 || shape.size() == 0 {
+    let Some(&max_col) = shape.parts.first() else {
+        return vec![vec![]];
+    };
+    if shape.size() == 0 {
         return vec![vec![]];
     }
-    let max_col = *shape
-        .parts
-        .first()
-        .expect("parts is non-empty: checked by num_rows > 0 guard");
     let mut cells: Vec<(usize, usize)> = Vec::new();
     for r in 0..num_rows {
         for c in 0..shape.parts[r] {
@@ -665,10 +664,10 @@ pub fn crystal_f(tab: &[Vec<usize>], i: usize, shape: &YoungDiagram) -> Option<V
     }
     let _ = i_count;
     let _ = ip1_count;
-    if depth <= 0 || last_i_pos.is_none() {
+    if depth <= 0 {
         return None;
     }
-    let change_pos = last_i_pos.expect("last_i_pos is Some: checked by is_none guard above");
+    let change_pos = last_i_pos?;
     let mut new_word = word.clone();
     new_word[change_pos] = i + 1;
     let mut new_tab = tab.to_vec();

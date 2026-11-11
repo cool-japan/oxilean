@@ -17,8 +17,8 @@
 //! use oxilean_kernel::{Level, Name, BinderInfo};
 //!
 //! let mut hc = HashConsArena::new();
-//! let s1 = hc.mk_sort(Level::Zero);
-//! let s2 = hc.mk_sort(Level::Zero);
+//! let s1 = hc.mk_sort(Level::zero());
+//! let s2 = hc.mk_sort(Level::zero());
 //! assert_eq!(s1, s2, "identical sorts share one Idx");
 //! let stats = hc.stats();
 //! assert_eq!(stats.hits, 1);

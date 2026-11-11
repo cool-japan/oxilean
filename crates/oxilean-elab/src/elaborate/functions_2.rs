@@ -4,7 +4,7 @@
 
 use crate::context::ElabContext;
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Expr, Level, Name};
+use oxilean_kernel::{BinderInfo, Expr, Level, LevelView, Name};
 use oxilean_parse::{Lexer, Located, Parser, SortKind, StringPart, SurfaceExpr};
 
 use super::functions::*;
@@ -62,7 +62,7 @@ mod tests {
         let mut ctx = ElabContext::new(&env);
         let sort = mk_located(SurfaceExpr::Sort(SortKind::TypeU("u".to_string())));
         let result = elaborate_expr(&mut ctx, &sort).expect("elaboration should succeed");
-        assert!(matches!(result, Expr::Sort(Level::Param(_))));
+        assert!(matches!(result, Expr::Sort(l) if matches!(l.view(), LevelView::Param(_))));
     }
     #[test]
     fn test_elaborate_var_not_found() {

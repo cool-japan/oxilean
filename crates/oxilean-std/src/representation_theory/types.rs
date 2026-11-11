@@ -903,7 +903,7 @@ impl Su2Representation {
     }
     #[allow(dead_code)]
     pub fn is_integer_spin(&self) -> bool {
-        self.j % 2 == 0
+        self.j.is_multiple_of(2)
     }
     #[allow(dead_code)]
     pub fn clebsch_gordan_decomposition(

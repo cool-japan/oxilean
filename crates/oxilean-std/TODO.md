@@ -1,11 +1,11 @@
 # oxilean-std — TODO
 
 > Task list for the standard library crate.
-> Last updated: 2026-05-29
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
-**Status**: COMPLETE — ~416,133 SLOC implemented across 1,105 source files
+**Status**: COMPLETE — ~442,733 SLOC implemented across 1,232 source files
 
 ### Core Library Components
 - [x] Data structures (List, Array, Vector, HashMap, etc.)
@@ -35,7 +35,12 @@
 
 ## 🐛 Known Issues
 
-None reported. All tests passing.
+Observations recorded by the 0.1.4 hygiene pass (commit 930c328), left unchanged in the code:
+
+- [ ] `RollingHash::push` is not a rolling hash.
+- [ ] `CausalBroadcast::receive` indexes a short vector clock.
+- [ ] The docs of `LazyStream::new`, `FixThunk`, `GuardedFix` and `FunctionSpaceSolution::eval` promise what the code does not.
+- [ ] 27 `.unwrap()` / `.expect()` calls outside tests remain; the commit names, among the calls left for a decision, documented panics (`min` / `max`, `Either::unwrap_right`, `as_slice`) and public infallible methods over `pub` fields or caller input (the automata's alphabets, `TruthTable::lookup`, `HashChain`, the AVL rotations and rebalance, `GrowthData`, `FunctionSpaceSolution::eval`).
 
 ---
 
@@ -119,3 +124,9 @@ None reported. All tests passing.
   - **Prerequisites:** None (omega_helper module already exists)
   - **Tests:** Bridge axioms present + well-formed after registration; production env build returns env containing all 12 omega lemmas + `absurd`; idempotence test.
   - **Risk:** If production env build path differs from `build_full_std_env`, locate via grepping for the CLI/elaborator's env construction call.
+
+## v0.1.4 (released 2026-11-12)
+
+- [x] Hygiene pass (commit 930c328): `.unwrap()` / `.expect()` outside tests 101 -> 27, by let-else / slice patterns / `split_first`, by moving invariants into types, and by propagation through existing `Result`s; `FixThunk`'s raw read became a shared borrow (one `unsafe` site removed).
+- [x] MSRV 1.89 clippy suggestions applied across about 68 files.
+- [x] New edge-case tests, among them `mapper_edge_tests` for `topological_data_analysis` and `fix_thunk_tests` for `thunk`.

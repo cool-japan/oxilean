@@ -1,5 +1,6 @@
 //! Auto-generated module structure
 
+mod congruence;
 pub mod defeqconfig_traits;
 pub mod flatsubstitution_traits;
 pub mod focusstack_traits;
@@ -11,6 +12,7 @@ pub mod smallmap_traits;
 pub mod stackcalc_traits;
 pub mod statsummary_traits;
 pub mod stringpool_traits;
+mod support_types;
 pub mod transformstat_traits;
 pub mod types;
 pub mod windowiterator_traits;

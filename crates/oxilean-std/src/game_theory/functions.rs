@@ -225,7 +225,7 @@ pub fn centipede_game(length: usize) -> GameNode {
     fn build(step: usize, length: usize) -> GameNode {
         if step >= length {
             let p0 = (step / 2 + 1) as f64;
-            let p1 = ((step + 1) / 2) as f64;
+            let p1 = step.div_ceil(2) as f64;
             return GameNode::terminal(vec![p0, p1]);
         }
         let player = step % 2;
@@ -237,7 +237,7 @@ pub fn centipede_game(length: usize) -> GameNode {
         let take_p1 = if player == 0 {
             (step / 2) as f64
         } else {
-            ((step + 1) / 2) as f64 + 1.0
+            step.div_ceil(2) as f64 + 1.0
         };
         GameNode::decision(
             player,

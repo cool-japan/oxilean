@@ -9,7 +9,7 @@
 
 Because the linter operates on the surface AST produced by `oxilean-parse`, lint diagnostics are advisory: they can never affect kernel soundness. The engine supports auto-fixes, IDE integration, and a plugin system for user-defined rules.
 
-17,600 SLOC -- fully implemented lint engine with built-in rules (121 source files, 425 tests passing).
+22,179 SLOC -- fully implemented lint engine with built-in rules (153 source files, 428 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -92,19 +92,23 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-lint = "0.1.3"
+oxilean-lint = "0.1.4"
 ```
 
 ### Running the Engine
 
 ```rust,ignore
-use oxilean_lint::{LintEngine, LintConfig, LintRegistry};
+use oxilean_lint::{LintConfig, LintEngine};
+use oxilean_lint::rules::functions::default_registry;
+use oxilean_parse::{Lexer, Parser};
 
-let mut registry = LintRegistry::default();
-registry.register_builtins();
+let source = "def foo : Nat := 0";
+let tokens = Lexer::new(source).tokenize();
+let mut parser = Parser::new(tokens);
+let decl = parser.parse_decl()?;
 
-let engine = LintEngine::new(registry, LintConfig::default());
-let diagnostics = engine.lint(&parsed_module)?;
+let engine = LintEngine::new(default_registry(), LintConfig::default());
+let diagnostics = engine.run(source, &[decl]);
 
 for diag in &diagnostics {
     eprintln!("[{}] {}", diag.severity, diag.message);

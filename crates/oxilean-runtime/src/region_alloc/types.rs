@@ -71,9 +71,7 @@ impl Region {
     pub fn reset(&mut self) {
         self.offset = 0;
         // Zero the backing buffer so stale data cannot leak.
-        for b in &mut self.data {
-            *b = 0;
-        }
+        self.data.fill(0);
     }
 }
 

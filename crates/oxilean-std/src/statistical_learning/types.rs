@@ -44,7 +44,7 @@ impl CrossValidation {
         CrossValidation::new(n, n)
     }
     pub fn fold_size(&self) -> usize {
-        (self.n_samples + self.n_folds - 1) / self.n_folds
+        self.n_samples.div_ceil(self.n_folds)
     }
     pub fn train_size(&self) -> usize {
         self.n_samples - self.fold_size()

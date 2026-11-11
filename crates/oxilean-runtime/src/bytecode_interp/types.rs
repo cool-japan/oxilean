@@ -1132,20 +1132,14 @@ impl Interpreter {
             }
             Opcode::MakeClosure(n_captured) => {
                 let n = *n_captured as usize;
-                if self.stack.len() < n {
+                let Some(first_captured) = self.stack.len().checked_sub(n) else {
                     return Err(format!(
                         "MakeClosure: need {} captures, have {}",
                         n,
                         self.stack.len()
                     ));
-                }
-                let mut env = Vec::with_capacity(n);
-                for _ in 0..n {
-                    env.push(self.pop().expect(
-                        "stack has at least n elements as verified by the length check above",
-                    ));
-                }
-                env.reverse();
+                };
+                let env = self.stack.split_off(first_captured);
                 self.stack.push(StackValue::Closure {
                     code: Vec::new(),
                     env,

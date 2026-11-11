@@ -508,12 +508,12 @@ pub fn is_prime(n: u64) -> bool {
     if n == 2 {
         return true;
     }
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         return false;
     }
     let mut i = 3u64;
     while i * i <= n {
-        if n % i == 0 {
+        if n.is_multiple_of(i) {
             return false;
         }
         i += 2;
@@ -528,12 +528,12 @@ pub fn miller_rabin(n: u64) -> bool {
     if n == 2 || n == 3 || n == 5 || n == 7 {
         return true;
     }
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         return false;
     }
     let mut d = n - 1;
     let mut r = 0u64;
-    while d % 2 == 0 {
+    while d.is_multiple_of(2) {
         d /= 2;
         r += 1;
     }
@@ -606,8 +606,8 @@ pub fn totient(n: u64) -> u64 {
     let mut n_mut = n;
     let mut p = 2u64;
     while p * p <= n_mut {
-        if n_mut % p == 0 {
-            while n_mut % p == 0 {
+        if n_mut.is_multiple_of(p) {
+            while n_mut.is_multiple_of(p) {
                 n_mut /= p;
             }
             result -= result / p;
@@ -624,9 +624,9 @@ pub fn prime_factorization(mut n: u64) -> Vec<(u64, u32)> {
     let mut factors = Vec::new();
     let mut p = 2u64;
     while p * p <= n {
-        if n % p == 0 {
+        if n.is_multiple_of(p) {
             let mut exp = 0u32;
-            while n % p == 0 {
+            while n.is_multiple_of(p) {
                 n /= p;
                 exp += 1;
             }
@@ -703,7 +703,7 @@ pub fn moebius(n: u64) -> i64 {
     if factors.iter().any(|(_, e)| *e > 1) {
         return 0;
     }
-    if factors.len() % 2 == 0 {
+    if factors.len().is_multiple_of(2) {
         1
     } else {
         -1
@@ -779,7 +779,7 @@ pub fn jacobi_symbol(a: i64, n: u64) -> i64 {
     let mut n = n;
     let mut result = 1i64;
     while a != 0 {
-        while a % 2 == 0 {
+        while a.is_multiple_of(2) {
             a /= 2;
             let n8 = n % 8;
             if n8 == 3 || n8 == 5 {
@@ -897,7 +897,7 @@ pub fn logarithmic_integral(x: f64) -> f64 {
 }
 /// Pollard's rho factorization (returns a non-trivial factor of n, or n if prime).
 pub fn pollard_rho(n: u64) -> u64 {
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         return 2;
     }
     if is_prime(n) {
@@ -1549,8 +1549,8 @@ pub(super) fn euler_phi(n: u64) -> u64 {
     let mut temp = n;
     let mut p = 2u64;
     while p * p <= temp {
-        if temp % p == 0 {
-            while temp % p == 0 {
+        if temp.is_multiple_of(p) {
+            while temp.is_multiple_of(p) {
                 temp /= p;
             }
             result -= result / p;

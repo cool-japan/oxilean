@@ -9,7 +9,7 @@
 
 Unlike the kernel -- which is the Trusted Computing Base (TCB) and must be auditable -- the runtime is **untrusted**: bugs here can cause incorrect evaluation results or crashes but never logical unsoundness (all terms are checked before reaching the runtime).
 
-31,676 SLOC -- fully implemented runtime system (253 source files, 1,162 tests passing).
+35,716 SLOC -- fully implemented runtime system (278 source files, 1,187 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -41,19 +41,15 @@ Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-c
 | `WasmModule::call_function` | Complete WebAssembly bytecode interpreter; all 157 `WasmInstruction` variants dispatched via `StackMachine`; structured control flow (`Block`/`Loop`/`If`/`Else`/`End`), branch instructions (`Br`/`BrIf`/`BrTable`/`Return`), frame-stack call dispatch (`Call`/`CallIndirect` with locals, return-PC, and label-base bookkeeping) |
 | `WasmModule::register_function` | Register named functions into the `WasmModule.functions` registry for cross-function call dispatch |
 
-### Global Configuration
+### Scheduler Configuration
 
 ```rust
-use oxilean_runtime::RuntimeConfig;
+use oxilean_runtime::SchedulerConfig;
 
-let config = RuntimeConfig {
-    max_heap_bytes: 512 * 1024 * 1024, // 512 MiB limit
-    initial_arena_bytes: 64 * 1024,    // 64 KiB initial arena
-    worker_threads: 4,                  // parallel evaluation threads
-    rc_elision: true,                   // enable RC elision optimisation
-    lazy_eval: true,                    // enable call-by-need thunks
-    stack_limit: 8192,                  // recursion depth limit
-    gc_stats: false,                    // GC statistics collection
+let config = SchedulerConfig {
+    num_workers: 4,            // parallel evaluation threads
+    work_stealing: true,       // idle workers steal from busy deques
+    ..SchedulerConfig::new()   // remaining fields take their defaults
 };
 ```
 
@@ -63,7 +59,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-runtime = "0.1.3"
+oxilean-runtime = "0.1.4"
 ```
 
 ### Arena Allocation
@@ -71,27 +67,38 @@ oxilean-runtime = "0.1.3"
 ```rust
 use oxilean_runtime::{BumpArena, TypedArena};
 
-let mut arena = BumpArena::new(64 * 1024);
+// Byte-level bump allocation: `alloc` returns an `ArenaOffset`
+let mut bump = BumpArena::with_chunk_size(64 * 1024);
+let offset = bump.alloc(16);
+
+// Typed allocation: `alloc` returns an `ArenaIdx`
+let mut arena: TypedArena<u64> = TypedArena::new();
 let idx = arena.alloc(42u64);
+assert_eq!(arena.get(idx), Some(&42));
 ```
 
 ### Closures and Partial Application
 
 ```rust
-use oxilean_runtime::{Closure, Pap, FunctionTable};
+use oxilean_runtime::{Closure, FnPtr, Pap, PapResult, RtObject};
 
-// Build a partial application of a 2-argument function
-let pap = Pap::new(fn_ptr, vec![arg0]);
-let result = pap.apply(arg1);
+// A closure over a 2-argument function, partially applied to one argument
+let closure = Closure::new(FnPtr { index: 0, module_id: 0 }, 2, vec![]);
+let pap = Pap::new(closure, vec![RtObject::nat(1)]);
+match pap.apply(&[RtObject::nat(2)]) {
+    PapResult::Saturated { closure, args } => { /* ready to call */ }
+    PapResult::UnderApplied(pap) => { /* still waiting for arguments */ }
+    _ => {}
+}
 ```
 
 ### Lazy Evaluation
 
 ```rust
-use oxilean_runtime::{Thunk, SharedThunk};
+use oxilean_runtime::SharedThunk;
 
 // Wrap a computation in a lazily evaluated thunk
-let thunk = SharedThunk::new(|| expensive_computation());
+let thunk = SharedThunk::new(|| 6 * 7);
 let value = thunk.force(); // computed only once, memoized thereafter
 ```
 

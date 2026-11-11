@@ -1,11 +1,11 @@
 # oxilean-meta — TODO
 
 > Task list for the metaprogramming crate.
-> Last updated: 2026-05-29
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
-**Status**: COMPLETE — ~152,716 SLOC implemented across 648 source files
+**Status**: COMPLETE — ~163,149 SLOC implemented across 747 source files
 
 ### Core Metaprogramming Infrastructure
 - [x] Expression manipulation and analysis
@@ -35,7 +35,7 @@ None reported. All tests passing.
 
 - [x] Additional convenience macros for common patterns — `convenience.rs` (mk_const, mk_app, mk_pi, mk_lam, mk_arrow, mk_eq, etc., 10 tests)
 - [x] Enhanced debugging support for metaprograms — `meta_debug.rs` (ExprPrinter, TraceLogger, PrettyCtx, 6 tests)
-- [x] SMT solver integration — `tactic/smt.rs` (SmtSolver, SmtGoal, z3/cvc5/yices2 backends, 8 tests)
+- [x] SMT solver integration — `tactic/smt.rs` (SmtSolver, SmtGoal, solver-kind enum; checking runs on OxiZ, 8 tests)
 - [x] Property-based testing — `prop_test.rs` (QuickCheck-like framework, ExprGen, PropTest, 8 tests)
 - [x] Performance optimizations for large AST transformations
 
@@ -77,3 +77,9 @@ None reported. All tests passing.
   - **Files:** `src/tactic/grind/types.rs` (ProofLabel enum, proof_parent field, reroot_proof_tree, flip_label, updated merge_with_reason), `src/tactic/grind/cc_proof.rs` (new — 1241 lines: explain, ExplainStep, build_eq_proof_with_locals, mk_eq_refl_full/symm_full/trans_full/congr_full), `src/tactic/grind/functions.rs` (tac_cc updated to use cc_proof::explain + build_eq_proof_with_locals), `src/tactic/grind/mod.rs` (cc_proof module added).
   - **Also fixed:** `oxilean-std/cc_helper/mod.rs` — corrected erroneous De Bruijn indices in `ty_congr()` (g's type and hf's (α→β) encoding were wrong).
   - **Tests:** 14 tests passing — 5 kernel-verified proof-term tests (refl, hyp, symm, trans, single-arg congruence, multi-arg congruence, nested congruence) + explain unit tests + decompose spine tests. All 5403 oxilean-meta tests pass.
+
+## v0.1.4 (released 2026-11-12)
+
+- Hygiene pass (commit 930c328): `.unwrap()` / `.expect()` outside tests 9 -> 1 in this crate; no public signature changed
+- MSRV 1.89 clippy suggestions applied (commit 3c75335)
+- Dependency bump: `oxiz-solver` / `oxiz-math` 0.3.4

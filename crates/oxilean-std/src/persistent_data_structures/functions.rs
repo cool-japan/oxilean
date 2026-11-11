@@ -469,17 +469,16 @@ impl<K: Clone + Eq + Hash, V: Clone> MapNode<K, V> {
                 let pos = popcount_below(*bitmap, bit);
                 let updated = children[pos].remove_node(key, hash, depth + 1);
                 let mut new_children = children.clone();
-                let new_bitmap;
-                match updated {
+                let new_bitmap = match updated {
                     None => {
                         new_children.remove(pos);
-                        new_bitmap = bitmap & !flag;
+                        bitmap & !flag
                     }
                     Some(node) => {
                         new_children[pos] = node;
-                        new_bitmap = *bitmap;
+                        *bitmap
                     }
-                }
+                };
                 if new_children.is_empty() {
                     None
                 } else {

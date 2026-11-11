@@ -31,7 +31,7 @@ mod tests {
     }
 
     fn prop_sort() -> Expr {
-        Expr::Sort(Level::Zero)
+        Expr::Sort(Level::zero())
     }
 
     /// Build `@Eq ty lhs rhs` as a fully-applied Expr.

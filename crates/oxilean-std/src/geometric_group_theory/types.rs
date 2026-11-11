@@ -118,15 +118,11 @@ impl GrowthData {
     }
     /// Estimate the growth rate: lim sup (β(n))^(1/n).
     pub fn exponential_growth_rate(&self) -> f64 {
-        if self.ball_sizes.len() < 2 {
+        let [_, .., last] = self.ball_sizes.as_slice() else {
             return 1.0;
-        }
+        };
         let n = self.ball_sizes.len() - 1;
-        let last = *self
-            .ball_sizes
-            .last()
-            .expect("ball_sizes has at least 2 elements: checked by early return")
-            as f64;
+        let last = *last as f64;
         last.powf(1.0 / n as f64)
     }
     /// Estimate the polynomial degree (log β(n) / log n as n → ∞).

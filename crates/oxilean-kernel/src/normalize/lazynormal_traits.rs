@@ -12,16 +12,11 @@ use super::types::LazyNormal;
 
 impl std::fmt::Debug for LazyNormal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.is_evaluated() {
-            write!(
-                f,
-                "LazyNormal::Evaluated({:?})",
-                self.normal
-                    .get()
-                    .expect("LazyNormal must be evaluated before Debug display")
-            )
-        } else {
-            write!(f, "LazyNormal::Pending({:?})", self.original)
+        match self.normal.get() {
+            Some(normal) => write!(f, "LazyNormal::Evaluated({:?})", normal),
+            None => write!(f, "LazyNormal::Pending({:?})", self.original),
         }
     }
 }
+#[cfg(test)]
+mod debug_tests;

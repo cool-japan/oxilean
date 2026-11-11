@@ -49,9 +49,9 @@ echo "==> Refreshing shipped sample export..."
 cp "$ROOT/tests/fixtures/lean4export/simple_add.ndjson" "$DEMO_DIR/sample/simple_add.ndjson"
 
 # Measure the gzipped .wasm size in KB and write it into the badge.
-GZ_BYTES="$(gzip -9 -c "$DEMO_DIR/pkg/oxilean_verify_bg.wasm" | wc -c)"
+GZ_BYTES="$(gzip -9 -c "$DEMO_DIR/pkg/oxilean_verify_bg.wasm" | wc -c | tr -d ' ')"
 KB=$(( (GZ_BYTES + 512) / 1024 ))
-RAW_BYTES="$(stat -c%s "$DEMO_DIR/pkg/oxilean_verify_bg.wasm")"
+RAW_BYTES="$(wc -c < "$DEMO_DIR/pkg/oxilean_verify_bg.wasm" | tr -d ' ')"
 
 echo "==> Wasm: raw ${RAW_BYTES} B · gzip ${GZ_BYTES} B (~${KB} KB)"
 

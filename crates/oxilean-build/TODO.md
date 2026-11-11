@@ -1,11 +1,11 @@
 # oxilean-build — TODO
 
 > Task list for the build system crate.
-> Last updated: 2026-05-03
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
-**Status**: COMPLETE — ~26,070 SLOC implemented across 199 source files
+**Status**: COMPLETE — ~30,598 SLOC implemented across 267 source files
 
 ### Build System Features
 - [x] Multi-file compilation
@@ -62,3 +62,9 @@ None reported. All tests passing.
 
 - [x] Distributed build integration with oxilake workspace builds
 - [x] oxilake.lock-aware cache invalidation
+
+## v0.1.4 (released 2026-11-12)
+
+- [x] Hygiene pass: `.unwrap()` / `.expect()` outside tests 11 → 4 (executor, resolver, scripts, analytics, cache invalidation); the remaining calls are named in the commit message of 930c328
+- [x] Regression tests added for the executor's poisoned-lock path (`executor/types/poison_tests.rs`) and the resolver's almost-satisfied handling (`resolver/types/almost_satisfied_tests.rs`)
+- [x] MSRV 1.89: clippy suggestions applied (3c75335)

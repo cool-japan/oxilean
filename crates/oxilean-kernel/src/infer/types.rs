@@ -297,41 +297,36 @@ impl StackCalc {
     pub fn push(&mut self, n: i64) {
         self.stack.push(n);
     }
-    /// Adds the top two values.  Panics if fewer than two values.
-    pub fn add(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        self.stack.push(a + b);
+    /// Replaces the top two values, `b` on top of `a`, with `op(a, b)` and
+    /// returns it.  Returns `None`, leaving the stack unchanged, if it holds
+    /// fewer than two values.
+    fn apply_binary(&mut self, op: impl FnOnce(i64, i64) -> i64) -> Option<i64> {
+        let (rest_len, a, b) = match self.stack[..] {
+            [ref rest @ .., a, b] => (rest.len(), a, b),
+            _ => return None,
+        };
+        let value = op(a, b);
+        self.stack.truncate(rest_len);
+        self.stack.push(value);
+        Some(value)
     }
-    /// Subtracts top from second.
-    pub fn sub(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        self.stack.push(a - b);
+    /// Adds the top two values and returns the sum, which replaces them.
+    /// Returns `None`, leaving the stack unchanged, if it holds fewer than
+    /// two values.
+    pub fn add(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a + b)
     }
-    /// Multiplies the top two values.
-    pub fn mul(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        self.stack.push(a * b);
+    /// Subtracts top from second and returns the difference, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn sub(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a - b)
+    }
+    /// Multiplies the top two values and returns the product, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn mul(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a * b)
     }
     /// Peeks the top value.
     pub fn peek(&self) -> Option<i64> {
@@ -762,6 +757,10 @@ pub struct TypeChecker<'env> {
     next_fvar: u64,
     /// Whether to perform full checking (vs. infer-only mode).
     check_mode: bool,
+    /// The types [`Self::infer_type`] has computed, by term — Lean's
+    /// `m_infer_type`. See [`Self::infer_type`] for what makes an entry
+    /// valid and when the table is dropped.
+    pub(super) infer_cache: crate::term_cache::TermCache<Expr>,
 }
 impl<'env> TypeChecker<'env> {
     /// Create a new type checker for the given environment.
@@ -773,6 +772,7 @@ impl<'env> TypeChecker<'env> {
             def_eq_checker: DefEqChecker::new(env),
             next_fvar: 0,
             check_mode: true,
+            infer_cache: crate::term_cache::TermCache::new(),
         }
     }
     /// Create a type checker in infer-only mode (skips some checks).
@@ -784,38 +784,115 @@ impl<'env> TypeChecker<'env> {
             def_eq_checker: DefEqChecker::new(env),
             next_fvar: 0,
             check_mode: false,
+            infer_cache: crate::term_cache::TermCache::new(),
         }
     }
     /// Create a type checker whose local context is pre-seeded with the
     /// given free-variable types (id → type), e.g. the context a [`Reducer`]
     /// mirrors so K-like iota reduction can type majors that mention local
     /// FVars. Ids are installed in ascending order (later locals may depend
-    /// on earlier ones) and the fresh-id counter starts past the largest
-    /// seeded id, so newly opened locals never collide.
+    /// on earlier ones).
+    ///
+    /// Every free variable the new checker mints is distinct from every
+    /// seeded one, in BOTH of its id ranges: the checker's own locals
+    /// (`fresh_fvar`, low ids) start past the largest seeded low id, and the
+    /// binder-opening variables of its def-eq checker (ids from
+    /// `DEF_EQ_OPENED_FVAR_BASE`) start past the largest seeded id of that
+    /// range. The seeded locals of the second range are the binders the
+    /// surrounding def-eq checker has opened; a def-eq checker that restarted
+    /// at the base would open its first binder with the id of the surrounding
+    /// checker's first one and identify the two variables (see
+    /// `DefEqChecker::reserve_opened_fvars_through`).
     pub fn with_fvar_types(
         env: &'env Environment,
         locals: &std::collections::HashMap<u64, Expr>,
     ) -> Self {
+        use crate::def_eq::types::DEF_EQ_OPENED_FVAR_BASE;
+
         let mut tc = Self::new(env);
         let mut ids: Vec<u64> = locals.keys().copied().collect();
         ids.sort_unstable();
+        let mut max_own: Option<u64> = None;
+        let mut max_opened: Option<u64> = None;
         for id in ids {
             if let Some(ty) = locals.get(&id) {
                 tc.push_local(LocalDecl {
                     fvar: FVarId(id),
-                    name: Name::Anonymous,
+                    name: Name::anonymous(),
                     ty: ty.clone(),
                     val: None,
                 });
             }
+            // `ids` is ascending, so the last id seen in each range is its
+            // maximum.
+            if id < DEF_EQ_OPENED_FVAR_BASE {
+                max_own = Some(id);
+            } else {
+                max_opened = Some(id);
+            }
         }
-        tc.next_fvar = locals.keys().copied().max().map_or(0, |m| m + 1);
+        tc.next_fvar = max_own.map_or(0, |m| m + 1);
+        if let Some(m) = max_opened {
+            tc.def_eq_checker.reserve_opened_fvars_through(m);
+        }
         tc
     }
+    /// Create a type checker seeded with the locals a [`Reducer`] or def-eq
+    /// checker mirrors: [`Self::with_fvar_types`] over the variables in
+    /// scope, with both id ranges of the new checker also kept clear of every
+    /// id the mirror has EVER held.
+    ///
+    /// The mirror forgets a variable when its binder closes, so the variables
+    /// in scope are no longer all the variables the surrounding checker has
+    /// used. Minting past the ones in scope only would hand the new checker
+    /// the id of a closed binder; minting past the largest id ever bound, in
+    /// each range, gives it exactly the ids it was given when the mirror kept
+    /// every variable — distinct from all of the surrounding checker's,
+    /// whatever terms it is asked about.
+    pub(crate) fn with_local_types(
+        env: &'env Environment,
+        locals: &crate::local_types::LocalTypes,
+    ) -> Self {
+        let mut tc = Self::with_fvar_types(env, locals.live());
+        if let Some(m) = locals.max_own_id() {
+            tc.next_fvar = tc.next_fvar.max(m.saturating_add(1));
+        }
+        if let Some(m) = locals.max_opened_id() {
+            tc.def_eq_checker.reserve_opened_fvars_through(m);
+        }
+        tc
+    }
+    /// The three mirrors of this checker's local context — its reducer's,
+    /// its def-eq checker's and that checker's reducer's — and the id the
+    /// next binder the def-eq checker opens will get (for tests).
+    #[cfg(test)]
+    pub(crate) fn local_mirrors(&self) -> ([&crate::local_types::LocalTypes; 3], u64) {
+        let (def_eq, def_eq_reducer, next_opened) = self.def_eq_checker.local_types();
+        (
+            [self.reducer.local_types(), def_eq, def_eq_reducer],
+            next_opened,
+        )
+    }
     /// Set the transparency mode.
+    ///
+    /// The types inferred so far are dropped with the reduction and def-eq
+    /// caches: in checking mode a cached type also records that the term
+    /// CHECKED, and what checks depends on what may be unfolded.
     pub fn set_transparency(&mut self, mode: TransparencyMode) {
         self.reducer.set_transparency(mode);
         self.def_eq_checker.set_transparency(mode);
+        self.infer_cache.clear();
+    }
+    /// Mirror a local declaration's type into the def-eq checker and the
+    /// reducer, and drop the inferred types if the binding makes them stale:
+    /// the variable was in scope with another type, or was in scope before
+    /// and its binder has since been closed (`LocalTypes::bind`). A cached
+    /// type may rest on the type the variable had then.
+    fn mirror_local(&mut self, fvar: FVarId, ty: &Expr) {
+        self.def_eq_checker.record_fvar_type(fvar, ty.clone());
+        if self.reducer.bind_fvar_type(fvar, ty.clone()) {
+            self.infer_cache.clear();
+        }
     }
     /// Get the environment.
     pub fn env(&self) -> &Environment {
@@ -830,8 +907,7 @@ impl<'env> TypeChecker<'env> {
         // proof irrelevance — must type this free variable) and into the
         // reducer (whose K-like iota reduction must type recursor majors
         // that mention it).
-        self.def_eq_checker.record_fvar_type(fvar, ty.clone());
-        self.reducer.record_fvar_type(fvar, ty.clone());
+        self.mirror_local(fvar, &ty);
         self.local_ctx.push(LocalDecl {
             fvar,
             name,
@@ -844,8 +920,7 @@ impl<'env> TypeChecker<'env> {
     pub fn fresh_fvar_let(&mut self, name: Name, ty: Expr, val: Expr) -> FVarId {
         let fvar = FVarId(self.next_fvar);
         self.next_fvar += 1;
-        self.def_eq_checker.record_fvar_type(fvar, ty.clone());
-        self.reducer.record_fvar_type(fvar, ty.clone());
+        self.mirror_local(fvar, &ty);
         self.local_ctx.push(LocalDecl {
             fvar,
             name,
@@ -856,14 +931,23 @@ impl<'env> TypeChecker<'env> {
     }
     /// Push a local declaration onto the context.
     pub fn push_local(&mut self, decl: LocalDecl) {
-        self.def_eq_checker
-            .record_fvar_type(decl.fvar, decl.ty.clone());
-        self.reducer.record_fvar_type(decl.fvar, decl.ty.clone());
+        self.mirror_local(decl.fvar, &decl.ty);
         self.local_ctx.push(decl);
     }
     /// Pop a local declaration from the context.
+    ///
+    /// The variable leaves scope, so its type also leaves the mirrors the
+    /// def-eq checker and the reducers keep of this context (see the
+    /// kernel-private `local_types` module) — unless an earlier declaration of the same
+    /// variable is still in the context, in which case the mirrors are left
+    /// as they are.
     pub fn pop_local(&mut self) -> Option<LocalDecl> {
-        self.local_ctx.pop()
+        let decl = self.local_ctx.pop()?;
+        if !self.local_ctx.iter().any(|other| other.fvar == decl.fvar) {
+            self.def_eq_checker.forget_fvar_type(decl.fvar);
+            self.reducer.forget_fvar_type(decl.fvar);
+        }
+        Some(decl)
     }
     /// Look up a free variable in the local context.
     #[allow(clippy::result_large_err)]
@@ -926,23 +1010,10 @@ impl<'env> TypeChecker<'env> {
             })
         }
     }
-    /// Infer the type of an expression.
+    /// [`Self::infer_type`] for a term that is not in the cache (the
+    /// caching entry point is in the `cache` module of this directory).
     #[allow(clippy::result_large_err)]
-    pub fn infer_type(&mut self, expr: &Expr) -> Result<Expr, KernelError> {
-        // C16b: inference is the third loop (besides `whnf` and `is_def_eq`)
-        // that must observe the per-declaration fuel latch. A `let`-tower or
-        // dependent application chain grows its instantiated bodies
-        // geometrically *between* whnf/def-eq steps, so without this check a
-        // single `infer_type` call tree can allocate unboundedly while the
-        // budget is long exhausted (Init decl #3864,
-        // `Array.extract_append_extract._proof_1_1`, reached >12 GiB). The
-        // error is a typed abort, mapped by callers to the NAMED resource
-        // limit — never a rejection, and never a truncated term.
-        if crate::fuel::is_exhausted() {
-            return Err(KernelError::Other(
-                "per-declaration resource budget exhausted".to_string(),
-            ));
-        }
+    pub(super) fn infer_type_uncached(&mut self, expr: &Expr) -> Result<Expr, KernelError> {
         match expr {
             Expr::Sort(l) => Ok(Expr::Sort(Level::succ(l.clone()))),
             Expr::BVar(idx) => Err(KernelError::UnboundVariable(*idx)),
@@ -1486,37 +1557,44 @@ impl<K: Ord + Clone, V: Clone> SmallMap<K, V> {
 /// A versioned record that stores a history of values.
 #[allow(dead_code)]
 pub struct VersionedRecord<T: Clone> {
-    history: Vec<T>,
+    /// Every earlier value, oldest first: version `n` is `earlier[n]`.
+    earlier: Vec<T>,
+    /// The latest value (version `earlier.len()`), declared last so it drops last.
+    current: T,
 }
 #[allow(dead_code)]
 impl<T: Clone> VersionedRecord<T> {
     /// Creates a new record with an initial value.
     pub fn new(initial: T) -> Self {
         Self {
-            history: vec![initial],
+            earlier: Vec::new(),
+            current: initial,
         }
     }
     /// Updates the record with a new version.
     pub fn update(&mut self, val: T) {
-        self.history.push(val);
+        let previous = std::mem::replace(&mut self.current, val);
+        self.earlier.push(previous);
     }
     /// Returns the current (latest) value.
     pub fn current(&self) -> &T {
-        self.history
-            .last()
-            .expect("VersionedRecord history is always non-empty after construction")
+        &self.current
     }
     /// Returns the value at version `n` (0-indexed), or `None`.
     pub fn at_version(&self, n: usize) -> Option<&T> {
-        self.history.get(n)
+        match self.earlier.get(n) {
+            Some(value) => Some(value),
+            None if n == self.earlier.len() => Some(&self.current),
+            None => None,
+        }
     }
     /// Returns the version number of the current value.
     pub fn version(&self) -> usize {
-        self.history.len() - 1
+        self.earlier.len()
     }
     /// Returns `true` if more than one version exists.
     pub fn has_history(&self) -> bool {
-        self.history.len() > 1
+        !self.earlier.is_empty()
     }
 }
 /// A simple LRU-style type inference cache.

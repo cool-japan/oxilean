@@ -107,14 +107,10 @@ fn try_parse_decl_name(line: &str) -> Option<String> {
         .iter()
         .filter(|&&kw| kw != "noncomputable")
         .find_map(|&kw| {
-            effective.strip_prefix(kw).and_then(|after| {
-                // Must be followed by whitespace or end-of-line (not a longer word)
-                if after.is_empty() || after.starts_with(char::is_whitespace) {
-                    Some(after)
-                } else {
-                    None
-                }
-            })
+            // Must be followed by whitespace or end-of-line (not a longer word)
+            effective
+                .strip_prefix(kw)
+                .filter(|after| after.is_empty() || after.starts_with(char::is_whitespace))
         })?;
 
     // Extract the name token (first word after the keyword)

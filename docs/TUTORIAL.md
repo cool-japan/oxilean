@@ -1149,13 +1149,13 @@ You've learned:
 
 ### Next Steps:
 
-OxiLean is a fully implemented proof assistant with 11 crates and 1.2M+ total SLOC. All development phases are complete, including the kernel, elaborator, parser, standard library, build system, linter, code generation, runtime, and WASM support.
+OxiLean is a fully implemented proof assistant with 17 crates and 1.36M total SLOC. All development phases are complete, including the kernel, elaborator, parser, standard library, build system, linter, code generation, runtime, and WASM support.
 
 1. **Explore the Standard Library** — Browse modules in `crates/oxilean-std/src/` for built-in lemmas, tactics, and data structures
 2. **Prove Your Own Theorems** — Try proving properties of data structures or formalizing mathematical results
-3. **Build a Project** — Use `oxilean build` to create and manage formal verification projects
-4. **Use the CLI Tools** — Run `oxilean lint`, `oxilean check --verbose`, or `oxilean check --json` for development workflows
-5. **Target WASM** — Export proofs and verified code to WebAssembly with `oxilean build --target wasm`
+3. **Build a Project** — Use `oxilake build` (the package manager; `oxilean build` is not dispatched by the `oxilean` binary in 0.1.4) to create and manage formal verification projects
+4. **Use the CLI Tools** — Run `oxilean check <file>` (the `lint` / `--verbose` / `--json` options are not dispatched by the `oxilean` binary in 0.1.4; `oxilake check` / `oxilake test` cover project workflows)
+5. **Target WASM** — Export proofs and verified code to WebAssembly with the `oxilean-wasm` crate (`oxilean build --target wasm` is not dispatched by the `oxilean` binary in 0.1.4)
 6. **Join the Community** — Contribute to the OxiLean project on GitHub
 
 Good luck with your formal verification journey!

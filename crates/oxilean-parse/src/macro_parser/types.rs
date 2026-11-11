@@ -459,8 +459,12 @@ impl MacroExpander {
                 matches.push((rule.clone(), bindings));
             }
         }
-        match matches.len() {
-            0 => Err(MacroError::new(
+        match <[(_, Vec<(String, Vec<Token>)>); 1]>::try_from(matches) {
+            Ok([(rule, bindings)]) => {
+                let binding_slice: Vec<(String, Vec<Token>)> = bindings;
+                Ok(substitute(&rule.template, &binding_slice))
+            }
+            Err(matches) if matches.is_empty() => Err(MacroError::new(
                 MacroErrorKind::PatternMismatch,
                 format!(
                     "no rule of macro '{}' matches the input ({} tokens)",
@@ -468,15 +472,7 @@ impl MacroExpander {
                     input.len()
                 ),
             )),
-            1 => {
-                let (rule, bindings) = matches
-                    .into_iter()
-                    .next()
-                    .expect("matches.len() == 1 per match arm");
-                let binding_slice: Vec<(String, Vec<Token>)> = bindings;
-                Ok(substitute(&rule.template, &binding_slice))
-            }
-            _ => Err(MacroError::new(
+            Err(matches) => Err(MacroError::new(
                 MacroErrorKind::AmbiguousMatch,
                 format!(
                     "{} rules of macro '{}' match the input",
@@ -1122,3 +1118,6 @@ impl MacroEnvironmentExt {
         self.macros.is_empty()
     }
 }
+
+#[cfg(test)]
+mod ambiguity_tests;

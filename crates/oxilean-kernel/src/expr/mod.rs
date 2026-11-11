@@ -8,6 +8,9 @@ pub mod functions;
 pub mod labelset_traits;
 pub mod literal_traits;
 pub mod minheap_traits;
+mod node_facts;
+#[cfg(test)]
+mod node_facts_tests;
 pub mod pathbuf_traits;
 pub mod prefixcounter_traits;
 pub mod rewriteruleset_traits;
@@ -15,6 +18,8 @@ pub mod smallmap_traits;
 pub mod stackcalc_traits;
 pub mod statsummary_traits;
 pub mod stringpool_traits;
+#[cfg(test)]
+mod structural_hash_tests;
 pub mod transformstat_traits;
 pub mod types;
 pub mod windowiterator_traits;

@@ -7,7 +7,7 @@
 
 The elaborator translates surface syntax (from the parser) into kernel-checked terms. It handles type inference, implicit argument insertion, unification, pattern match compilation, and tactic execution. This crate is **untrusted** -- the kernel independently verifies all produced terms.
 
-92,415 SLOC -- fully implemented elaboration pipeline (466 source files, 3,497 tests passing).
+103,291 SLOC -- fully implemented elaboration pipeline (514 source files, 3,511 tests passing).
 
 ## Architecture
 
@@ -47,11 +47,14 @@ Kernel Expr terms -> sent to oxilean-kernel for verification
 
 | Module | Status | Description |
 |--------|--------|-------------|
-| `metavar.rs` | Implemented | Metavariable context and assignment tracking |
-| `unify.rs` | Implemented | Higher-order unification |
-| `elab_expr.rs` | Implemented | Expression elaboration |
-| `elab_decl.rs` | Implemented | Declaration elaboration |
-| `tactic/mod.rs` | Implemented | Tactic engine and core tactics |
+| `metavar` | Implemented | Metavariable context and assignment tracking |
+| `unify`, `solver` | Implemented | Higher-order unification and constraint solving |
+| `elab_expr`, `elaborate` | Implemented | Expression elaboration |
+| `elab_decl`, `command_elab` | Implemented | Declaration and command elaboration |
+| `pattern_match`, `equation`, `mutual` | Implemented | Pattern match compilation, equations, mutual recursion |
+| `tactic`, `tactic_auto`, `metaprog` | Implemented | Tactic engine, core tactics, auto search, user-defined tactics |
+| `meta_bridge` | Implemented | Bridge to the `oxilean-meta` tactic implementations (omega, polyrith, cc, simp, ...) |
+| `typeclass`, `instance`, `coercion`, `derive` | Implemented | Type classes, instances, coercions, `deriving` |
 
 ## Key Concepts
 
@@ -83,17 +86,20 @@ When applying `f : {alpha : Type} -> alpha -> alpha` to an argument `a`:
 
 Tactics operate on a `TacticState` containing goals:
 
-```rust
-struct TacticState {
-    goals: Vec<Goal>,
-    env: Environment,
-    assignments: MetaContext,
+```rust,ignore
+pub struct TacticState {
+    goals: Vec<Goal>,                    // open goals
+    pub solved: Vec<Name>,               // names of solved goals
+    pub certificate: Option<oxilean_meta::ProofCertificate>,
 }
 
-struct Goal {
-    mvar: MetaVarId,       // the hole to fill
-    lctx: Vec<LocalDecl>,  // local hypotheses
-    target: Expr,          // what needs to be proved
+pub struct Goal {
+    pub name: Name,
+    pub mvar_id: u64,                          // the hole to fill
+    pub hypotheses: Vec<(Name, Expr)>,         // local hypotheses
+    pub local_ctx: Vec<(Name, Expr, Option<Expr>)>,
+    pub target: Expr,                          // what needs to be proved
+    pub tag: Option<String>,
 }
 ```
 

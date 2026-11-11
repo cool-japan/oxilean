@@ -1017,10 +1017,9 @@ pub(super) fn default_pattern_for_inductive(info: &InductiveInfo) -> RcasesPatte
                             .iter()
                             .map(|n| RcasesPattern::One(format!("{}", n)))
                             .collect();
-                        if pats.len() == 1 {
-                            pats.into_iter().next().expect("pats has exactly 1 element")
-                        } else {
-                            RcasesPattern::Tuple(pats)
+                        match <[RcasesPattern; 1]>::try_from(pats) {
+                            Ok([single]) => single,
+                            Err(pats) => RcasesPattern::Tuple(pats),
                         }
                     }
                 })
@@ -1617,3 +1616,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod default_pattern_tests;

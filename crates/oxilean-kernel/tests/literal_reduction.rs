@@ -251,6 +251,46 @@ fn non_literal_args_stay_stuck() {
     assert_eq!(whnf(&e), e);
 }
 
+#[test]
+fn partial_nat_op_behind_a_constant_folds_with_the_outer_argument() {
+    use oxilean_kernel::declaration::{ConstantInfo, ConstantVal, DefinitionSafety, DefinitionVal};
+    use oxilean_kernel::{check_constant_info, BinderInfo};
+
+    // `add2 : Nat → Nat := Nat.add 2` — the value is `Nat.add` one argument
+    // short. In `add2 3` the second operand is `add2`'s own argument, so the
+    // unfolding and the outer argument form ONE application `Nat.add 2 3`,
+    // which is at the operation's exact arity and folds to `5`. Before the
+    // fix the exposed `Nat.add 2` was stepped on its own (under-applied, so
+    // stuck) and `add2 3` came back as `Nat.add 2 3` — unfolded, never
+    // folded.
+    let mut env = env();
+    let nat_ty = || Expr::Const(Name::str("Nat"), vec![]);
+    let ci = ConstantInfo::Definition(DefinitionVal {
+        common: ConstantVal {
+            name: Name::str("add2"),
+            level_params: vec![],
+            ty: Expr::Pi(
+                BinderInfo::Default,
+                Name::str("_"),
+                Node::new(nat_ty()),
+                Node::new(nat_ty()),
+            ),
+        },
+        value: op1("Nat.add", nat(2)),
+        hints: oxilean_kernel::ReducibilityHint::Regular(1),
+        safety: DefinitionSafety::Safe,
+        all: vec![Name::str("add2")],
+    });
+    check_constant_info(&mut env, ci).unwrap_or_else(|e| unreachable!("add2: {e:?}"));
+
+    let e = op1("add2", nat(3));
+    let mut reducer = Reducer::new();
+    assert_eq!(reducer.whnf_env(&e, &env), nat(5));
+    let mut dec = DefEqChecker::new(&env);
+    assert!(dec.is_def_eq(&e, &nat(5)));
+    assert!(!dec.is_def_eq(&e, &nat(6)));
+}
+
 // ── 5. memory guard: stuck, never wrong ──────────────────────────────────────
 
 #[test]

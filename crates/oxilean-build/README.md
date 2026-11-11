@@ -9,7 +9,7 @@
 
 The design is intentionally analogous to Cargo: OxiLean projects declare their dependencies in a manifest file, and `oxilean-build` resolves, fetches, and compiles them in the correct order.
 
-26,070 SLOC -- fully implemented build system (199 source files, 783 tests passing).
+30,598 SLOC -- fully implemented build system (267 source files, 794 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -81,27 +81,36 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-build = "0.1.3"
+oxilean-build = "0.1.4"
 ```
 
 ### Running a Build
 
 ```rust,ignore
-use oxilean_build::{BuildConfig, executor::BuildExecutor};
+use std::path::Path;
+use oxilean_build::{build_project, BuildConfig};
 
 let config = BuildConfig::release().with_jobs(4);
-let executor = BuildExecutor::new(config);
-executor.build("path/to/project")?;
+let output = build_project(Path::new("oxilean.toml"), config)?;
+println!(
+    "{} {}: {} steps completed",
+    output.package_name, output.package_version, output.report.completed_steps
+);
 ```
+
+`build_project` reads the manifest, builds the step DAG from its targets, and runs it
+with `executor::BuildExecutor`. The lower-level pieces (`executor::BuildDag`,
+`executor::BuildExecutor::new(dag, config)`) are public as well.
 
 ### Resolving Dependencies
 
 ```rust,ignore
-use oxilean_build::resolver::Resolver;
+use oxilean_build::resolver::{MemoryPackageSource, Resolver};
 
-let mut resolver = Resolver::new();
-resolver.add_constraint("oxilean-std", ">=0.1.1, <0.2.0");
-let solution = resolver.solve()?;
+// `source` implements `PackageSource`; `manifest` is a parsed `manifest::Manifest`.
+let source = MemoryPackageSource::new();
+let mut resolver = Resolver::new(&source);
+let graph = resolver.resolve(&manifest)?;
 ```
 
 ## Dependencies

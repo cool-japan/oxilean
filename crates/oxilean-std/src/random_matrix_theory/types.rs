@@ -872,14 +872,12 @@ impl LevelSpacingStats {
     }
     /// Compute number variance Σ²(L) from the unfolded spacings.
     pub fn number_variance(&self, l: f64) -> f64 {
-        let mut unfolded = vec![0.0f64];
+        // `level` is always the most recently pushed entry of `unfolded`.
+        let mut level = 0.0f64;
+        let mut unfolded = vec![level];
         for &s in &self.spacings {
-            unfolded.push(
-                unfolded
-                    .last()
-                    .expect("unfolded is non-empty: initialized with 0.0")
-                    + s,
-            );
+            level += s;
+            unfolded.push(level);
         }
         number_variance(&unfolded, l)
     }
@@ -900,3 +898,5 @@ impl LevelSpacingStats {
         }
     }
 }
+#[cfg(test)]
+mod unfolding_tests;

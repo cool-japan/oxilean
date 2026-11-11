@@ -1,7 +1,7 @@
 # oxilean-wasm TODO
 
-> Status: v0.1.2 WASM bindings complete. v0.1.3 adds browser playground.
-> Last updated: 2026-05-29
+> Status: v0.1.4 — WASM bindings and browser playground complete; GitHub Pages deploy of the playground is the one open item.
+> Last updated: 2026-11-12
 
 ## v0.1.2 (Complete)
 
@@ -36,7 +36,7 @@
   - **Tests:** Automated: set content, reload, verify content restored (Jest or manual test).
 - [x] Share-via-URL (URL fragment = OxiARC-compressed base64 source) (completed 2026-05-29)
   - **Goal:** Add wasm-bindgen exports `compress_share(source: &str) -> String` (→ base64url) and `decompress_share(encoded: &str) -> Result<String, JsValue>`; playground JS writes the hash fragment on "Share" click and reads+decodes it on page load.
-  - **Design:** `compress_share`: OxiARC `deflate(source.as_bytes(), 6)` → base64url encode (no padding, URL-safe charset); `decompress_share`: base64url decode → OxiARC `inflate` → UTF-8 string. Added `oxiarc-deflate = "0.3"` to workspace Cargo.toml and crate deps.
+  - **Design:** `compress_share`: OxiARC `deflate(source.as_bytes(), 6)` → base64url encode (no padding, URL-safe charset); `decompress_share`: base64url decode → OxiARC `inflate` → UTF-8 string. Added `oxiarc-deflate` to workspace Cargo.toml (now 0.4.2) and crate deps.
   - **Files:** `src/share.rs` (new), `src/lib.rs` (pub mod share), `playground/main.js` (Share button + fragment load on startup), `playground/index.html` (Share button, examples select), `/Cargo.toml` (workspace dep)
   - **Tests:** 7 new tests in `share::tests` — all 55 oxilean-wasm tests pass.
 - [x] Bundled example library (10–15 proofs shipped in-page as dropdown) (completed 2026-05-29)
@@ -45,9 +45,14 @@
   - **Files:** `playground/index.html` (15 examples in select), `playground/main.js` (initExamplesDropdown)
   - **Tests:** Dropdown has 15 entries (≥10); selecting any example populates the editor.
 - [x] Multi-file workspace UI (tab bar + file tree) (completed 2026-05-29)
-- [ ] GitHub Pages deploy (separate user approval required for new workflow yaml)
+- [ ] GitHub Pages deploy of the playground
 - [x] Performance: incremental WASM check (diff-based partial reparse) (completed 2026-05-30)
   - **Goal:** Replace the line-based heuristic in `incremental/functions.rs` with `diff_modules`-driven AST diffing. Cache keys use `DeclFingerprint.body_hash` for stability.
   - **Design:** `parse_source_decls` (real parser) + `diff_modules` Myers LCS diff replaces `extract_declarations`. `IncrementalCache.prev_decls: Vec<Located<Decl>>` stores prior AST for diffing. Tail-invalidation: all decls after the first changed one are re-checked. `EditKind::{Inserted,Modified}` → recheck; `Unchanged` before first change → cache hit.
   - **Files:** `crates/oxilean-wasm/src/incremental/functions.rs`, `crates/oxilean-wasm/src/incremental/types.rs`.
   - **Tests:** 4 new tests: `test_incremental_check_full_equals_incremental`, `test_incremental_edit_middle_decl`, `test_incremental_append_decl`, `test_incremental_delete_decl`.
+
+## v0.1.4 (released 2026-11-12)
+
+- [x] Playground version label bumped to v0.1.4 (`playground/index.html`)
+- [x] MSRV 1.89: clippy suggestions applied (`share.rs` `div_ceil`, `incremental/functions.rs` `strip_prefix().filter`, 3c75335)

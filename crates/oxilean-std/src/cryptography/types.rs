@@ -89,7 +89,7 @@ impl ModularArithmetic {
     /// # WARNING
     /// Assumes modulus is an odd prime; undefined otherwise.
     pub fn legendre(&self, a: u64) -> i64 {
-        if a % self.modulus == 0 {
+        if a.is_multiple_of(self.modulus) {
             return 0;
         }
         let exp = (self.modulus - 1) / 2;
@@ -484,7 +484,11 @@ impl RsaKeyGen {
     /// Find the next (probably) prime after `start` using Miller-Rabin.
     pub fn next_prime(start: u64) -> u64 {
         let witnesses = [2u64, 3, 5, 7, 11, 13];
-        let mut candidate = if start % 2 == 0 { start + 1 } else { start };
+        let mut candidate = if start.is_multiple_of(2) {
+            start + 1
+        } else {
+            start
+        };
         loop {
             if miller_rabin(candidate, &witnesses) {
                 return candidate;

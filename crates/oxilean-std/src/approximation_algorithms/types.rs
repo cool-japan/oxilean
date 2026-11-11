@@ -49,7 +49,7 @@ impl BinPackingFFD {
     }
     /// FFD achieves at most 11/9 * OPT + 6/9 bins.
     pub fn approximation_ratio_bound(&self, opt: usize) -> usize {
-        (11 * opt + 8) / 9 + 1
+        (11 * opt).div_ceil(9) + 1
     }
 }
 /// Set cover approximation.

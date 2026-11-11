@@ -84,9 +84,8 @@ pub fn check_file(path: &Path, verbose: bool) -> CommandResult<()> {
             _ => CommandError::general(format!("Failed to read file: {}", e)),
         }
     })?;
-    check_source(&contents).map_err(|e| {
+    check_source(&contents).inspect_err(|e| {
         reporter.error(&e.message);
-        e
     })?;
     reporter.complete();
     Ok(())
@@ -106,9 +105,8 @@ pub fn build_project(project_dir: &Path, release: bool, verbose: bool) -> Comman
         reporter.error(&e.to_string());
         CommandError::general(format!("Failed to read main.lean: {}", e))
     })?;
-    check_source(&contents).map_err(|e| {
+    check_source(&contents).inspect_err(|e| {
         reporter.error(&e.message);
-        e
     })?;
     let build_dir = project_dir.join(if release {
         "target/release"
@@ -187,9 +185,8 @@ pub fn run_script(path: &Path, verbose: bool) -> CommandResult<()> {
         reporter.error(&e.to_string());
         CommandError::general(format!("Failed to read script: {}", e))
     })?;
-    check_source(&contents).map_err(|e| {
+    check_source(&contents).inspect_err(|e| {
         reporter.error(&e.message);
-        e
     })?;
     reporter.progress("Script executed successfully");
     reporter.complete();

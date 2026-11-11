@@ -717,24 +717,18 @@ impl HeapPred {
     /// Separating conjunction P ∗ Q.
     pub fn sep_star(p: HeapPred, q: HeapPred) -> HeapPred {
         HeapPred::new(move |h| {
-            let domain: Vec<u64> = h.domain().into_iter().collect();
-            let n = domain.len();
+            // Every allocated cell with its value; each `mask` sends one subset
+            // of the cells to `h1` and the rest to `h2`.
+            let cells: Vec<(u64, u64)> = h.cells.iter().map(|(&addr, &val)| (addr, val)).collect();
+            let n = cells.len();
             for mask in 0u64..(1u64 << n) {
                 let mut h1 = Heap::empty();
                 let mut h2 = Heap::empty();
-                for (i, &addr) in domain.iter().enumerate() {
+                for (i, &(addr, val)) in cells.iter().enumerate() {
                     if (mask >> i) & 1 == 1 {
-                        h1.write(
-                            addr,
-                            h.read(addr)
-                                .expect("addr is from domain, which was iterated from h's keys"),
-                        );
+                        h1.write(addr, val);
                     } else {
-                        h2.write(
-                            addr,
-                            h.read(addr)
-                                .expect("addr is from domain, which was iterated from h's keys"),
-                        );
+                        h2.write(addr, val);
                     }
                 }
                 if p.satisfies(&h1) && q.satisfies(&h2) {
@@ -1122,3 +1116,5 @@ impl WeakestPrecondition {
         true
     }
 }
+#[cfg(test)]
+mod sep_star_tests;

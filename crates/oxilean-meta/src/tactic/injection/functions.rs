@@ -137,7 +137,7 @@ pub fn build_injection_proof(
     let type_name = infer_type_name_from_ctor(ctor);
     for i in 0..n {
         let no_confusion_name = type_name.clone().append_str("noConfusion");
-        let no_confusion_const = Expr::Const(no_confusion_name, vec![Level::Zero]);
+        let no_confusion_const = Expr::Const(no_confusion_name, vec![Level::zero()]);
         let motive = build_injection_motive(n, i, lhs_args, rhs_args);
         let hyp_ref = Expr::Const(hyp_name.clone(), vec![]);
         let proof = mk_app(no_confusion_const, vec![eq_type.clone(), motive, hyp_ref]);
@@ -159,7 +159,7 @@ pub(super) fn build_injection_motive(
         let name = Name::str(format!("h{}", i));
         let lhs = lhs_args.get(i).cloned().unwrap_or(Expr::BVar(0));
         let rhs = rhs_args.get(i).cloned().unwrap_or(Expr::BVar(0));
-        let eq_ty = build_eq_expr(&Expr::Sort(Level::Zero), &lhs, &rhs);
+        let eq_ty = build_eq_expr(&Expr::Sort(Level::zero()), &lhs, &rhs);
         body = Expr::Lam(BinderInfo::Default, name, Node::new(eq_ty), Node::new(body));
     }
     body
@@ -175,7 +175,7 @@ pub fn build_no_confusion_proof(
     eq_type: &Expr,
 ) -> Expr {
     let no_confusion_name = type_name.clone().append_str("noConfusion");
-    let no_confusion_const = Expr::Const(no_confusion_name, vec![Level::Zero]);
+    let no_confusion_const = Expr::Const(no_confusion_name, vec![Level::zero()]);
     let false_type = Expr::Const(Name::str("False"), vec![]);
     let hyp_ref = Expr::Const(hyp_name.clone(), vec![]);
     mk_app(
@@ -185,7 +185,7 @@ pub fn build_no_confusion_proof(
 }
 /// Build an equality expression `@Eq α a b`.
 pub(super) fn build_eq_expr(ty: &Expr, a: &Expr, b: &Expr) -> Expr {
-    let eq_const = Expr::Const(Name::str("Eq"), vec![Level::Zero]);
+    let eq_const = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
     mk_app(eq_const, vec![ty.clone(), a.clone(), b.clone()])
 }
 /// Apply the injection tactic to a hypothesis.
@@ -357,12 +357,12 @@ pub fn tac_no_confusion(
         hyp,
         &ctor_eq.eq_type,
     );
-    let false_elim = Expr::Const(Name::str("False.elim"), vec![Level::Zero]);
+    let false_elim = Expr::Const(Name::str("False.elim"), vec![Level::zero()]);
     let goal_mvar = state.current_goal()?;
     let goal_type = ctx
         .get_mvar_type(goal_mvar)
         .cloned()
-        .unwrap_or(Expr::Sort(Level::Zero));
+        .unwrap_or(Expr::Sort(Level::zero()));
     let full_proof = mk_app(false_elim, vec![goal_type, proof.clone()]);
     state.close_goal(full_proof, ctx)?;
     Ok(NoConfusionResult {
@@ -401,7 +401,7 @@ mod tests {
         )
     }
     fn mk_eq_expr(ty: Expr, lhs: Expr, rhs: Expr) -> Expr {
-        let eq_const = Expr::Const(Name::str("Eq"), vec![Level::Zero]);
+        let eq_const = Expr::Const(Name::str("Eq"), vec![Level::zero()]);
         mk_app(eq_const, vec![ty, lhs, rhs])
     }
     fn mk_ctor_app(ctor: &str, args: Vec<Expr>) -> Expr {
@@ -730,7 +730,7 @@ mod tests {
     #[test]
     fn test_tac_injection_unknown_hyp() {
         let mut ctx = mk_test_ctx();
-        let ty = Expr::Sort(Level::Zero);
+        let ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let result = tac_injection(&Name::str("nonexistent"), &mut state, &mut ctx);
@@ -739,7 +739,7 @@ mod tests {
     #[test]
     fn test_tac_no_confusion_unknown_hyp() {
         let mut ctx = mk_test_ctx();
-        let ty = Expr::Sort(Level::Zero);
+        let ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let result = tac_no_confusion(&Name::str("nonexistent"), &mut state, &mut ctx);
@@ -750,7 +750,7 @@ mod tests {
         let mut ctx = mk_test_ctx();
         let ty = mk_const("P");
         ctx.mk_local_decl(Name::str("h"), ty, BinderInfo::Default);
-        let goal_ty = Expr::Sort(Level::Zero);
+        let goal_ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let result = tac_injection(&Name::str("h"), &mut state, &mut ctx);
@@ -764,7 +764,7 @@ mod tests {
         let rhs = mk_ctor_app("Nat.succ", vec![mk_const("b")]);
         let hyp_ty = mk_eq_expr(nat, lhs, rhs);
         ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
-        let goal_ty = Expr::Sort(Level::Zero);
+        let goal_ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let result = tac_injection(&Name::str("h"), &mut state, &mut ctx);
@@ -781,7 +781,7 @@ mod tests {
         let rhs = mk_ctor_app("Nat.succ", vec![mk_const("n")]);
         let hyp_ty = mk_eq_expr(nat, lhs, rhs);
         ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
-        let goal_ty = Expr::Sort(Level::Zero);
+        let goal_ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let result = tac_injection(&Name::str("h"), &mut state, &mut ctx);
@@ -795,7 +795,7 @@ mod tests {
         let rhs = mk_ctor_app("Nat.succ", vec![mk_const("n")]);
         let hyp_ty = mk_eq_expr(nat, lhs, rhs);
         ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
-        let goal_ty = Expr::Sort(Level::Zero);
+        let goal_ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let result = tac_no_confusion(&Name::str("h"), &mut state, &mut ctx);
@@ -812,7 +812,7 @@ mod tests {
         let rhs = mk_ctor_app("Nat.succ", vec![mk_const("b")]);
         let hyp_ty = mk_eq_expr(nat, lhs, rhs);
         ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
-        let goal_ty = Expr::Sort(Level::Zero);
+        let goal_ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let result = tac_no_confusion(&Name::str("h"), &mut state, &mut ctx);
@@ -828,7 +828,7 @@ mod tests {
         let rhs = mk_ctor_app("List.cons", vec![mk_const("b"), mk_const("bs")]);
         let hyp_ty = mk_eq_expr(list_ty, lhs, rhs);
         ctx.mk_local_decl(Name::str("h"), hyp_ty, BinderInfo::Default);
-        let goal_ty = Expr::Sort(Level::Zero);
+        let goal_ty = Expr::Sort(Level::zero());
         let (mvar_id, _) = ctx.mk_fresh_expr_mvar(goal_ty, MetavarKind::Natural);
         let mut state = TacticState::single(mvar_id);
         let names = vec![Name::str("h_head"), Name::str("h_tail")];

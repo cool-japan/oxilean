@@ -297,12 +297,14 @@ pub(super) fn parse_linear_str(tokens: &[String]) -> Option<LinearExpr> {
         match tokens[i].as_str() {
             ")" => depth += 1,
             "(" => depth -= 1,
-            "+" | "-" if depth == 0 && i > 0 => {
+            "+" if depth == 0 && i > 0 => {
                 split_pos = Some(i);
-                split_op = tokens[i]
-                    .chars()
-                    .next()
-                    .expect("matched '+' or '-' literal so it is non-empty");
+                split_op = '+';
+                break;
+            }
+            "-" if depth == 0 && i > 0 => {
+                split_pos = Some(i);
+                split_op = '-';
                 break;
             }
             _ => {}
@@ -1131,3 +1133,6 @@ mod omega_ext_tests_4200 {
         assert_eq!(l.as_list().map(|v| v.len()), Some(2));
     }
 }
+
+#[cfg(test)]
+mod linear_str_tests;

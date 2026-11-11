@@ -29,8 +29,8 @@ if ! [[ "$BUDGET_KB" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-RAW_BYTES="$(stat -c%s "$WASM_FILE")"
-GZ_BYTES="$(gzip -9 -c "$WASM_FILE" | wc -c)"
+RAW_BYTES="$(wc -c < "$WASM_FILE" | tr -d ' ')"
+GZ_BYTES="$(gzip -9 -c "$WASM_FILE" | wc -c | tr -d ' ')"
 BUDGET_BYTES=$(( BUDGET_KB * 1024 ))
 GZ_KB=$(( (GZ_BYTES + 512) / 1024 ))
 

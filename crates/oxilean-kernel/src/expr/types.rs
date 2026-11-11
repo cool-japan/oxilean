@@ -937,41 +937,36 @@ impl StackCalc {
     pub fn push(&mut self, n: i64) {
         self.stack.push(n);
     }
-    /// Adds the top two values.  Panics if fewer than two values.
-    pub fn add(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        self.stack.push(a + b);
+    /// Replaces the top two values, `b` on top of `a`, with `op(a, b)` and
+    /// returns it.  Returns `None`, leaving the stack unchanged, if it holds
+    /// fewer than two values.
+    fn apply_binary(&mut self, op: impl FnOnce(i64, i64) -> i64) -> Option<i64> {
+        let (rest_len, a, b) = match self.stack[..] {
+            [ref rest @ .., a, b] => (rest.len(), a, b),
+            _ => return None,
+        };
+        let value = op(a, b);
+        self.stack.truncate(rest_len);
+        self.stack.push(value);
+        Some(value)
     }
-    /// Subtracts top from second.
-    pub fn sub(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        self.stack.push(a - b);
+    /// Adds the top two values and returns the sum, which replaces them.
+    /// Returns `None`, leaving the stack unchanged, if it holds fewer than
+    /// two values.
+    pub fn add(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a + b)
     }
-    /// Multiplies the top two values.
-    pub fn mul(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        self.stack.push(a * b);
+    /// Subtracts top from second and returns the difference, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn sub(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a - b)
+    }
+    /// Multiplies the top two values and returns the product, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn mul(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a * b)
     }
     /// Peeks the top value.
     pub fn peek(&self) -> Option<i64> {
@@ -1007,85 +1002,184 @@ impl StringPool {
         self.free.len()
     }
 }
-/// Core expression type.
+/// A child edge in an [`Expr`]: a reference-counted subterm together with
+/// the facts about it that the kernel needs in O(1) (structural sharing,
+/// wave5 Stage E; the hash and the three flags added for 0.1.4).
 ///
-/// This is the heart of the kernel. All terms in the type theory are
-/// represented as `Expr` values.
+/// * `range` — the subterm's `looseBVarRange`: `1 + the largest loose de Bruijn
+///   index in the subterm` (0 = closed). It lets a substitution or lift decide
+///   in O(1) whether a subtree is affected — `range <= depth` means "no loose
+///   bvar can be touched, share it unchanged" — without traversing the subtree.
+/// * `cost` — the size of the subterm counted as a TREE (a shared subterm once
+///   per path to it), saturating at [`REBUILD_COST_MAX`]: one unit per node
+///   plus one more per leaf, so `cost(leaf) = 2` and
+///   `cost(internal) = 1 + Σ cost(children)`. The reduction and def-eq caches
+///   read it to keep giant terms out (`expr_util::expr_size_within`). Through
+///   0.1.4's first performance pass this was also what a substitution charged
+///   to the per-declaration budget for a subtree it shared instead of
+///   rebuilding; sharing a subtree now charges one unit (see [`crate::fuel`]).
+/// * `hash` — the hash of the subterm's structure (the kernel-private
+///   `structural_hash` module documents it). `Hash` writes it instead of
+///   walking the subterm, and `==` uses it as a fast negative test.
+/// * three flags — whether the subterm contains a free variable, a universe
+///   parameter, a universe metavariable. They let the operations that only
+///   concern those (abstracting a free variable, instantiating universe
+///   parameters, the universe hygiene check of a declaration) pass over
+///   everything else without visiting it.
 ///
-/// Sub-expressions are held behind `Rc<Expr>` (structural sharing, wave5): an
-/// export DAG id referenced by many parents materializes to a single shared
-/// node, and `clone` is an O(1) refcount bump rather than a deep copy. The
-/// kernel is single-threaded (the verify pipeline runs on one spawned thread
-/// and the wasm target is single-threaded), so `Rc` — not `Arc` — is correct.
+/// All of them are computed once, bottom-up, in [`Node::new`] from the
+/// subterm's own immediate children (also `Node`s), so construction stays
+/// O(nodes) and none of them ever needs a traversal.
 ///
-/// `Clone` is implemented by hand (not derived) so each clone charges one unit
-/// of the deterministic per-declaration resource fuel — see [`crate::fuel`].
-/// Under `Rc` a clone shares children (the sub-`clone`s are refcount bumps), so
-/// this now meters clone *calls* rather than deep-copied nodes; the load-bearing
-/// metering of newly-constructed term material lives in the substitution/lift
-/// builders (see `fuel.rs`).
-/// A child edge in an [`Expr`]: a reference-counted subterm together with its
-/// cached `looseBVarRange` (structural sharing, wave5 Stage E).
+/// # Layout
 ///
-/// `range` is `1 + the largest loose de Bruijn index in the subterm` (0 =
-/// closed). Caching it on the edge lets a substitution or lift decide in O(1)
-/// whether a subtree is affected — `range <= depth` means "no loose bvar can be
-/// touched, share it unchanged" — without ever traversing the subtree. The
-/// range is computed once, bottom-up, in [`Node::new`] from the child's own
-/// immediate children (also `Node`s), so construction stays O(nodes).
+/// The facts live in the shared allocation, next to the subterm; a `Node` is
+/// one pointer. (Through 0.1.3 `range` and `cost` sat on the edge beside the
+/// pointer, and the allocation held the bare `Expr`.) An allocation is the
+/// two reference counts, 16 bytes of facts and a 40-byte `Expr` — 72 bytes
+/// where the old layout used 80, with the hash and the flags added (the
+/// flags share a word with `cost`) — and an `Expr` held by value, as every
+/// cache key is, is 40 bytes where it was 64. Reading a fact dereferences the
+/// edge, which costs nothing extra where it matters: a substitution that
+/// skips a subtree shares it by bumping the reference count stored right
+/// beside the facts, and one that does not skip it walks into it.
 ///
 /// `Node` is a transparent wrapper: it `Deref`s to the inner [`Expr`], and its
-/// `PartialEq`/`Eq`/`Hash` delegate to the `Rc<Expr>` (so the derived instances
-/// on `Expr` keep exactly their structural meaning, with `Rc`'s free pointer
-/// short-circuit). The cached `range` is a function of the subterm and so never
-/// participates in equality or hashing.
+/// `PartialEq`/`Eq`/`Hash` are those of the subterm (so the instances on
+/// `Expr` keep exactly their structural meaning). The cached facts are
+/// functions of the subterm and so never change what is equal to what.
 #[derive(Clone)]
 pub struct Node {
-    range: u32,
-    /// Cached fuel a no-skip substitution/lift would charge to rebuild this
-    /// subterm (saturating `u32`). Co-located with `range` so it fills the
-    /// struct's existing padding — `Node` stays 16 bytes. When a
-    /// substitution/lift SKIPS an untouched subtree it charges exactly this much
-    /// (see the skip in `subst::instantiate_at`), keeping fuel — and therefore
-    /// every verdict — identical to the non-sharing baseline while still saving
-    /// the allocation. It counts one unit per node the no-skip recursion would
-    /// visit PLUS one per leaf (which the baseline additionally charges through
-    /// `Expr::clone`): `cost(leaf) = 2`, `cost(internal) = 1 + Σ cost(children)`.
-    cost: u32,
-    rc: Rc<Expr>,
+    rc: Rc<Shared>,
 }
 
+/// The shared allocation behind a [`Node`]: a subterm and the facts cached
+/// about it.
+///
+/// Invariant: `range` and `hash` are `expr.range()` and
+/// `expr.structural_hash()`, and `meta` is `expr.rebuild_cost()` in its low
+/// 29 bits with `expr.flags()` above them. They are set in [`Node::new`], the
+/// only place a `Shared` is built, and never changed — a `Node` gives no
+/// mutable access to its allocation.
+struct Shared {
+    range: u32,
+    /// The tree size (`cost`, at most [`REBUILD_COST_MAX`]) and the three
+    /// content flags, in one word.
+    meta: u32,
+    hash: u64,
+    /// `expr.depth()`, in a build that tracks the depth of terms
+    /// ([`crate::fuel::TERM_DEPTH_TRACKED`]).
+    #[cfg(feature = "term-depth")]
+    depth: u32,
+    expr: Expr,
+}
+
+/// The largest value [`Expr::rebuild_cost`] and [`Node::rebuild_cost`]
+/// report: the count saturates here. (It shares a 32-bit word with the three
+/// content flags, which take the bits above it — see the `node_facts` module
+/// of this directory; no cache keeps a term anywhere near this size.)
+pub const REBUILD_COST_MAX: u32 = (1 << 29) - 1;
+
 impl Node {
-    /// Wrap an [`Expr`] as a child edge, caching its `looseBVarRange` and the
-    /// no-skip rebuild fuel cost.
+    /// Wrap an [`Expr`] as a child edge, caching its `looseBVarRange`, its
+    /// tree size, its content flags and the hash of its structure. O(1): each
+    /// is read off the cached facts of `e`'s immediate children (for a `Sort`
+    /// or a `Const`, off its universe levels).
+    ///
+    /// In a build that tracks the depth of terms
+    /// ([`crate::fuel::TERM_DEPTH_TRACKED`]) the depth is cached too, and a
+    /// subterm deeper than the limit of
+    /// [`crate::fuel::set_term_depth_limit`] spends the budget of the
+    /// declaration being checked.
     #[inline]
     pub fn new(e: Expr) -> Node {
+        #[cfg(feature = "term-depth")]
+        let depth = {
+            let depth = e.depth();
+            crate::fuel::note_term_depth(depth);
+            depth
+        };
         Node {
-            range: e.range(),
-            cost: e.rebuild_cost(),
-            rc: Rc::new(e),
+            rc: Rc::new(Shared {
+                range: e.range(),
+                meta: e.rebuild_cost() | e.flags(),
+                hash: e.structural_hash(),
+                #[cfg(feature = "term-depth")]
+                depth,
+                expr: e,
+            }),
         }
+    }
+
+    /// The cached depth of this subterm (O(1)); see [`Expr::depth`].
+    #[cfg(feature = "term-depth")]
+    #[inline]
+    #[must_use]
+    pub(crate) fn depth(&self) -> u32 {
+        self.rc.depth
     }
 
     /// The cached `looseBVarRange` of this subterm (O(1)).
     #[inline]
     #[must_use]
     pub fn range(&self) -> u32 {
-        self.range
+        self.rc.range
     }
 
-    /// The cached no-skip rebuild fuel cost of this subterm (O(1)).
+    /// The cached size of this subterm counted as a tree (O(1)); see
+    /// [`Expr::rebuild_cost`].
     #[inline]
     #[must_use]
     pub fn rebuild_cost(&self) -> u32 {
-        self.cost
+        self.rc.meta & REBUILD_COST_MAX
     }
 
-    /// The shared inner `Rc<Expr>`.
+    /// The cached content flags of this subterm (O(1)): the bits of the
+    /// shared word above the tree size.
     #[inline]
     #[must_use]
-    pub fn rc(&self) -> &Rc<Expr> {
-        &self.rc
+    pub(super) fn flags(&self) -> u32 {
+        self.rc.meta & !REBUILD_COST_MAX
+    }
+
+    /// Whether this allocation has more than one owner — another parent in
+    /// the same term, a cache, another term. A subterm that is reached twice
+    /// while one term is walked always has; the walks that rebuild a term
+    /// keep the result for such a subterm and reuse it the second time, so a
+    /// shared subterm stays shared in what they build.
+    #[inline]
+    #[must_use]
+    pub(crate) fn is_shared(&self) -> bool {
+        Rc::strong_count(&self.rc) > 1
+    }
+
+    /// The cached hash of this subterm's structure (O(1)): the value
+    /// [`Expr::structural_hash`] computes for the subterm.
+    #[inline]
+    #[must_use]
+    pub(crate) fn structural_hash(&self) -> u64 {
+        self.rc.hash
+    }
+
+    /// The address of the shared subterm. Two nodes return the same address
+    /// exactly when they share one allocation, for as long as either is
+    /// alive — so the address can key a memo table over a term whose subterms
+    /// are shared, visiting each shared subterm once.
+    ///
+    /// The pointer is for comparison only. (This replaces `rc()`, which
+    /// exposed the `Rc<Expr>` the edge used to hold.)
+    #[inline]
+    #[must_use]
+    pub fn as_ptr(&self) -> *const Expr {
+        &self.rc.expr
+    }
+
+    /// Whether two nodes share one allocation (which implies they are equal;
+    /// equal nodes need not share one).
+    #[inline]
+    #[must_use]
+    pub fn ptr_eq(this: &Node, other: &Node) -> bool {
+        Rc::ptr_eq(&this.rc, &other.rc)
     }
 }
 
@@ -1093,47 +1187,77 @@ impl std::ops::Deref for Node {
     type Target = Expr;
     #[inline]
     fn deref(&self) -> &Expr {
-        &self.rc
+        &self.rc.expr
     }
 }
 
 impl PartialEq for Node {
+    /// Structural equality of the two subterms, decided without comparing
+    /// them when it can be: one allocation is equal to itself, and two
+    /// subterms whose cached hashes differ are different (equal terms always
+    /// hash equal). Only when the hashes agree are the subterms compared.
     #[inline]
     fn eq(&self, other: &Node) -> bool {
-        self.rc == other.rc
+        Rc::ptr_eq(&self.rc, &other.rc)
+            || (self.rc.hash == other.rc.hash && self.rc.expr == other.rc.expr)
     }
 }
 impl Eq for Node {}
 impl std::hash::Hash for Node {
+    /// Writes the cached structural hash: what `Expr`'s `Hash` writes for the
+    /// subterm (as `Borrow<Expr>` requires), without walking it.
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.rc.hash(state);
+        state.write_u64(self.rc.hash);
     }
 }
 impl std::fmt::Debug for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&*self.rc, f)
+        std::fmt::Debug::fmt(&self.rc.expr, f)
     }
 }
 impl std::fmt::Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&*self.rc, f)
+        std::fmt::Display::fmt(&self.rc.expr, f)
     }
 }
 impl AsRef<Expr> for Node {
     #[inline]
     fn as_ref(&self) -> &Expr {
-        &self.rc
+        &self.rc.expr
     }
 }
 impl std::borrow::Borrow<Expr> for Node {
     #[inline]
     fn borrow(&self) -> &Expr {
-        &self.rc
+        &self.rc.expr
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+/// Core expression type.
+///
+/// This is the heart of the kernel. All terms in the type theory are
+/// represented as `Expr` values.
+///
+/// Sub-expressions are held behind [`Node`]s (structural sharing, wave5): an
+/// export DAG id referenced by many parents materializes to a single shared
+/// node, and `clone` is an O(1) refcount bump rather than a deep copy. The
+/// kernel is single-threaded (the verify pipeline runs on one spawned thread
+/// and the wasm target is single-threaded), so the sharing is by `Rc` — not
+/// `Arc`.
+///
+/// `Clone` is implemented by hand (not derived) so each clone charges one unit
+/// of the deterministic per-declaration resource fuel — see [`crate::fuel`].
+/// A clone copies this one node and shares its children (the sub-`clone`s are
+/// refcount bumps), so the unit is for the call, not for the size of the
+/// term; the walks that build new terms charge for the subterms they reach.
+///
+/// `Hash` is implemented by hand too: it writes the term's structural hash, one
+/// 64-bit value computed from the hashes the children cache, where the derived
+/// implementation walked the whole term. `PartialEq` is derived; the children
+/// compare through [`Node`]'s equality, which consults the cached hashes
+/// first.
+#[derive(PartialEq, Eq, Debug)]
 pub enum Expr {
     /// Sort u — universe.
     ///
@@ -1196,37 +1320,113 @@ impl Expr {
         }
     }
 
-    /// The fuel a no-skip substitution/lift would charge to rebuild this subterm
-    /// (saturating `u32`), O(1) from the children's cached costs. The baseline
-    /// charges one unit per node visited (`fuel::charge(1)` at each recursion)
-    /// AND one more per leaf (the `expr.clone()` a leaf returns goes through
-    /// `Expr::clone`, which also charges 1). So `cost(leaf) = 2` and
-    /// `cost(internal) = 1 + Σ cost(children)`. Charging this on a skip keeps the
-    /// per-declaration fuel — and hence every verdict — identical to the
-    /// non-sharing baseline.
+    /// The size of this term counted as a TREE — a shared subterm once per
+    /// path to it — O(1) from the children's cached sizes: one unit per node
+    /// and one more per leaf, so `cost(leaf) = 2` and
+    /// `cost(internal) = 1 + Σ cost(children)`, saturating at
+    /// [`REBUILD_COST_MAX`]. It is what rebuilding the term node by node,
+    /// with no sharing, would cost; the caches read it to keep giant terms
+    /// out.
     #[inline]
     #[must_use]
     pub fn rebuild_cost(&self) -> u32 {
-        match self {
+        // Each child cost is at most `REBUILD_COST_MAX` (2^29 - 1), so the sum
+        // of up to three of them plus one cannot overflow a `u32`.
+        let total = match self {
             Expr::Sort(_) | Expr::BVar(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => 2,
-            Expr::App(f, a) => 1u32
-                .saturating_add(f.rebuild_cost())
-                .saturating_add(a.rebuild_cost()),
-            Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => 1u32
-                .saturating_add(ty.rebuild_cost())
-                .saturating_add(body.rebuild_cost()),
-            Expr::Let(_, ty, val, body) => 1u32
-                .saturating_add(ty.rebuild_cost())
-                .saturating_add(val.rebuild_cost())
-                .saturating_add(body.rebuild_cost()),
-            Expr::Proj(_, _, inner) => 1u32.saturating_add(inner.rebuild_cost()),
+            Expr::App(f, a) => 1 + f.rebuild_cost() + a.rebuild_cost(),
+            Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
+                1 + ty.rebuild_cost() + body.rebuild_cost()
+            }
+            Expr::Let(_, ty, val, body) => {
+                1 + ty.rebuild_cost() + val.rebuild_cost() + body.rebuild_cost()
+            }
+            Expr::Proj(_, _, inner) => 1 + inner.rebuild_cost(),
+        };
+        total.min(REBUILD_COST_MAX)
+    }
+
+    /// The hash of this term's structure (see [`crate::structural_hash`]).
+    ///
+    /// O(1) in the size of the term: it combines this node's own fields with
+    /// the hashes its children cache ([`Node`], `Name` and `Level` each store
+    /// theirs), so nothing below the immediate children is visited. A literal
+    /// is the one exception — its limbs or bytes are hashed in full, as there
+    /// is nothing beneath a literal to cache them on.
+    ///
+    /// Every field `==` compares takes part — binder names and binder
+    /// annotations included, since `Expr` equality distinguishes them — so two
+    /// equal terms always have equal hashes, and the hash separates what the
+    /// derived `Hash` separated.
+    #[must_use]
+    pub(crate) fn structural_hash(&self) -> u64 {
+        use crate::structural_hash::{
+            mix, mix_bytes, mix_words, EXPR_APP, EXPR_BVAR, EXPR_CONST, EXPR_FVAR, EXPR_LAM,
+            EXPR_LET, EXPR_LIT_NAT, EXPR_LIT_STR, EXPR_PI, EXPR_PROJ, EXPR_SORT,
+        };
+        match self {
+            Expr::Sort(level) => mix(EXPR_SORT, level.structural_hash()),
+            Expr::BVar(index) => mix(EXPR_BVAR, u64::from(*index)),
+            Expr::FVar(id) => mix(EXPR_FVAR, id.0),
+            Expr::Const(name, levels) => levels
+                .iter()
+                .fold(mix(EXPR_CONST, name.structural_hash()), |hash, level| {
+                    mix(hash, level.structural_hash())
+                }),
+            Expr::App(f, a) => mix(mix(EXPR_APP, f.structural_hash()), a.structural_hash()),
+            Expr::Lam(bi, name, ty, body) => mix(
+                mix(
+                    mix(mix(EXPR_LAM, binder_info_code(*bi)), name.structural_hash()),
+                    ty.structural_hash(),
+                ),
+                body.structural_hash(),
+            ),
+            Expr::Pi(bi, name, ty, body) => mix(
+                mix(
+                    mix(mix(EXPR_PI, binder_info_code(*bi)), name.structural_hash()),
+                    ty.structural_hash(),
+                ),
+                body.structural_hash(),
+            ),
+            Expr::Let(name, ty, val, body) => mix(
+                mix(
+                    mix(mix(EXPR_LET, name.structural_hash()), ty.structural_hash()),
+                    val.structural_hash(),
+                ),
+                body.structural_hash(),
+            ),
+            Expr::Lit(Literal::Nat(n)) => mix_words(EXPR_LIT_NAT, n.as_limbs()),
+            Expr::Lit(Literal::Str(s)) => mix_bytes(EXPR_LIT_STR, s.as_bytes()),
+            Expr::Proj(name, index, inner) => mix(
+                mix(mix(EXPR_PROJ, name.structural_hash()), u64::from(*index)),
+                inner.structural_hash(),
+            ),
         }
+    }
+}
+/// A distinct number for each binder annotation, for
+/// [`Expr::structural_hash`].
+const fn binder_info_code(bi: BinderInfo) -> u64 {
+    match bi {
+        BinderInfo::Default => 0,
+        BinderInfo::Implicit => 1,
+        BinderInfo::StrictImplicit => 2,
+        BinderInfo::InstImplicit => 3,
+    }
+}
+impl std::hash::Hash for Expr {
+    /// Writes the term's structural hash — one 64-bit value, O(1) in the size
+    /// of the term. Consistent with the derived `PartialEq`: the hash covers
+    /// exactly the fields equality compares.
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.structural_hash());
     }
 }
 impl Clone for Expr {
     fn clone(&self) -> Self {
-        // One unit of resource fuel per node cloned (the sub-clones recurse
-        // through this impl, so a deep copy charges its full node count).
+        // One unit of resource fuel per clone: this node is copied, its
+        // children are shared.
         crate::fuel::charge(1);
         match self {
             Expr::Sort(l) => Expr::Sort(l.clone()),
@@ -1681,37 +1881,44 @@ impl SlidingSum {
 /// A versioned record that stores a history of values.
 #[allow(dead_code)]
 pub struct VersionedRecord<T: Clone> {
-    history: Vec<T>,
+    /// Every earlier value, oldest first: version `n` is `earlier[n]`.
+    earlier: Vec<T>,
+    /// The latest value (version `earlier.len()`), declared last so it drops last.
+    current: T,
 }
 #[allow(dead_code)]
 impl<T: Clone> VersionedRecord<T> {
     /// Creates a new record with an initial value.
     pub fn new(initial: T) -> Self {
         Self {
-            history: vec![initial],
+            earlier: Vec::new(),
+            current: initial,
         }
     }
     /// Updates the record with a new version.
     pub fn update(&mut self, val: T) {
-        self.history.push(val);
+        let previous = std::mem::replace(&mut self.current, val);
+        self.earlier.push(previous);
     }
     /// Returns the current (latest) value.
     pub fn current(&self) -> &T {
-        self.history
-            .last()
-            .expect("VersionedRecord history is always non-empty after construction")
+        &self.current
     }
     /// Returns the value at version `n` (0-indexed), or `None`.
     pub fn at_version(&self, n: usize) -> Option<&T> {
-        self.history.get(n)
+        match self.earlier.get(n) {
+            Some(value) => Some(value),
+            None if n == self.earlier.len() => Some(&self.current),
+            None => None,
+        }
     }
     /// Returns the version number of the current value.
     pub fn version(&self) -> usize {
-        self.history.len() - 1
+        self.earlier.len()
     }
     /// Returns `true` if more than one version exists.
     pub fn has_history(&self) -> bool {
-        self.history.len() > 1
+        !self.earlier.is_empty()
     }
 }
 /// A mutable reference stack for tracking the current "focus" in a tree traversal.

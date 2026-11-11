@@ -95,6 +95,14 @@ pub fn is_expired() -> bool {
     })
 }
 
+/// Whether a wall-clock budget is armed for the current unit of work (whether
+/// or not it has expired).
+#[inline]
+#[must_use]
+pub fn is_armed() -> bool {
+    START.with(|s| s.get().is_some())
+}
+
 /// Whether the deadline latched at any point since the last [`set_deadline`]
 /// (without sampling the clock). Used by callers to attribute a degraded
 /// verdict to the time budget.

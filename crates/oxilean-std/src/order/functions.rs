@@ -922,7 +922,7 @@ pub fn ord2_ext_nat_ty() -> Expr {
 pub(super) fn ord2_ext_arrow(dom: Expr, cod: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(dom),
         Node::new(cod),
     )

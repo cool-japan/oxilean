@@ -65,7 +65,7 @@ pub fn sigma_k_minus_1(n: u64, k: u32) -> u64 {
     let mut result = 0u64;
     let exp = k.saturating_sub(1);
     for d in 1..=n {
-        if n % d == 0 {
+        if n.is_multiple_of(d) {
             result = result.saturating_add(d.saturating_pow(exp));
         }
     }
@@ -147,7 +147,7 @@ pub fn hecke_tp_coefficients(a: &[i64], p: u64, k: u32) -> Vec<i64> {
     for n in 0..n_max {
         let pn = (n as u64).saturating_mul(p) as usize;
         b[n] = if pn < n_max { a[pn] } else { 0 };
-        if n as u64 % p == 0 {
+        if (n as u64).is_multiple_of(p) {
             let np = (n as u64 / p) as usize;
             b[n] += pk1 * a[np];
         }
@@ -1170,7 +1170,7 @@ mod modular_forms_ext_tests {
 /// Modular forms dimension formula (approximate).
 #[allow(dead_code)]
 pub fn dimension_s_k(k: u32, level: u64) -> u64 {
-    if k < 2 || k % 2 != 0 {
+    if k < 2 || !k.is_multiple_of(2) {
         return 0;
     }
     let mu = level;

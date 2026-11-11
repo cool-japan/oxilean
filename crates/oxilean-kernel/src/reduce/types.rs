@@ -3,9 +3,9 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use super::functions::*;
-use crate::expr_util::{get_app_args, get_app_fn, mk_app};
+use crate::expr_util::{get_app_arg_nodes, get_app_args, get_app_fn, mk_app, mk_app_nodes};
 use crate::instantiate::instantiate_type_lparams;
-use crate::subst::instantiate;
+use crate::subst::{instantiate, instantiate_rev_nodes};
 use crate::Node;
 use crate::{Environment, Expr, Literal, Name};
 use std::collections::HashMap;
@@ -252,41 +252,36 @@ impl StackCalc {
     pub fn push(&mut self, n: i64) {
         self.stack.push(n);
     }
-    /// Adds the top two values.  Panics if fewer than two values.
-    pub fn add(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        self.stack.push(a + b);
+    /// Replaces the top two values, `b` on top of `a`, with `op(a, b)` and
+    /// returns it.  Returns `None`, leaving the stack unchanged, if it holds
+    /// fewer than two values.
+    fn apply_binary(&mut self, op: impl FnOnce(i64, i64) -> i64) -> Option<i64> {
+        let (rest_len, a, b) = match self.stack[..] {
+            [ref rest @ .., a, b] => (rest.len(), a, b),
+            _ => return None,
+        };
+        let value = op(a, b);
+        self.stack.truncate(rest_len);
+        self.stack.push(value);
+        Some(value)
     }
-    /// Subtracts top from second.
-    pub fn sub(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        self.stack.push(a - b);
+    /// Adds the top two values and returns the sum, which replaces them.
+    /// Returns `None`, leaving the stack unchanged, if it holds fewer than
+    /// two values.
+    pub fn add(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a + b)
     }
-    /// Multiplies the top two values.
-    pub fn mul(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        self.stack.push(a * b);
+    /// Subtracts top from second and returns the difference, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn sub(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a - b)
+    }
+    /// Multiplies the top two values and returns the product, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn mul(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a * b)
     }
     /// Peeks the top value.
     pub fn peek(&self) -> Option<i64> {
@@ -586,37 +581,44 @@ impl<T> FocusStack<T> {
 /// A versioned record that stores a history of values.
 #[allow(dead_code)]
 pub struct VersionedRecord<T: Clone> {
-    history: Vec<T>,
+    /// Every earlier value, oldest first: version `n` is `earlier[n]`.
+    earlier: Vec<T>,
+    /// The latest value (version `earlier.len()`), declared last so it drops last.
+    current: T,
 }
 #[allow(dead_code)]
 impl<T: Clone> VersionedRecord<T> {
     /// Creates a new record with an initial value.
     pub fn new(initial: T) -> Self {
         Self {
-            history: vec![initial],
+            earlier: Vec::new(),
+            current: initial,
         }
     }
     /// Updates the record with a new version.
     pub fn update(&mut self, val: T) {
-        self.history.push(val);
+        let previous = std::mem::replace(&mut self.current, val);
+        self.earlier.push(previous);
     }
     /// Returns the current (latest) value.
     pub fn current(&self) -> &T {
-        self.history
-            .last()
-            .expect("VersionedRecord history is always non-empty after construction")
+        &self.current
     }
     /// Returns the value at version `n` (0-indexed), or `None`.
     pub fn at_version(&self, n: usize) -> Option<&T> {
-        self.history.get(n)
+        match self.earlier.get(n) {
+            Some(value) => Some(value),
+            None if n == self.earlier.len() => Some(&self.current),
+            None => None,
+        }
     }
     /// Returns the version number of the current value.
     pub fn version(&self) -> usize {
-        self.history.len() - 1
+        self.earlier.len()
     }
     /// Returns `true` if more than one version exists.
     pub fn has_history(&self) -> bool {
-        self.history.len() > 1
+        !self.earlier.is_empty()
     }
 }
 /// Represents a rewrite rule `lhs → rhs`.
@@ -924,10 +926,6 @@ impl StringPool {
         self.free.len()
     }
 }
-/// Maximum AST size (in nodes) of a key or value retained in the WHNF
-/// cache. Entries beyond this are recomputed instead of retained; results
-/// are unchanged. See [`crate::expr_util::expr_size_within`].
-pub(crate) const WHNF_CACHE_MAX_NODES: usize = 4096;
 /// The outcome of one head-reduction step (see `Reducer::whnf_step`).
 enum StepOutcome {
     /// The term is in weak head normal form.
@@ -937,37 +935,63 @@ enum StepOutcome {
 }
 /// Reduction context with caching.
 pub struct Reducer {
-    /// WHNF cache: expr -> whnf(expr)
-    pub(crate) cache: HashMap<Expr, Expr>,
-    /// Maximum reduction depth (prevents infinite loops)
+    /// WHNF cache: expr -> whnf(expr).
+    ///
+    /// Every result is kept, whatever the size of the term as a tree: the
+    /// terms that most need the cache are the heavily shared ones, a few
+    /// hundred allocations standing for millions of tree nodes, and through
+    /// 0.1.4's first performance pass those were exactly the ones a
+    /// tree-size limit kept out — each visit reduced them again. A kept
+    /// entry holds the term and its result by reference; what that retains
+    /// beyond the term being checked is nodes some reduction built, each of
+    /// which was charged to the per-declaration budget.
+    pub(crate) cache: crate::term_cache::TermCache<Expr>,
+    /// The values of universe-polymorphic constants with their universe
+    /// parameters instantiated, by the constant as it occurs
+    /// (`Const(name, levels)`). A reduction unfolds the same constant at the
+    /// same universes over and over — tens of thousands of times in one
+    /// `omega` certificate — and instantiating rebuilds every part of the
+    /// value that mentions a universe. Keeping the result also means every
+    /// unfolding of a constant is ONE allocation, shared by all of them.
+    /// A function of the environment alone; dropped with `cache`.
+    unfolded: crate::term_cache::TermCache<Expr>,
+    /// Limit on the NESTING depth of reduction (a stack guard, always
+    /// applied) and on the LENGTH of one head-reduction chain (applied
+    /// unless lifted — see [`crate::fuel::set_reduction_cap`]). A reduction
+    /// either limit cuts short is recorded with
+    /// [`crate::fuel::note_reduction_limit`].
     max_depth: u32,
     /// Current transparency mode.
     transparency: TransparencyMode,
     /// Types of the free variables of the surrounding checker's local
-    /// context (mirrored via [`Reducer::record_fvar_type`]). K-like iota
+    /// context that are in scope (mirrored via
+    /// [`Reducer::record_fvar_type`], removed via
+    /// [`Reducer::forget_fvar_type`] when their binder closes). K-like iota
     /// reduction must *type* the recursor's major premise; a major that
     /// mentions local FVars (e.g. `Eq.symm … (h : ctorIdx t = 0)` inside
     /// `Std.IterStep.noConfusionType`) is only typeable with this context —
     /// Lean's kernel reads the same information from its local context.
-    local_fvar_types: HashMap<u64, Expr>,
+    local_fvar_types: crate::local_types::LocalTypes,
 }
 impl Reducer {
     /// Create a new reducer with default settings.
     pub fn new() -> Self {
         Self {
-            cache: HashMap::new(),
+            cache: crate::term_cache::TermCache::new(),
+            unfolded: crate::term_cache::TermCache::new(),
             max_depth: 10000,
             transparency: TransparencyMode::Default,
-            local_fvar_types: HashMap::new(),
+            local_fvar_types: crate::local_types::LocalTypes::new(),
         }
     }
     /// Create a reducer with custom max depth.
     pub fn with_max_depth(max_depth: u32) -> Self {
         Self {
-            cache: HashMap::new(),
+            cache: crate::term_cache::TermCache::new(),
+            unfolded: crate::term_cache::TermCache::new(),
             max_depth,
             transparency: TransparencyMode::Default,
-            local_fvar_types: HashMap::new(),
+            local_fvar_types: crate::local_types::LocalTypes::new(),
         }
     }
     /// Record the type of a free variable opened by the surrounding checker
@@ -975,14 +999,39 @@ impl Reducer {
     ///
     /// `FVarId`s are dispensed monotonically and never reused, so recorded
     /// types are stable and cached WHNF results stay sound. Defensively, a
-    /// conflicting re-bind invalidates the cache.
+    /// re-bind that could make them unsound invalidates the cache: an id in
+    /// scope given a different type, or an id whose binder was closed
+    /// ([`Self::forget_fvar_type`]) bound again.
     pub fn record_fvar_type(&mut self, id: crate::FVarId, ty: Expr) {
-        if let Some(prev) = self.local_fvar_types.get(&id.0) {
-            if *prev != ty {
-                self.cache.clear();
-            }
+        let _stale = self.bind_fvar_type(id, ty);
+    }
+    /// [`Self::record_fvar_type`], reporting whether the binding made
+    /// earlier results stale (see `LocalTypes::bind`): `true` when this
+    /// reducer dropped its cache, so that an owner keeping caches of its own
+    /// over the same local context can drop them too.
+    pub(crate) fn bind_fvar_type(&mut self, id: crate::FVarId, ty: Expr) -> bool {
+        let stale = self.local_fvar_types.bind(id, ty);
+        if stale {
+            self.cache.clear();
         }
-        self.local_fvar_types.insert(id.0, ty);
+        stale
+    }
+    /// The binder of a free variable recorded with
+    /// [`Self::record_fvar_type`] has been closed: forget its type.
+    ///
+    /// Nothing reduced from here on mentions the variable, so nothing needs
+    /// its type; cached WHNF results that mention it are never looked up
+    /// again, since its id is not dispensed again (and if a caller does bind
+    /// it again, [`Self::record_fvar_type`] invalidates the cache). Without
+    /// this the mirror grows by one type per binder opened, for as long as
+    /// the reducer lives.
+    pub fn forget_fvar_type(&mut self, id: crate::FVarId) {
+        self.local_fvar_types.unbind(id);
+    }
+    /// This reducer's mirror of the local context (for tests).
+    #[cfg(test)]
+    pub(crate) fn local_types(&self) -> &crate::local_types::LocalTypes {
+        &self.local_fvar_types
     }
     /// Set the transparency mode.
     pub fn set_transparency(&mut self, mode: TransparencyMode) {
@@ -994,6 +1043,27 @@ impl Reducer {
     /// Clear the cache (call between declarations).
     pub fn clear_cache(&mut self) {
         self.cache.clear();
+        self.unfolded.clear();
+    }
+    /// The value of the constant `head` (`Const(name, levels)`) with its
+    /// universe parameters instantiated — from the table of unfoldings when
+    /// it has been asked for before.
+    fn unfold_value(
+        &mut self,
+        head: &Expr,
+        value: &Expr,
+        level_params: &[Name],
+        levels: &[crate::Level],
+    ) -> Expr {
+        if level_params.is_empty() || levels.is_empty() {
+            return value.clone();
+        }
+        if let Some(unfolded) = self.unfolded.get(head) {
+            return unfolded.clone();
+        }
+        let unfolded = instantiate_type_lparams(value, level_params, levels);
+        self.unfolded.insert(head, unfolded.clone());
+        unfolded
     }
     /// Reduce an expression to Weak Head Normal Form.
     ///
@@ -1035,11 +1105,7 @@ impl Reducer {
                 Expr::Proj(struct_name.clone(), *idx, Node::new(struct_whnf))
             }
         };
-        if crate::expr_util::expr_size_within(expr, WHNF_CACHE_MAX_NODES)
-            && crate::expr_util::expr_size_within(&result, WHNF_CACHE_MAX_NODES)
-        {
-            self.cache.insert(expr.clone(), result.clone());
-        }
+        self.cache.insert(expr, result.clone());
         result
     }
     /// Reduce to WHNF with delta-reduction (constant unfolding).
@@ -1110,7 +1176,27 @@ impl Reducer {
         self.whnf_env_depth(expr, env, 0)
     }
     fn whnf_env_depth(&mut self, expr: &Expr, env: &Environment, depth: u32) -> Expr {
+        // The thread's own limit on nested reductions, where its owner has
+        // set one (`fuel::set_reduction_nesting_limit`: a small stack): a
+        // reduction that would nest deeper is not started. As with the guard
+        // below, the term returned is sound but not a normal form, and the
+        // event is recorded.
+        let Some(_nested) = crate::fuel::NestedReduction::enter() else {
+            crate::fuel::note_reduction_limit();
+            return expr.clone();
+        };
+        self.whnf_env_nested(expr, env, depth)
+    }
+    /// [`Self::whnf_env_depth`] once the nested reduction has been entered.
+    fn whnf_env_nested(&mut self, expr: &Expr, env: &Environment, depth: u32) -> Expr {
+        // Nesting-depth guard: `depth` counts NESTED whnf calls (an
+        // application head, a recursor major, a projection's structure),
+        // each of which holds a native stack frame. Past the limit the term
+        // is returned as it is — sound (it is definitionally equal to
+        // itself) but not a normal form, so the event is recorded: a failure
+        // that follows is a resource limit, not a verdict.
         if depth > self.max_depth {
+            crate::fuel::note_reduction_limit();
             return expr.clone();
         }
         // Resource-fuel degradation (C16): once the per-declaration budget
@@ -1130,30 +1216,53 @@ impl Reducer {
         // alive on the call stack simultaneously — the multi-GiB peak of
         // Lean core's `Int.add_mul_ediv_right` (C16) and a large share of
         // the deep-stack requirement (C17).
+        //
+        // What bounds the LENGTH of the chain. By default the reducer's own
+        // cap does: the chain's steps are counted from the nesting depth of
+        // this call, on the same counter and against the same `max_depth`
+        // (so each step's nested reductions run at the depth the chain has
+        // reached). Besides ending a runaway chain, the cap is what lets
+        // definitional equality abandon a reduction that is going nowhere
+        // and try another route; the verdicts on Lean core and Mathlib
+        // depend on it, so this accounting is kept exactly. A chain the cap
+        // cuts short is recorded — the term returned is sound but not a
+        // normal form, and a failure that follows is not a verdict.
+        //
+        // A caller repeating a check that failed that way lifts the cap
+        // (`fuel::set_reduction_cap(false)`, honoured only under a budget).
+        // The budget then bounds the chain: every step clones or rebuilds at
+        // least one node, which charges fuel, and `is_exhausted` polls the
+        // wall-clock deadline. Steps are no longer charged against the
+        // nesting depth, and every step runs at the depth of this call — so
+        // a long but cheap chain (`Nat.rec` iterating tens of thousands of
+        // times over a small term, as in a `decide` proof) runs to its
+        // normal form instead of failing a valid proof.
+        let capped = crate::fuel::reduction_cap_applies();
         let mut current: Option<Expr> = None;
         let mut steps = depth;
         let result = loop {
             let cur: &Expr = current.as_ref().unwrap_or(expr);
-            if steps > self.max_depth || crate::fuel::is_exhausted() {
+            if crate::fuel::is_exhausted() {
                 break cur.clone();
             }
-            match self.whnf_step(cur, env, steps) {
+            if capped && steps > self.max_depth {
+                crate::fuel::note_reduction_limit();
+                break cur.clone();
+            }
+            let step_depth = if capped { steps } else { depth };
+            match self.whnf_step(cur, env, step_depth) {
                 StepOutcome::Done(done) => break done,
                 StepOutcome::Continue(next) => {
-                    steps += 1;
+                    steps = steps.saturating_add(1);
                     // Drop the previous intermediate before the next step.
                     current = Some(next);
                 }
             }
         };
-        // Retain only reasonably-sized entries: caching every multi-million
-        // node intermediate of a long reduction retains O(steps × term) heap.
-        // Skipping retention never changes a result — only memoisation.
-        if crate::expr_util::expr_size_within(expr, WHNF_CACHE_MAX_NODES)
-            && crate::expr_util::expr_size_within(&result, WHNF_CACHE_MAX_NODES)
-        {
-            self.cache.insert(expr.clone(), result.clone());
-        }
+        // Only the result of the whole chain is kept, not its intermediate
+        // terms (see the cache's own documentation for what keeping it
+        // retains).
+        self.cache.insert(expr, result.clone());
         result
     }
     /// Perform ONE head-reduction step (zeta, delta, beta, literal folding,
@@ -1176,11 +1285,7 @@ impl Reducer {
                     if let Some(val) = ci.value() {
                         let hint = ci.reducibility_hint();
                         if self.should_unfold_hint(hint) {
-                            let unfolded = if ci.level_params().is_empty() || levels.is_empty() {
-                                val.clone()
-                            } else {
-                                instantiate_type_lparams(val, ci.level_params(), levels)
-                            };
+                            let unfolded = self.unfold_value(expr, val, ci.level_params(), levels);
                             return StepOutcome::Continue(unfolded);
                         }
                     }
@@ -1193,8 +1298,11 @@ impl Reducer {
                 // front (and again in the final `mk_app` rebuild) doubled
                 // the clone volume of every whnf step on large stuck spines
                 // (C16, Lean core's `Int.add_mul_ediv_right`).
+                // The arguments are held as the allocations the spine holds
+                // them in, so every rebuilt spine and every substitution
+                // below shares them instead of copying their roots.
                 let head = get_app_fn(expr);
-                let args: Vec<&Expr> = get_app_args(expr);
+                let args: Vec<&Node> = get_app_arg_nodes(expr);
                 // The head is reduced ONE STEP AT A TIME while the
                 // application context is kept, exactly like Lean's whnf loop
                 // (whnf_core, then the literal extension, then
@@ -1216,30 +1324,77 @@ impl Reducer {
                 // declare `Nat.ble`/`Nat.add`/… as ordinary definitions
                 // (structural recursion over `Nat`), and the extension
                 // computes exactly what those definitions compute.
+                //
+                // The head loop is bounded like the chain loop of
+                // `whnf_env_depth`: by the reducer's cap, counted from
+                // `depth` and recorded when it cuts the loop short, unless
+                // the cap is lifted — then by the budget (each iteration
+                // that continues clones an unfolding or steps the head,
+                // both of which charge fuel).
+                let capped = crate::fuel::reduction_cap_applies();
                 let mut head_owned: Option<Expr> = None;
                 let mut head_steps = depth;
                 loop {
-                    if head_steps > self.max_depth || crate::fuel::is_exhausted() {
+                    if crate::fuel::is_exhausted() {
                         break;
                     }
-                    head_steps += 1;
+                    if capped && head_steps > self.max_depth {
+                        crate::fuel::note_reduction_limit();
+                        break;
+                    }
+                    head_steps = head_steps.saturating_add(1);
                     let head_ref: &Expr = head_owned.as_ref().unwrap_or(head);
                     match head_ref {
                         Expr::Lam(_, _, _, _) => {
-                            // β: consume as many leading lambdas as args.
-                            let mut result = head_ref.clone();
-                            for arg in &args {
-                                match result {
-                                    Expr::Lam(_, _, _, body) => {
-                                        result = instantiate(&body, arg);
+                            // β: every leading lambda that has an argument,
+                            // in ONE substitution (one walk of the body
+                            // where consuming them one at a time walked it
+                            // once per argument); the arguments left over
+                            // are re-applied. If what the substitution
+                            // yields is itself a lambda, the caller's loop
+                            // comes back here for the next redex.
+                            let mut body: &Expr = head_ref;
+                            let mut taken = 0;
+                            while taken < args.len() {
+                                match body {
+                                    Expr::Lam(_, _, _, inner) => {
+                                        body = inner;
+                                        taken += 1;
                                     }
-                                    _ => {
-                                        result =
-                                            Expr::App(Node::new(result), Node::new((*arg).clone()));
-                                    }
+                                    _ => break,
                                 }
                             }
-                            return StepOutcome::Continue(result);
+                            let reduct = instantiate_rev_nodes(body, &args[..taken]);
+                            return StepOutcome::Continue(mk_app_nodes(reduct, &args[taken..]));
+                        }
+                        Expr::App(_, _) => {
+                            // The head STEPPED TO AN APPLICATION: a constant
+                            // whose value is a partial application
+                            // (`def f : Quot r → β := Quot.lift g h`), a
+                            // projection that yields one (an instance field
+                            // such as `⟨Quot.map g h⟩`), or a `let` body.
+                            // Its own spine and the outer arguments are ONE
+                            // application, so re-attach the outer arguments
+                            // and hand the whole term back to the caller's
+                            // loop, which re-flattens the spine. Lean's
+                            // `whnf_core` does the same when the head
+                            // changed (`whnf_core(mk_rev_app(f, args))`).
+                            //
+                            // Stepping the bare head in isolation (the old
+                            // code) saw a recursor / `Quot.lift` / `Quot.ind`
+                            // short of its major premise — the major is
+                            // among the OUTER arguments — reported it stuck,
+                            // and returned the application unreduced: the
+                            // wrong-REJECT class of Mathlib's
+                            // `AddCon.addGroup._proof_1`. It also unfolded a
+                            // partially applied accelerated operation
+                            // (`Nat.add 2` awaiting an outer `3`) before the
+                            // literal extension could see both arguments.
+                            //
+                            // `get_app_fn` never returns an application, so
+                            // this arm is only reached after at least one
+                            // head step: it always makes progress.
+                            return StepOutcome::Continue(mk_app_nodes(head_ref.clone(), &args));
                         }
                         Expr::Const(name, levels) => {
                             // 1. Literal folding (Nat/String kernel
@@ -1271,13 +1426,12 @@ impl Reducer {
                             if let Some(ci) = env.find(name) {
                                 if let Some(val) = ci.value() {
                                     if self.should_unfold_hint(ci.reducibility_hint()) {
-                                        let unfolded = if ci.level_params().is_empty()
-                                            || levels.is_empty()
-                                        {
-                                            val.clone()
-                                        } else {
-                                            instantiate_type_lparams(val, ci.level_params(), levels)
-                                        };
+                                        let unfolded = self.unfold_value(
+                                            head_ref,
+                                            val,
+                                            ci.level_params(),
+                                            levels,
+                                        );
                                         head_owned = Some(unfolded);
                                         continue;
                                     }
@@ -1300,7 +1454,7 @@ impl Reducer {
                     }
                 }
                 match head_owned {
-                    Some(h) => StepOutcome::Done(crate::expr_util::mk_app_refs(h, &args)),
+                    Some(h) => StepOutcome::Done(mk_app_nodes(h, &args)),
                     None => StepOutcome::Done(expr.clone()),
                 }
             }
@@ -1339,7 +1493,7 @@ impl Reducer {
         &mut self,
         rec_name: &Name,
         rec_levels: &[crate::Level],
-        args: &[&Expr],
+        args: &[&Node],
         env: &Environment,
         depth: u32,
     ) -> Option<Expr> {
@@ -1351,11 +1505,12 @@ impl Reducer {
         // K-like reduction: replace the major premise by the canonical
         // constructor when its *type* has the right shape (Lean does this
         // before reducing the major itself).
+        let major_arg: &Expr = args[major_idx];
         let mut major = if rec_val.k {
-            super::iota::to_ctor_when_k(rec_val, args[major_idx], env, &self.local_fvar_types)
-                .unwrap_or_else(|| args[major_idx].clone())
+            super::iota::to_ctor_when_k(rec_val, major_arg, env, &self.local_fvar_types)
+                .unwrap_or_else(|| major_arg.clone())
         } else {
-            args[major_idx].clone()
+            major_arg.clone()
         };
         major = self.whnf_env_depth(&major, env, depth + 1);
         // Literal-to-constructor expansion (one layer at a time for Nat), and
@@ -1410,7 +1565,7 @@ impl Reducer {
     fn try_reduce_quot(
         &mut self,
         name: &Name,
-        args: &[&Expr],
+        args: &[&Node],
         env: &Environment,
         depth: u32,
     ) -> Option<Expr> {
@@ -1442,15 +1597,15 @@ impl Reducer {
             return None;
         }
         // `Quot.mk {α} (r) (a)` — the quotiented element is `mk_args[2]`.
-        let mk_args = get_app_args(&major_whnf);
+        let mk_args = get_app_arg_nodes(&major_whnf);
         if mk_args.len() < 3 {
             return None;
         }
         let a = mk_args[2];
         let f = args[arg_pos];
-        let reduced = Expr::App(Node::new(f.clone()), Node::new(a.clone()));
+        let reduced = Expr::App(f.clone(), a.clone());
         // Re-apply any over-application arguments so they are never dropped.
-        Some(crate::expr_util::mk_app_refs(reduced, &args[mk_pos + 1..]))
+        Some(mk_app_nodes(reduced, &args[mk_pos + 1..]))
     }
     /// Check if two expressions are alpha-equivalent (syntactically equal).
     pub fn is_alpha_equiv(e1: &Expr, e2: &Expr) -> bool {

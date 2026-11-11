@@ -146,7 +146,7 @@ pub fn build_list_env(env: &mut Environment, ind_env: &mut InductiveEnv) -> Resu
     add_axiom(env, "List.nil", vec![], nil_ty)?;
     add_axiom(env, "List.cons", vec![], cons_ty)?;
     let u = Name::str("u");
-    let sort_u = Expr::Sort(Level::Param(u.clone()));
+    let sort_u = Expr::Sort(Level::param(u.clone()));
     let c_ty = arrow(list_of(Expr::BVar(0)), sort_u);
     let nil_case_ty = app(
         Expr::BVar(1),

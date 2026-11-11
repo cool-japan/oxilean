@@ -81,12 +81,8 @@ impl OxiLock {
     /// existing lockfile at that path.
     pub fn write_to_dir(&self, project_root: &Path) -> Result<(), LockfileError> {
         let path = project_root.join("oxilake.lock");
-        oxicode::encode_to_file(self, &path).map_err(|e| {
-            LockfileError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })
+        oxicode::encode_to_file(self, &path)
+            .map_err(|e| LockfileError::Io(std::io::Error::other(e.to_string())))
     }
 
     /// Read and decode a lockfile from `<project_root>/oxilake.lock`.

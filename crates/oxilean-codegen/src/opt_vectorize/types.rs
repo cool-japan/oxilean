@@ -454,7 +454,7 @@ impl TransformedLoop {
     /// Estimate the new trip count after strip-mining.
     pub fn strip_mined_trip_count(&self, original_bound: u64, lane_width: u32) -> u64 {
         if self.strip_mined && lane_width > 0 {
-            (original_bound + lane_width as u64 - 1) / lane_width as u64
+            original_bound.div_ceil(u64::from(lane_width))
         } else {
             original_bound
         }

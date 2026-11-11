@@ -1066,7 +1066,7 @@ pub(super) fn lookup_recursor(recursor_name: &Name, ctx: &MetaContext) -> Option
                 .common
                 .level_params
                 .iter()
-                .map(|n| Level::Param(n.clone()))
+                .map(|n| Level::param(n.clone()))
                 .collect(),
             constructor_rules,
             custom_major_idx: None,

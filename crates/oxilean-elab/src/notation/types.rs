@@ -483,12 +483,9 @@ impl<'a> NotationTokenizer<'a> {
         self.remaining().chars().next()
     }
     pub fn next_token(&mut self) -> NotationToken {
-        if self.is_done() {
+        let Some(ch) = self.peek_char() else {
             return NotationToken::EndOfInput;
-        }
-        let ch = self
-            .peek_char()
-            .expect("not done: peek_char returns Some when !is_done()");
+        };
         if ch.is_whitespace() {
             while !self.is_done() && self.peek_char().is_some_and(|c| c.is_whitespace()) {
                 self.advance();

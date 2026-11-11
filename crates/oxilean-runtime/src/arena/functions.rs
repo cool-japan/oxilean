@@ -503,3 +503,5 @@ mod tests_arena_extended4 {
         assert!(r.get(off, 8).is_some());
     }
 }
+#[cfg(test)]
+mod scoped_and_oversize_tests;

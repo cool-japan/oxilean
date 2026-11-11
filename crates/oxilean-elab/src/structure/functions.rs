@@ -298,20 +298,16 @@ pub(super) fn generate_to_parent_coercion(
     let child_ty = Expr::Const(child_name.clone(), Vec::new());
     let mut body = Expr::Const(parent_info.ctor_name.clone(), Vec::new());
     for parent_field in &parent_info.fields {
-        if let Some(child_field) = child_info
+        let child_field = child_info
             .fields
             .iter()
-            .find(|f| f.name == parent_field.name)
-        {
-            let proj = Expr::Proj(
-                child_name.clone(),
-                child_field.idx as u32,
-                Node::new(Expr::BVar(0)),
-            );
-            body = Expr::App(Node::new(body), Node::new(proj));
-        } else {
-            return None;
-        }
+            .find(|f| f.name == parent_field.name)?;
+        let proj = Expr::Proj(
+            child_name.clone(),
+            child_field.idx as u32,
+            Node::new(Expr::BVar(0)),
+        );
+        body = Expr::App(Node::new(body), Node::new(proj));
     }
     Some(Expr::Lam(
         BinderInfo::Default,

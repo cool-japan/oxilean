@@ -242,17 +242,13 @@ pub(super) fn analyze_closure_uniformity(
         if param_idx >= site.closure_args.len() {
             return None;
         }
-        match &site.closure_args[param_idx].known_fn {
-            Some(fn_name) => {
-                if let Some(ref existing) = known_fn {
-                    if existing != fn_name {
-                        return None;
-                    }
-                } else {
-                    known_fn = Some(fn_name.clone());
-                }
+        let fn_name = site.closure_args[param_idx].known_fn.as_ref()?;
+        if let Some(ref existing) = known_fn {
+            if existing != fn_name {
+                return None;
             }
-            None => return None,
+        } else {
+            known_fn = Some(fn_name.clone());
         }
     }
     known_fn

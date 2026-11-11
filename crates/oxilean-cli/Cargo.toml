@@ -16,6 +16,9 @@ categories = ["command-line-utilities", "development-tools"]
 [[bin]]
 name = "oxilean"
 path = "src/main.rs"
+# The facade crate `oxilean` owns target/doc/oxilean/; skip rustdoc here to
+# avoid the cargo output filename collision (rust-lang/cargo#6313).
+doc = false
 
 [dependencies]
 oxilean-kernel = { workspace = true }

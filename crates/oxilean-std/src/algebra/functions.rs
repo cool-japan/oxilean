@@ -1647,8 +1647,8 @@ pub fn euler_phi_algebra(n: u64) -> u64 {
     let mut temp = n;
     let mut p = 2u64;
     while p * p <= temp {
-        if temp % p == 0 {
-            while temp % p == 0 {
+        if temp.is_multiple_of(p) {
+            while temp.is_multiple_of(p) {
                 temp /= p;
             }
             result -= result / p;

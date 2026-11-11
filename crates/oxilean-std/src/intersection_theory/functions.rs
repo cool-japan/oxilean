@@ -819,7 +819,7 @@ pub fn hrr_projective_space(n: usize, d: i64) -> i64 {
     if d >= 0 {
         binomial(n as i64 + d, n as i64)
     } else {
-        let sign = if n % 2 == 0 { 1 } else { -1 };
+        let sign = if n.is_multiple_of(2) { 1 } else { -1 };
         sign * hrr_projective_space(n, -(n as i64) - 1 - d)
     }
 }

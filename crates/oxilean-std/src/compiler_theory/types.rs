@@ -263,11 +263,7 @@ impl RegisterAllocation {
                     }
                 })
                 .collect();
-            let c = (0..self.num_regs).find(|c| !used.contains(c));
-            match c {
-                Some(reg) => color[i] = reg,
-                None => return None,
-            }
+            color[i] = (0..self.num_regs).find(|c| !used.contains(c))?;
         }
         Some(color)
     }
@@ -542,10 +538,7 @@ impl RegisterColoringSimple {
                     }
                 })
                 .collect();
-            match (0..self.num_regs).find(|c| !used.contains(c)) {
-                Some(c) => color[v] = c,
-                None => return None,
-            }
+            color[v] = (0..self.num_regs).find(|c| !used.contains(c))?;
         }
         Some(color)
     }
@@ -994,12 +987,15 @@ impl LRParser {
     ///
     /// Returns `Ok(true)` if the input is accepted, `Err(msg)` on error.
     pub fn parse(&self, input: &[usize]) -> Result<bool, String> {
+        // The stack holds the start state followed by (symbol, state) pairs,
+        // so its length is odd and never 0; an empty stack would be an
+        // underflow and is reported as one.
         let mut stack: Vec<usize> = vec![0];
         let mut pos = 0usize;
         loop {
-            let state = *stack
-                .last()
-                .expect("stack is non-empty: initialized with element 0");
+            let Some(&state) = stack.last() else {
+                return Err("stack underflow".to_string());
+            };
             let tok = input.get(pos).copied();
             let tok_idx = tok.unwrap_or(usize::MAX);
             let action = if tok_idx < self.action_table[state].len() {
@@ -1021,9 +1017,9 @@ impl LRParser {
                     return Err("stack underflow".to_string());
                 }
                 stack.truncate(stack.len() - pop);
-                let top = *stack
-                    .last()
-                    .expect("stack is non-empty: underflow was checked above");
+                let Some(&top) = stack.last() else {
+                    return Err("stack underflow".to_string());
+                };
                 let nt_idx = rule;
                 let goto_state = if nt_idx < self.goto_table[top].len() {
                     self.goto_table[top][nt_idx]
@@ -1056,3 +1052,5 @@ impl BasicBlock {
         }
     }
 }
+#[cfg(test)]
+mod lr_parse_tests;

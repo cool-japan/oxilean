@@ -30,20 +30,20 @@ A: OxiLean is a pure Rust implementation of an Interactive Theorem Prover (ITP) 
 
 A: OxiLean fills several niches:
 
-1. **Pure Rust** -- 1,221,710 SLOC across 11 crates, all in Rust with no C/Fortran dependencies
+1. **Pure Rust** -- 1,360,584 SLOC across 17 crates, all in Rust with no C/Fortran dependencies
 2. **Rust integration** -- Proofs as first-class Cargo items
 3. **WASM capability** -- Run proofs in browsers via oxilean-wasm bindings
 4. **Pedagogical** -- Clear, auditable design for learning ITP implementation
 
 ### Q: Is OxiLean production-ready?
 
-A: OxiLean v0.1.1 has all core features complete:
+A: OxiLean v0.1.4 has all core features complete:
 
-- Type checker and kernel (113,179 SLOC)
+- Type checker and kernel (126,740 SLOC in `src/`)
 - Lexer and parser (oxilean-parse)
 - Elaborator (oxilean-elab)
 - Tactic framework with 20+ tactics implemented
-- Standard library (413K SLOC, oxilean-std)
+- Standard library (443K SLOC, oxilean-std)
 - WASM bindings (oxilean-wasm)
 - Code generation (oxilean-codegen)
 - Build system (oxilean-build)
@@ -51,7 +51,7 @@ A: OxiLean v0.1.1 has all core features complete:
 - Metaprogramming support (oxilean-meta)
 - CLI (oxilean-cli)
 
-OxiLean is suitable for educational and research use. Mathlib4 compatibility stands at 100% (4,530/4,530 declarations), with 289 curated theorem proofs passing.
+OxiLean is suitable for educational and research use. Mathlib4 syntax compatibility stands at 99.7% (181,326 of 181,890 declarations parsed OK across 7,759 Mathlib4 source files; this is a **parse** number, not a verification number), with 320 hand-adapted Mathlib4 theorems verified through parse + elaboration + tactic execution.
 
 ### Q: Can I use OxiLean for real proofs?
 
@@ -59,8 +59,8 @@ A: Yes, for educational and research purposes. OxiLean supports:
 
 - **Educational proofs** -- Learning formal verification
 - **Research** -- Experimenting with ITP design
-- **Theorem proving** -- 289 curated theorem proofs passing, full Mathlib4 declaration coverage
-- **Formalization projects** -- Standard library with 413K SLOC
+- **Theorem proving** -- 320 hand-adapted Mathlib4 theorems verified through parse + elaboration + tactic execution; 99.7% of 181,890 Mathlib4 declarations parse (parse, not verification)
+- **Formalization projects** -- Standard library with 443K SLOC
 
 ### Q: What's the difference between OxiLean and Lean 4?
 
@@ -69,12 +69,12 @@ OxiLean is NOT a Lean fork. Key differences:
 | Aspect | OxiLean | Lean 4 |
 |--------|---------|--------|
 | Kernel deps | 0 | 200+ |
-| SLOC (kernel) | 113K | 50,000+ |
-| Total SLOC | 1,221,710 | N/A |
+| SLOC (kernel) | 127K | 50,000+ |
+| Total SLOC | 1,360,584 | N/A |
 | Target platforms | WASM, Native | Native |
 | Tactic system | 20+ tactics | Complex |
-| Standard library | 413K SLOC | 10,000+ items |
-| Mathlib4 compat | 100% declarations | Native |
+| Standard library | 443K SLOC | 10,000+ items |
+| Mathlib4 compat | 99.7% parse (181,890 decls) | Native |
 
 OxiLean's design is inspired by Lean 4, but diverges significantly for portability.
 
@@ -131,8 +131,8 @@ A: OxiLean achieves high compatibility with Lean 4:
 - Type classes -- complete
 - Module system -- complete
 - Elaboration system -- complete
-- Mathlib4 declarations -- 100% (4,530/4,530)
-- Curated theorem proofs -- 289 passing
+- Mathlib4 declarations -- 99.7% parse compatibility (181,326/181,890; parse, not verification)
+- Curated theorem proofs -- 320 hand-adapted Mathlib4 theorems (parse + elaboration + tactic execution)
 
 ### Q: Can I use OxiLean libraries in Lean 4?
 
@@ -246,7 +246,7 @@ The kernel implements CiC faithfully, making it **sound** in the sense that:
 OxiLean does NOT have formal proofs of soundness (unlike some ITPs). Instead, soundness is ensured through:
 
 1. **Code review** -- Minimal kernel for auditability
-2. **Testing** -- Extensive test suite (289 curated theorem proofs)
+2. **Testing** -- Extensive test suite (320 hand-adapted Mathlib4 theorems)
 3. **Design** -- Standard CiC implementation
 
 ### Q: What can break OxiLean's soundness?
@@ -325,9 +325,9 @@ This is sound because:
 | Feature | OxiLean | Coq |
 |---------|---------|-----|
 | Logic | CiC | CiC |
-| Kernel SLOC | 113K | 50K |
+| Kernel SLOC | 127K | 50K |
 | Tactics | 20+ | ~200 |
-| Library size | 413K SLOC | 10K+ items |
+| Library size | 443K SLOC | 10K+ items |
 | WASM support | Native (oxilean-wasm) | Requires port |
 | Learning curve | Easier | Harder |
 | Production use | Education/Research | Yes |
@@ -524,10 +524,10 @@ OxiLean is licensed under **Apache 2.0**.
 
 **Yes**, for educational and research purposes. OxiLean provides:
 
-1. **Sound kernel** -- CiC implementation with 113K SLOC
+1. **Sound kernel** -- CiC implementation with 127K SLOC
 2. **Tactic framework** -- 20+ tactics for proof construction
-3. **Standard library** -- 413K SLOC of formalized mathematics
-4. **Mathlib4 compatibility** -- 100% declaration coverage (4,530/4,530)
+3. **Standard library** -- 443K SLOC of formalized mathematics
+4. **Mathlib4 compatibility** -- 99.7% parse compatibility (181,326/181,890 declarations; a parse number, not verification)
 
 For industrial-grade formal verification, Lean 4 or Coq remain more established choices.
 
@@ -632,6 +632,6 @@ OxiLean supports metaprogramming via the oxilean-meta crate:
 
 ---
 
-**Last updated:** March 2026
-**OxiLean version:** 0.1.1
+**Last updated:** November 2026
+**OxiLean version:** 0.1.4
 **Status:** All phases complete

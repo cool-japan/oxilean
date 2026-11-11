@@ -246,9 +246,9 @@ impl CertifiedFactorization {
         }
         let mut d = 2u64;
         while d * d <= remaining {
-            if remaining % d == 0 {
+            if remaining.is_multiple_of(d) {
                 let mut exp = 0u32;
-                while remaining % d == 0 {
+                while remaining.is_multiple_of(d) {
                     exp += 1;
                     remaining /= d;
                 }
@@ -454,12 +454,12 @@ impl PrimeCertificate {
         if n == 2 {
             return true;
         }
-        if n % 2 == 0 {
+        if n.is_multiple_of(2) {
             return false;
         }
         let mut d = 3u64;
         while d * d <= n {
-            if n % d == 0 {
+            if n.is_multiple_of(d) {
                 return false;
             }
             d += 2;
@@ -473,12 +473,12 @@ impl PrimeCertificate {
         if n == 2 || n == 3 {
             return true;
         }
-        if n % 2 == 0 {
+        if n.is_multiple_of(2) {
             return false;
         }
         let mut d = n - 1;
         let mut r = 0u32;
-        while d % 2 == 0 {
+        while d.is_multiple_of(2) {
             d /= 2;
             r += 1;
         }
@@ -718,16 +718,16 @@ impl CertBFSExt {
         self.distances = vec![None; self.n_vertices];
         self.predecessors = vec![None; self.n_vertices];
         self.distances[source] = Some(0);
+        // Each queue entry carries the distance its vertex was given when it
+        // was enqueued, which is the value stored in `distances` for it.
         let mut queue = std::collections::VecDeque::new();
-        queue.push_back(source);
-        while let Some(u) = queue.pop_front() {
-            let d = self.distances[u]
-                .expect("distances[u] is Some: u was enqueued only after distances[u] was set");
+        queue.push_back((source, 0));
+        while let Some((u, d)) = queue.pop_front() {
             for &v in &self.adjacency[u].clone() {
                 if self.distances[v].is_none() {
                     self.distances[v] = Some(d + 1);
                     self.predecessors[v] = Some(u);
-                    queue.push_back(v);
+                    queue.push_back((v, d + 1));
                 }
             }
         }
@@ -1433,3 +1433,5 @@ impl CertifiedDijkstra {
         Some(path)
     }
 }
+#[cfg(test)]
+mod bfs_tests;

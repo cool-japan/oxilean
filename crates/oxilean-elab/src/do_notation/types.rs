@@ -175,13 +175,9 @@ impl DoBlock {
     /// - Not be empty
     /// - End with an action or return (not a bind)
     pub fn validate(&self) -> Result<(), DoElabError> {
-        if self.elems.is_empty() {
+        let Some(last) = self.elems.last() else {
             return Err(DoElabError::EmptyDoBlock);
-        }
-        let last = self
-            .elems
-            .last()
-            .expect("elems is non-empty (checked above)");
+        };
         match last {
             DoElem::Bind { .. } => Err(DoElabError::BindAtEnd(
                 "do block cannot end with a bind (<-)".to_string(),

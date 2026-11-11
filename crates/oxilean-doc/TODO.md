@@ -1,7 +1,7 @@
 # oxilean-doc TODO
 
-> Status: v0.1.3 Ring 0 in progress
-> Last updated: 2026-05-29
+> Status: v0.1.4 — Ring 0 and Ring 1 complete
+> Last updated: 2026-11-12
 
 ## v0.1.3 (Ring 0 — complete)
 
@@ -44,3 +44,9 @@
   - **Files:** `crates/oxilean-doc/src/extractor.rs`, `crates/oxilean-doc/src/renderer.rs`, `crates/oxilean-doc/src/multifile.rs`.
   - **Tests:** fixture `@[deprecated] def foo` → `DocItem.deprecated == true` + badge rendered; non-deprecated unaffected.
   - **Risk:** verify the `AnnotationKind::Deprecated` AST shape before threading; no cross-crate change.
+
+## v0.1.4 (released 2026-11-12)
+
+- [x] Fix the clap definition: it named a subcommand in `required_unless_present`, so every debug build panicked at startup in clap's own assertion and the release build rejected `multi`; it now uses `subcommand_negates_reqs` with a required `INPUT`, and `cli_tests.rs` pins the behaviour (no arguments exits 2, `multi` works)
+- [x] Hygiene pass: `.unwrap()` / `.expect()` outside tests 1 → 0
+- [x] MSRV 1.89: clippy suggestions applied (3c75335)

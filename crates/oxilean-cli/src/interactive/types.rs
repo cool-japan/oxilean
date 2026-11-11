@@ -579,14 +579,9 @@ impl ProofNavigator {
     }
     /// Check if the proof is complete.
     pub fn is_complete(&self) -> bool {
-        if self.steps.is_empty() {
-            self.initial_state.is_complete()
-        } else {
-            self.steps
-                .last()
-                .expect("steps is non-empty: checked by is_empty guard")
-                .state_after
-                .is_complete()
+        match self.steps.last() {
+            Some(step) => step.state_after.is_complete(),
+            None => self.initial_state.is_complete(),
         }
     }
 }

@@ -673,7 +673,7 @@ impl ChangeDetector {
         };
         self.hashes
             .get(&(start, end))
-            .map_or(true, |&stored| stored != current)
+            .is_none_or(|&stored| stored != current)
     }
     #[allow(dead_code)]
     #[allow(missing_docs)]

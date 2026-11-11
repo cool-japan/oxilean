@@ -14,6 +14,27 @@ use std::fs;
 use std::io;
 use std::process;
 
+/// Informational actions selected by the first command-line argument.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InfoAction {
+    /// Print the version (`version`, `--version`, `-V`).
+    Version,
+    /// Print the usage text (`help`, `--help`, `-h`).
+    Help,
+}
+
+/// Map the first argument to an informational action, if it is one.
+///
+/// `-v` is deliberately not an alias for version: it means `--verbose`
+/// elsewhere in this crate.
+pub(crate) fn dispatch_kind(arg: &str) -> Option<InfoAction> {
+    match arg {
+        "version" | "--version" | "-V" => Some(InfoAction::Version),
+        "help" | "--help" | "-h" => Some(InfoAction::Help),
+        _ => None,
+    }
+}
+
 pub fn cli_main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -42,8 +63,8 @@ pub fn cli_main() {
                     process::exit(1);
                 }
             }
-            "version" => print_version(),
-            "help" => print_help(),
+            arg if dispatch_kind(arg) == Some(InfoAction::Version) => print_version(),
+            arg if dispatch_kind(arg) == Some(InfoAction::Help) => print_help(),
             _ => {
                 check_file(&args[1]);
             }
@@ -76,8 +97,7 @@ pub fn check_file(path: &str) {
 }
 fn print_version() {
     println!("OxiLean version {}", env!("CARGO_PKG_VERSION"));
-    println!("Kernel SLOC: ~2,600");
-    println!("Zero external dependencies in kernel");
+    println!("Kernel: zero external dependencies, #![forbid(unsafe_code)]");
 }
 fn print_help() {
     println!("OxiLean - Pure Rust Interactive Theorem Prover");
@@ -93,7 +113,9 @@ fn print_help() {
         "  oxilean playground      Serve WASM playground locally [--port N] [--dir D] [--no-open]"
     );
     println!("  oxilean version         Show version");
+    println!("  oxilean --version, -V   Show version");
     println!("  oxilean help            Show this help");
+    println!("  oxilean --help, -h      Show this help");
     println!();
     println!("REPL Commands:");
     println!("  :quit, :q               Exit REPL");
@@ -397,7 +419,7 @@ pub fn format_number(n: u64) -> String {
     let chars: Vec<char> = s.chars().collect();
     let mut result = String::new();
     for (i, c) in chars.iter().enumerate() {
-        if i > 0 && (chars.len() - i) % 3 == 0 {
+        if i > 0 && (chars.len() - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(*c);
@@ -455,11 +477,21 @@ pub mod signal_util {
     pub fn install_ctrlc_handler() {
         #[cfg(unix)]
         {
-            unsafe extern "C" fn handler(_: LibcSigNum) {
+            extern "C" fn handler(_: LibcSigNum) {
                 INTERRUPTED.store(true, Ordering::SeqCst);
             }
+            // SAFETY: `signal` is declared below with the C prototype of
+            // `signal(2)`: an `int` and a `void (*)(int)`, returning the
+            // previous `void (*)(int)` (read here as a raw pointer, which
+            // has the same size and is returned the same way, and not
+            // used). `SIGINT` is 2, its value on every platform the `libc`
+            // crate defines it for. `handler` has the `void (*)(int)`
+            // signature a signal handler is called with, and its body is
+            // async-signal-safe: one store to a static `AtomicBool`, which
+            // is lock-free wherever Rust provides it, and nothing that can
+            // panic or allocate.
             unsafe {
-                libc_signal(SIGINT, handler as *const () as usize);
+                signal(SIGINT, handler);
             }
         }
         #[cfg(not(unix))]
@@ -500,12 +532,9 @@ pub mod signal_util {
     const SIGINT: LibcSigNum = 2;
     #[cfg(unix)]
     extern "C" {
-        /// C standard `signal(2)`.
-        fn signal(signum: LibcSigNum, handler: usize) -> usize;
-    }
-    #[cfg(unix)]
-    unsafe fn libc_signal(signum: LibcSigNum, handler: usize) -> usize {
-        signal(signum, handler)
+        /// C standard `signal(2)`: `sighandler_t signal(int, sighandler_t)`
+        /// with `sighandler_t` = `void (*)(int)`.
+        fn signal(signum: LibcSigNum, handler: extern "C" fn(LibcSigNum)) -> *const ();
     }
 }
 #[cfg(test)]
@@ -1200,5 +1229,32 @@ mod cli_reporter_tests {
     fn test_cli_description() {
         assert!(!cli_description().is_empty());
         assert!(cli_description().contains("OxiLean"));
+    }
+}
+#[cfg(test)]
+mod signal_tests;
+#[cfg(test)]
+mod dispatch_tests {
+    use super::{dispatch_kind, InfoAction};
+
+    #[test]
+    fn help_spellings_map_to_help() {
+        for arg in ["help", "--help", "-h"] {
+            assert_eq!(dispatch_kind(arg), Some(InfoAction::Help), "{arg}");
+        }
+    }
+
+    #[test]
+    fn version_spellings_map_to_version() {
+        for arg in ["version", "--version", "-V"] {
+            assert_eq!(dispatch_kind(arg), Some(InfoAction::Version), "{arg}");
+        }
+    }
+
+    #[test]
+    fn other_arguments_are_not_info_actions() {
+        for arg in ["-v", "v", "h", "foo.lean", "check", "", "--Help"] {
+            assert_eq!(dispatch_kind(arg), None, "{arg}");
+        }
     }
 }

@@ -255,11 +255,7 @@ impl EvmBackend {
                     .with_comment(format!("selector for {}", func.signature)),
             );
             instrs.push(EvmInstruction::new(EvmOpcode::Eq));
-            instrs.push(
-                EvmInstruction::push(vec![0x00, 0x00])
-                    .expect("push of 2-byte slice is always valid (1..=32 bytes)")
-                    .with_comment(format!("dest: {}", func.name)),
-            );
+            instrs.push(EvmInstruction::push2(0).with_comment(format!("dest: {}", func.name)));
             instrs.push(EvmInstruction::new(EvmOpcode::Jumpi));
         }
         instrs.push(EvmInstruction::push1(0).with_comment("revert size 0"));
@@ -270,18 +266,8 @@ impl EvmBackend {
     /// Emit instructions to load a storage variable onto the stack.
     pub fn emit_sload(&self, slot: u64) -> Vec<EvmInstruction> {
         let mut instrs = Vec::new();
-        let bytes = slot.to_be_bytes();
-        let trimmed: Vec<u8> = {
-            let first_nonzero = bytes.iter().position(|&b| b != 0).unwrap_or(7);
-            bytes[first_nonzero..].to_vec()
-        };
-        let push_instr = EvmInstruction::push(if trimmed.is_empty() {
-            vec![0x00]
-        } else {
-            trimmed
-        })
-        .expect("push of 1..=8 byte slot always valid (within 1..=32 byte range)")
-        .with_comment(format!("storage slot {}", slot));
+        let push_instr =
+            EvmInstruction::push_trimmed_u64(slot).with_comment(format!("storage slot {}", slot));
         instrs.push(push_instr);
         instrs.push(
             EvmInstruction::new(EvmOpcode::Sload).with_comment(format!("SLOAD slot {}", slot)),
@@ -293,18 +279,8 @@ impl EvmBackend {
     /// Assumes the value to store is already on the stack.
     pub fn emit_sstore(&self, slot: u64) -> Vec<EvmInstruction> {
         let mut instrs = Vec::new();
-        let bytes = slot.to_be_bytes();
-        let trimmed: Vec<u8> = {
-            let first_nonzero = bytes.iter().position(|&b| b != 0).unwrap_or(7);
-            bytes[first_nonzero..].to_vec()
-        };
-        let push_instr = EvmInstruction::push(if trimmed.is_empty() {
-            vec![0x00]
-        } else {
-            trimmed
-        })
-        .expect("push of 1..=8 byte slot always valid (within 1..=32 byte range)")
-        .with_comment(format!("storage slot {}", slot));
+        let push_instr =
+            EvmInstruction::push_trimmed_u64(slot).with_comment(format!("storage slot {}", slot));
         instrs.push(push_instr);
         instrs.push(
             EvmInstruction::new(EvmOpcode::Sstore).with_comment(format!("SSTORE slot {}", slot)),
@@ -344,41 +320,17 @@ impl EvmBackend {
         let mut init = Vec::new();
         init.extend_from_slice(&constructor);
         if runtime_len <= 0xffff {
-            let len_bytes = (runtime_len as u16).to_be_bytes();
-            init.extend(
-                EvmInstruction::push(len_bytes.to_vec())
-                    .expect("2-byte push is always valid")
-                    .encode(),
-            );
+            init.extend(EvmInstruction::push2(runtime_len as u16).encode());
         } else {
-            let len_bytes = (runtime_len as u32).to_be_bytes();
-            init.extend(
-                EvmInstruction::push(len_bytes.to_vec())
-                    .expect("4-byte push is always valid")
-                    .encode(),
-            );
+            init.extend(EvmInstruction::push4(runtime_len as u32).encode());
         }
-        init.extend(
-            EvmInstruction::push(vec![0x00, 0x00])
-                .expect("2-byte push is always valid")
-                .encode(),
-        );
+        init.extend(EvmInstruction::push2(0).encode());
         init.extend(EvmInstruction::push1(0x00).encode());
         init.push(EvmOpcode::Codecopy.byte());
         if runtime_len <= 0xffff {
-            let len_bytes = (runtime_len as u16).to_be_bytes();
-            init.extend(
-                EvmInstruction::push(len_bytes.to_vec())
-                    .expect("2-byte push is always valid")
-                    .encode(),
-            );
+            init.extend(EvmInstruction::push2(runtime_len as u16).encode());
         } else {
-            let len_bytes = (runtime_len as u32).to_be_bytes();
-            init.extend(
-                EvmInstruction::push(len_bytes.to_vec())
-                    .expect("4-byte push is always valid")
-                    .encode(),
-            );
+            init.extend(EvmInstruction::push4(runtime_len as u32).encode());
         }
         init.extend(EvmInstruction::push1(0x00).encode());
         init.push(EvmOpcode::Return.byte());
@@ -614,6 +566,42 @@ impl EvmInstruction {
             comment: None,
         }
     }
+    /// Create a PUSH2 instruction for a 2-byte value (jump destinations, small lengths).
+    fn push2(val: u16) -> Self {
+        Self {
+            opcode: EvmOpcode::Push2,
+            data: Some(val.to_be_bytes().to_vec()),
+            comment: None,
+        }
+    }
+    /// Create the shortest PUSH1..PUSH8 instruction that holds `val` as a
+    /// big-endian number (PUSH1 for zero).
+    ///
+    /// The ranges below cover every `u64` exactly once, so the compiler checks
+    /// that each value has a push width; each arm's bytes are the low
+    /// `width` bytes of the value.
+    fn push_trimmed_u64(val: u64) -> Self {
+        let [b0, b1, b2, b3, b4, b5, b6, b7] = val.to_be_bytes();
+        let (opcode, data) = match val {
+            0..=0xff => (EvmOpcode::Push1, vec![b7]),
+            0x100..=0xffff => (EvmOpcode::Push2, vec![b6, b7]),
+            0x1_0000..=0xff_ffff => (EvmOpcode::Push3, vec![b5, b6, b7]),
+            0x100_0000..=0xffff_ffff => (EvmOpcode::Push4, vec![b4, b5, b6, b7]),
+            0x1_0000_0000..=0xff_ffff_ffff => (EvmOpcode::Push5, vec![b3, b4, b5, b6, b7]),
+            0x100_0000_0000..=0xffff_ffff_ffff => (EvmOpcode::Push6, vec![b2, b3, b4, b5, b6, b7]),
+            0x1_0000_0000_0000..=0xff_ffff_ffff_ffff => {
+                (EvmOpcode::Push7, vec![b1, b2, b3, b4, b5, b6, b7])
+            }
+            0x100_0000_0000_0000..=u64::MAX => {
+                (EvmOpcode::Push8, vec![b0, b1, b2, b3, b4, b5, b6, b7])
+            }
+        };
+        Self {
+            opcode,
+            data: Some(data),
+            comment: None,
+        }
+    }
     /// Create a PUSH32 instruction for a 32-byte value.
     pub fn push32(val: [u8; 32]) -> Self {
         Self {
@@ -809,3 +797,6 @@ impl EVMDominatorTree {
         self.dom_depth.get(node).copied().unwrap_or(0)
     }
 }
+
+#[cfg(test)]
+mod push_tests;

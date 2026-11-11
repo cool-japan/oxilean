@@ -161,17 +161,8 @@ impl ComplexOfSheaves {
     }
     /// Returns amplitude: \[min_degree, max_degree\].
     pub fn amplitude(&self) -> Option<(i32, i32)> {
-        if self.cohomology_degrees.is_empty() {
-            return None;
-        }
-        let min = *self
-            .cohomology_degrees
-            .first()
-            .expect("cohomology_degrees is non-empty: checked by early return");
-        let max = *self
-            .cohomology_degrees
-            .last()
-            .expect("cohomology_degrees is non-empty: checked by early return");
+        let min = *self.cohomology_degrees.first()?;
+        let max = *self.cohomology_degrees.last()?;
         Some((min, max))
     }
     /// Checks if concentrated in a single degree.

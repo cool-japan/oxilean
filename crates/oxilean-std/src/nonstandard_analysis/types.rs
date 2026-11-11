@@ -125,14 +125,7 @@ impl NonStandardSequence {
     }
     /// Check if the sequence converges in the standard sense via its nonstandard shadow.
     pub fn st_convergence(&self) -> Option<f64> {
-        if self.terms.is_empty() {
-            return None;
-        }
-        // Safety: we checked is_empty() above, so last() always returns Some
-        let last = *self
-            .terms
-            .last()
-            .expect("non-empty vec always has a last element");
+        let last = *self.terms.last()?;
         if last.is_finite() {
             Some(last)
         } else {

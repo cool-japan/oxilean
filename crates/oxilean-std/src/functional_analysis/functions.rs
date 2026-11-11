@@ -542,13 +542,9 @@ pub fn singular_values(a: &BoundedOp, max_iter: usize) -> Vec<f64> {
 /// Condition number of a matrix (ratio of largest to smallest singular value).
 pub fn condition_number(a: &BoundedOp, max_iter: usize) -> f64 {
     let svs = singular_values(a, max_iter);
-    if svs.is_empty() {
+    let (Some(&max_sv), Some(&min_sv)) = (svs.first(), svs.last()) else {
         return f64::INFINITY;
-    }
-    let max_sv = svs[0];
-    let min_sv = *svs
-        .last()
-        .expect("svs is non-empty: checked by early return");
+    };
     if min_sv < 1e-15 {
         f64::INFINITY
     } else {
@@ -613,7 +609,7 @@ pub fn h2_norm_approx(f: &dyn Fn(f64) -> f64, a: f64, b: f64, n: usize) -> f64 {
 }
 /// Simpson's rule for numerical integration.
 pub fn simpson_integrate(f: &dyn Fn(f64) -> f64, a: f64, b: f64, n: usize) -> f64 {
-    let n = if n % 2 == 0 { n } else { n + 1 };
+    let n = if n.is_multiple_of(2) { n } else { n + 1 };
     if n == 0 {
         return 0.0;
     }

@@ -9,7 +9,7 @@
 
 This crate is **untrusted** with respect to soundness: metavariable assignment and unification code cannot corrupt the kernel environment. All proofs produced by the tactic system are ultimately re-verified by the kernel before being accepted.
 
-152,716 SLOC -- comprehensive meta layer implementation (648 source files, 5,410 tests passing).
+163,149 SLOC -- comprehensive meta layer implementation (747 source files, 5,426 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -81,7 +81,7 @@ where the variables and hypotheses above `|-` form the local context and `Q x` i
 
 ### SMT Integration
 
-`SmtContext::check_sat` now performs real SMT solving via **oxiz-solver 0.2.1** (OxiZ), returning `Sat`, `Unsat`, or `Unknown`. This replaces the previous stub and enables the `decide` and `native_decide` tactics to delegate hard propositional goals to the OxiZ backend.
+`SmtContext::check_sat` now performs real SMT solving via **oxiz-solver** (OxiZ), returning `Sat`, `Unsat`, or `Unknown`. This replaces the previous stub and enables the `decide` and `native_decide` tactics to delegate hard propositional goals to the OxiZ backend.
 
 ### Gröbner Basis and Polynomial Arithmetic
 
@@ -93,39 +93,41 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-meta = "0.1.3"
+oxilean-meta = "0.1.4"
 ```
 
 ### Creating a Meta Context
 
 ```rust,ignore
-use oxilean_meta::{MetaContext, MetaConfig};
+use oxilean_meta::{MetaConfig, MetaContext};
 use oxilean_kernel::Environment;
 
 let env = Environment::new();
-let config = MetaConfig::default();
-let mut meta_ctx = MetaContext::new(&env, config);
+let mut meta_ctx = MetaContext::with_config(env, MetaConfig::default());
+// or: MetaContext::new(env) for the default configuration
 ```
 
 ### Creating and Solving Metavariables
 
 ```rust,ignore
-use oxilean_meta::MVarId;
+use oxilean_meta::MetavarKind;
 
-let m1 = meta_ctx.mk_metavar(ty)?;
-// ... unification happens ...
-let solution = meta_ctx.get_assignment(m1)?;
+let (m1, _m1_expr) = meta_ctx.mk_fresh_expr_mvar(ty, MetavarKind::Natural);
+// ... unification happens, or assign directly ...
+meta_ctx.assign_mvar(m1, value);
+let solution = meta_ctx.get_mvar_assignment(m1); // Option<&Expr>
 ```
 
 ### Running a Tactic
 
 ```rust,ignore
+use oxilean_kernel::Name;
+use oxilean_meta::tactic::tac_intro;
 use oxilean_meta::TacticState;
 
-let mut state = TacticState::new(&meta_ctx, goal)?;
-// apply a tactic
-state.apply_tactic(intro("h"))?;
-let proof = state.close()?;
+let mut state = TacticState::new(vec![goal_mvar]);
+tac_intro(Some(Name::str("h")), &mut state, &mut meta_ctx)?;
+// ... further tactics, then state.is_done() ...
 ```
 
 ## Dependencies

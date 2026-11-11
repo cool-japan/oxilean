@@ -1,15 +1,15 @@
 # oxilean-cli — TODO
 
 > Task list for the CLI crate.
-> Last updated: 2026-05-03
+> Last updated: 2026-11-12
 
 ## ✅ Completed
 
-- [x] Argument parsing (`--version`, `--help`, `check`, `repl`)
+- [x] Argument parsing (`version`, `help`, `check`, `repl`, `lsp`/`serve`, `playground`)
 - [x] Version display
 - [x] Help / usage display
 - [x] Subcommand dispatch
-- [x] **~64,848 SLOC implemented across 256 source files**
+- [x] **~73,609 SLOC implemented across 298 source files**
 
 ---
 
@@ -148,7 +148,7 @@
 ### Ring 1
 
 - [x] VS Code extension skeleton under `src/lsp/editor/vscode/`
-- [ ] `oxilean playground` subcommand that opens the wasm playground in browser
+- [x] `oxilean playground` subcommand that opens the wasm playground in browser (`src/commands/playground.rs`)
 - [x] Shell completion improvements (dynamic completion from project symbols)
 - [x] Wire `register_cc_helper` + `register_polyrith_helper` into production envs (cycle 10) (2026-05-30)
   - **Goal:** Add calls to `register_cc_helper(&mut env)` and `register_polyrith_helper(&mut env)` alongside `register_omega_helper` in `repl/types.rs` (lines ~70, ~104) and `commands/functions.rs` (line ~37). Both are guarded/idempotent. This ensures cc and polyrith proof terms kernel-verify in the live CLI/REPL.
@@ -195,3 +195,11 @@
   - **Goal:** Wire `oxilean_parse::diff_modules` into `analyze_document`; add `cached_decls: Vec<LocatedDecl>` to `Document`; re-analyze only from the first changed decl onward (tail-invalidation strategy for correctness).
   - **Files:** `crates/oxilean-cli/src/lsp/analysis/mod.rs`, `crates/oxilean-cli/src/lsp/document/mod.rs`.
   - **Tests:** append/edit/replace scenarios; full vs incremental identical diagnostics.
+
+## v0.1.4 (released 2026-11-12)
+
+- Hygiene pass (commit 930c328): `.unwrap()` / `.expect()` outside tests 19 -> 1 in this crate; no public signature changed
+- The Ctrl-C handler (`signal_util`) is declared with the correct C prototype of `signal(2)` and carries a `SAFETY:` comment; one `unsafe` site fewer (pinned by `main/functions/signal_tests.rs`)
+- MSRV 1.89 clippy suggestions applied (commit 3c75335)
+- [x] Fixed (2026-11-12): `cli_main` now handles `--version` / `-V` and `--help` / `-h` (previously treated as file names); covered by `dispatch_kind` unit tests and `tests/cli_flags.rs`. `-v` is intentionally not an alias for version (it is `--verbose`). `print_version` no longer prints a hard-coded kernel SLOC figure
+- Open: build / bench / doc / fmt / export / watch / init are not dispatched from `cli_main`

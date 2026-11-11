@@ -697,3 +697,5 @@ mod tests {
         );
     }
 }
+#[cfg(test)]
+mod load_u32_tests;

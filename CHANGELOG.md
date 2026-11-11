@@ -9,6 +9,81 @@ Copyright (c) COOLJAPAN OU (Team Kitasan)
 
 ---
 
+## [0.1.4] — 2026-11-12
+
+**Lean core `Init` now verifies in full, in 34 seconds.** Nested inductives are supported, the kernel works on terms as they are shared (and charges its per-declaration budget the same way), and terms carry their hash: over all 57,277 declarations of Lean 4 core's `Init` export, **57,277 verified · 0 unsupported · 0 rejected in 34 s** (0.1.3: 35,424 · 21,853 · 0 in 8 m 28 s, same machine). A 28,832-declaration Mathlib slice reports 27,523 verified · 1,309 unsupported · 0 rejected. Three kernel fixes ship with it, for bugs that are all present in the published 0.1.3; two wrong accepts (the K-like one and an open-term accept through the Rust API) make **upgrading recommended — see Security.** The MSRV is now an honest 1.89, and a hygiene pass removes `unwrap`/`expect` outside tests across the workspace. Workspace tests: 33,733 passed, 746 skipped (cargo nextest, all features, macOS); the tree before the release-prep fixes (33,727 tests) also passed on Linux.
+
+### Added
+
+#### Nested inductives
+- Nested-to-mutual inductive elaboration (C10): a nested inductive such as `Lean.Syntax` (nested through `Array`/`List`) is specialised into an auxiliary mutual family, recursors are derived and restored over the real container, and every exported recursor is re-verified by def-eq, never trusted. On `Init`, verified rises 35,424 → 47,119 with 0 rejected (`b3c17f8`, `b3adf3f`)
+
+#### Resource limits for small stacks (off by default)
+- `oxilean_kernel::fuel::set_reduction_nesting_limit` / `reduction_nesting_limit` and `fuel::set_term_depth_limit` / `term_depth_limit` (plus `term_depth_limit_hit`): cap nested reductions and term depth for a caller with a small stack; a declaration over either limit is `unsupported` by name (new `resource limit exceeded: term depth`), never a verdict
+- New `term-depth` Cargo feature on `oxilean-kernel`, `oxilean-export` and `oxilean-verify`, so the term-depth limit also covers terms built during checking
+- `oxilean_export::TERM_DEPTH_LIMIT`; `oxilean-verify-wasm` sets both limits and exposes `reduction_nesting_limit()` / `term_depth_limit()` (a browser gives a module about a megabyte of stack)
+- `expr::REBUILD_COST_MAX`: `rebuild_cost` saturates at 2^29 − 1, the word being shared with three flags (free variable, universe parameter, universe metavariable)
+
+#### Test fixtures (`tests/fixtures/lean4export/`)
+- Positive fixtures `CongruenceFirst`, `DeepTerm`, `NestedReduction`, `SharedSubterms`, `QuotPartialApp`, `ReductionChain` and `Syntax` (nested inductive), each exercising one of the fixes and performance changes below
+- Negative fixture `KGuardCollision`: a declaration Lean's own kernel rejects; expected split 3 verified · 0 unsupported · 1 rejected (exit 1)
+
+#### Release tooling
+- `deny.toml` at the workspace root with the COOLJAPAN banned-crate list; `cargo deny check bans` passes
+
+### Changed
+
+#### Breaking changes
+- BREAKING: `Node::rc()` is removed, replaced by `Node::as_ptr()` and `Node::ptr_eq()`. A `Node` no longer holds an `Rc<Expr>`; the cached facts (loose-bound-variable range, rebuild cost, hash) moved into the shared allocation. What `Expr` writes to a `Hasher` differs from 0.1.3; `Debug` output does not
+- BREAKING: `StackCalc::{add, sub, mul}` return `Option<i64>` instead of panicking on a stack of fewer than two values, leaving the stack unchanged on failure (34 compiled copies; reachable as `oxilean_kernel::StackCalc`) (`4f99762`)
+- BREAKING: the per-declaration budget constants keep their values (2^24 default, 2^26 corpus) but change unit: a unit is now one subterm a term builder reaches (shared or rebuilt), not a cloned tree node
+- BREAKING: `check_constant_info` and the inductive-family entry points reject a type, value or recursor rule that is not a closed term (free variable or loose bound variable), as Lean's kernel does
+
+#### Performance (two passes, 2026-11-11)
+- `Init` goes from 31 m 51 s to 3 m 58 s after the first pass and to **34 s** after the second; the Mathlib slice from 5 m 50 s to 43 s and then to 11 s (verified 25,690 → 27,523)
+- Terms carry their hash: `Name`, `Level` and every shared subterm store a structural hash computed once at construction, so cache lookups no longer walk their keys (55% of a profiled Mathlib replay)
+- Pairs of terms are ordered by hash instead of by formatting both as text (27% of the same profile)
+- A local's type is dropped when its binder closes, instead of being kept for every binder opened while checking a declaration
+- Terms are walked as they are shared: substitution, lifting, abstraction and universe instantiation build a shared subterm once per walk, the reduction cache keeps terms of any size, and type inference remembers what it has typed. The 632 `Init` declarations that ran out of budget, and the 9,512 behind them, now verify
+- `f a ≡ f b` from `a ≡ b`: two applications of one definition are compared argument by argument before the definition is unfolded, as in Lean's lazy delta reduction
+- Memory: peak live heap on `Init` 2,723 MB → 2,458 MB → 995 MB (Mathlib slice 1,349 MB → 419 MB); `Expr` is 40 bytes where it was 64
+- Differential vs lean4lean (`779c51f`) on `Init.Prelude`: **0 disagreements** across 1,976 joined names; net of start-up, oxilean-verify takes 1.1× lean4lean's time (it was 4.3×)
+- Kernel in a Tab artifact: 168,775 B gzip / 427,912 B raw (0.1.3: 147,336 B gzip); in node 26 it replays `Init` and the Mathlib slice with the native verdicts, declaration for declaration
+
+#### Structural sharing, Stage F
+- `Name`/`Level` become Rc-newtypes with interning (`e1a11c8`): whole-value and prefix sharing collapse per-`Const` name duplication. Memory-only; no verdict moved
+
+#### Hygiene
+- `cargo formal check --layer hygiene` findings: kernel 297 → 19, workspace 346 → 68 (`930c328`, `4f99762`); `unwrap`/`expect` outside tests are removed by construction (let-else, slice patterns, invariants moved into types), and 14 `unsafe` sites gain a `SAFETY:` comment while 9 go away
+- The hygiene commits add 126 + 212 tests and remove none (the kernel's suite went 3,512 → 3,655 in that commit; it has 3,742 at release)
+
+#### Toolchain and dependencies
+- MSRV bumped from 1.70 to 1.89 (`rust-version` in `[workspace.package]`): 1.70 never actually built, since the locked dependencies already required 1.89. The 202 clippy suggestions unlocked at the new MSRV (`is_multiple_of`, `div_ceil`, `repeat_n`, `is_none_or`, …) are applied
+- `oxiz-solver` / `oxiz-math` 0.2.3 → 0.3.4, `oxiarc-deflate` 0.3.6 → 0.4.2, `oxicode` 0.2.4 → 0.2.6
+
+#### Release preparation
+- Workspace dependency policy: `clap`, `serde`, `serde-wasm-bindgen`, `anyhow`, `tempfile`, `criterion` and `getrandom` (0.3 and 0.4, the wasm32 `wasm_js` shims) are declared once in `[workspace.dependencies]`; minimum requirements are raised to the versions already resolved (`wasm-bindgen` 0.2.130, `js-sys` 0.3.107, `proptest` 1.12.0). The resolved dependency graph is unchanged (checked with `cargo metadata`)
+- Unused dependencies removed: `oxilean-kernel` from `oxilean-build` and `oxilean-lint`; `lazy_static` from `oxilean-elab`; `serde_json` and `js-sys` from `oxilean-wasm` (and from its `wasm` feature); dev-dependencies `proptest` (`oxilean-export`) and `tempfile` (`oxilake`). `oxilean-elab`'s dev-dependency on `oxilean-std` is now path-only
+- `oxilean-verify-wasm` is marked `publish = false`: it was never published to crates.io and is the wasm-pack artifact behind `web/verify-demo`
+- `web/verify-demo/pkg` rebuilt for 0.1.4: 168,785 B gzip, 427,914 B raw, 41 exports (badge 165 KB)
+- `oxilean-verify --help` now states that `--limits corpus` also arms the 30 s per-declaration wall-clock deadline
+- Gate and build scripts run on macOS: `web/scripts/size-gate.sh`, `scripts/gate-demo-smoke.sh`, `scripts/regen-corpus.sh` and `web/verify-demo/build.sh` no longer use GNU `stat -c`; `scripts/bench-verify.sh` falls back to `sysctl -n hw.ncpu`
+- User docs (`docs/USER_GUIDE.md`, `docs/FAQ.md`, `docs/TUTORIAL.md`) brought up to 0.1.4: version strings, sizes, Mathlib figures aligned with the README, and the environment-variable section corrected to what the binary reads
+
+### Fixed
+- `oxilean --help`, `-h`, `--version` and `-V` were treated as file names (`Failed to read file --help`, exit 1); they now print the help or the version and exit 0 (`-v` stays `--verbose`). `oxilean version` no longer prints the stale `Kernel SLOC: ~2,600` line; it prints `Kernel: zero external dependencies, #![forbid(unsafe_code)]`
+- Wrong accept: K-like reduction checked its side condition in a nested checker that reused free-variable ids already handed out, so a bound variable could be identified with an outer local; a theorem Lean's kernel rejects was reported verified. It is now rejected and kept as the negative fixture `KGuardCollision`
+- Wrong reject on point-free quotient maps: a head that reduced to a partial application lost its outer arguments, so `Quot.lift` (or a recursor) on such a major premise looked stuck (Mathlib's `Quot.map` / `Quotient.map'`, e.g. `AddCon.addGroup`, `Con.group`, `FreeGroup.instGroup`)
+- Wrong reject on long reductions: a head-reduction chain was cut off at 10,000 steps and the unfinished term compared as a normal form; a declaration failing after the cap fired is now checked again with the cap lifted, under the per-declaration budget. Any other truncated reduction is reported `unsupported` (`resource limit exceeded: reduction depth or step limit`), never `rejected`. On the Mathlib slice, rejected goes 27 → 0
+- `oxilean-doc` panicked at startup in every debug build (clap named a subcommand in `required_unless_present`) and the release build rejected `multi`; it now uses `subcommand_negates_reqs` with a required input (`930c328`)
+- `SimpleLruCache::put` (five kernel copies) is unwind-safe: a panicking `Clone`, `Hash`, `Eq` or `Drop` can no longer leave the order list shorter than the keys (`4f99762`)
+
+### Security
+- **Wrong accept in the published 0.1.3**: K-like reduction could report as verified a theorem that Lean's kernel and `leanchecker` both reject (see Fixed). Upgrading is recommended
+- **Open-term accept in the published 0.1.3**: through the Rust API, `fun (x : F) => FVar 1` was accepted as a proof of `F → F` and stored with the free variable in it; declarations must now be closed terms. `oxilean-verify` was never exposed (no export can spell a free variable), but a caller building declarations through the API was. Upgrading is recommended
+- Unsound paths reachable from safe code are closed (`930c328`): `oxilean-elab` `validate_locals` (a transmuted `&str` of a per-iteration `String` used as a `HashMap` key; a use-after-free under Miri), `oxilean-runtime` `ThunkVec::get` (a `mem::zeroed::<T>()` placeholder), and `ArenaAllocator::alloc_bytes` (`size + align - 1` overflow)
+- The `# Safety` contract of `PoolAllocator::deallocate` is tightened to exclude `reset` and `clear` (allocate → clear → deallocate was a use-after-free under Miri)
+
 ## [0.1.3] — 2026-07-16
 
 Independent Lean 4 proof checker ("Kernel in a Tab"): oxilean-export NDJSON v3.1.0 reader, oxilean-verify three-bucket streaming CLI, oxilean-verify-wasm (144 KB gzip) + web/verify-demo static demo, BigNat arbitrary-precision literals, quotient and struct-eta soundness overhaul, re-derived recursors, complete universe-level definitional equality, CI/TCB gates, and fuzz infrastructure.
@@ -276,7 +351,8 @@ implemented in pure Rust. 1,221,710 SLOC across 11 crates and 5,380 files.
 
 ---
 
-[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/cool-japan/oxilean/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/cool-japan/oxilean/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/cool-japan/oxilean/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/cool-japan/oxilean/compare/v0.1.0...v0.1.1

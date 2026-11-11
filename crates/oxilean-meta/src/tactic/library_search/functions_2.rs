@@ -5,7 +5,7 @@
 use crate::basic::{MVarId, MetaContext, MetavarKind};
 use crate::tactic::state::{TacticError, TacticResult, TacticState};
 use oxilean_kernel::Node;
-use oxilean_kernel::{Expr, Level, Name};
+use oxilean_kernel::{Expr, Level, LevelView, Name};
 
 use super::types::{
     CacheLookup, LemmaCandidate, LemmaEntry, LemmaIndex, LibrarySearchConfig, ScoredEntry,
@@ -53,7 +53,7 @@ mod tests {
     fn mk_arrow(domain: Expr, codomain: Expr) -> Expr {
         Expr::Pi(
             BinderInfo::Default,
-            Name::Anonymous,
+            Name::anonymous(),
             Node::new(domain),
             Node::new(codomain),
         )
@@ -318,10 +318,10 @@ mod tests {
     #[test]
     fn test_freshen_with_params() {
         let mut ctx = mk_ctx();
-        let e = Expr::Sort(Level::Param(Name::str("u")));
+        let e = Expr::Sort(Level::param(Name::str("u")));
         let result = freshen_universe_params(&e, 1, &mut ctx);
         assert!(matches!(result, Expr::Sort(_)));
-        assert!(!matches!(result, Expr::Sort(Level::Param(_))));
+        assert!(!matches!(result, Expr::Sort(ref l) if matches!(l.view(), LevelView::Param(_))));
     }
     #[test]
     fn test_open_pis_no_pi() {
@@ -498,7 +498,7 @@ mod tests {
             name_last_component(&Name::str("Nat").append_str("add")),
             "add"
         );
-        assert_eq!(name_last_component(&Name::Anonymous), "_");
+        assert_eq!(name_last_component(&Name::anonymous()), "_");
     }
     #[test]
     fn test_names_are_siblings() {
@@ -512,7 +512,7 @@ mod tests {
     fn test_name_parent() {
         let n = Name::str("Nat").append_str("add");
         assert_eq!(name_parent(&n), &Name::str("Nat"));
-        assert_eq!(name_parent(&Name::Anonymous), &Name::Anonymous);
+        assert_eq!(name_parent(&Name::anonymous()), &Name::anonymous());
     }
     #[test]
     fn test_is_search_candidate_axiom() {

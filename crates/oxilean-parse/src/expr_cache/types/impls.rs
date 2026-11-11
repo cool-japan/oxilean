@@ -383,7 +383,7 @@ impl BloomFilter {
     #[allow(dead_code)]
     #[allow(missing_docs)]
     pub fn new(size_bits: usize, num_hashes: usize) -> Self {
-        let bytes = (size_bits + 7) / 8;
+        let bytes = size_bits.div_ceil(8);
         Self {
             bits: vec![0u8; bytes],
             size_bits,
@@ -415,9 +415,7 @@ impl BloomFilter {
     #[allow(dead_code)]
     #[allow(missing_docs)]
     pub fn clear(&mut self) {
-        for b in &mut self.bits {
-            *b = 0;
-        }
+        self.bits.fill(0);
     }
 }
 
@@ -1599,12 +1597,10 @@ impl RollingHash {
         self.current = (self.current.wrapping_mul(self.base) + byte as u64) % self.modulus;
         self.window.push_back(byte);
         if self.window.len() > self.window_size {
-            let old = self
-                .window
-                .pop_front()
-                .expect("window len > window_size >= 1");
-            let rem = self.base_pow.wrapping_mul(old as u64) % self.modulus;
-            self.current = (self.current + self.modulus - rem) % self.modulus;
+            if let Some(old) = self.window.pop_front() {
+                let rem = self.base_pow.wrapping_mul(old as u64) % self.modulus;
+                self.current = (self.current + self.modulus - rem) % self.modulus;
+            }
         }
         self.current
     }
@@ -1776,3 +1772,6 @@ impl TypeCheckCache {
         self.cache.values().filter(|r| r.is_valid).count()
     }
 }
+
+#[cfg(test)]
+mod rolling_tests;

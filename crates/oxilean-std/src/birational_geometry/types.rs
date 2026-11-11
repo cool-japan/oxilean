@@ -127,7 +127,7 @@ impl BlowUpData {
         if r == 0 {
             return 1;
         }
-        if (r - 1) % 2 == 0 {
+        if (r - 1).is_multiple_of(2) {
             1i64
         } else {
             -1i64
@@ -565,7 +565,7 @@ impl MoriCone {
     pub fn del_pezzo(d: usize) -> Self {
         let blown_up = 9 - d;
         let mut rays: Vec<i64> = vec![-3];
-        rays.extend(std::iter::repeat(-1).take(blown_up));
+        rays.extend(std::iter::repeat_n(-1, blown_up));
         MoriCone {
             dim: 2,
             extremal_rays: rays,

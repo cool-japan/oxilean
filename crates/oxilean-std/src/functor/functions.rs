@@ -1753,8 +1753,8 @@ pub fn double_fmap<A, B, C>(
 /// Approximated as: round-trip through Option is identity.
 pub fn adjunction_triangle_option<A: Clone + PartialEq>(a: A) -> bool {
     let unit = |x: A| Some(x);
-    let counit = |opt: Option<A>| opt.expect("unit always produces Some, so counit receives Some");
-    counit(unit(a.clone())) == a
+    // The round trip is the identity when the unit gives `a` back.
+    matches!(unit(a.clone()), Some(b) if b == a)
 }
 /// Yoneda reduction: Nat(Hom(A, –), F) ≅ F A.
 /// Approximated by showing that applying fmap id to a value is identity.

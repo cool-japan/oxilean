@@ -242,13 +242,12 @@ impl InfoTreeBuilder {
                 children: frame.children,
                 range: frame.range,
             }
-        } else if let Some(info) = frame.info {
+        } else {
+            let info = frame.info?;
             InfoTree::Node {
                 info,
                 children: frame.children,
             }
-        } else {
-            return None;
         };
         if let Some(parent) = self.stack.last_mut() {
             parent.children.push(tree.clone());

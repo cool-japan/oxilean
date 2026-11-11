@@ -39,14 +39,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ ! -x "$BIN" ]]; then
-    echo "building release oxilean-verify ..." >&2
-    ( cd "$ROOT" && cargo build --release -p oxilean-verify )
-fi
+echo "building release oxilean-verify ..." >&2
+( cd "$ROOT" && cargo build --release -p oxilean-verify )
 
 # --- machine specs -----------------------------------------------------------
 CPU="$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | sed 's/^ //' || echo unknown)"
-CORES="$(nproc 2>/dev/null || echo '?')"
+CORES="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo '?')"
 MEM_KB="$(grep -m1 MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo 0)"
 MEM_GB="$(python3 -c "print(f'{${MEM_KB:-0}/1024/1024:.1f}')")"
 OS="$(uname -sr)"

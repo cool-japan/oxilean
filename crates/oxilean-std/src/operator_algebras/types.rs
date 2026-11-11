@@ -1065,7 +1065,7 @@ impl SpectralTripleData {
             algebra: format!("C(T^{})", n),
             hilbert_space: format!("L²(T^{}, S)", n),
             dirac_operator: format!("D_T^{}", n),
-            is_even: n % 2 == 0,
+            is_even: n.is_multiple_of(2),
             spectral_dim: n as f64,
         }
     }

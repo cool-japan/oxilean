@@ -665,14 +665,10 @@ impl Cfg {
                     }
                 }
                 [a] => {
-                    if a.chars().count() != 1
-                        || !term_set.contains(
-                            &a.chars().next().expect(
-                                "a has exactly one char: just checked by chars().count() == 1",
-                            ),
-                        )
-                    {
-                        return false;
+                    let mut chars = a.chars();
+                    match (chars.next(), chars.next()) {
+                        (Some(ch), None) if term_set.contains(&ch) => {}
+                        _ => return false,
                     }
                 }
                 [b, c] => {
@@ -831,14 +827,9 @@ impl TuringMachineSimulator {
             .map(|&s| {
                 self.tape_alphabet
                     .get(s)
-                    .map(|name| {
-                        if name.len() == 1 {
-                            name.chars()
-                                .next()
-                                .expect("name has length 1: just checked")
-                        } else {
-                            '?'
-                        }
+                    .map(|name| match (name.len(), name.chars().next()) {
+                        (1, Some(ch)) => ch,
+                        _ => '?',
                     })
                     .unwrap_or('?')
             })
@@ -951,3 +942,5 @@ impl BuchiAutomaton {
         false
     }
 }
+#[cfg(test)]
+mod single_char_tests;

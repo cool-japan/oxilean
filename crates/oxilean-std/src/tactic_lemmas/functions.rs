@@ -61,7 +61,7 @@ pub(super) fn type1() -> Expr {
 /// Sort u (universe parameter).
 #[allow(dead_code)]
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 /// Bound variable.
 #[allow(dead_code)]
@@ -601,7 +601,7 @@ pub fn build_tactic_lemmas_env(env: &mut Environment) -> Result<(), String> {
         pi(
             BinderInfo::Implicit,
             "β",
-            Expr::Sort(Level::Param(Name::str("v"))),
+            Expr::Sort(Level::param(Name::str("v"))),
             pi(
                 BinderInfo::Default,
                 "f",

@@ -31,7 +31,7 @@ pub(super) fn extract_class_name(ty: &Expr) -> Name {
     }
     match e {
         Expr::Const(name, _) => name.clone(),
-        _ => Name::Anonymous,
+        _ => Name::anonymous(),
     }
 }
 /// Check if two goals are structurally similar (for loop detection).

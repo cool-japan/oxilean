@@ -10,7 +10,6 @@ use super::functions::RUBY_RUNTIME;
 use super::functions::*;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
-use std::fmt::Write as FmtWrite;
 
 /// Ruby name mangler
 #[allow(dead_code)]
@@ -1115,55 +1114,57 @@ impl RubyModule {
     /// Generate valid Ruby source for this module.
     pub fn emit(&self) -> std::string::String {
         let mut out = std::string::String::new();
-        writeln!(out, "# frozen_string_literal: true").expect("writing to String never fails");
-        writeln!(out).expect("writing to String never fails");
+        out.push_str("# frozen_string_literal: true\n\n");
         self.emit_module_body(&mut out, "");
         out
     }
     pub(super) fn emit_module_body(&self, out: &mut std::string::String, indent: &str) {
         let inner = format!("{}  ", indent);
-        writeln!(out, "{}module {}", indent, self.name).expect("writing to String never fails");
+        out.push_str(&format!("{}module {}\n", indent, self.name));
+        // The `format!` of a `RubyExpr` here and the two `to_string`s of a
+        // formatter adaptor below meet no error, as no `format!` here does:
+        // the Ruby formatters (`fmt_ruby_class`, `fmt_ruby_method` and the
+        // `Display` impls of the items they print) apply `?` only to writes
+        // into their `Formatter`, and no code in this crate constructs a
+        // `fmt::Error`, so an error could come only from the `String` behind
+        // the `Formatter`, and writing into a `String` never fails.
         for (name, expr) in &self.constants {
-            writeln!(out, "{}{} = {}", inner, name, expr).expect("writing to String never fails");
+            out.push_str(&format!("{}{} = {}\n", inner, name, expr));
         }
         if !self.constants.is_empty() {
-            writeln!(out).expect("writing to String never fails");
+            out.push('\n');
         }
         for submod in &self.submodules {
             submod.emit_module_body(out, &inner);
-            writeln!(out).expect("writing to String never fails");
+            out.push('\n');
         }
         for class in &self.classes {
-            let mut fmt_buf = std::string::String::new();
             struct Wrapper<'a>(&'a RubyClass, &'a str);
             impl fmt::Display for Wrapper<'_> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     fmt_ruby_class(self.0, self.1, f)
                 }
             }
-            write!(fmt_buf, "{}", Wrapper(class, &inner)).expect("writing to String never fails");
-            out.push_str(&fmt_buf);
-            writeln!(out).expect("writing to String never fails");
+            // Meets no error: see the comment on the constants above.
+            out.push_str(&Wrapper(class, &inner).to_string());
+            out.push('\n');
         }
         if !self.functions.is_empty() {
             if self.module_function {
-                writeln!(out, "{}module_function", inner).expect("writing to String never fails");
-                writeln!(out).expect("writing to String never fails");
+                out.push_str(&format!("{}module_function\n\n", inner));
             }
             for method in &self.functions {
-                let mut fmt_buf = std::string::String::new();
                 struct Wrapper<'a>(&'a RubyMethod, &'a str);
                 impl fmt::Display for Wrapper<'_> {
                     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                         fmt_ruby_method(self.0, self.1, f)
                     }
                 }
-                write!(fmt_buf, "{}", Wrapper(method, &inner))
-                    .expect("writing to String never fails");
-                out.push_str(&fmt_buf);
+                // Meets no error: see the comment on the constants above.
+                out.push_str(&Wrapper(method, &inner).to_string());
             }
         }
-        writeln!(out, "{}end", indent).expect("writing to String never fails");
+        out.push_str(&format!("{}end\n", indent));
     }
 }
 /// Ruby feature flags
@@ -1557,3 +1558,6 @@ impl RubyDiagSink {
         self.diags.iter().any(|(l, _)| *l == RubyDiagLevel::Error)
     }
 }
+
+#[cfg(test)]
+mod emit_tests;

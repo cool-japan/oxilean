@@ -504,7 +504,7 @@ impl JumpTable {
         }
         let first = self.entries[0].arm_idx;
         self.entries.iter().all(|e| e.arm_idx == first)
-            && self.default_arm.map_or(true, |d| d == first)
+            && self.default_arm.is_none_or(|d| d == first)
     }
 }
 /// Extended size statistics for a decision tree.

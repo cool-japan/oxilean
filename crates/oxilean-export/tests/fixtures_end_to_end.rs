@@ -1,4 +1,4 @@
-//! End-to-end parse of all six lean4export fixtures, with exact per-record
+//! End-to-end parse of all fourteen lean4export fixtures, with exact per-record
 //! counts, plus golden shape checks against `Nat.add_succ`.
 //!
 //! The counts below are ground truth, extracted from the fixture files
@@ -52,6 +52,11 @@ struct Expected {
 }
 
 fn assert_counts(fixture_name: &str, s: &ReadStats, e: &Expected) {
+    assert_counts_with_opaque(fixture_name, s, e, 0);
+}
+
+/// [`assert_counts`] for a fixture that has `decl_opaque` opaque records.
+fn assert_counts_with_opaque(fixture_name: &str, s: &ReadStats, e: &Expected, decl_opaque: usize) {
     let pairs: [(&str, usize, usize); 21] = [
         ("total_lines", s.total_lines, e.total_lines),
         ("name_str", s.name_str, e.name_str),
@@ -81,16 +86,13 @@ fn assert_counts(fixture_name: &str, s: &ReadStats, e: &Expected) {
             "{fixture_name}: {field} mismatch (got {got}, want {want})"
         );
     }
-    // No fixture uses strVal, mdata, or opaque records.
+    // No fixture uses strVal or mdata records; one has opaque records.
     assert_eq!(
         s.expr_str_lit, 0,
         "{fixture_name}: unexpected strVal records"
     );
     assert_eq!(s.expr_mdata, 0, "{fixture_name}: unexpected mdata records");
-    assert_eq!(
-        s.decl_opaque, 0,
-        "{fixture_name}: unexpected opaque records"
-    );
+    assert_eq!(s.decl_opaque, decl_opaque, "{fixture_name}: opaque records");
 }
 
 #[test]
@@ -99,7 +101,13 @@ fn nat_add_succ_parses_with_exact_counts() {
     // array-wrapped {"def":[{...}]} / {"thm":[{...}]} payloads and the
     // inductiveVals/constructorVals/recursorVals inductive keys.
     let f = parse_fixture("Nat.add_succ");
-    assert_eq!(f.meta.format_version, "3.0.0");
+    assert_eq!(
+        f.meta.format_version, "3.0.0",
+        "Nat.add_succ.ndjson must be lean4export's own format-3.0.0 example \
+         (see tests/fixtures/lean4export/README.md), not a re-export with the \
+         pinned toolchain; restore it with \
+         `git checkout -- tests/fixtures/lean4export/Nat.add_succ.ndjson`"
+    );
     assert_eq!(f.meta.format_major(), Some(3));
     assert_eq!(f.meta.exporter_name, "lean4export");
     assert_eq!(f.meta.lean_version, "4.27.0-rc1");
@@ -334,6 +342,313 @@ fn tree_forest_full_parses_with_exact_counts() {
         },
     );
     assert_eq!(f.decls.len(), 37);
+}
+
+#[test]
+fn syntax_parses_with_exact_counts() {
+    // Lean core's `Lean.Syntax` with its transitive dependencies: the nested
+    // inductive fixture (`numNested = 2`).
+    let f = parse_fixture("Syntax");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts(
+        "Syntax",
+        &f.stats,
+        &Expected {
+            total_lines: 10040,
+            name_str: 1110,
+            name_num: 594,
+            level_succ: 9,
+            level_max: 8,
+            level_imax: 0,
+            level_param: 7,
+            expr_bvar: 22,
+            expr_sort: 18,
+            expr_const: 454,
+            expr_app: 4281,
+            expr_lam: 1709,
+            expr_forall: 1503,
+            expr_let: 11,
+            expr_proj: 25,
+            expr_nat_lit: 19,
+            decl_axiom: 0,
+            decl_def: 177,
+            decl_thm: 47,
+            decl_quot: 0,
+            decl_inductive: 45,
+        },
+    );
+    // 177 defs + 47 thms + 45 inductive bundles = 269 (per README).
+    assert_eq!(f.decls.len(), 269);
+}
+
+#[test]
+fn quot_partial_app_parses_with_exact_counts() {
+    // The point-free quotient fixture: the full Quot package, the `Quot.sound`
+    // axiom, and structure projections.
+    let f = parse_fixture("QuotPartialApp");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts(
+        "QuotPartialApp",
+        &f.stats,
+        &Expected {
+            total_lines: 1930,
+            name_str: 228,
+            name_num: 65,
+            level_succ: 7,
+            level_max: 5,
+            level_imax: 0,
+            level_param: 9,
+            expr_bvar: 13,
+            expr_sort: 18,
+            expr_const: 148,
+            expr_app: 702,
+            expr_lam: 255,
+            expr_forall: 402,
+            expr_let: 0,
+            expr_proj: 10,
+            expr_nat_lit: 1,
+            decl_axiom: 1,
+            decl_def: 33,
+            decl_thm: 16,
+            decl_quot: 4,
+            decl_inductive: 12,
+        },
+    );
+    // 1 axiom + 33 defs + 16 thms + 4 quots + 12 inductive bundles = 66 (per README).
+    assert_eq!(f.decls.len(), 66);
+}
+
+#[test]
+fn k_guard_collision_parses_with_exact_counts() {
+    // The negative fixture: one axiom, the `Eq` and `Nat` bundles, and one
+    // theorem that Lean's kernel rejects. It PARSES like any other export —
+    // being wrong is the replayer's finding, not the reader's.
+    let f = parse_fixture("KGuardCollision");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts(
+        "KGuardCollision",
+        &f.stats,
+        &Expected {
+            total_lines: 165,
+            name_str: 35,
+            name_num: 4,
+            level_succ: 1,
+            level_max: 0,
+            level_imax: 0,
+            level_param: 2,
+            expr_bvar: 7,
+            expr_sort: 4,
+            expr_const: 10,
+            expr_app: 42,
+            expr_lam: 28,
+            expr_forall: 27,
+            expr_let: 0,
+            expr_proj: 0,
+            expr_nat_lit: 0,
+            decl_axiom: 1,
+            decl_def: 0,
+            decl_thm: 1,
+            decl_quot: 0,
+            decl_inductive: 2,
+        },
+    );
+    // 1 axiom + 1 thm + 2 inductive bundles = 4 (per README).
+    assert_eq!(f.decls.len(), 4);
+}
+
+#[test]
+fn reduction_chain_parses_with_exact_counts() {
+    // The long head-reduction chain fixture (`decide +kernel` over `Nat.rec`).
+    let f = parse_fixture("ReductionChain");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts(
+        "ReductionChain",
+        &f.stats,
+        &Expected {
+            total_lines: 992,
+            name_str: 160,
+            name_num: 53,
+            level_succ: 2,
+            level_max: 1,
+            level_imax: 0,
+            level_param: 5,
+            expr_bvar: 8,
+            expr_sort: 9,
+            expr_const: 62,
+            expr_app: 344,
+            expr_lam: 153,
+            expr_forall: 155,
+            expr_let: 0,
+            expr_proj: 1,
+            expr_nat_lit: 2,
+            decl_axiom: 0,
+            decl_def: 22,
+            decl_thm: 7,
+            decl_quot: 0,
+            decl_inductive: 7,
+        },
+    );
+    // 22 defs + 7 thms + 7 inductive bundles = 36 (per README).
+    assert_eq!(f.decls.len(), 36);
+}
+
+#[test]
+fn shared_subterms_parses_with_exact_counts() {
+    // The let-tower fixture: sixty `let`s, each used twice by the next.
+    let f = parse_fixture("SharedSubterms");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts(
+        "SharedSubterms",
+        &f.stats,
+        &Expected {
+            total_lines: 2240,
+            name_str: 322,
+            name_num: 129,
+            level_succ: 7,
+            level_max: 4,
+            level_imax: 0,
+            level_param: 6,
+            expr_bvar: 14,
+            expr_sort: 14,
+            expr_const: 107,
+            expr_app: 812,
+            expr_lam: 356,
+            expr_forall: 335,
+            expr_let: 64,
+            expr_proj: 7,
+            expr_nat_lit: 2,
+            decl_axiom: 0,
+            decl_def: 43,
+            decl_thm: 7,
+            decl_quot: 0,
+            decl_inductive: 10,
+        },
+    );
+    // 43 defs + 7 thms + 10 inductive bundles = 60 (per README).
+    assert_eq!(f.decls.len(), 60);
+}
+
+#[test]
+fn congruence_first_parses_with_exact_counts() {
+    // Three `rfl` theorems that need congruence before unfolding, and one
+    // theorem Lean's kernel rejects. The only fixture with `opaque` records
+    // (`CongruenceFirst.k` and `System.Platform.getNumBits`).
+    let f = parse_fixture("CongruenceFirst");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts_with_opaque(
+        "CongruenceFirst",
+        &f.stats,
+        &Expected {
+            total_lines: 7018,
+            name_str: 764,
+            name_num: 430,
+            level_succ: 8,
+            level_max: 4,
+            level_imax: 0,
+            level_param: 7,
+            expr_bvar: 22,
+            expr_sort: 16,
+            expr_const: 297,
+            expr_app: 3137,
+            expr_lam: 1127,
+            expr_forall: 983,
+            expr_let: 9,
+            expr_proj: 18,
+            expr_nat_lit: 10,
+            decl_axiom: 0,
+            decl_def: 117,
+            decl_thm: 39,
+            decl_quot: 0,
+            decl_inductive: 27,
+        },
+        2,
+    );
+    // 117 defs + 39 thms + 2 opaques + 27 inductive bundles = 185 (per README).
+    assert_eq!(f.decls.len(), 185);
+}
+
+#[test]
+fn nested_reduction_parses_with_exact_counts() {
+    // Two theorems by kernel evaluation of a structural recursion (four
+    // hundred steps and forty), and one theorem Lean's kernel rejects.
+    let f = parse_fixture("NestedReduction");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts(
+        "NestedReduction",
+        &f.stats,
+        &Expected {
+            total_lines: 2237,
+            name_str: 279,
+            name_num: 141,
+            level_succ: 7,
+            level_max: 4,
+            level_imax: 0,
+            level_param: 6,
+            expr_bvar: 14,
+            expr_sort: 14,
+            expr_const: 110,
+            expr_app: 862,
+            expr_lam: 375,
+            expr_forall: 344,
+            expr_let: 3,
+            expr_proj: 7,
+            expr_nat_lit: 5,
+            decl_axiom: 0,
+            decl_def: 45,
+            decl_thm: 10,
+            decl_quot: 0,
+            decl_inductive: 10,
+        },
+    );
+    // 45 defs + 10 thms + 10 inductive bundles = 65 (per README).
+    assert_eq!(f.decls.len(), 65);
+}
+
+#[test]
+fn deep_term_parses_with_exact_counts() {
+    // A term three hundred applications deep, an equation between two such
+    // terms, and one equation Lean's kernel rejects. 633 of the file's 720
+    // records are applications.
+    let f = parse_fixture("DeepTerm");
+    assert_eq!(f.meta.format_version, "3.1.0");
+    assert_eq!(f.meta.lean_version, "4.32.0-rc1");
+    assert_counts(
+        "DeepTerm",
+        &f.stats,
+        &Expected {
+            total_lines: 720,
+            name_str: 26,
+            name_num: 1,
+            level_succ: 1,
+            level_max: 0,
+            level_imax: 0,
+            level_param: 2,
+            expr_bvar: 5,
+            expr_sort: 4,
+            expr_const: 9,
+            expr_app: 633,
+            expr_lam: 11,
+            expr_forall: 21,
+            expr_let: 0,
+            expr_proj: 0,
+            expr_nat_lit: 0,
+            decl_axiom: 0,
+            decl_def: 2,
+            decl_thm: 2,
+            decl_quot: 0,
+            decl_inductive: 2,
+        },
+    );
+    // 2 defs + 2 thms + 2 inductive bundles = 6 (per README).
+    assert_eq!(f.decls.len(), 6);
+    assert_eq!(f.stats.decl_oversized, 0, "no limit on this thread");
 }
 
 // --- Golden shape checks: Nat.add_succ's thm record -----------------------

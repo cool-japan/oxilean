@@ -3,8 +3,9 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::expr_util::lift_loose_bvars;
+use crate::node_memo::NodeMemo;
 use crate::Node;
-use crate::{Expr, FVarId, Level, Name};
+use crate::{Expr, FVarId, Level, LevelView, Name};
 use std::rc::Rc;
 
 use super::types::{
@@ -145,63 +146,91 @@ fn instantiate_many_at(expr: &Expr, subst: &[Expr], offset: u32) -> Expr {
 /// Given a constant's type with universe parameters `[u, v]` and
 /// concrete levels `[1, 2]`, replaces all occurrences of `Level::Param("u")`
 /// with `Level::succ(Level::zero())` etc.
+///
+/// The result shares with `ty` every subterm that mentions no universe
+/// parameter — the same allocation, passed over without being visited (the
+/// fact is read off the [`Node`]) — and a shared subterm that does mention
+/// one is instantiated once (as in `subst::instantiate`). Unfolding a
+/// universe-polymorphic definition therefore rebuilds the paths down to its
+/// `Sort`s and polymorphic constants and nothing else. One unit of fuel per
+/// subterm the walk reaches.
 pub fn instantiate_type_lparams(ty: &Expr, param_names: &[Name], levels: &[Level]) -> Expr {
-    if param_names.is_empty() || levels.is_empty() {
+    if param_names.is_empty() || levels.is_empty() || !ty.has_level_param() {
         return ty.clone();
     }
-    instantiate_type_lparams_core(ty, param_names, levels)
-}
-fn instantiate_type_lparams_core(expr: &Expr, param_names: &[Name], levels: &[Level]) -> Expr {
-    // C16b: one fuel unit per visited (rebuilt) node; see subst::instantiate_at.
+    let mut walk = InstantiateLevelParams {
+        param_names,
+        levels,
+        done: NodeMemo::new(),
+    };
     crate::fuel::charge(1);
-    match expr {
-        Expr::Sort(l) => {
-            let new_l = instantiate_level_param(l, param_names, levels);
-            Expr::Sort(new_l)
+    walk.rebuild(ty)
+}
+
+/// One [`instantiate_type_lparams`] call.
+struct InstantiateLevelParams<'term, 'subst> {
+    param_names: &'subst [Name],
+    levels: &'subst [Level],
+    /// The instantiated form of each shared subterm the walk has finished.
+    /// (The substitution does not depend on the binder depth; every entry
+    /// is stored at depth 0.)
+    done: NodeMemo<'term, Node>,
+}
+
+impl<'term> InstantiateLevelParams<'term, '_> {
+    /// The substitution applied to a child edge.
+    fn node(&mut self, node: &'term Node) -> Node {
+        crate::fuel::charge(1);
+        if !node.has_level_param() {
+            // No universe parameter anywhere below: untouched.
+            return node.clone();
         }
-        Expr::Const(name, ls) => {
-            let new_ls: Vec<Level> = ls
-                .iter()
-                .map(|l| instantiate_level_param(l, param_names, levels))
-                .collect();
-            Expr::Const(name.clone(), new_ls)
+        // (A shared `Sort` or `Const` is remembered like any other subterm:
+        // instantiating its levels and allocating it again costs more than
+        // finding it, and one polymorphic constant is typically referenced
+        // from many places of a definition.)
+        let shared = node.is_shared();
+        if shared {
+            if let Some(done) = self.done.get(node, 0) {
+                return done.clone();
+            }
         }
-        Expr::App(f, a) => {
-            let f_new = instantiate_type_lparams_core(f, param_names, levels);
-            let a_new = instantiate_type_lparams_core(a, param_names, levels);
-            Expr::App(Node::new(f_new), Node::new(a_new))
+        let result = Node::new(self.rebuild(node));
+        if shared {
+            self.done.insert(node, 0, result.clone());
         }
-        Expr::Lam(bi, name, ty, body) => {
-            let ty_new = instantiate_type_lparams_core(ty, param_names, levels);
-            let body_new = instantiate_type_lparams_core(body, param_names, levels);
-            Expr::Lam(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
+        result
+    }
+
+    /// Rebuild `expr`, which mentions a universe parameter.
+    fn rebuild(&mut self, expr: &'term Expr) -> Expr {
+        match expr {
+            Expr::Sort(l) => Expr::Sort(instantiate_level_param(l, self.param_names, self.levels)),
+            Expr::Const(name, ls) => {
+                let new_ls: Vec<Level> = ls
+                    .iter()
+                    .map(|l| instantiate_level_param(l, self.param_names, self.levels))
+                    .collect();
+                Expr::Const(name.clone(), new_ls)
+            }
+            Expr::App(f, a) => Expr::App(self.node(f), self.node(a)),
+            Expr::Lam(bi, name, ty, body) => {
+                Expr::Lam(*bi, name.clone(), self.node(ty), self.node(body))
+            }
+            Expr::Pi(bi, name, ty, body) => {
+                Expr::Pi(*bi, name.clone(), self.node(ty), self.node(body))
+            }
+            Expr::Let(name, ty, val, body) => {
+                Expr::Let(name.clone(), self.node(ty), self.node(val), self.node(body))
+            }
+            Expr::Proj(name, idx, e) => Expr::Proj(name.clone(), *idx, self.node(e)),
+            Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => expr.clone(),
         }
-        Expr::Pi(bi, name, ty, body) => {
-            let ty_new = instantiate_type_lparams_core(ty, param_names, levels);
-            let body_new = instantiate_type_lparams_core(body, param_names, levels);
-            Expr::Pi(*bi, name.clone(), Node::new(ty_new), Node::new(body_new))
-        }
-        Expr::Let(name, ty, val, body) => {
-            let ty_new = instantiate_type_lparams_core(ty, param_names, levels);
-            let val_new = instantiate_type_lparams_core(val, param_names, levels);
-            let body_new = instantiate_type_lparams_core(body, param_names, levels);
-            Expr::Let(
-                name.clone(),
-                Node::new(ty_new),
-                Node::new(val_new),
-                Node::new(body_new),
-            )
-        }
-        Expr::Proj(name, idx, e) => {
-            let e_new = instantiate_type_lparams_core(e, param_names, levels);
-            Expr::Proj(name.clone(), *idx, Node::new(e_new))
-        }
-        Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => expr.clone(),
     }
 }
 fn instantiate_level_param(level: &Level, param_names: &[Name], levels: &[Level]) -> Level {
-    match level {
-        Level::Param(name) => {
+    match level.view() {
+        LevelView::Param(name) => {
             for (i, pn) in param_names.iter().enumerate() {
                 if pn == name {
                     if let Some(l) = levels.get(i) {
@@ -211,16 +240,16 @@ fn instantiate_level_param(level: &Level, param_names: &[Name], levels: &[Level]
             }
             level.clone()
         }
-        Level::Succ(l) => Level::succ(instantiate_level_param(l, param_names, levels)),
-        Level::Max(l1, l2) => Level::max(
+        LevelView::Succ(l) => Level::succ(instantiate_level_param(l, param_names, levels)),
+        LevelView::Max(l1, l2) => Level::max(
             instantiate_level_param(l1, param_names, levels),
             instantiate_level_param(l2, param_names, levels),
         ),
-        Level::IMax(l1, l2) => Level::imax(
+        LevelView::IMax(l1, l2) => Level::imax(
             instantiate_level_param(l1, param_names, levels),
             instantiate_level_param(l2, param_names, levels),
         ),
-        Level::Zero | Level::MVar(_) => level.clone(),
+        LevelView::Zero | LevelView::MVar(_) => level.clone(),
     }
 }
 /// Replace expression metavariables using a substitution function.
@@ -643,6 +672,194 @@ pub fn is_whnf_simple(expr: &Expr) -> bool {
         Expr::App(f, _) => !matches!(f.as_ref(), Expr::Lam(_, _, _, _)),
         Expr::Let(_, _, _, _) => false,
         _ => true,
+    }
+}
+#[cfg(test)]
+mod instantiate_shared_tests {
+    //! Universe instantiation over terms with shared subterms: the same
+    //! result as rebuilding every node, with what mentions no universe
+    //! parameter left in place and a shared subterm instantiated once.
+    use super::*;
+    use crate::{BinderInfo, Expr, FVarId, Level, Name};
+
+    /// Reference: every node rebuilt, nothing shared (the implementation
+    /// through 0.1.4's first performance pass).
+    fn reference(expr: &Expr, param_names: &[Name], levels: &[Level]) -> Expr {
+        let again = |e: &Node| Node::new(reference(e, param_names, levels));
+        match expr {
+            Expr::Sort(l) => Expr::Sort(instantiate_level_param(l, param_names, levels)),
+            Expr::Const(name, ls) => Expr::Const(
+                name.clone(),
+                ls.iter()
+                    .map(|l| instantiate_level_param(l, param_names, levels))
+                    .collect(),
+            ),
+            Expr::App(f, a) => Expr::App(again(f), again(a)),
+            Expr::Lam(bi, name, ty, body) => Expr::Lam(*bi, name.clone(), again(ty), again(body)),
+            Expr::Pi(bi, name, ty, body) => Expr::Pi(*bi, name.clone(), again(ty), again(body)),
+            Expr::Let(name, ty, val, body) => {
+                Expr::Let(name.clone(), again(ty), again(val), again(body))
+            }
+            Expr::Proj(name, idx, e) => Expr::Proj(name.clone(), *idx, again(e)),
+            Expr::BVar(_) | Expr::FVar(_) | Expr::Lit(_) => expr.clone(),
+        }
+    }
+
+    fn lcg(state: &mut u64) -> u64 {
+        *state = state
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        *state >> 33
+    }
+
+    fn param(name: &str) -> Level {
+        Level::param(Name::str(name))
+    }
+
+    /// A random term that reuses subterms it has already built; some of its
+    /// leaves mention the universe parameters `u`, `v` and `w`.
+    fn random_dag(state: &mut u64, steps: usize) -> Expr {
+        fn leaf(state: &mut u64) -> Expr {
+            let name = ["u", "v", "w"][(lcg(state) % 3) as usize];
+            match lcg(state) % 6 {
+                0 => Expr::BVar((lcg(state) % 3) as u32),
+                1 => Expr::Sort(Level::succ(param(name))),
+                2 => Expr::FVar(FVarId(lcg(state) % 3)),
+                3 => Expr::Const(
+                    Name::str("d"),
+                    vec![Level::max(param(name), Level::zero()), param("u")],
+                ),
+                4 => Expr::Sort(Level::zero()),
+                _ => Expr::Const(Name::str("c"), Vec::new()),
+            }
+        }
+        let mut pool: Vec<Node> = (0..4).map(|_| Node::new(leaf(state))).collect();
+        for _ in 0..steps {
+            let pick = |state: &mut u64, pool: &Vec<Node>| -> Node {
+                if lcg(state).is_multiple_of(4) {
+                    Node::new(leaf(state))
+                } else {
+                    pool[(lcg(state) as usize) % pool.len()].clone()
+                }
+            };
+            let node = match lcg(state) % 6 {
+                0 | 1 => Expr::App(pick(state, &pool), pick(state, &pool)),
+                2 => Expr::Lam(
+                    BinderInfo::Default,
+                    Name::str("x"),
+                    pick(state, &pool),
+                    pick(state, &pool),
+                ),
+                3 => Expr::Pi(
+                    BinderInfo::Default,
+                    Name::str("x"),
+                    pick(state, &pool),
+                    pick(state, &pool),
+                ),
+                4 => Expr::Let(
+                    Name::str("x"),
+                    pick(state, &pool),
+                    pick(state, &pool),
+                    pick(state, &pool),
+                ),
+                _ => Expr::Proj(Name::str("S"), 0, pick(state, &pool)),
+            };
+            pool.push(Node::new(node));
+        }
+        let last = pool.len() - 1;
+        (*pool[last]).clone()
+    }
+
+    #[test]
+    fn matches_rebuilding_every_node() {
+        let names = [Name::str("u"), Name::str("v")];
+        let levels = [Level::succ(Level::zero()), param("q")];
+        let mut state = 0x1e7e_1000_0000_0001_u64;
+        let mut changed = 0;
+        for i in 0..3000 {
+            let term = loop {
+                let term = random_dag(&mut state, 11);
+                if term.rebuild_cost() <= 20_000 {
+                    break term;
+                }
+            };
+            let got = instantiate_type_lparams(&term, &names, &levels);
+            let want = reference(&term, &names, &levels);
+            assert_eq!(got, want, "term {i}: {term:?}");
+            if got != term {
+                changed += 1;
+            }
+            // `w` is not in the list and stays; fewer levels than names
+            // leaves the names without a level alone.
+            let got = instantiate_type_lparams(&term, &names, &levels[..1]);
+            assert_eq!(got, reference(&term, &names, &levels[..1]), "term {i}");
+        }
+        assert!(changed > 1000, "{changed} terms changed");
+        // Nothing to substitute: the term comes back as it is.
+        let term = random_dag(&mut state, 8);
+        assert_eq!(instantiate_type_lparams(&term, &[], &levels), term);
+        assert_eq!(instantiate_type_lparams(&term, &names, &[]), term);
+    }
+
+    /// `xₖ₊₁ = xₖ xₖ`, both children one allocation.
+    fn tower(leaf: Expr, height: u32) -> Expr {
+        let mut term = leaf;
+        for _ in 0..height {
+            let shared = Node::new(term);
+            term = Expr::App(shared.clone(), shared);
+        }
+        term
+    }
+
+    #[test]
+    fn what_mentions_no_universe_parameter_is_left_in_place() {
+        let names = [Name::str("u")];
+        let levels = [Level::zero()];
+        // 22 levels: 2^22 leaves as a tree — tall enough to tell a walk of
+        // the shared term from a walk of the tree, short enough that the
+        // latter still finishes and fails the assertions below.
+        let closed = Node::new(tower(Expr::Const(Name::str("c"), Vec::new()), 22));
+        let polymorphic = Node::new(tower(Expr::Sort(param("u")), 22));
+        let term = Expr::App(closed.clone(), polymorphic.clone());
+
+        crate::fuel::set_budget(Some(u64::MAX));
+        let result = instantiate_type_lparams(&term, &names, &levels);
+        let used = crate::fuel::used();
+        crate::fuel::set_budget(None);
+
+        let Expr::App(left, right) = &result else {
+            panic!("an application, got {result:?}");
+        };
+        // No parameter below: the same allocation, never entered.
+        assert!(Node::ptr_eq(left, &closed));
+        // The polymorphic tower — 2^22 `Sort u` as a tree — is instantiated
+        // once per allocation and stays a tower.
+        assert!(!Node::ptr_eq(right, &polymorphic));
+        assert!(crate::term_cache::same_term(
+            right,
+            &tower(Expr::Sort(Level::zero()), 22)
+        ));
+        let mut cur: &Expr = right;
+        let mut levels_seen = 0;
+        while let Expr::App(f, a) = cur {
+            assert!(Node::ptr_eq(f, a), "level {levels_seen} was split in two");
+            cur = f;
+            levels_seen += 1;
+        }
+        assert_eq!(levels_seen, 22);
+        assert!(used < 300, "charged {used} units");
+    }
+
+    #[test]
+    fn a_parameter_that_is_not_substituted_keeps_the_term_equal() {
+        // `w` occurs, `u` is what gets substituted: the result is equal to
+        // the term (rebuilt along the paths to `w`, which is allowed).
+        let term = Expr::App(
+            Node::new(Expr::Sort(param("w"))),
+            Node::new(Expr::Const(Name::str("c"), Vec::new())),
+        );
+        let result = instantiate_type_lparams(&term, &[Name::str("u")], &[Level::zero()]);
+        assert_eq!(result, term);
     }
 }
 #[cfg(test)]
@@ -1185,10 +1402,10 @@ mod tests_padding3 {
         let mut calc = StackCalc::new();
         calc.push(3);
         calc.push(4);
-        calc.add();
+        assert_eq!(calc.add(), Some(7));
         assert_eq!(calc.peek(), Some(7));
         calc.push(2);
-        calc.mul();
+        assert_eq!(calc.mul(), Some(14));
         assert_eq!(calc.peek(), Some(14));
     }
 }

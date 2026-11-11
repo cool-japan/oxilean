@@ -444,7 +444,7 @@ pub fn build_hashset_env(env: &mut oxilean_kernel::Environment) -> Result<(), St
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let nat_ty = || -> Expr { cst("Nat") };
@@ -738,7 +738,7 @@ pub fn hs_ext_finite_set_type(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
@@ -765,7 +765,7 @@ pub fn hs_ext_membership_axioms(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -825,7 +825,7 @@ pub fn hs_ext_insert_delete_axioms(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let _prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1032,7 +1032,7 @@ pub fn hs_ext_union_laws(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
@@ -1180,7 +1180,7 @@ pub fn hs_ext_intersection_laws(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
@@ -1340,7 +1340,7 @@ pub fn hs_ext_difference_laws(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let prop = || -> Expr { Expr::Sort(Level::zero()) };
@@ -1471,7 +1471,7 @@ pub fn hs_ext_subset_partial_order(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let hashset_of = |ty: Expr| -> Expr { app(cst("HashSet"), ty) };
@@ -1584,7 +1584,7 @@ pub fn hs_ext_power_set_axioms(
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let nat_ty = || -> Expr { cst("Nat") };

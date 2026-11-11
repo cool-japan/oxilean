@@ -13,6 +13,6 @@ impl MetaContext {
     pub fn mk_fresh_level_mvar(&mut self) -> Level {
         let id = self.next_level_id;
         self.next_level_id += 1;
-        Level::MVar(oxilean_kernel::LevelMVarId(id))
+        Level::mvar(oxilean_kernel::LevelMVarId(id))
     }
 }

@@ -386,7 +386,7 @@ impl Profiler2 {
     pub(super) fn should_sample(&mut self) -> bool {
         self.event_counter = self.event_counter.wrapping_add(1);
         let rate = self.config.sample_rate as u64;
-        (self.event_counter % rate) == 0
+        self.event_counter.is_multiple_of(rate)
     }
 
     /// Push a raw event onto the ring buffer, evicting the oldest entry when

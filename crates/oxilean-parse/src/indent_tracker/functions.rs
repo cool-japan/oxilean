@@ -1016,7 +1016,7 @@ pub fn map_to_block_depths(source: &str, unit: usize) -> Vec<usize> {
 /// Checks whether a line is a continuation of the previous (hanging indent).
 #[allow(dead_code)]
 pub fn is_continuation_line(prev_indent: usize, cur_indent: usize, unit: usize) -> bool {
-    unit > 0 && cur_indent > prev_indent && (cur_indent - prev_indent) % unit != 0
+    unit > 0 && cur_indent > prev_indent && !(cur_indent - prev_indent).is_multiple_of(unit)
 }
 /// Produces a visual representation of the indent structure.
 #[allow(dead_code)]
@@ -1059,7 +1059,7 @@ pub fn is_well_formed_indentation(source: &str, unit: usize) -> bool {
             continue;
         }
         let cur = line.len() - line.trim_start().len();
-        if cur > prev && (cur - prev) % unit != 0 {
+        if cur > prev && !(cur - prev).is_multiple_of(unit) {
             return false;
         }
         if cur % unit != 0 {

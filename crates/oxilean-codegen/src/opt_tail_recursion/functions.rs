@@ -141,11 +141,12 @@ pub(super) fn try_introduce_accumulator(
         return None;
     }
     let (base_alt, _step_alt) = match &decl.body {
-        LcnfExpr::Case { alts, default, .. } if alts.len() == 1 && default.is_some() => {
+        LcnfExpr::Case {
+            alts,
+            default: Some(def),
+            ..
+        } if alts.len() == 1 => {
             let alt = &alts[0];
-            let def = default
-                .as_ref()
-                .expect("default is Some; guaranteed by pattern match condition default.is_some()");
             (alt, def.as_ref())
         }
         LcnfExpr::Case {

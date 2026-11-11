@@ -251,9 +251,7 @@ impl StringFormatter {
         if s.len() >= width {
             return s.to_string();
         }
-        let padding = std::iter::repeat(pad_char)
-            .take(width - s.len())
-            .collect::<String>();
+        let padding = std::iter::repeat_n(pad_char, width - s.len()).collect::<String>();
         format!("{}{}", padding, s)
     }
     /// Pad a string on the right to a minimum width.
@@ -261,9 +259,7 @@ impl StringFormatter {
         if s.len() >= width {
             return s.to_string();
         }
-        let padding = std::iter::repeat(pad_char)
-            .take(width - s.len())
-            .collect::<String>();
+        let padding = std::iter::repeat_n(pad_char, width - s.len()).collect::<String>();
         format!("{}{}", s, padding)
     }
     /// Convert a string to uppercase.

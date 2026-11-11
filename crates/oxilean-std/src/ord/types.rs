@@ -444,13 +444,11 @@ impl<T: Ord + Clone> MonotoneChain<T> {
     /// Try to extend the chain with `elem`. Returns `true` if successful
     /// (i.e., `elem` is greater than the last element).
     pub fn push(&mut self, elem: T) -> bool {
-        if self.elements.is_empty()
-            || *self
-                .elements
-                .last()
-                .expect("elements is non-empty: checked by is_empty")
-                < elem
-        {
+        let extends = match self.elements.last() {
+            None => true,
+            Some(last) => *last < elem,
+        };
+        if extends {
             self.elements.push(elem);
             true
         } else {

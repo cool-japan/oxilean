@@ -263,13 +263,9 @@ impl ProximalPointSolver {
     }
     /// Check convergence: last step size is smaller than tolerance.
     pub fn has_converged(&self, iterates: &[Vec<f64>]) -> bool {
-        if iterates.len() < 2 {
+        let [.., prev, last] = iterates else {
             return false;
-        }
-        let last = iterates
-            .last()
-            .expect("iterates has at least 2 elements: checked by early return");
-        let prev = &iterates[iterates.len() - 2];
+        };
         let diff: f64 = last
             .iter()
             .zip(prev.iter())

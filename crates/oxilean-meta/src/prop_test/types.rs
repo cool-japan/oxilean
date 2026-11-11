@@ -224,7 +224,7 @@ impl Rng {
         (self.next_u64() as usize) % max.max(1)
     }
     pub fn next_bool(&mut self) -> bool {
-        (self.next_u64() >> 33) % 2 == 0
+        (self.next_u64() >> 33).is_multiple_of(2)
     }
     pub fn next_u32(&mut self, max: u32) -> u32 {
         (self.next_u64() as u32) % max.max(1)

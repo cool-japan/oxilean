@@ -134,8 +134,8 @@ pub struct VerifyOptions {
     pub limits: Limits,
     /// Stop at the first [`Verdict::Rejected`] declaration.
     pub fail_fast: bool,
-    /// Deterministic per-declaration resource budget, in kernel `Expr` nodes
-    /// cloned (`None` = unlimited). A declaration that exhausts it lands in
+    /// Deterministic per-declaration resource budget, in units of kernel
+    /// work (`None` = unlimited). A declaration that exhausts it lands in
     /// the *unsupported* bucket with the named feature
     /// [`oxilean_export::RESOURCE_LIMIT`] — one declaration can never OOM
     /// the process. See `oxilean_kernel::fuel`.

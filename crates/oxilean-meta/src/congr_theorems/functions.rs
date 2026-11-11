@@ -615,7 +615,7 @@ pub fn rename_theorem(theorem: &MetaCongrTheorem, new_name: Name) -> MetaCongrTh
 /// Pad a theorem with additional wildcard (Fixed) arguments.
 pub fn pad_with_fixed(theorem: &MetaCongrTheorem, count: u32) -> MetaCongrTheorem {
     let mut new_kinds = theorem.arg_kinds.clone();
-    new_kinds.extend(std::iter::repeat(CongrArgKind::Fixed).take(count as usize));
+    new_kinds.extend(std::iter::repeat_n(CongrArgKind::Fixed, count as usize));
     MetaCongrTheorem {
         fn_name: theorem.fn_name.clone(),
         num_args: theorem.num_args + count,

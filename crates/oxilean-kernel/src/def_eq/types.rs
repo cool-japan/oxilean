@@ -16,197 +16,8 @@ use crate::{Environment, Expr, Level};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-/// A tagged union for representing a simple two-case discriminated union.
-#[allow(dead_code)]
-pub enum Either2<A, B> {
-    /// The first alternative.
-    First(A),
-    /// The second alternative.
-    Second(B),
-}
-#[allow(dead_code)]
-impl<A, B> Either2<A, B> {
-    /// Returns `true` if this is the first alternative.
-    pub fn is_first(&self) -> bool {
-        matches!(self, Either2::First(_))
-    }
-    /// Returns `true` if this is the second alternative.
-    pub fn is_second(&self) -> bool {
-        matches!(self, Either2::Second(_))
-    }
-    /// Returns the first value if present.
-    pub fn first(self) -> Option<A> {
-        match self {
-            Either2::First(a) => Some(a),
-            _ => None,
-        }
-    }
-    /// Returns the second value if present.
-    pub fn second(self) -> Option<B> {
-        match self {
-            Either2::Second(b) => Some(b),
-            _ => None,
-        }
-    }
-    /// Maps over the first alternative.
-    pub fn map_first<C, F: FnOnce(A) -> C>(self, f: F) -> Either2<C, B> {
-        match self {
-            Either2::First(a) => Either2::First(f(a)),
-            Either2::Second(b) => Either2::Second(b),
-        }
-    }
-}
-/// A mutable reference stack for tracking the current "focus" in a tree traversal.
-#[allow(dead_code)]
-pub struct FocusStack<T> {
-    items: Vec<T>,
-}
-#[allow(dead_code)]
-impl<T> FocusStack<T> {
-    /// Creates an empty focus stack.
-    pub fn new() -> Self {
-        Self { items: Vec::new() }
-    }
-    /// Focuses on `item`.
-    pub fn focus(&mut self, item: T) {
-        self.items.push(item);
-    }
-    /// Blurs (pops) the current focus.
-    pub fn blur(&mut self) -> Option<T> {
-        self.items.pop()
-    }
-    /// Returns the current focus, or `None`.
-    pub fn current(&self) -> Option<&T> {
-        self.items.last()
-    }
-    /// Returns the focus depth.
-    pub fn depth(&self) -> usize {
-        self.items.len()
-    }
-    /// Returns `true` if there is no current focus.
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
-}
-/// A simple ordered index mapping names to integer IDs.
-#[allow(dead_code)]
-#[derive(Debug, Clone, Default)]
-pub struct NameIndex {
-    names: Vec<String>,
-    index: std::collections::HashMap<String, usize>,
-}
-impl NameIndex {
-    /// Create a new empty name index.
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self::default()
-    }
-    /// Insert a name, returning its ID.
-    /// If the name is already present, returns the existing ID.
-    #[allow(dead_code)]
-    pub fn insert(&mut self, name: impl Into<String>) -> usize {
-        let name = name.into();
-        if let Some(&id) = self.index.get(&name) {
-            return id;
-        }
-        let id = self.names.len();
-        self.index.insert(name.clone(), id);
-        self.names.push(name);
-        id
-    }
-    /// Get the ID for a name, if it exists.
-    #[allow(dead_code)]
-    pub fn get_id(&self, name: &str) -> Option<usize> {
-        self.index.get(name).copied()
-    }
-    /// Get the name for an ID.
-    #[allow(dead_code)]
-    pub fn get_name(&self, id: usize) -> Option<&str> {
-        self.names.get(id).map(|s| s.as_str())
-    }
-    /// Get the number of names in the index.
-    #[allow(dead_code)]
-    pub fn len(&self) -> usize {
-        self.names.len()
-    }
-    /// Check if the index is empty.
-    #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        self.names.is_empty()
-    }
-    /// Get all names in insertion order.
-    #[allow(dead_code)]
-    pub fn all_names(&self) -> &[String] {
-        &self.names
-    }
-}
-/// A versioned record that stores a history of values.
-#[allow(dead_code)]
-pub struct VersionedRecord<T: Clone> {
-    history: Vec<T>,
-}
-#[allow(dead_code)]
-impl<T: Clone> VersionedRecord<T> {
-    /// Creates a new record with an initial value.
-    pub fn new(initial: T) -> Self {
-        Self {
-            history: vec![initial],
-        }
-    }
-    /// Updates the record with a new version.
-    pub fn update(&mut self, val: T) {
-        self.history.push(val);
-    }
-    /// Returns the current (latest) value.
-    pub fn current(&self) -> &T {
-        self.history
-            .last()
-            .expect("VersionedRecord history is always non-empty after construction")
-    }
-    /// Returns the value at version `n` (0-indexed), or `None`.
-    pub fn at_version(&self, n: usize) -> Option<&T> {
-        self.history.get(n)
-    }
-    /// Returns the version number of the current value.
-    pub fn version(&self) -> usize {
-        self.history.len() - 1
-    }
-    /// Returns `true` if more than one version exists.
-    pub fn has_history(&self) -> bool {
-        self.history.len() > 1
-    }
-}
-/// A type-erased function pointer with arity tracking.
-#[allow(dead_code)]
-pub struct RawFnPtr {
-    /// The raw function pointer (stored as usize for type erasure).
-    ptr: usize,
-    arity: usize,
-    name: String,
-}
-#[allow(dead_code)]
-impl RawFnPtr {
-    /// Creates a new raw function pointer descriptor.
-    pub fn new(ptr: usize, arity: usize, name: impl Into<String>) -> Self {
-        Self {
-            ptr,
-            arity,
-            name: name.into(),
-        }
-    }
-    /// Returns the arity.
-    pub fn arity(&self) -> usize {
-        self.arity
-    }
-    /// Returns the name.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-    /// Returns the raw pointer value.
-    pub fn raw(&self) -> usize {
-        self.ptr
-    }
-}
+pub use super::support_types::*;
+
 /// A batch checker that can check multiple pairs efficiently.
 #[allow(dead_code)]
 pub struct BatchDefEqChecker<'env> {
@@ -248,195 +59,6 @@ impl<'env> BatchDefEqChecker<'env> {
     pub fn reset(&mut self) {
         self.checker.cache.clear();
         self.checker.equiv_manager.clear();
-    }
-}
-/// A generic counter that tracks min/max/sum for statistical summaries.
-#[allow(dead_code)]
-pub struct StatSummary {
-    count: u64,
-    sum: f64,
-    min: f64,
-    max: f64,
-}
-#[allow(dead_code)]
-impl StatSummary {
-    /// Creates an empty summary.
-    pub fn new() -> Self {
-        Self {
-            count: 0,
-            sum: 0.0,
-            min: f64::INFINITY,
-            max: f64::NEG_INFINITY,
-        }
-    }
-    /// Records a sample.
-    pub fn record(&mut self, val: f64) {
-        self.count += 1;
-        self.sum += val;
-        if val < self.min {
-            self.min = val;
-        }
-        if val > self.max {
-            self.max = val;
-        }
-    }
-    /// Returns the mean, or `None` if no samples.
-    pub fn mean(&self) -> Option<f64> {
-        if self.count == 0 {
-            None
-        } else {
-            Some(self.sum / self.count as f64)
-        }
-    }
-    /// Returns the minimum, or `None` if no samples.
-    pub fn min(&self) -> Option<f64> {
-        if self.count == 0 {
-            None
-        } else {
-            Some(self.min)
-        }
-    }
-    /// Returns the maximum, or `None` if no samples.
-    pub fn max(&self) -> Option<f64> {
-        if self.count == 0 {
-            None
-        } else {
-            Some(self.max)
-        }
-    }
-    /// Returns the count of recorded samples.
-    pub fn count(&self) -> u64 {
-        self.count
-    }
-}
-/// A pair of `StatSummary` values tracking before/after a transformation.
-#[allow(dead_code)]
-pub struct TransformStat {
-    before: StatSummary,
-    after: StatSummary,
-}
-#[allow(dead_code)]
-impl TransformStat {
-    /// Creates a new transform stat recorder.
-    pub fn new() -> Self {
-        Self {
-            before: StatSummary::new(),
-            after: StatSummary::new(),
-        }
-    }
-    /// Records a before value.
-    pub fn record_before(&mut self, v: f64) {
-        self.before.record(v);
-    }
-    /// Records an after value.
-    pub fn record_after(&mut self, v: f64) {
-        self.after.record(v);
-    }
-    /// Returns the mean reduction ratio (after/before).
-    pub fn mean_ratio(&self) -> Option<f64> {
-        let b = self.before.mean()?;
-        let a = self.after.mean()?;
-        if b.abs() < f64::EPSILON {
-            return None;
-        }
-        Some(a / b)
-    }
-}
-/// A write-once cell.
-#[allow(dead_code)]
-pub struct WriteOnce<T> {
-    value: std::cell::Cell<Option<T>>,
-}
-#[allow(dead_code)]
-impl<T: Copy> WriteOnce<T> {
-    /// Creates an empty write-once cell.
-    pub fn new() -> Self {
-        Self {
-            value: std::cell::Cell::new(None),
-        }
-    }
-    /// Writes a value.  Returns `false` if already written.
-    pub fn write(&self, val: T) -> bool {
-        if self.value.get().is_some() {
-            return false;
-        }
-        self.value.set(Some(val));
-        true
-    }
-    /// Returns the value if written.
-    pub fn read(&self) -> Option<T> {
-        self.value.get()
-    }
-    /// Returns `true` if the value has been written.
-    pub fn is_written(&self) -> bool {
-        self.value.get().is_some()
-    }
-}
-/// A hierarchical configuration tree.
-#[allow(dead_code)]
-pub struct ConfigNode {
-    key: String,
-    value: Option<String>,
-    children: Vec<ConfigNode>,
-}
-#[allow(dead_code)]
-impl ConfigNode {
-    /// Creates a leaf config node with a value.
-    pub fn leaf(key: impl Into<String>, value: impl Into<String>) -> Self {
-        Self {
-            key: key.into(),
-            value: Some(value.into()),
-            children: Vec::new(),
-        }
-    }
-    /// Creates a section node with children.
-    pub fn section(key: impl Into<String>) -> Self {
-        Self {
-            key: key.into(),
-            value: None,
-            children: Vec::new(),
-        }
-    }
-    /// Adds a child node.
-    pub fn add_child(&mut self, child: ConfigNode) {
-        self.children.push(child);
-    }
-    /// Returns the key.
-    pub fn key(&self) -> &str {
-        &self.key
-    }
-    /// Returns the value, or `None` for section nodes.
-    pub fn value(&self) -> Option<&str> {
-        self.value.as_deref()
-    }
-    /// Returns the number of children.
-    pub fn num_children(&self) -> usize {
-        self.children.len()
-    }
-    /// Looks up a dot-separated path.
-    pub fn lookup(&self, path: &str) -> Option<&str> {
-        let mut parts = path.splitn(2, '.');
-        let head = parts.next()?;
-        let tail = parts.next();
-        if head != self.key {
-            return None;
-        }
-        match tail {
-            None => self.value.as_deref(),
-            Some(rest) => self.children.iter().find_map(|c| c.lookup_relative(rest)),
-        }
-    }
-    fn lookup_relative(&self, path: &str) -> Option<&str> {
-        let mut parts = path.splitn(2, '.');
-        let head = parts.next()?;
-        let tail = parts.next();
-        if head != self.key {
-            return None;
-        }
-        match tail {
-            None => self.value.as_deref(),
-            Some(rest) => self.children.iter().find_map(|c| c.lookup_relative(rest)),
-        }
     }
 }
 /// Statistics for a DefEq check run.
@@ -718,41 +340,36 @@ impl StackCalc {
     pub fn push(&mut self, n: i64) {
         self.stack.push(n);
     }
-    /// Adds the top two values.  Panics if fewer than two values.
-    pub fn add(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        self.stack.push(a + b);
+    /// Replaces the top two values, `b` on top of `a`, with `op(a, b)` and
+    /// returns it.  Returns `None`, leaving the stack unchanged, if it holds
+    /// fewer than two values.
+    fn apply_binary(&mut self, op: impl FnOnce(i64, i64) -> i64) -> Option<i64> {
+        let (rest_len, a, b) = match self.stack[..] {
+            [ref rest @ .., a, b] => (rest.len(), a, b),
+            _ => return None,
+        };
+        let value = op(a, b);
+        self.stack.truncate(rest_len);
+        self.stack.push(value);
+        Some(value)
     }
-    /// Subtracts top from second.
-    pub fn sub(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        self.stack.push(a - b);
+    /// Adds the top two values and returns the sum, which replaces them.
+    /// Returns `None`, leaving the stack unchanged, if it holds fewer than
+    /// two values.
+    pub fn add(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a + b)
     }
-    /// Multiplies the top two values.
-    pub fn mul(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        self.stack.push(a * b);
+    /// Subtracts top from second and returns the difference, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn sub(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a - b)
+    }
+    /// Multiplies the top two values and returns the product, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn mul(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a * b)
     }
     /// Peeks the top value.
     pub fn peek(&self) -> Option<i64> {
@@ -1268,6 +885,16 @@ pub struct DefEqChecker<'env> {
     reducer: Reducer,
     cache: HashMap<(Expr, Expr), bool>,
     equiv_manager: EquivManager,
+    /// Verdicts for the pairs too big, as trees, for `cache` and the
+    /// equivalence manager ([`DEF_EQ_CACHE_MAX_NODES`]) — by pair, compared
+    /// with the sharing-aware equality of `term_cache`. A heavily shared
+    /// term is big as a tree and small in memory; without this table every
+    /// path to such a pair compared it again.
+    big_pairs: crate::term_cache::PairCache<bool>,
+    /// The types `Self::quick_infer_type` has computed for terms with no
+    /// loose bound variable (their type does not depend on the binder
+    /// stack). Dropped with the other caches.
+    quick_types: crate::term_cache::TermCache<Expr>,
     proof_irrelevance: bool,
     /// Domain types of the binders the checker has descended under
     /// (outermost first). Entry `i` is expressed in the context of entries
@@ -1277,14 +904,16 @@ pub struct DefEqChecker<'env> {
     /// irrelevance) need when comparing open `Pi`/`Lam` bodies — Lean's
     /// kernel gets the same information from its local context.
     binder_types: Vec<Expr>,
-    /// Types of the free variables the surrounding `TypeChecker` has opened
-    /// (its local context), keyed by `FVarId`. This lets
-    /// `Self::quick_infer_type` type FVars, which one-sided eta expansion
-    /// (`eta_expand_one`) needs when a Pi-bound function is compared against
-    /// a lambda — e.g. Lean core's `funext`, where `f` must eta-expand to
-    /// match `fun x => extfunApp (Quot.mk eqv f) x`. Lean's kernel reads the
-    /// same information from its local context.
-    fvar_types: HashMap<u64, Expr>,
+    /// Types of the free variables in scope: those the surrounding
+    /// `TypeChecker` has opened (its local context) and those this checker
+    /// opened itself ([`Self::is_def_eq_under`]), keyed by `FVarId`. This
+    /// lets `Self::quick_infer_type` type FVars, which one-sided eta
+    /// expansion (`eta_expand_one`) needs when a Pi-bound function is
+    /// compared against a lambda — e.g. Lean core's `funext`, where `f` must
+    /// eta-expand to match `fun x => extfunApp (Quot.mk eqv f) x`. Lean's
+    /// kernel reads the same information from its local context. A variable
+    /// is removed when its binder closes ([`Self::forget_fvar_type`]).
+    fvar_types: crate::local_types::LocalTypes,
     /// The next id for a local free variable minted by
     /// [`Self::is_def_eq_under`] when opening a binder. Dispensed from a
     /// dedicated high range ([`DEF_EQ_OPENED_FVAR_BASE`]) so ids never
@@ -1293,7 +922,7 @@ pub struct DefEqChecker<'env> {
     next_opened_fvar: u64,
 }
 /// Base id for binder-opening free variables minted by the def-eq checker.
-const DEF_EQ_OPENED_FVAR_BASE: u64 = 1 << 62;
+pub(crate) const DEF_EQ_OPENED_FVAR_BASE: u64 = 1 << 62;
 /// Maximum AST size (in nodes) of either side of a pair retained in the
 /// def-eq cache / equivalence manager. Oversized pairs are recomputed
 /// instead of retained; verdicts are unchanged.
@@ -1306,9 +935,11 @@ impl<'env> DefEqChecker<'env> {
             reducer: Reducer::new(),
             cache: HashMap::new(),
             equiv_manager: EquivManager::new(),
+            big_pairs: crate::term_cache::PairCache::new(),
+            quick_types: crate::term_cache::TermCache::new(),
             proof_irrelevance: true,
             binder_types: Vec::new(),
-            fvar_types: HashMap::new(),
+            fvar_types: crate::local_types::LocalTypes::new(),
             next_opened_fvar: DEF_EQ_OPENED_FVAR_BASE,
         }
     }
@@ -1316,21 +947,69 @@ impl<'env> DefEqChecker<'env> {
     /// type checker, so `Self::quick_infer_type` can type it.
     ///
     /// `FVarId`s are dispensed monotonically by the `TypeChecker` and never
-    /// reused, so recorded types are stable for the checker's lifetime and
-    /// cached def-eq verdicts stay sound. Defensively, if a caller *does*
-    /// re-bind an id to a different type (only possible through the public
-    /// `TypeChecker::push_local`), the caches are invalidated.
+    /// reused, so recorded types are stable while their variable is in scope
+    /// and cached def-eq verdicts stay sound. Defensively, if a caller *does*
+    /// re-bind an id in a way that could make them unsound — an id in scope
+    /// given a different type, or an id whose binder was closed
+    /// ([`Self::forget_fvar_type`]) bound again; only possible through the
+    /// public `TypeChecker::push_local` — the caches are invalidated.
     pub fn record_fvar_type(&mut self, id: crate::FVarId, ty: Expr) {
-        if let Some(prev) = self.fvar_types.get(&id.0) {
-            if *prev != ty {
-                self.cache.clear();
-                self.equiv_manager.clear();
-            }
-        }
         // Mirror into the reducer so K-like iota reduction can type recursor
         // majors mentioning this free variable during WHNF.
         self.reducer.record_fvar_type(id, ty.clone());
-        self.fvar_types.insert(id.0, ty);
+        if self.fvar_types.bind(id, ty) {
+            self.cache.clear();
+            self.equiv_manager.clear();
+            self.big_pairs.clear();
+            self.quick_types.clear();
+        }
+    }
+    /// The binder of a free variable recorded with
+    /// [`Self::record_fvar_type`] has been closed: forget its type, here and
+    /// in the reducer's mirror.
+    ///
+    /// Nothing compared from here on mentions the variable, so nothing needs
+    /// its type; cached verdicts that mention it are never looked up again,
+    /// since its id is not dispensed again (and if a caller does bind it
+    /// again, [`Self::record_fvar_type`] invalidates the caches). Without
+    /// this both mirrors grow by one type per binder opened, for as long as
+    /// the checker lives, and every K-like or structure-eta attempt copies
+    /// all of them into a nested checker.
+    pub fn forget_fvar_type(&mut self, id: crate::FVarId) {
+        self.reducer.forget_fvar_type(id);
+        self.fvar_types.unbind(id);
+    }
+    /// This checker's mirror of the local context and its reducer's, and the
+    /// id the next binder it opens will get (for tests).
+    #[cfg(test)]
+    pub(crate) fn local_types(
+        &self,
+    ) -> (
+        &crate::local_types::LocalTypes,
+        &crate::local_types::LocalTypes,
+        u64,
+    ) {
+        (
+            &self.fvar_types,
+            self.reducer.local_types(),
+            self.next_opened_fvar,
+        )
+    }
+    /// Keep every binder-opening free variable this checker mints from now
+    /// on distinct from `id` (and from every smaller id of the opened range).
+    ///
+    /// A checker seeded with the locals of a SURROUNDING checker (see
+    /// `TypeChecker::with_fvar_types`) compares terms that mention those
+    /// locals, some of which the surrounding def-eq checker minted from this
+    /// same range. Opening a binder with an id one of them already carries
+    /// identifies the bound variable with that local: `fun y => g y c` and
+    /// `fun y => g c y` would both open to `g c c` and compare equal — a
+    /// wrong ACCEPT. The seeding code calls this with the largest seeded id
+    /// of the opened range.
+    pub(crate) fn reserve_opened_fvars_through(&mut self, id: u64) {
+        if id >= self.next_opened_fvar {
+            self.next_opened_fvar = id.saturating_add(1);
+        }
     }
     /// Disable proof irrelevance for this checker.
     pub fn set_proof_irrelevance(&mut self, enabled: bool) {
@@ -1341,10 +1020,14 @@ impl<'env> DefEqChecker<'env> {
         self.reducer.set_transparency(mode);
         self.cache.clear();
         self.equiv_manager.clear();
+        self.big_pairs.clear();
+        self.quick_types.clear();
     }
     /// Check if two expressions are definitionally equal.
     pub fn is_def_eq(&mut self, t: &Expr, s: &Expr) -> bool {
-        if t == s {
+        // Syntactic equality, visiting a shared subterm once per pair (what
+        // `==` decides; see `term_cache::same_term`).
+        if crate::term_cache::same_term(t, s) {
             return true;
         }
         // Resource-fuel degradation (C16): with the budget exhausted only
@@ -1362,15 +1045,18 @@ impl<'env> DefEqChecker<'env> {
         // cannot be typed and the rules degrade to structural ones — may
         // participate in the cache and the equivalence manager.
         //
-        // Size guard: giant intermediates (multi-million-node reduction
-        // steps) are recomputed rather than retained — retaining every such
-        // pair is what turned Lean core's `Int.add_mul_ediv_right` into a
-        // multi-GiB peak (Init corpus, C16). Never changes a verdict.
-        let cacheable = (self.binder_types.is_empty()
-            || (!has_loose_bvars(t) && !has_loose_bvars(s)))
+        // Size: a pair of terms that are small as trees goes through the
+        // equivalence manager and the pair cache, whose keys are compared
+        // with `==`. A pair with a term that is big as a tree — which a
+        // heavily shared term is, however little memory it takes — goes
+        // through `big_pairs`, whose keys are compared once per shared
+        // subterm. Neither changes a verdict.
+        let context_free =
+            self.binder_types.is_empty() || (!has_loose_bvars(t) && !has_loose_bvars(s));
+        let small = context_free
             && crate::expr_util::expr_size_within(t, DEF_EQ_CACHE_MAX_NODES)
             && crate::expr_util::expr_size_within(s, DEF_EQ_CACHE_MAX_NODES);
-        if cacheable {
+        if small {
             if self.equiv_manager.is_equiv(t, s) {
                 return true;
             }
@@ -1381,15 +1067,21 @@ impl<'env> DefEqChecker<'env> {
             if let Some(&result) = self.cache.get(&key) {
                 return result;
             }
+        } else if context_free {
+            if let Some(&result) = self.big_pairs.get(t, s) {
+                return result;
+            }
         }
         let result = self.is_def_eq_core(t, s);
-        if cacheable {
+        if small {
             self.cache.insert((t.clone(), s.clone()), result);
             if result {
                 self.equiv_manager.add_equiv(t, s);
             } else {
                 self.equiv_manager.add_failure(t, s);
             }
+        } else if context_free {
+            self.big_pairs.insert(t, s, result);
         }
         result
     }
@@ -1409,6 +1101,11 @@ impl<'env> DefEqChecker<'env> {
     ///
     /// The minted ids come from a dedicated high range and are never reused,
     /// so recorded types are stable and the def-eq/whnf caches stay sound.
+    ///
+    /// The variable is in scope for exactly this comparison: the opened
+    /// bodies are the only terms that mention it, and they are dropped when
+    /// it returns. Its type is forgotten then, so the mirrors hold the
+    /// binders that are open, not every binder ever opened.
     fn is_def_eq_under(&mut self, dom: &Expr, b1: &Expr, b2: &Expr) -> bool {
         let id = crate::FVarId(self.next_opened_fvar);
         self.next_opened_fvar += 1;
@@ -1416,12 +1113,21 @@ impl<'env> DefEqChecker<'env> {
         let fv = Expr::FVar(id);
         let b1_open = instantiate(b1, &fv);
         let b2_open = instantiate(b2, &fv);
-        self.is_def_eq(&b1_open, &b2_open)
+        let equal = self.is_def_eq(&b1_open, &b2_open);
+        self.forget_fvar_type(id);
+        equal
     }
     fn is_def_eq_core(&mut self, t: &Expr, s: &Expr) -> bool {
+        // Congruence before unfolding (the `f a =?= f b` step of Lean's lazy
+        // delta reduction): two applications of the SAME definition to
+        // pairwise def-eq arguments are def-eq, whatever the definition
+        // unfolds to. (In the `congruence` module of this directory.)
+        if self.same_definition_applied_to_equal_args(t, s) {
+            return true;
+        }
         let t_whnf = self.reducer.whnf_env(t, self.env);
         let s_whnf = self.reducer.whnf_env(s, self.env);
-        if t_whnf == s_whnf {
+        if crate::term_cache::same_term(&t_whnf, &s_whnf) {
             return true;
         }
         if self.is_proof_irrelevant_eq(&t_whnf, &s_whnf) {
@@ -1543,7 +1249,7 @@ impl<'env> DefEqChecker<'env> {
             .map(|e| (*e).clone())
             .collect();
         let new_ctor = mk_app(Expr::Const(ctor_name, ind_levels.clone()), &params);
-        if new_ctor == major {
+        if crate::term_cache::same_term(&new_ctor, &major) {
             // Already canonical: the Reducer was stuck for a different
             // reason; nothing to gain (and rewriting would not terminate).
             return None;
@@ -1556,7 +1262,7 @@ impl<'env> DefEqChecker<'env> {
         new_args[major_idx] = new_ctor;
         let rebuilt = mk_app(Expr::Const(rec_name.clone(), rec_levels.clone()), &new_args);
         let reduced = self.reducer.whnf_env(&rebuilt, self.env);
-        if reduced == *e {
+        if crate::term_cache::same_term(&reduced, e) {
             return None;
         }
         Some(reduced)
@@ -1775,7 +1481,7 @@ impl<'env> DefEqChecker<'env> {
         }
     }
     /// Get the reducibility hint for an expression head.
-    fn get_hint(&self, head: &Expr) -> Option<ReducibilityHint> {
+    pub(super) fn get_hint(&self, head: &Expr) -> Option<ReducibilityHint> {
         if let Expr::Const(name, _) = head {
             if let Some(ci) = self.env.find(name) {
                 let hint = ci.reducibility_hint();
@@ -1830,6 +1536,28 @@ impl<'env> DefEqChecker<'env> {
     /// constants, applications of Pi-typed functions, Sort, and literals.
     /// Returns `None` for cases that require a full type checker (e.g. BVar, FVar).
     fn quick_infer_type(&mut self, expr: &Expr) -> Option<Expr> {
+        // A term with no loose bound variable has the same type whatever
+        // binders the checker is under, so its type can be kept. (Only a
+        // type that WAS found is kept: a `None` may be a reduction cut short
+        // at a limit rather than a property of the term.)
+        let keep = expr.range() == 0
+            && !matches!(
+                expr,
+                Expr::Sort(_) | Expr::Lit(_) | Expr::FVar(_) | Expr::BVar(_)
+            );
+        if keep {
+            if let Some(ty) = self.quick_types.get(expr) {
+                return Some(ty.clone());
+            }
+        }
+        let ty = self.quick_infer_type_uncached(expr)?;
+        if keep {
+            self.quick_types.insert(expr, ty.clone());
+        }
+        Some(ty)
+    }
+    /// [`Self::quick_infer_type`] for a term whose type is not in the cache.
+    fn quick_infer_type_uncached(&mut self, expr: &Expr) -> Option<Expr> {
         match expr {
             Expr::Sort(l) => Some(Expr::Sort(crate::level::Level::succ(l.clone()))),
             Expr::Lit(crate::Literal::Nat(_)) => Some(Expr::Const(crate::Name::str("Nat"), vec![])),
@@ -1875,7 +1603,7 @@ impl<'env> DefEqChecker<'env> {
             // local context (recorded via [`Self::record_fvar_type`]). FVar
             // types are closed with respect to the binder stack, so no
             // lifting is needed.
-            Expr::FVar(id) => self.fvar_types.get(&id.0).cloned(),
+            Expr::FVar(id) => self.fvar_types.get(*id).cloned(),
             Expr::Lam(bi, name, dom, body) => {
                 self.binder_types.push((**dom).clone());
                 let body_ty = self.quick_infer_type(body);
@@ -1896,8 +1624,15 @@ impl<'env> DefEqChecker<'env> {
                 let dom_whnf = self.reducer.whnf_env(&dom_ty, self.env);
                 let cod_whnf = self.reducer.whnf_env(&cod_ty, self.env);
                 match (dom_whnf, cod_whnf) {
+                    // The simplifying constructor, as in
+                    // `TypeChecker::infer_type`: the same universe, in the
+                    // shape Lean's kernel builds. A raw `imax` here nested
+                    // once per binder of a telescope, and deciding whether
+                    // such a level is `0` — which proof irrelevance asks of
+                    // every pair compared — distributes over every nesting:
+                    // exponential in the length of the telescope.
                     (Expr::Sort(l1), Expr::Sort(l2)) => {
-                        Some(Expr::Sort(crate::level::Level::imax(l1, l2)))
+                        Some(Expr::Sort(crate::level::mk_imax(l1, l2)))
                     }
                     _ => None,
                 }
@@ -1992,7 +1727,7 @@ impl<'env> DefEqChecker<'env> {
         // Prop test must be up to universe equivalence, not syntactic: a proof
         // whose sort level is e.g. `imax(u, 0)` normalizes to `0` (Prop) but is
         // not the literal `Zero`. Use the complete `is_equivalent` check.
-        if !matches!(&ty_ty_t_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::Zero)) {
+        if !matches!(&ty_ty_t_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::zero())) {
             return false;
         }
         let ty_s = match self.quick_infer_type(s) {
@@ -2004,7 +1739,7 @@ impl<'env> DefEqChecker<'env> {
             None => return false,
         };
         let ty_ty_s_whnf = self.reducer.whnf_env(&ty_ty_s, self.env);
-        if !matches!(&ty_ty_s_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::Zero)) {
+        if !matches!(&ty_ty_s_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::zero())) {
             return false;
         }
         let ty_t_whnf = self.reducer.whnf_env(&ty_t, self.env);

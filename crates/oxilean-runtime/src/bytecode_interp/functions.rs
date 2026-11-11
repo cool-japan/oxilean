@@ -1255,3 +1255,5 @@ mod tests_builder {
         assert_eq!(result, StackValue::Bool(true));
     }
 }
+#[cfg(test)]
+mod make_closure_tests;

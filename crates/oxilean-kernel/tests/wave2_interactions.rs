@@ -225,6 +225,77 @@ fn quot_lift_of_ctor_pattern_reduces_through_proj() {
     );
 }
 
+/// A structure FIELD that is a partial application of `Quot.lift`, projected
+/// and then applied to the major premise: `(Wrap.mk (Quot.lift F h)).0
+/// (Quot.mk r a)`. This is the shape of a Mathlib instance on a quotient —
+/// `instance : Inv c.Quotient := ⟨Quotient.map' Inv.inv _⟩` followed by
+/// `Inv.inv (Quot.mk _ a)` — and the one behind the rejected
+/// `AddCon.addGroup._proof_1`: the projection steps the head to `Quot.lift F
+/// h`, whose major premise is the OUTER argument. The reduct must be `F a`.
+#[test]
+fn quot_lift_partial_application_in_a_structure_field_reduces() {
+    let mut env = builtin_env();
+    add_axiom(&mut env, "r", &[], pi("a", nat(), pi("b", nat(), prop())));
+    add_axiom(&mut env, "a", &[], nat());
+    add_axiom(&mut env, "F", &[], pi("x", nat(), nat()));
+    // h : ∀ (a b : Nat), r a b → Eq Nat (F a) (F b) (opaque axiom).
+    let h_ty = pi(
+        "a",
+        nat(),
+        pi(
+            "b",
+            nat(),
+            pi(
+                "hr",
+                app(cnst("r"), &[Expr::BVar(1), Expr::BVar(0)]),
+                app(
+                    Expr::Const(Name::str("Eq"), vec![one()]),
+                    &[
+                        nat(),
+                        app(cnst("F"), &[Expr::BVar(2)]),
+                        app(cnst("F"), &[Expr::BVar(1)]),
+                    ],
+                ),
+            ),
+        ),
+    );
+    add_axiom(&mut env, "h", &[], h_ty);
+    // structure Wrap : Type := mk (run : Quot r → Nat)
+    let quot_r = app(quot_const("Quot", vec![one()]), &[nat(), cnst("r")]);
+    let spec = InductiveSpec::new(
+        Name::str("Wrap"),
+        Expr::Sort(one()),
+        vec![(
+            Name::str("Wrap.mk"),
+            pi("run", pi("q", quot_r, nat()), cnst("Wrap")),
+        )],
+    );
+    add_inductive_family(&mut env, vec![], 0, vec![spec]).expect("Wrap must be accepted");
+    assert!(env.is_structure_like(&Name::str("Wrap")));
+
+    let partial = app(
+        quot_const("Quot.lift", vec![one(), one()]),
+        &[nat(), cnst("r"), nat(), cnst("F"), cnst("h")],
+    );
+    let wrapped = app(cnst("Wrap.mk"), &[partial]);
+    let q = app(
+        quot_const("Quot.mk", vec![one()]),
+        &[nat(), cnst("r"), cnst("a")],
+    );
+    let e = app(proj("Wrap", 0, wrapped), &[q]);
+    let expected = app(cnst("F"), &[cnst("a")]);
+    assert_eq!(
+        whnf(&env, &e),
+        expected,
+        "a projected `Quot.lift F h` must be re-joined with its outer major premise"
+    );
+    let mut tc = TypeChecker::new(&env);
+    assert!(
+        tc.is_def_eq(&e, &expected),
+        "(Wrap.mk (Quot.lift F h)).0 (Quot.mk r a) ≡ F a on the def-eq path"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // (b) K-reduction + proof irrelevance + struct eta ordering.
 // ---------------------------------------------------------------------------

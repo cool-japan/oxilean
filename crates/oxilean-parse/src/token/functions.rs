@@ -353,17 +353,16 @@ pub fn collect_idents(tokens: &[Token]) -> Vec<String> {
 /// The separator token itself is not included in any group.
 #[allow(missing_docs)]
 pub fn split_at_kind(tokens: &[Token], sep: &TokenKind) -> Vec<Vec<Token>> {
-    let mut groups: Vec<Vec<Token>> = vec![Vec::new()];
+    let mut groups: Vec<Vec<Token>> = Vec::new();
+    let mut current: Vec<Token> = Vec::new();
     for tok in tokens {
         if &tok.kind == sep {
-            groups.push(Vec::new());
+            groups.push(std::mem::take(&mut current));
         } else {
-            groups
-                .last_mut()
-                .expect("groups initialized with one element and only grows")
-                .push(tok.clone());
+            current.push(tok.clone());
         }
     }
+    groups.push(current);
     groups
 }
 /// Check whether a token is a `:=` (assign) token.
@@ -1540,3 +1539,6 @@ mod token_keyword_tests {
         assert!(!is_keyword_token("Ident"));
     }
 }
+
+#[cfg(test)]
+mod split_tests;

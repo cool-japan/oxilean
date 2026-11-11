@@ -1199,10 +1199,7 @@ impl OmegaGoalParser {
         if parts.len() > 1 {
             let mut all = Vec::new();
             for part in &parts {
-                match Self::parse_goal(part.trim()) {
-                    Some(cs) => all.extend(cs),
-                    None => return None,
-                }
+                all.extend(Self::parse_goal(part.trim())?);
             }
             return Some(all);
         }

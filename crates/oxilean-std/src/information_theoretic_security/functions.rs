@@ -1277,7 +1277,7 @@ mod extended_tests {
             0x0F, 0x10,
         ];
         let output = ext.extract(&source, &seed);
-        let expected_bytes = (5 + 7) / 8;
+        let expected_bytes = 5_usize.div_ceil(8);
         assert_eq!(output.len(), expected_bytes);
     }
     #[test]

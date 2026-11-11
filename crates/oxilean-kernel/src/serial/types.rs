@@ -149,7 +149,7 @@ impl<'a> OleanReader<'a> {
         self.ensure(4)?;
         let bytes: [u8; 4] = self.data[self.pos..self.pos + 4]
             .try_into()
-            .expect("slice length must match array size");
+            .map_err(|_| OleanError::UnexpectedEof)?;
         self.pos += 4;
         Ok(u32::from_le_bytes(bytes))
     }
@@ -158,7 +158,7 @@ impl<'a> OleanReader<'a> {
         self.ensure(8)?;
         let bytes: [u8; 8] = self.data[self.pos..self.pos + 8]
             .try_into()
-            .expect("slice length must match array size");
+            .map_err(|_| OleanError::UnexpectedEof)?;
         self.pos += 8;
         Ok(u64::from_le_bytes(bytes))
     }
@@ -167,7 +167,7 @@ impl<'a> OleanReader<'a> {
         self.ensure(8)?;
         let bytes: [u8; 8] = self.data[self.pos..self.pos + 8]
             .try_into()
-            .expect("slice length must match array size");
+            .map_err(|_| OleanError::UnexpectedEof)?;
         self.pos += 8;
         Ok(i64::from_le_bytes(bytes))
     }
@@ -665,7 +665,7 @@ impl<'a> CheckpointedReader<'a> {
         }
         let bytes: [u8; 4] = self.data[self.pos..self.pos + 4]
             .try_into()
-            .expect("slice length must match array size");
+            .map_err(|_| OleanError::UnexpectedEof)?;
         self.pos += 4;
         Ok(u32::from_le_bytes(bytes))
     }
@@ -1203,3 +1203,5 @@ impl OleanArchive {
         self.files.is_empty()
     }
 }
+#[cfg(test)]
+mod eof_tests;

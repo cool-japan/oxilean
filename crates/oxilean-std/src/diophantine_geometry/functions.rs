@@ -1136,9 +1136,9 @@ pub fn radical(mut n: u64) -> u64 {
     let mut result = 1u64;
     let mut d = 2u64;
     while d * d <= n {
-        if n % d == 0 {
+        if n.is_multiple_of(d) {
             result *= d;
-            while n % d == 0 {
+            while n.is_multiple_of(d) {
                 n /= d;
             }
         }

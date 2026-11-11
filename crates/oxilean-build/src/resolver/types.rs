@@ -198,16 +198,10 @@ impl Incompatibility {
                 None => unsatisfied.push(pkg.clone()),
             }
         }
-        if unsatisfied.len() == 1 {
-            // Safety: len() == 1 guaranteed by the if condition above
-            Some(
-                unsatisfied
-                    .into_iter()
-                    .next()
-                    .expect("unsatisfied has exactly one element"),
-            )
-        } else {
-            None
+        let mut remaining = unsatisfied.into_iter();
+        match (remaining.next(), remaining.next()) {
+            (Some(only), None) => Some(only),
+            _ => None,
         }
     }
     /// Get all packages mentioned in this incompatibility.
@@ -1449,3 +1443,6 @@ enum Assignment {
         decision_level: u32,
     },
 }
+
+#[cfg(test)]
+mod almost_satisfied_tests;

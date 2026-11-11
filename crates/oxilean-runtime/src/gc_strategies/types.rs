@@ -711,7 +711,7 @@ pub struct CardTable {
 impl CardTable {
     /// Create a new card table for the given heap size and card size.
     pub fn new(heap_size: usize, card_size: usize) -> Self {
-        let num_cards = (heap_size + card_size - 1) / card_size;
+        let num_cards = heap_size.div_ceil(card_size);
         Self {
             cards: vec![false; num_cards],
             card_size,
@@ -1352,8 +1352,8 @@ impl MarkSweepGc {
         if offset + size > self.heap_limit {
             return None;
         }
-        self.heap.extend(std::iter::repeat(0u8).take(size));
-        self.mark_bits.extend(std::iter::repeat(false).take(size));
+        self.heap.extend(std::iter::repeat_n(0u8, size));
+        self.mark_bits.extend(std::iter::repeat_n(false, size));
         self.stats.heap_size = self.heap.len();
         Some(offset)
     }

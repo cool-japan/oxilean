@@ -548,6 +548,301 @@ fn setoid_style_quotient_typechecks_and_lifts() {
 }
 
 // ---------------------------------------------------------------------------
+// (h) A partial application EXPOSED BY HEAD REDUCTION is one application with
+//     the outer arguments.
+//
+// Mathlib writes its quotient maps point-free — `Quot.map f h : Quot ra →
+// Quot rb := Quot.lift (fun x => Quot.mk rb (f x)) _` — so the `Quot.lift`
+// that an unfolding exposes is five arguments long and its major premise is
+// an argument of the *enclosing* application. Before the fix the reducer
+// stepped the exposed head on its own, found it short of a major premise,
+// and returned the application unreduced; the valid `rfl` proof
+// `AddCon.addGroup._proof_1` was rejected.
+// ---------------------------------------------------------------------------
+
+fn pi(name: &str, dom: Expr, cod: Expr) -> Expr {
+    Expr::Pi(
+        BinderInfo::Default,
+        Name::str(name),
+        Node::new(dom),
+        Node::new(cod),
+    )
+}
+
+fn nat() -> Expr {
+    c("Nat", vec![])
+}
+
+/// `@Quot Nat R`.
+fn quot_nat_r() -> Expr {
+    apps(c("Quot", vec![u1()]), vec![nat(), c("R", vec![])])
+}
+
+/// `@Quot.mk Nat R A`.
+fn mk_a() -> Expr {
+    quot_mk(nat(), c("R", vec![]), c("A", vec![]), u1())
+}
+
+/// `@Quot.lift Nat R Nat F H` — five arguments, the major premise missing.
+fn partial_lift() -> Expr {
+    apps(
+        c("Quot.lift", vec![u1(), u1()]),
+        vec![nat(), c("R", vec![]), nat(), c("F", vec![]), c("H", vec![])],
+    )
+}
+
+/// `@Quot.ind Nat R B M` — four arguments, the major premise missing.
+fn partial_ind() -> Expr {
+    apps(
+        c("Quot.ind", vec![u1()]),
+        vec![nat(), c("R", vec![]), c("B", vec![]), c("M", vec![])],
+    )
+}
+
+/// Add `name : ty` as a kernel-checked axiom.
+fn add_axiom(env: &mut Environment, name: &str, ty: Expr) {
+    use oxilean_kernel::declaration::{AxiomVal, ConstantInfo, ConstantVal};
+
+    let ci = ConstantInfo::Axiom(AxiomVal {
+        common: ConstantVal {
+            name: n(name),
+            level_params: vec![],
+            ty,
+        },
+        is_unsafe: false,
+    });
+    check_constant_info(env, ci).unwrap_or_else(|e| unreachable!("axiom {name}: {e:?}"));
+}
+
+/// A quot-initialized environment holding, each as a kernel-checked axiom:
+/// `R : Nat → Nat → Prop`, `A : Nat`, `Q : Quot R`, `F : Nat → Nat`,
+/// `H : ∀ a b, R a b → F a = F b`, `B : Quot R → Prop` and
+/// `M : ∀ a, B (Quot.mk R a)`.
+fn lifting_env() -> Environment {
+    let mut env = env();
+    add_axiom(&mut env, "R", pi("a", nat(), pi("b", nat(), prop())));
+    add_axiom(&mut env, "A", nat());
+    add_axiom(&mut env, "Q", quot_nat_r());
+    add_axiom(&mut env, "F", pi("_", nat(), nat()));
+    add_axiom(
+        &mut env,
+        "H",
+        pi(
+            "a",
+            nat(),
+            pi(
+                "b",
+                nat(),
+                pi(
+                    "_",
+                    apps(c("R", vec![]), vec![Expr::BVar(1), Expr::BVar(0)]),
+                    apps(
+                        c("Eq", vec![u1()]),
+                        vec![
+                            nat(),
+                            app(c("F", vec![]), Expr::BVar(2)),
+                            app(c("F", vec![]), Expr::BVar(1)),
+                        ],
+                    ),
+                ),
+            ),
+        ),
+    );
+    add_axiom(&mut env, "B", pi("_", quot_nat_r(), prop()));
+    add_axiom(
+        &mut env,
+        "M",
+        pi(
+            "a",
+            nat(),
+            app(
+                c("B", vec![]),
+                quot_mk(nat(), c("R", vec![]), Expr::BVar(0), u1()),
+            ),
+        ),
+    );
+    env
+}
+
+/// Add `name : ty := value` as a kernel-checked definition, so the partial
+/// application in `value` is known to be well-typed.
+fn add_def(env: &mut Environment, name: &str, ty: Expr, value: Expr) {
+    use oxilean_kernel::declaration::{ConstantInfo, ConstantVal, DefinitionSafety, DefinitionVal};
+
+    let ci = ConstantInfo::Definition(DefinitionVal {
+        common: ConstantVal {
+            name: n(name),
+            level_params: vec![],
+            ty,
+        },
+        value,
+        hints: oxilean_kernel::ReducibilityHint::Regular(1),
+        safety: DefinitionSafety::Safe,
+        all: vec![n(name)],
+    });
+    check_constant_info(env, ci).unwrap_or_else(|e| unreachable!("definition {name}: {e:?}"));
+}
+
+/// An environment with `LiftF : Quot R → Nat := Quot.lift F H` on top of
+/// [`lifting_env`] — a constant whose VALUE is a partial application.
+fn lift_f_env() -> Environment {
+    let mut env = lifting_env();
+    add_def(
+        &mut env,
+        "LiftF",
+        pi("_", quot_nat_r(), nat()),
+        partial_lift(),
+    );
+    env
+}
+
+#[test]
+fn partial_quot_lift_behind_a_constant_reduces_with_the_outer_major() {
+    let env = lift_f_env();
+    // `LiftF (Quot.mk R A)`: unfolding `LiftF` exposes `Quot.lift F H`, whose
+    // major premise is the argument of `LiftF`.
+    let e = app(c("LiftF", vec![]), mk_a());
+    let expected = app(c("F", vec![]), c("A", vec![]));
+
+    let mut reducer = Reducer::new();
+    assert_eq!(
+        reducer.whnf_env(&e, &env),
+        expected,
+        "the exposed `Quot.lift F H` must be re-joined with its outer major premise"
+    );
+    let mut tc = TypeChecker::new(&env);
+    assert!(
+        tc.is_def_eq(&e, &expected),
+        "LiftF (Quot.mk R A) ≡ F A on the def-eq path"
+    );
+}
+
+#[test]
+fn partial_quot_lift_behind_a_constant_keeps_trailing_arguments() {
+    // `G : Nat → Nat → Nat`, `HG` its (opaque) soundness proof, and
+    // `LiftG : Quot R → Nat → Nat := Quot.lift G HG`. In `LiftG (Quot.mk R A) X`
+    // the major premise is the FIRST outer argument and `X` trails it: the
+    // result is `G A X`, with nothing dropped or reordered.
+    let mut env = lifting_env();
+    let nat_to_nat = || pi("_", nat(), nat());
+    add_axiom(&mut env, "X", nat());
+    add_axiom(&mut env, "G", pi("_", nat(), nat_to_nat()));
+    add_axiom(
+        &mut env,
+        "HG",
+        pi(
+            "a",
+            nat(),
+            pi(
+                "b",
+                nat(),
+                pi(
+                    "_",
+                    apps(c("R", vec![]), vec![Expr::BVar(1), Expr::BVar(0)]),
+                    apps(
+                        c("Eq", vec![u1()]),
+                        vec![
+                            nat_to_nat(),
+                            app(c("G", vec![]), Expr::BVar(2)),
+                            app(c("G", vec![]), Expr::BVar(1)),
+                        ],
+                    ),
+                ),
+            ),
+        ),
+    );
+    let partial = apps(
+        c("Quot.lift", vec![u1(), u1()]),
+        vec![
+            nat(),
+            c("R", vec![]),
+            nat_to_nat(),
+            c("G", vec![]),
+            c("HG", vec![]),
+        ],
+    );
+    add_def(
+        &mut env,
+        "LiftG",
+        pi("_", quot_nat_r(), nat_to_nat()),
+        partial,
+    );
+
+    let e = apps(c("LiftG", vec![]), vec![mk_a(), c("X", vec![])]);
+    let expected = apps(c("G", vec![]), vec![c("A", vec![]), c("X", vec![])]);
+    let mut reducer = Reducer::new();
+    assert_eq!(
+        reducer.whnf_env(&e, &env),
+        expected,
+        "LiftG (Quot.mk R A) X must reduce to G A X"
+    );
+}
+
+#[test]
+fn partial_quot_ind_behind_a_constant_reduces_with_the_outer_major() {
+    let mut env = lifting_env();
+    // `IndM : ∀ q, B q := Quot.ind M`.
+    add_def(
+        &mut env,
+        "IndM",
+        pi("q", quot_nat_r(), app(c("B", vec![]), Expr::BVar(0))),
+        partial_ind(),
+    );
+    let e = app(c("IndM", vec![]), mk_a());
+    let expected = app(c("M", vec![]), c("A", vec![]));
+
+    let mut reducer = Reducer::new();
+    assert_eq!(
+        reducer.whnf_env(&e, &env),
+        expected,
+        "the exposed `Quot.ind M` must be re-joined with its outer major premise"
+    );
+}
+
+#[test]
+fn partial_quot_lift_behind_a_let_reduces_with_the_outer_major() {
+    let env = lifting_env();
+    // `(let g : Quot R → Nat := Quot.lift F H; g) (Quot.mk R A)` — the head
+    // is a `let` whose body steps to the partial application.
+    let let_head = Expr::Let(
+        Name::str("g"),
+        Node::new(pi("_", quot_nat_r(), nat())),
+        Node::new(partial_lift()),
+        Node::new(Expr::BVar(0)),
+    );
+    let e = app(let_head, mk_a());
+
+    let mut reducer = Reducer::new();
+    assert_eq!(
+        reducer.whnf_env(&e, &env),
+        app(c("F", vec![]), c("A", vec![])),
+        "a `let` head that steps to `Quot.lift F H` must be re-joined with the outer major"
+    );
+}
+
+#[test]
+fn partial_quot_lift_behind_a_constant_stays_stuck_on_a_non_mk_major() {
+    let env = lift_f_env();
+    // `LiftF Q` with `Q` an opaque element of the quotient: the unfolding is
+    // re-joined with `Q`, the computation rule does not apply, and the term
+    // comes back as `Quot.lift F H Q` — unfolded, stuck, the argument kept.
+    let e = app(c("LiftF", vec![]), c("Q", vec![]));
+    let expected = app(partial_lift(), c("Q", vec![]));
+
+    let mut reducer = Reducer::new();
+    let whnf = reducer.whnf_env(&e, &env);
+    assert_eq!(
+        whnf, expected,
+        "a non-mk major must leave `Quot.lift F H Q` stuck"
+    );
+    assert_eq!(
+        reducer.whnf_env(&whnf, &env),
+        whnf,
+        "the stuck form is a fixed point of whnf"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Local helper (avoids depending on a crate-private util).
 // ---------------------------------------------------------------------------
 

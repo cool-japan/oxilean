@@ -1,7 +1,7 @@
 # oxilean-kernel — TODO
 
 > Task list for the kernel crate (Trusted Computing Base).
-> Last updated: 2026-05-03
+> Last updated: 2026-11-12
 
 ## ✅ Completed (Phase 0): Core Types
 
@@ -201,5 +201,16 @@ None. All previously tracked issues have been resolved as of 2026-03-09.
 - [x] Migrate `Expr` from `Box` to arena-based `Idx<Expr>` (hash-consing)
 - [x] Expression caching (hash → index dedup)
 - [x] η-expansion for structures — implemented for real in `DefEqChecker::try_eta_struct` (`def_eq`, Lean `isDefEqEtaStruct` semantics, 2026-07-12). NOTE: the previous checkmark here was FALSE — it referred to the dead `struct_eta` module, which was never called from the def-eq path, dropped universe levels, and omitted parameters; that module was removed on 2026-07-12.
-- [ ] K-like reduction for singleton inductive *families* (Lean `toCtorWhenK` for recursors on `Eq`-style types) — NOT implemented. The previous checkmark was FALSE (it pointed at the dead `SingletonKReducer` stub, removed 2026-07-12). Unit-like *definitional equality* (Lean `isDefEqUnitLike`) IS implemented in `def_eq`.
+- [x] K-like reduction for singleton inductive *families* (Lean `toCtorWhenK`): `to_ctor_when_k` in `reduce/iota.rs`, called from the reducer's recursor path (the nested checker's fvar-id handling was fixed in 0.1.4). The earlier "NOT implemented" note referred to the removed dead `SingletonKReducer` stub; unit-like *definitional equality* (Lean `isDefEqUnitLike`) is implemented in `def_eq`.
 - [x] `no_std` compatibility for WASM
+
+---
+
+## v0.1.4 (released 2026-11-12)
+
+- Nested inductives are elaborated to mutual inductives (`b3c17f8e`, `b3adf3f6`).
+- Structural sharing, Stage F: `Name` and `Level` are interned `Rc` newtypes (`Name::view()` / `Level::view()` to match); every `Node` carries a structural hash, and `Node::rc()` is replaced by `Node::as_ptr()` / `Node::ptr_eq()`; `expr::REBUILD_COST_MAX` bounds the cached rebuild cost (`e1a11c85`).
+- Shared-term walks: `instantiate`, `lift`, `abstract` and level instantiation build a shared subterm once per walk; a type-inference cache; congruence-first definitional equality (`f a ≡ f b` before unfolding); the K-like nested-checker fvar-id fix; `check_constant_info` rejects non-closed terms.
+- Resource limits in `fuel`: `set_reduction_nesting_limit` / `reduction_nesting_limit`, `set_term_depth_limit` / `term_depth_limit` / `term_depth_limit_hit`, and the new Cargo feature `term-depth` (off by default; `oxilean-verify-wasm` enables it on `wasm32`).
+- Hygiene: `cargo formal check --layer hygiene` findings for the kernel 297 -> 19 (`.unwrap()` / `.expect()` outside tests); `StackCalc::{add,sub,mul}` now return `Option<i64>` (public signature change) (`4f997629`).
+- Also touching the kernel since 0.1.3: `a1cddbec` (formal results rewritten), `d468268e`, `9f0950bd`, `a1eb2787`, `05244895`, `0abe6486`, `3c753352` (see CHANGELOG.md for the full entry).

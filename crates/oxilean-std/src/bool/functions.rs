@@ -106,7 +106,7 @@ pub fn mk_bool_eq(a: Expr, b: Expr) -> Expr {
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )
@@ -184,7 +184,7 @@ pub fn build_bool_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Res
     })
     .map_err(|e| e.to_string())?;
     let u = Name::str("u");
-    let sort_u = Expr::Sort(Level::Param(u.clone()));
+    let sort_u = Expr::Sort(Level::param(u.clone()));
     let motive_ty = arrow(bool_c.clone(), sort_u);
     let rec_ty = Expr::Pi(
         BinderInfo::Implicit,
@@ -216,7 +216,7 @@ pub fn build_bool_env(env: &mut Environment, _ind_env: &mut InductiveEnv) -> Res
         ty: rec_ty,
     })
     .map_err(|e| e.to_string())?;
-    let cases_motive_ty = arrow(bool_c.clone(), Expr::Sort(Level::Param(u.clone())));
+    let cases_motive_ty = arrow(bool_c.clone(), Expr::Sort(Level::param(u.clone())));
     let cases_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("C"),
@@ -744,7 +744,7 @@ mod tests {
         match arr {
             Expr::Pi(info, name, _, _) => {
                 assert_eq!(info, BinderInfo::Default);
-                assert_eq!(name, Name::Anonymous);
+                assert_eq!(name, Name::anonymous());
             }
             _ => panic!("Expected Pi"),
         }

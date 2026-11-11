@@ -454,18 +454,10 @@ impl ErrorRateTracker {
     #[allow(dead_code)]
     #[allow(missing_docs)]
     pub fn trend(&self) -> f64 {
-        if self.counts.len() < 2 {
-            return 0.0;
+        match (self.counts.front(), self.counts.back()) {
+            (Some(&first), Some(&last)) if self.counts.len() >= 2 => last as f64 - first as f64,
+            _ => 0.0,
         }
-        let first = *self
-            .counts
-            .front()
-            .expect("counts.len() >= 2 per check above") as f64;
-        let last = *self
-            .counts
-            .back()
-            .expect("counts.len() >= 2 per check above") as f64;
-        last - first
     }
 }
 /// A non-fatal parse warning.
@@ -1397,3 +1389,6 @@ impl ContextualRichError {
         )
     }
 }
+
+#[cfg(test)]
+mod trend_tests;

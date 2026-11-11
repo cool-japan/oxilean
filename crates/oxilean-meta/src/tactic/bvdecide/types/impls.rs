@@ -121,7 +121,7 @@ impl CdclSolver {
                         restart_limit = self.config.restart_base * luby_sequence(luby_index);
                         self.stats.restarts += 1;
                     }
-                    if self.stats.conflicts % self.config.gc_interval == 0
+                    if self.stats.conflicts.is_multiple_of(self.config.gc_interval)
                         && self.stats.conflicts > 0
                     {
                         self.clause_db
@@ -480,10 +480,8 @@ impl Assignment {
     pub fn backtrack_to(&mut self, level: u32) {
         while self.current_level > level {
             let trail_start = self.trail_lim.pop().unwrap_or(0);
-            while self.trail.len() > trail_start {
-                let lit = self.trail.pop().expect(
-                    "trail is non-empty; loop condition guarantees trail.len() > trail_start",
-                );
+            let first_undone = trail_start.min(self.trail.len());
+            for lit in self.trail.drain(first_undone..).rev() {
                 let idx = lit.var.index();
                 self.values[idx] = None;
                 self.levels[idx] = None;

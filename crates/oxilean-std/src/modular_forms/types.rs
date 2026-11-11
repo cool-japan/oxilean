@@ -43,7 +43,7 @@ impl HeckeOperatorData {
     }
     #[allow(dead_code)]
     pub fn is_good_prime(&self) -> bool {
-        self.level % self.n != 0
+        !self.level.is_multiple_of(self.n)
     }
     #[allow(dead_code)]
     pub fn action_on_q_expansion(&self) -> String {
@@ -210,7 +210,7 @@ impl ModularCurve {
         }
         let mut count = 0u64;
         for d in 1..=n {
-            if n % d == 0 {
+            if n.is_multiple_of(d) {
                 count += gcd_u64(d, n / d);
             }
         }
@@ -382,7 +382,7 @@ impl ModularFormCusp {
         }
         let mut count = 0u64;
         for d in 1..=n {
-            if n % d == 0 {
+            if n.is_multiple_of(d) {
                 count += gcd_u64(d, n / d);
             }
         }

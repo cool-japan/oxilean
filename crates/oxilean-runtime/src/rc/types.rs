@@ -969,14 +969,31 @@ impl AtomicRefCounter {
         self.count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1
     }
     /// Decrement and return the new value (saturating at 0).
+    ///
+    /// A compare-and-swap loop: each successful decrement is applied exactly
+    /// once, to the value it was computed from, and a count that is already
+    /// zero is left alone (never wrapped). This is the loop `fetch_update`
+    /// runs, written out: `fetch_update` is deprecated since Rust 1.99 in
+    /// favour of `try_update`, which is only stable since 1.95, so neither
+    /// builds warning-free on every toolchain from the MSRV (1.89) up.
     pub fn dec(&self) -> u64 {
-        match self.count.fetch_update(
-            std::sync::atomic::Ordering::SeqCst,
-            std::sync::atomic::Ordering::SeqCst,
-            |v| if v > 0 { Some(v - 1) } else { None },
-        ) {
-            Ok(prev) => prev - 1,
-            Err(_) => 0,
+        use std::sync::atomic::Ordering;
+        let mut current = self.count.load(Ordering::SeqCst);
+        loop {
+            let Some(next) = current.checked_sub(1) else {
+                return 0;
+            };
+            match self.count.compare_exchange_weak(
+                current,
+                next,
+                Ordering::SeqCst,
+                Ordering::SeqCst,
+            ) {
+                Ok(_) => return next,
+                // Another thread moved the count (or the weak exchange failed
+                // spuriously): retry from the value actually stored.
+                Err(actual) => current = actual,
+            }
         }
     }
     /// Load the current count.

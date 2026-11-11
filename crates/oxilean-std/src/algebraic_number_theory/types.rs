@@ -714,7 +714,7 @@ impl ArtinLFunctionComputer {
     pub fn root_number(&self) -> i32 {
         if self.rep_dimension == 1 {
             1
-        } else if self.rep_dimension % 2 == 0 {
+        } else if self.rep_dimension.is_multiple_of(2) {
             1
         } else {
             -1
@@ -763,7 +763,7 @@ impl AlgebraicInteger {
             return 0;
         }
         let n = self.coeffs.len();
-        if n % 2 == 0 {
+        if n.is_multiple_of(2) {
             self.coeffs[0]
         } else {
             -self.coeffs[0]

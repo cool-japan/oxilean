@@ -72,7 +72,7 @@ pub use reader::{
 pub use replay::{
     replay_decl, replay_file, replay_streaming, ReplayEntry, ReplayLimits, ReplayOutcome,
     ReplayReport, ReplayRun, ReplayStats, Replayer, CORPUS_DECL_FUEL, DEFAULT_DECL_FUEL,
-    DEFERRED_DEPENDENCY, NESTED_INDUCTIVES, RESOURCE_LIMIT,
+    DEFERRED_DEPENDENCY, NESTED_INDUCTIVES, REDUCTION_LIMIT, RESOURCE_LIMIT, TERM_DEPTH_LIMIT,
 };
 
 /// The lean4export git commit this reader is pinned to.

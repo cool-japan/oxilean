@@ -317,7 +317,7 @@ impl CycleIndexPolynomial {
     pub fn cyclic(n: u32) -> Self {
         let mut cip = Self::new(format!("C_{}", n), n as u64);
         for d in 1..=(n as u64) {
-            if n as u64 % d == 0 {
+            if (n as u64).is_multiple_of(d) {
                 let phi_d = euler_phi(d);
                 let exp_pos = (d as usize).saturating_sub(1);
                 let count = n as u64 / d;

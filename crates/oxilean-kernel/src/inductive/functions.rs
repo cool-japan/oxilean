@@ -272,51 +272,64 @@ mod tests {
 /// Build the `Bool` inductive type (no parameters, two constructors).
 #[allow(dead_code)]
 pub fn mk_bool_inductive() -> InductiveType {
-    InductiveTypeBuilder::new()
-        .name(Name::str("Bool"))
-        .ty(Expr::Sort(Level::succ(Level::zero())))
-        .intro_rule(
-            Name::str("Bool.true"),
-            Expr::Const(Name::str("Bool"), vec![]),
-        )
-        .intro_rule(
-            Name::str("Bool.false"),
-            Expr::Const(Name::str("Bool"), vec![]),
-        )
-        .build()
-        .expect("Bool inductive type build failed")
+    InductiveType::new(
+        Name::str("Bool"),
+        vec![],
+        0,
+        0,
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![
+            IntroRule {
+                name: Name::str("Bool.true"),
+                ty: Expr::Const(Name::str("Bool"), vec![]),
+            },
+            IntroRule {
+                name: Name::str("Bool.false"),
+                ty: Expr::Const(Name::str("Bool"), vec![]),
+            },
+        ],
+    )
 }
 /// Build the `Nat` inductive type.
 #[allow(dead_code)]
 pub fn mk_nat_inductive() -> InductiveType {
-    InductiveTypeBuilder::new()
-        .name(Name::str("Nat"))
-        .ty(Expr::Sort(Level::succ(Level::zero())))
-        .intro_rule(Name::str("Nat.zero"), Expr::Const(Name::str("Nat"), vec![]))
-        .intro_rule(
-            Name::str("Nat.succ"),
-            Expr::Pi(
-                crate::BinderInfo::Default,
-                Name::str("n"),
-                Node::new(Expr::Const(Name::str("Nat"), vec![])),
-                Node::new(Expr::Const(Name::str("Nat"), vec![])),
-            ),
-        )
-        .build()
-        .expect("Nat inductive type build failed")
+    InductiveType::new(
+        Name::str("Nat"),
+        vec![],
+        0,
+        0,
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![
+            IntroRule {
+                name: Name::str("Nat.zero"),
+                ty: Expr::Const(Name::str("Nat"), vec![]),
+            },
+            IntroRule {
+                name: Name::str("Nat.succ"),
+                ty: Expr::Pi(
+                    crate::BinderInfo::Default,
+                    Name::str("n"),
+                    Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                    Node::new(Expr::Const(Name::str("Nat"), vec![])),
+                ),
+            },
+        ],
+    )
 }
 /// Build the `Unit` inductive type (single constructor, no fields).
 #[allow(dead_code)]
 pub fn mk_unit_inductive() -> InductiveType {
-    InductiveTypeBuilder::new()
-        .name(Name::str("Unit"))
-        .ty(Expr::Sort(Level::succ(Level::zero())))
-        .intro_rule(
-            Name::str("Unit.unit"),
-            Expr::Const(Name::str("Unit"), vec![]),
-        )
-        .build()
-        .expect("Unit inductive type build failed")
+    InductiveType::new(
+        Name::str("Unit"),
+        vec![],
+        0,
+        0,
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![IntroRule {
+            name: Name::str("Unit.unit"),
+            ty: Expr::Const(Name::str("Unit"), vec![]),
+        }],
+    )
 }
 /// Build the `Empty` inductive type (no constructors — ex falso).
 #[allow(dead_code)]
@@ -367,7 +380,7 @@ pub fn is_enum_inductive(ind: &InductiveType) -> bool {
 /// Return the recursor name for a given inductive type name.
 #[allow(dead_code)]
 pub fn recursor_name(ind_name: &Name) -> Name {
-    Name::Str(Box::new(ind_name.clone()), "rec".to_string())
+    Name::mk_str(ind_name.clone(), "rec".to_string())
 }
 #[cfg(test)]
 mod extra_tests {
@@ -444,7 +457,7 @@ mod extra_tests {
     fn test_recursor_name() {
         let n = Name::str("Nat");
         let r = recursor_name(&n);
-        assert_eq!(r, Name::Str(Box::new(Name::str("Nat")), "rec".to_string()));
+        assert_eq!(r, Name::mk_str(Name::str("Nat"), "rec".to_string()));
     }
     #[test]
     fn test_is_prop_flag() {
@@ -935,3 +948,5 @@ mod tests_extra_iterators {
         assert_eq!(*nev.last(), 30);
     }
 }
+#[cfg(test)]
+mod builtin_inductive_tests;

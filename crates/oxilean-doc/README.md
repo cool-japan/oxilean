@@ -17,8 +17,8 @@ oxilean-doc src/Main.lean
 # Single file → HTML output
 oxilean-doc src/Main.lean -o docs/Main.html
 
-# Multi-file crate-wide documentation with cross-references
-oxilean-doc --crate . -o docs/
+# Multi-file documentation with cross-references: one page per module + index.html
+oxilean-doc multi --output-dir docs/ src/Foo.lean src/Bar.lean
 ```
 
 ## Features
@@ -42,18 +42,21 @@ oxilean-doc --crate . -o docs/
 | `symbol_index.rs` | Symbol table for cross-references and search index |
 | `multifile.rs` | Multi-file mode: one page per module + index page |
 | `markdown.rs` | Pure-Rust mini-Markdown renderer |
-| `main.rs` | CLI entry point via `clap` |
+| `walker.rs` | Group declarations by module for multi-file output |
+| `cross_ref.rs` | Resolve `[Name]` references in doc-comments to relative links |
+| `error.rs` | Error type for the multi-file generation pipeline |
+| `main.rs` | CLI entry point via `clap` (`multi` subcommand; single-file mode otherwise) |
 
 ## Crate details
 
 ```toml
 [dependencies]
-oxilean-doc = "0.1.3"
+oxilean-doc = "0.1.4"
 ```
 
 - License: Apache-2.0
 - Edition: 2021
-- Rust version: 1.70+
+- Rust version: 1.89+
 - Depends on: `oxilean-parse` (for source parsing)
 
 Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.

@@ -1283,25 +1283,25 @@ pub fn simplify_trivial_case(expr: LcnfExpr) -> LcnfExpr {
     match expr {
         LcnfExpr::Case {
             scrutinee,
+            scrutinee_ty,
             alts,
             default: None,
-            ..
-        } if alts.len() == 1 => {
-            let alt = alts.into_iter().next().expect(
-                "alts has exactly one element; guaranteed by pattern guard alts.len() == 1",
-            );
-            let mut result = simplify_trivial_case(alt.body);
-            for (idx, param) in alt.params.iter().enumerate().rev() {
-                result = LcnfExpr::Let {
-                    id: param.id,
-                    name: param.name.clone(),
-                    ty: param.ty.clone(),
-                    value: LcnfLetValue::Proj(alt.ctor_name.clone(), idx as u32, scrutinee),
-                    body: Box::new(result),
-                };
+        } => match <[LcnfAlt; 1]>::try_from(alts) {
+            Ok([alt]) => {
+                let mut result = simplify_trivial_case(alt.body);
+                for (idx, param) in alt.params.iter().enumerate().rev() {
+                    result = LcnfExpr::Let {
+                        id: param.id,
+                        name: param.name.clone(),
+                        ty: param.ty.clone(),
+                        value: LcnfLetValue::Proj(alt.ctor_name.clone(), idx as u32, scrutinee),
+                        body: Box::new(result),
+                    };
+                }
+                result
             }
-            result
-        }
+            Err(alts) => simplify_case_children(scrutinee, scrutinee_ty, alts, None),
+        },
         LcnfExpr::Let {
             id,
             name,
@@ -1320,21 +1320,30 @@ pub fn simplify_trivial_case(expr: LcnfExpr) -> LcnfExpr {
             scrutinee_ty,
             alts,
             default,
-        } => LcnfExpr::Case {
-            scrutinee,
-            scrutinee_ty,
-            alts: alts
-                .into_iter()
-                .map(|a| LcnfAlt {
-                    ctor_name: a.ctor_name,
-                    ctor_tag: a.ctor_tag,
-                    params: a.params,
-                    body: simplify_trivial_case(a.body),
-                })
-                .collect(),
-            default: default.map(|d| Box::new(simplify_trivial_case(*d))),
-        },
+        } => simplify_case_children(scrutinee, scrutinee_ty, alts, default),
         other => other,
+    }
+}
+/// Rebuild a case expression with `simplify_trivial_case` applied to every alternative and to the default.
+fn simplify_case_children(
+    scrutinee: LcnfVarId,
+    scrutinee_ty: LcnfType,
+    alts: Vec<LcnfAlt>,
+    default: Option<Box<LcnfExpr>>,
+) -> LcnfExpr {
+    LcnfExpr::Case {
+        scrutinee,
+        scrutinee_ty,
+        alts: alts
+            .into_iter()
+            .map(|a| LcnfAlt {
+                ctor_name: a.ctor_name,
+                ctor_tag: a.ctor_tag,
+                params: a.params,
+                body: simplify_trivial_case(a.body),
+            })
+            .collect(),
+        default: default.map(|d| Box::new(simplify_trivial_case(*d))),
     }
 }
 /// Remove unused let bindings (dead code elimination).
@@ -1489,3 +1498,6 @@ pub fn hoist_lets(expr: LcnfExpr) -> LcnfExpr {
         other => other,
     }
 }
+
+#[cfg(test)]
+mod simplify_tests;

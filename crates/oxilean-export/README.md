@@ -28,19 +28,32 @@ transmutes, no `from_utf8_unchecked`.
 ## Usage
 
 ```rust
-use oxilean_export::{Reader, ReaderLimits, replay};
-use oxilean_kernel::Environment;
+use std::fs::File;
+use std::io::BufReader;
 
-let ndjson: &[u8] = /* lean4export output bytes */;
-let mut env = Environment::new();
-let limits = ReaderLimits::corpus(); // generous limits for full-corpus runs
-let summary = replay(ndjson, &mut env, limits)?;
-println!("{} decls replayed", summary.total);
+use oxilean_export::{replay_streaming, ReplayLimits};
+
+let reader = BufReader::new(File::open("export.ndjson")?);
+let run = replay_streaming(reader, ReplayLimits::corpus())?; // generous limits for full-corpus runs
+println!("{} decls replayed", run.stats.decls_replayed);
+for entry in &run.report.entries {
+    // entry.name, entry.kind, entry.outcome (ReplayOutcome)
+}
 ```
 
-The `replay` function drives a streaming NDJSON parser — it does NOT buffer the
+`replay_streaming` drives a streaming NDJSON parser — it does NOT buffer the
 entire file in memory. Index-node objects are budgeted; pathological inputs that
 exceed the budget return a typed error rather than panicking or OOMing.
+
+## Cargo features
+
+| Feature | Default | Effect |
+|---|---|---|
+| `term-depth` | off | Forwards to `oxilean-kernel/term-depth`: the kernel tracks term depth so `oxilean_kernel::fuel::set_term_depth_limit` can be enforced. A term over the limit is reported as the named unsupported feature `TERM_DEPTH_LIMIT` (`"resource limit exceeded: term depth"`), never a rejection. |
+
+0.1.4 also replays nested inductives (via the kernel's nested-to-mutual
+elaboration) and counts the per-declaration budget in subterms reached by a
+term builder; new fixtures live under the workspace's `tests/fixtures/lean4export/`.
 
 ## Format pin
 
@@ -57,12 +70,13 @@ list.
 
 ```toml
 [dependencies]
-oxilean-export = "0.1.3"
+oxilean-export = "0.1.4"
 ```
 
+- Size: 2,530 SLOC in 7 source files under `src/`; 99 tests
 - License: Apache-2.0
 - Edition: 2021
-- Rust version: 1.70+
+- Rust version: 1.89+
 - No build scripts; no proc macros; no C dependencies
 
 Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.

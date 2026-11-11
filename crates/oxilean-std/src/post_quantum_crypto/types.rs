@@ -521,7 +521,7 @@ impl ToyMerkleTree {
     /// Verify a leaf against the root using its authentication path.
     pub fn verify_leaf(&self, leaf: u64, i: usize, path: (u64, u64)) -> bool {
         let (sib, parent_sib) = path;
-        let parent = if i % 2 == 0 {
+        let parent = if i.is_multiple_of(2) {
             merkle_hash(leaf, sib)
         } else {
             merkle_hash(sib, leaf)

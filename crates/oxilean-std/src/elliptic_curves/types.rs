@@ -212,7 +212,7 @@ impl ECDHExchange {
         ECDHExchange::new("Curve448-Goldilocks", 448)
     }
     pub fn shared_secret_size_bytes(&self) -> usize {
-        (self.key_size_bits + 7) / 8
+        self.key_size_bits.div_ceil(8)
     }
     pub fn security_level_bits(&self) -> usize {
         self.key_size_bits / 2
@@ -420,13 +420,12 @@ impl ScalarMult {
         let w: u64 = 4;
         let window = 1u64 << w;
         let base = EllipticCurvePoint::Affine(self.point.0, self.point.1);
-        let mut table = vec![EllipticCurvePoint::Infinity];
+        // `last` is always the most recently pushed entry of `table`.
+        let mut last = EllipticCurvePoint::Infinity;
+        let mut table = vec![last.clone()];
         for _ in 1..window {
-            let last = table
-                .last()
-                .expect("table is non-empty: initialized with Infinity")
-                .clone();
-            table.push(last.add_points(&base, a));
+            last = last.add_points(&base, a);
+            table.push(last.clone());
         }
         let mut result = EllipticCurvePoint::Infinity;
         let bits = 64u32;
@@ -510,7 +509,7 @@ impl IsogenyComputation {
         if self.degree < 2 {
             return false;
         }
-        (2..=((self.degree as f64).sqrt() as u64 + 1)).all(|i| self.degree % i != 0)
+        (2..=((self.degree as f64).sqrt() as u64 + 1)).all(|i| !self.degree.is_multiple_of(i))
     }
     /// Velu's formula complexity: O(l) field operations for l-isogeny.
     pub fn velu_complexity(&self) -> u64 {
@@ -1064,3 +1063,5 @@ impl ECDLPSolver {
         None
     }
 }
+#[cfg(test)]
+mod windowed_tests;

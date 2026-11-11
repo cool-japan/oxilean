@@ -12,8 +12,7 @@ use super::types::ScopedArena;
 
 impl<'pool> Drop for ScopedArena<'pool> {
     fn drop(&mut self) {
-        if let Some(arena) = self.arena.take() {
-            self.pool.release(arena);
-        }
+        let arena = self.arena.take_for_release();
+        self.pool.release(arena);
     }
 }

@@ -65,12 +65,12 @@ impl IwasawaAlgebra {
         if p == 2 {
             return true;
         }
-        if p % 2 == 0 {
+        if p.is_multiple_of(2) {
             return false;
         }
         let mut i = 3u64;
         while i * i <= p {
-            if p % i == 0 {
+            if p.is_multiple_of(i) {
                 return false;
             }
             i += 2;

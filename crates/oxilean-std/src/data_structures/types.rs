@@ -105,15 +105,15 @@ impl SuccinctBitVector {
     /// Construct a succinct bit vector from a slice of bits.
     pub fn new(bits: &[bool]) -> Self {
         let n = bits.len();
-        let num_words = (n + 63) / 64;
+        let num_words = n.div_ceil(64);
         let mut words = vec![0u64; num_words];
         for (i, &b) in bits.iter().enumerate() {
             if b {
                 words[i / 64] |= 1u64 << (i % 64);
             }
         }
-        let num_super = (n + Self::SUPER_BLOCK - 1) / Self::SUPER_BLOCK + 1;
-        let num_blocks = (n + Self::BLOCK_SIZE - 1) / Self::BLOCK_SIZE + 1;
+        let num_super = n.div_ceil(Self::SUPER_BLOCK) + 1;
+        let num_blocks = n.div_ceil(Self::BLOCK_SIZE) + 1;
         let mut superblocks = vec![0u32; num_super];
         let mut blocks = vec![0u16; num_blocks];
         let mut super_count = 0u32;
@@ -774,13 +774,16 @@ impl Trie {
         let mut current = 0;
         for byte in key.bytes() {
             let idx = byte as usize;
-            if self.nodes[current].children[idx].is_none() {
-                let new_node = self.nodes.len();
-                self.nodes.push(TrieNode::new());
-                self.nodes[current].children[idx] = Some(new_node);
-            }
-            current = self.nodes[current].children[idx]
-                .expect("children[idx] is Some: was just inserted in the if branch above");
+            let existing = self.nodes[current].children[idx];
+            current = match existing {
+                Some(child) => child,
+                None => {
+                    let new_node = self.nodes.len();
+                    self.nodes.push(TrieNode::new());
+                    self.nodes[current].children[idx] = Some(new_node);
+                    new_node
+                }
+            };
         }
         self.nodes[current].is_terminal = true;
     }
@@ -948,7 +951,7 @@ impl<T> Deque<T> {
         if len == 1 {
             return self.back.pop();
         }
-        let keep = (len + 1) / 2;
+        let keep = len.div_ceil(2);
         let mut moved = self.back.split_off(keep);
         moved.reverse();
         self.front = moved;
@@ -966,7 +969,7 @@ impl<T> Deque<T> {
         if len == 1 {
             return self.front.pop();
         }
-        let keep = (len + 1) / 2;
+        let keep = len.div_ceil(2);
         let mut moved = self.front.split_off(keep);
         moved.reverse();
         self.back = moved;
@@ -1441,3 +1444,5 @@ impl<T: Clone + Default> PersistArrayV2<T> {
         )
     }
 }
+#[cfg(test)]
+mod trie_insert_tests;

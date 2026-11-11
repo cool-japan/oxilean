@@ -17,8 +17,8 @@
 #     numbers the wasm engine produces, since it is the same engine).
 #
 # The WASM half (instantiate the .wasm under a JS runtime, run the same fixture,
-# diff the report) is DEFERRED to Wave 4: this environment has no node / deno /
-# headless browser, so the wasm report cannot be produced here. The wasm module
+# diff the report) is not part of this gate yet (this script does not implement it),
+# so no wasm report is produced here. The wasm module
 # is instead validated structurally (`wasm-tools validate`) and by kernel-symbol
 # presence, and the engine path is proven identical natively here. See
 # TODO_VERIFY.md G7.
@@ -37,10 +37,8 @@ EXPECT_VERIFIED=23
 EXPECT_UNSUPPORTED=0
 EXPECT_REJECTED=0
 
-if [ ! -x "$BIN" ]; then
-    echo "--- Building release oxilean-verify binary ---"
-    ( cd "$ROOT" && cargo build -p oxilean-verify --release )
-fi
+echo "--- Building release oxilean-verify binary ---"
+( cd "$ROOT" && cargo build -p oxilean-verify --release )
 if [ ! -f "$FIXTURE" ]; then
     echo "FAIL: fixture missing: $FIXTURE" >&2
     exit 1
@@ -81,7 +79,6 @@ echo "OK: verified=$V unsupported=$U rejected=$REJ (matches pinned expectation).
 echo ""
 echo "Native determinism half PASSED."
 echo "NOTE: the WASM half (run the same fixture through the .wasm and diff the"
-echo "      report) is DEFERRED to Wave 4 — no node/deno/headless browser in"
-echo "      this environment. The wasm module is validated structurally"
+echo "      report) is not part of this gate yet. The wasm module is validated structurally"
 echo "      (wasm-tools validate) and drives the identical engine path."
 exit 0

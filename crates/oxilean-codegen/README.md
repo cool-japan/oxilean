@@ -9,7 +9,7 @@
 
 The crate is **untrusted** with respect to logical soundness -- any bug here can only affect the performance or correctness of extracted programs, not the validity of proofs, because all terms are independently verified by `oxilean-kernel` before reaching this stage.
 
-243,915 SLOC -- comprehensive code generation with multiple backends and optimisation passes (1,074 source files, 4,713 tests passing).
+248,329 SLOC -- comprehensive code generation with multiple backends and optimisation passes (1,226 source files, 4,755 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 
@@ -45,6 +45,7 @@ Kernel Expr (type-checked)
 |  +- glsl_backend     -> GLSL shader output            |
 |  +- wgsl_backend     -> WebGPU WGSL shaders           |
 |  +- zig_backend      -> Zig (for FFI bridging)        |
+|  +- cuda_backend     -> CUDA                          |
 |  +- ffi_bridge       -> C FFI header generation       |
 +------------------------------------------------------+
 ```
@@ -72,7 +73,11 @@ Kernel Expr (type-checked)
 | `glsl_backend` | GLSL shader emission |
 | `wgsl_backend` | WebGPU WGSL emission |
 | `zig_backend` | Zig code emission |
+| `cuda_backend` | CUDA code emission |
 | `ffi_bridge` | C FFI header generation |
+| `doc_ir` | Flat `DocIR` index of a compiled LCNF module (`emit_doc_ir`); doc comments are not propagated into codegen, so `doc_comment` is always empty |
+
+The tables above show the principal modules; the crate carries many more backends, listed in the crate-level rustdoc (`src/lib.rs`).
 
 ### Optimization Passes
 
@@ -110,7 +115,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-codegen = "0.1.3"
+oxilean-codegen = "0.1.4"
 ```
 
 ## Dependencies

@@ -18,7 +18,6 @@ name = "oxilean_lint"
 path = "src/lib.rs"
 
 [dependencies]
-oxilean-kernel = { workspace = true }
 oxilean-parse = { workspace = true }
 
 [dev-dependencies]

@@ -963,7 +963,7 @@ impl ArithDecide {
         if n == 0 {
             return DecideTactic::decide_bool(a == 0 && b == 0);
         }
-        DecideTactic::decide_bool(a % n == 0 && b % n == 0)
+        DecideTactic::decide_bool(a.is_multiple_of(n) && b.is_multiple_of(n))
     }
 }
 /// Native decide: a faster path for evaluating decidable propositions.

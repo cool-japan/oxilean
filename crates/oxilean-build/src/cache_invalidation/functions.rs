@@ -46,13 +46,11 @@ fn djb2_64(data: &[u8]) -> u64 {
 fn murmur3_64(data: &[u8]) -> u64 {
     // Build a 64-bit seed by treating the input as little-endian u64 chunks.
     let mut h: u64 = data.len() as u64;
-    let mut chunks = data.chunks_exact(8);
-    for chunk in chunks.by_ref() {
-        let word = u64::from_le_bytes(chunk.try_into().unwrap_or([0u8; 8]));
-        h ^= word.wrapping_mul(0xff51afd7ed558ccd);
+    let (words, rem) = data.as_chunks::<8>();
+    for word in words {
+        h ^= u64::from_le_bytes(*word).wrapping_mul(0xff51afd7ed558ccd);
     }
     // Remainder bytes.
-    let rem = chunks.remainder();
     if !rem.is_empty() {
         let mut tail = [0u8; 8];
         tail[..rem.len()].copy_from_slice(rem);

@@ -268,14 +268,26 @@ pub mod arena;
 pub mod bignat;
 pub mod expr;
 pub mod level;
+/// The types of the free variables in scope, as the reducer and the def-eq
+/// checker mirror them from the surrounding checker's local context.
+pub(crate) mod local_types;
 pub mod name;
+/// Memo tables over the shared subterms of one term, for the walks that
+/// rebuild or read a term without visiting a shared subterm once per path.
+pub(crate) mod node_memo;
+/// Structural hashing primitives: the hash `Name`, `Level` and every shared
+/// subterm of an `Expr` store at construction.
+pub(crate) mod structural_hash;
+/// Caches keyed by terms (reduction, def-eq, inference), and the
+/// sharing-aware structural equality that verifies their keys.
+pub(crate) mod term_cache;
 
 // Re-exports for convenience
 pub use arena::{Arena, Idx};
 pub use bignat::BigNat;
 pub use expr::{BinderInfo, Expr, FVarId, Literal, Node};
-pub use level::{Level, LevelMVarId};
-pub use name::Name;
+pub use level::{Level, LevelMVarId, LevelView};
+pub use name::{Name, NameView};
 pub mod subst;
 
 pub use subst::{abstract_expr, instantiate};
@@ -385,8 +397,9 @@ pub use export::{
     ModuleCache,
 };
 pub use inductive::{
-    add_inductive_family, check_and_derive_family, check_inductive, derive_family_unchecked,
-    reduce_recursor, DerivedFamily, InductiveEnv, InductiveSpec, InductiveType, IntroRule,
+    add_inductive_family, check_and_derive_family, check_and_derive_family_nested, check_inductive,
+    derive_family_unchecked, reduce_recursor, restore_nested, verify_nested_bundle, DerivedFamily,
+    InductiveEnv, InductiveSpec, InductiveType, IntroRule,
 };
 pub use match_compile::{
     CompileResult, ConstructorInfo as MatchConstructorInfo, DecisionTree, MatchArm, MatchCompiler,

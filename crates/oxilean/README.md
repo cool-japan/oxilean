@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/oxilean.svg)](https://crates.io/crates/oxilean)
 [![docs.rs](https://docs.rs/oxilean/badge.svg)](https://docs.rs/oxilean)
 [![License](https://img.shields.io/crates/l/oxilean.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.89%2B-orange.svg)](https://www.rust-lang.org)
 
 **Unified facade crate for OxiLean** -- a Pure Rust interactive theorem prover implementing the Calculus of Inductive Constructions (CiC), inspired by Lean 4.
 
@@ -37,20 +37,25 @@ This crate re-exports all OxiLean library subcrates under a single API surface w
 | `oxilean-wasm` | WebAssembly bindings |
 | `oxilean-cli` | Command-line binary (not re-exported; use directly) |
 
+The workspace also contains crates that are **not** re-exported by this facade and are used directly:
+`oxilean-cli` (binary), `oxilean-export` (lean4export NDJSON reader), `oxilean-verify` (independent Lean 4 proof checker),
+`oxilean-verify-wasm` (WebAssembly bindings for `oxilean-verify`), `oxilake` (package manager) and `oxilean-doc`
+(documentation generator).
+
 ## Installation
 
 Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean = "0.1.3"
+oxilean = "0.1.4"
 ```
 
 Or with all library components:
 
 ```toml
 [dependencies]
-oxilean = { version = "0.1.3", features = ["full"] }
+oxilean = { version = "0.1.4", features = ["full"] }
 ```
 
 ## Feature Flags
@@ -84,7 +89,7 @@ use oxilean::meta::{MetaContext, TacticState, InstanceSynthesizer, DiscrTree};
 
 ```toml
 # Cargo.toml
-oxilean = { version = "0.1.3", features = ["full"] }
+oxilean = { version = "0.1.4", features = ["full"] }
 ```
 
 ```rust
@@ -105,7 +110,7 @@ Include only what you need to minimize compile times:
 
 ```toml
 # Cargo.toml -- kernel + standard library only
-oxilean = { version = "0.1.3", default-features = false, features = ["kernel", "std-lib"] }
+oxilean = { version = "0.1.4", default-features = false, features = ["kernel", "std-lib"] }
 ```
 
 ```rust
@@ -128,12 +133,13 @@ fn check_definitions(env: &Environment) {
 ### Parsing and elaboration pipeline
 
 ```rust
-use oxilean::parse::Parser;
+use oxilean::parse::{Lexer, Parser};
 use oxilean::elab::ElabContext;
 
 fn process_source(source: &str) {
-    let parser = Parser::new(source);
-    // Parse surface syntax, then elaborate into kernel terms
+    let tokens = Lexer::new(source).tokenize();
+    let mut parser = Parser::new(tokens);
+    // Parse surface syntax (e.g. `parser.parse_decl()`), then elaborate into kernel terms
     // ...
 }
 ```

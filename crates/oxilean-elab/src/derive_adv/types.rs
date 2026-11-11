@@ -155,7 +155,7 @@ impl TypeInfoAdv {
         let levels: Vec<Level> = self
             .univ_params
             .iter()
-            .map(|p| Level::Param(p.clone()))
+            .map(|p| Level::param(p.clone()))
             .collect();
         Expr::Const(self.name.clone(), levels)
     }

@@ -61,7 +61,7 @@ pub fn abstract_fvar_in_expr(expr: &Expr, fvar_id: FVarId, idx: u32) -> Expr {
 mod tests {
     use super::*;
     use crate::basic::*;
-    use oxilean_kernel::Level;
+    use oxilean_kernel::{Level, LevelView};
     fn mk_env() -> Environment {
         Environment::new()
     }
@@ -203,8 +203,8 @@ mod tests {
     fn test_level_mvar_assignment() {
         let mut ctx = MetaContext::new(mk_env());
         let l = ctx.mk_fresh_level_mvar();
-        if let Level::MVar(oxilean_kernel::LevelMVarId(id)) = &l {
-            ctx.assign_level_mvar(*id, Level::zero());
+        if let LevelView::MVar(oxilean_kernel::LevelMVarId(id)) = l.view() {
+            ctx.assign_level_mvar(id, Level::zero());
             let result = ctx.instantiate_level_mvars(&l);
             assert_eq!(result, Level::zero());
         } else {

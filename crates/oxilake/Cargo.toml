@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 homepage.workspace = true
+readme = "README.md"
 description = "Package manager for OxiLean (Lean4-compatible) projects"
 keywords = ["lean", "package-manager", "build-tool", "proof-assistant"]
 categories = ["command-line-utilities", "development-tools"]
@@ -22,10 +23,7 @@ oxilean-kernel = { workspace = true }
 oxilean-parse = { workspace = true }
 oxilean-std = { workspace = true }
 oxicode = { workspace = true }
-clap = { version = "4.6", features = ["derive"] }
-serde = { version = "1.0", features = ["derive"] }
+clap = { workspace = true }
+serde = { workspace = true }
 toml = { workspace = true }
-anyhow = { version = "1.0" }
-
-[dev-dependencies]
-tempfile = { version = "3.27" }
+anyhow = { workspace = true }

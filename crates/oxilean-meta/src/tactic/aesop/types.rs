@@ -611,7 +611,7 @@ impl AesopRuleSet {
         let prio = rule.priority;
         let pos = self
             .priority_order
-            .partition_point(|rid| self.rules.get(rid.0).map_or(true, |r| r.priority <= prio));
+            .partition_point(|rid| self.rules.get(rid.0).is_none_or(|r| r.priority <= prio));
         self.priority_order.insert(pos, id);
         self.rules.push(rule);
         Ok(id)

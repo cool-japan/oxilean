@@ -906,7 +906,7 @@ pub fn trapezoidal_rule(f: &dyn Fn(f64) -> f64, a: f64, b: f64, n: u32) -> f64 {
 ///
 /// If n is odd, it is incremented by 1.
 pub fn simpson_rule(f: &dyn Fn(f64) -> f64, a: f64, b: f64, n: u32) -> f64 {
-    let n = if n % 2 == 0 { n } else { n + 1 };
+    let n = if n.is_multiple_of(2) { n } else { n + 1 };
     let h = (b - a) / n as f64;
     let mut sum = f(a) + f(b);
     for i in 1..n {

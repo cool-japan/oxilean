@@ -3,10 +3,24 @@
 //! number, and nothing may be silently skipped.
 //!
 //! Coverage:
-//! * all six fixtures fully checked (inductives, mutual groups, structures
-//!   with eta/proj, quotients, kernel-re-derived recursors);
+//! * the fixtures of sound declarations fully checked (inductives, mutual groups, structures
+//!   with eta/proj, quotients, kernel-re-derived recursors, nested
+//!   inductives, point-free quotient maps);
 //! * a rejected control (corrupted proof term → `Rejected`, not
 //!   `Unsupported`);
+//! * a negative fixture: a real export of a declaration Lean's own kernel
+//!   rejects → `Rejected`;
+//! * a long head-reduction chain: verified under a per-declaration budget,
+//!   and without one a named `Unsupported` — never `Rejected`;
+//! * a term that is small as a shared DAG and 2^60 nodes as a tree: verified
+//!   for a few thousand units of the budget;
+//! * `f a = f b` decided by comparing the arguments, for a function whose
+//!   unfolding never ends — and the same shape with unequal arguments,
+//!   which Lean's kernel rejects, `Rejected`;
+//! * the two limits of a checking thread with a small stack — on the nesting
+//!   of reductions and on the depth of terms: what is over one is a named
+//!   `Unsupported`, and a false theorem Lean's kernel rejects is never
+//!   `Checked` under any limit;
 //! * `Quot.sound` axiom validation against the kernel's canonical type;
 //! * nested inductives → the named `Unsupported` feature, with the
 //!   dependency cascade;
@@ -18,8 +32,8 @@ use std::time::Duration;
 
 use oxilean_export::{
     read_str, replay_decl, replay_file, replay_streaming, ExportDecl, InductiveBundle, Limits,
-    ReplayLimits, ReplayOutcome, Replayer, BUDGET_FEATURE, DEFERRED_DEPENDENCY, NESTED_INDUCTIVES,
-    RESOURCE_LIMIT,
+    ReplayLimits, ReplayOutcome, Replayer, BUDGET_FEATURE, CORPUS_DECL_FUEL, DEFAULT_DECL_FUEL,
+    DEFERRED_DEPENDENCY, NESTED_INDUCTIVES, REDUCTION_LIMIT, RESOURCE_LIMIT, TERM_DEPTH_LIMIT,
 };
 use oxilean_kernel::{
     init_builtin_env, AxiomVal, BinderInfo, ConstantVal, ConstructorVal, DefinitionSafety,
@@ -120,6 +134,41 @@ fn tree_forest_mutual_inductive_checked() {
 }
 
 #[test]
+fn syntax_nested_inductive_all_checked() {
+    // The real Lean core `Lean.Syntax` bundle — Array-then-List double nesting
+    // (`numNested = 2`), exported recursors `Lean.Syntax.rec` / `.rec_1` (Array)
+    // / `.rec_2` (List), 3 motives / 7 minors — plus its transitive
+    // dependencies. Every declaration verifies: the nested-to-mutual derivation
+    // reproduces Lean's exact exported recursors up to def-eq.
+    assert_split("Syntax", 269, 0, 0);
+
+    let file = read_str(&fixture("Syntax")).unwrap_or_else(|e| panic!("parse: {e}"));
+    let mut replayer = Replayer::new().unwrap_or_else(|e| panic!("replayer: {e}"));
+    for d in &file.decls {
+        let entry = replayer.replay(d);
+        assert!(
+            entry.outcome.is_checked(),
+            "{}: {:?}",
+            entry.name,
+            entry.outcome
+        );
+    }
+    let env = replayer.env();
+    let syntax = Name::from_str("Lean").append_str("Syntax");
+    let iv = env
+        .get_inductive_val(&syntax)
+        .expect("Lean.Syntax must be installed as an inductive");
+    assert_eq!(iv.num_nested, 2, "Lean.Syntax carries numNested = 2");
+    for suffix in ["rec", "rec_1", "rec_2"] {
+        assert!(
+            env.get_recursor_val(&syntax.clone().append_str(suffix))
+                .is_some(),
+            "Lean.Syntax.{suffix} must be installed (kernel-verified nested recursor)"
+        );
+    }
+}
+
+#[test]
 fn tree_forest_full_mutual_defs_checked() {
     // 30 defs (mutual Tree.size/Forest.size chain) + 7 inductive bundles.
     assert_split("Tree_Forest_full", 37, 0, 0);
@@ -153,6 +202,120 @@ fn parity_is_even_quotients_all_checked() {
     }
     let names: Vec<&str> = quots.iter().map(|(n, _)| n.as_str()).collect();
     assert_eq!(names, ["Quot", "Quot.mk", "Quot.lift", "Quot.ind"]);
+}
+
+#[test]
+fn quot_partial_app_point_free_quotient_maps_all_checked() {
+    // 1 axiom (`Quot.sound`) + 33 defs + 16 thms + 4 quot records + 12
+    // inductive bundles = 66, all checked.
+    //
+    // The fixture is written in the point-free style of Mathlib's `Quot.map` /
+    // `Quotient.map'`: a head step (a definition unfolding, a structure
+    // projection) exposes a `Quot.lift` or a recursor that is short of its
+    // major premise, and the major is an argument of the ENCLOSING
+    // application. Before the head-reduction fix the reducer left such an
+    // application unreduced and the three `rfl` theorems named below were
+    // REJECTED (63 checked / 0 unsupported / 3 rejected) — the class of
+    // Mathlib's `AddCon.addGroup._proof_1`.
+    assert_split("QuotPartialApp", 66, 0, 0);
+
+    let file = read_str(&fixture("QuotPartialApp")).unwrap_or_else(|e| panic!("parse: {e}"));
+    let report = replay_file(&file);
+    for name in [
+        // A constant whose value is `Quot.lift f h`.
+        "QuotPartialApp.succQ_mk",
+        // An instance field holding `Quotient.map' f h`.
+        "QuotPartialApp.neg_mk",
+        // A constant whose value is `Nat.rec z s`.
+        "QuotPartialApp.pred_succ",
+        // Controls: these checked before the fix too.
+        "QuotPartialApp.succQ'_mk",
+        "QuotPartialApp.add_mk",
+    ] {
+        let entry = report
+            .entries
+            .iter()
+            .find(|e| e.name.to_string() == name)
+            .unwrap_or_else(|| panic!("{name} must be in the fixture"));
+        assert_eq!(entry.kind, "thm", "{name} is a theorem");
+        assert!(entry.outcome.is_checked(), "{name}: {:?}", entry.outcome);
+    }
+}
+
+/// Replay `ReductionChain` with the given per-declaration fuel and return
+/// the outcome of each declaration by name.
+fn replay_reduction_chain(per_decl_fuel: Option<u64>) -> Vec<(String, ReplayOutcome)> {
+    let file = read_str(&fixture("ReductionChain")).unwrap_or_else(|e| panic!("parse: {e}"));
+    let mut replayer = Replayer::new().unwrap_or_else(|e| panic!("replayer: {e}"));
+    replayer.set_per_decl_fuel(per_decl_fuel);
+    file.decls
+        .iter()
+        .map(|d| {
+            let entry = replayer.replay(d);
+            (entry.name.to_string(), entry.outcome)
+        })
+        .collect()
+}
+
+#[test]
+fn reduction_chain_verifies_under_a_per_declaration_budget() {
+    // `chain_20000` (`chain 20000 = true` by `decide +kernel`) is one
+    // head-reduction chain of tens of thousands of cheap steps. The reducer's
+    // cap cuts it off after 10,000, and the check fails. Under a budget — the
+    // CLI always arms one — the replayer then repeats the check with the cap
+    // lifted, the budget bounds the chain, and the chain is far below it:
+    // every declaration checks. Before the fix the first failure was the
+    // verdict and this valid theorem was REJECTED (34 checked / 0
+    // unsupported / 2 rejected).
+    let outcomes = replay_reduction_chain(Some(DEFAULT_DECL_FUEL));
+    assert_eq!(outcomes.len(), 36);
+    let bad: Vec<&(String, ReplayOutcome)> =
+        outcomes.iter().filter(|(_, o)| !o.is_checked()).collect();
+    assert!(bad.is_empty(), "all 36 must check: {bad:#?}");
+    for name in [
+        "ReductionChain.chain_1000",
+        "ReductionChain.chain_20000._proof_1_1",
+        "ReductionChain.chain_20000",
+    ] {
+        assert!(
+            outcomes.iter().any(|(n, _)| n == name),
+            "{name} must be in the fixture"
+        );
+    }
+}
+
+#[test]
+fn reduction_chain_without_a_budget_is_a_named_limit_never_a_rejection() {
+    // With no budget armed nothing but the reducer's own cap would stop a
+    // runaway chain, so the check is not repeated without it and
+    // `chain_20000` is not reduced to the end. That is a resource limit, and
+    // it must be REPORTED as one:
+    // the theorem's proof lands in `unsupported` under REDUCTION_LIMIT, the
+    // theorem that uses it follows as a deferred dependency, and nothing is
+    // rejected. `chain_1000`, short enough for the cap, still checks.
+    assert_split("ReductionChain", 34, 2, 0);
+
+    let outcomes = replay_reduction_chain(None);
+    let outcome = |name: &str| -> &ReplayOutcome {
+        outcomes
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, o)| o)
+            .unwrap_or_else(|| panic!("{name} must be in the fixture"))
+    };
+    assert!(outcome("ReductionChain.chain_1000").is_checked());
+    assert_eq!(
+        outcome("ReductionChain.chain_20000._proof_1_1"),
+        &ReplayOutcome::Unsupported {
+            feature: REDUCTION_LIMIT
+        }
+    );
+    assert_eq!(
+        outcome("ReductionChain.chain_20000"),
+        &ReplayOutcome::Unsupported {
+            feature: DEFERRED_DEPENDENCY
+        }
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +360,446 @@ fn corrupted_proof_term_is_rejected_not_unsupported() {
             assert!(!reason.is_empty(), "rejection carries a reason");
         }
         other => panic!("corrupted proof must be REJECTED, got {other:?}"),
+    }
+}
+
+/// Replay a fixture with the given per-declaration fuel; the outcome and the
+/// fuel charged for each declaration, by name.
+fn replay_with_fuel(name: &str, per_decl_fuel: Option<u64>) -> Vec<(String, ReplayOutcome, u64)> {
+    let file = read_str(&fixture(name)).unwrap_or_else(|e| panic!("parse {name}: {e}"));
+    let mut replayer = Replayer::new().unwrap_or_else(|e| panic!("replayer: {e}"));
+    replayer.set_per_decl_fuel(per_decl_fuel);
+    file.decls
+        .iter()
+        .map(|d| {
+            let entry = replayer.replay(d);
+            let used = oxilean_kernel::fuel::used();
+            (entry.name.to_string(), entry.outcome, used)
+        })
+        .collect()
+}
+
+#[test]
+fn shared_subterms_tower_checks_for_the_work_it_takes_not_its_size_as_a_tree() {
+    // `tower` is sixty `let`s, each used twice by the next: a few hundred
+    // shared nodes, 2^60 additions as a tree. Lean's kernel checks it at
+    // once. Through 0.1.4's first performance pass the per-declaration budget
+    // was charged for the TREE — a substitution that shared an untouched
+    // subterm was billed that subterm's size as a tree — so `tower` ran out
+    // of even the corpus budget (2^26) and was `unsupported`, with the
+    // theorem deferred behind it (57 checked / 3 unsupported / 0 rejected).
+    //
+    // Under the DEFAULT budget, and for a vanishing part of it: what is
+    // charged is the subterms a substitution reaches. (Always replayed under
+    // a budget here: without one, a kernel that walked the tree again would
+    // not fail this test, it would never return from it.)
+    let outcomes = replay_with_fuel("SharedSubterms", Some(DEFAULT_DECL_FUEL));
+    assert_eq!(outcomes.len(), 60);
+    let bad: Vec<&(String, ReplayOutcome, u64)> = outcomes
+        .iter()
+        .filter(|(_, o, _)| !o.is_checked())
+        .collect();
+    assert!(bad.is_empty(), "all 60 must check: {bad:#?}");
+    for name in [
+        "SharedSubterms.tower",
+        "SharedSubterms.tower_eq._proof_1_1",
+        "SharedSubterms.tower_eq",
+    ] {
+        let (_, outcome, used) = outcomes
+            .iter()
+            .find(|(n, _, _)| n == name)
+            .unwrap_or_else(|| panic!("{name} must be in the fixture"));
+        assert!(outcome.is_checked(), "{name}: {outcome:?}");
+        assert!(
+            *used < 100_000,
+            "{name} charged {used} units; a 60-level tower is a few thousand"
+        );
+    }
+}
+
+#[test]
+fn congruence_first_equal_arguments_decide_without_unfolding() {
+    // `slow 1000000000 (k + 0) = slow 1000000000 k` and
+    // `(2^64 - 1) % USize.size = (2^64 - 1) % 2 ^ numBits`, both by `rfl`:
+    // the same definition applied to definitionally equal arguments. Lean's
+    // kernel compares the arguments before it unfolds anything. Reducing
+    // both sides first — what this kernel did — unfolds a recursion that is
+    // stuck at every step and compares the two results one unfolding at a
+    // time: both theorems ran out of the corpus budget (182 checked / 2
+    // unsupported / 1 rejected), as did the declarations of Lean core `Init`
+    // that compare such terms.
+    //
+    // The fourth theorem of the file, `bad`, is the same shape with UNEQUAL
+    // arguments; Lean's kernel rejects it, and so must this one. (Replayed
+    // under a budget, as `SharedSubterms` is and for the same reason.)
+    let outcomes = replay_with_fuel("CongruenceFirst", Some(DEFAULT_DECL_FUEL));
+    assert_eq!(outcomes.len(), 185);
+    let split = (
+        outcomes.iter().filter(|(_, o, _)| o.is_checked()).count(),
+        outcomes
+            .iter()
+            .filter(|(_, o, _)| o.is_unsupported())
+            .count(),
+        outcomes.iter().filter(|(_, o, _)| o.is_rejected()).count(),
+    );
+    assert_eq!(split, (184, 0, 1), "CongruenceFirst: split mismatch");
+    for name in [
+        "CongruenceFirst.same_function_equal_args",
+        "CongruenceFirst.mod_stuck_divisor",
+        "CongruenceFirst.short_fuel",
+    ] {
+        let (_, outcome, used) = outcomes
+            .iter()
+            .find(|(n, _, _)| n == name)
+            .unwrap_or_else(|| panic!("{name} must be in the fixture"));
+        assert!(outcome.is_checked(), "{name}: {outcome:?}");
+        assert!(
+            *used < 100_000,
+            "{name} charged {used} units; comparing the arguments is a few hundred"
+        );
+    }
+}
+
+#[test]
+fn congruence_first_unequal_arguments_are_rejected() {
+    // `CongruenceFirst.bad : slow 5 k = slow 6 k := Eq.refl (slow 5 k)` —
+    // a declaration Lean's own kernel REJECTS (added with
+    // `debug.skipKernelTC`; see the fixture README). Comparing the
+    // arguments of the two `slow` applications finds `5` and `6` unequal,
+    // which decides nothing; the comparison that follows must find the two
+    // sides different, under the default budget and under the corpus one.
+    for per_decl_fuel in [Some(DEFAULT_DECL_FUEL), Some(CORPUS_DECL_FUEL)] {
+        let outcomes = replay_with_fuel("CongruenceFirst", per_decl_fuel);
+        let (_, outcome, _) = outcomes
+            .iter()
+            .find(|(n, _, _)| n == "CongruenceFirst.bad")
+            .unwrap_or_else(|| panic!("CongruenceFirst.bad must be in the fixture"));
+        assert!(
+            matches!(outcome, ReplayOutcome::Rejected { .. }),
+            "a declaration Lean's kernel rejects must be REJECTED              (budget {per_decl_fuel:?}), got {outcome:?}"
+        );
+        // Everything else in the file is sound and checks.
+        for (name, outcome, _) in outcomes
+            .iter()
+            .filter(|(n, _, _)| n != "CongruenceFirst.bad")
+        {
+            assert!(outcome.is_checked(), "{name}: {outcome:?}");
+        }
+    }
+}
+
+/// Replay a fixture under the default budget on a thread of its own, with
+/// the given limits on the nesting of reductions and on the depth of terms
+/// (`None` = none, as on the thread of the command-line tool). The thread
+/// has a deep stack: with no limit, how deep the kernel may recurse is a
+/// matter of stack, and a test thread has two megabytes of it.
+fn replay_with_stack_limits(
+    name: &'static str,
+    nesting: Option<u32>,
+    depth: Option<u32>,
+) -> Vec<(String, ReplayOutcome, u64)> {
+    std::thread::Builder::new()
+        .stack_size(256 << 20)
+        .spawn(move || {
+            oxilean_kernel::fuel::set_reduction_nesting_limit(nesting);
+            oxilean_kernel::fuel::set_term_depth_limit(depth);
+            replay_with_fuel(name, Some(DEFAULT_DECL_FUEL))
+        })
+        .unwrap_or_else(|e| panic!("cannot spawn the replay thread: {e}"))
+        .join()
+        .unwrap_or_else(|_| panic!("the replay thread panicked"))
+}
+
+fn outcome_of<'a>(outcomes: &'a [(String, ReplayOutcome, u64)], name: &str) -> &'a ReplayOutcome {
+    outcomes
+        .iter()
+        .find(|(n, _, _)| n == name)
+        .map(|(_, outcome, _)| outcome)
+        .unwrap_or_else(|| panic!("{name} must be in the fixture"))
+}
+
+fn split_of(outcomes: &[(String, ReplayOutcome, u64)]) -> (usize, usize, usize) {
+    (
+        outcomes.iter().filter(|(_, o, _)| o.is_checked()).count(),
+        outcomes
+            .iter()
+            .filter(|(_, o, _)| o.is_unsupported())
+            .count(),
+        outcomes.iter().filter(|(_, o, _)| o.is_rejected()).count(),
+    )
+}
+
+/// What must hold of a replay under ANY limit of a small stack: the one
+/// declaration Lean's kernel rejects (`bad`) is never checked, nothing else
+/// is ever rejected, and whatever is unsupported names one of `features`.
+fn assert_a_limit_is_not_a_verdict(
+    outcomes: &[(String, ReplayOutcome, u64)],
+    bad: &str,
+    features: &[&str],
+    limits: &str,
+) {
+    for (name, outcome, _) in outcomes {
+        match outcome {
+            ReplayOutcome::Checked => assert_ne!(
+                name, bad,
+                "{limits}: a declaration Lean's kernel rejects was CHECKED"
+            ),
+            ReplayOutcome::Rejected { reason } => assert_eq!(
+                name, bad,
+                "{limits}: a sound declaration was REJECTED: {reason}"
+            ),
+            ReplayOutcome::Unsupported { feature } => assert!(
+                features.contains(feature),
+                "{limits}: {name} is unsupported for an unexpected reason: {feature}"
+            ),
+        }
+    }
+}
+
+#[test]
+fn nested_reduction_checks_on_a_deep_stack_and_its_false_theorem_is_rejected() {
+    // `count 400 0 = 400` by kernel evaluation: a reduction nested about
+    // four hundred deep (each step of the structural recursion is found
+    // inside the previous one). With no limit on the nesting — the thread of
+    // the command-line tool — it is checked, and `count 400 0 = 401`, which
+    // Lean's kernel rejects and which takes the same four hundred levels to
+    // find out, is rejected.
+    let outcomes = replay_with_stack_limits("NestedReduction", None, None);
+    assert_eq!(outcomes.len(), 65);
+    assert_eq!(split_of(&outcomes), (64, 0, 1), "NestedReduction: split");
+    for name in [
+        "NestedReduction.deep._proof_1_1",
+        "NestedReduction.deep",
+        "NestedReduction.shallow",
+    ] {
+        assert!(outcome_of(&outcomes, name).is_checked(), "{name}");
+    }
+    assert!(
+        matches!(
+            outcome_of(&outcomes, "NestedReduction.bad"),
+            ReplayOutcome::Rejected { .. }
+        ),
+        "a declaration Lean's kernel rejects must be REJECTED, got {:?}",
+        outcome_of(&outcomes, "NestedReduction.bad")
+    );
+}
+
+#[test]
+fn a_limit_on_nested_reductions_is_a_named_limit_and_never_a_verdict() {
+    // The limit a WebAssembly build of the checker sets (256): the reduction
+    // four hundred deep is not carried out. The theorem that needs it is
+    // unsupported — its proof by name, the theorem behind it as a
+    // dependency — and so is the FALSE theorem: with the reduction cut
+    // short the checker cannot tell `400` from `401`, and must say so.
+    // Forty levels are within the limit.
+    let outcomes = replay_with_stack_limits("NestedReduction", Some(256), None);
+    assert_eq!(split_of(&outcomes), (62, 3, 0), "NestedReduction under 256");
+    assert_eq!(
+        *outcome_of(&outcomes, "NestedReduction.deep._proof_1_1"),
+        ReplayOutcome::Unsupported {
+            feature: REDUCTION_LIMIT
+        }
+    );
+    assert_eq!(
+        *outcome_of(&outcomes, "NestedReduction.deep"),
+        ReplayOutcome::Unsupported {
+            feature: DEFERRED_DEPENDENCY
+        }
+    );
+    assert_eq!(
+        *outcome_of(&outcomes, "NestedReduction.bad"),
+        ReplayOutcome::Unsupported {
+            feature: REDUCTION_LIMIT
+        }
+    );
+    assert!(outcome_of(&outcomes, "NestedReduction.shallow").is_checked());
+
+    // And under every limit, from none of the stack to all of it: the false
+    // theorem is never checked and no sound declaration is ever rejected.
+    for limit in [
+        0, 1, 2, 3, 5, 8, 13, 21, 34, 44, 45, 55, 89, 144, 233, 377, 400, 401, 402, 403, 404, 405,
+        406, 610, 1000,
+    ] {
+        let outcomes = replay_with_stack_limits("NestedReduction", Some(limit), None);
+        assert_a_limit_is_not_a_verdict(
+            &outcomes,
+            "NestedReduction.bad",
+            &[REDUCTION_LIMIT, DEFERRED_DEPENDENCY],
+            &format!("nesting limit {limit}"),
+        );
+        if limit >= 610 {
+            // Room for all of it: the verdicts of a deep stack.
+            assert_eq!(split_of(&outcomes), (64, 0, 1), "nesting limit {limit}");
+        }
+    }
+}
+
+#[test]
+fn deep_term_checks_on_a_deep_stack_and_its_false_theorem_is_rejected() {
+    // `Nat.succ` applied three hundred times, written out as a term; that
+    // the same tower over a definition of zero equals it; and — the theorem
+    // Lean's kernel rejects — that it equals a tower one level taller.
+    let outcomes = replay_with_stack_limits("DeepTerm", None, None);
+    assert_eq!(outcomes.len(), 6);
+    assert_eq!(split_of(&outcomes), (5, 0, 1), "DeepTerm: split");
+    assert!(
+        matches!(
+            outcome_of(&outcomes, "DeepTerm.bad"),
+            ReplayOutcome::Rejected { .. }
+        ),
+        "a declaration Lean's kernel rejects must be REJECTED, got {:?}",
+        outcome_of(&outcomes, "DeepTerm.bad")
+    );
+    // The limits a WebAssembly build sets (256 nested reductions, terms 512
+    // deep): three hundred levels are within the second, and the sound
+    // declarations check. Telling the tower from the one a level taller
+    // takes a reduction nested three hundred deep — over the first — so the
+    // false theorem is neither rejected nor, ever, checked.
+    let outcomes = replay_with_stack_limits("DeepTerm", Some(256), Some(512));
+    assert_eq!(split_of(&outcomes), (5, 1, 0), "DeepTerm under (256, 512)");
+    assert_eq!(
+        *outcome_of(&outcomes, "DeepTerm.bad"),
+        ReplayOutcome::Unsupported {
+            feature: REDUCTION_LIMIT
+        }
+    );
+}
+
+#[test]
+fn a_limit_on_term_depth_is_a_named_limit_and_never_a_verdict() {
+    // A limit of a hundred levels: the three declarations with a tower in
+    // them are not read into memory at all (the reader knows the depth of
+    // an expression from its table), and each is unsupported by name — the
+    // false theorem as well. What does not mention the tower is checked.
+    let outcomes = replay_with_stack_limits("DeepTerm", None, Some(100));
+    assert_eq!(split_of(&outcomes), (3, 3, 0), "DeepTerm under depth 100");
+    for name in ["DeepTerm.tower", "DeepTerm.tower_eq", "DeepTerm.bad"] {
+        assert_eq!(
+            *outcome_of(&outcomes, name),
+            ReplayOutcome::Unsupported {
+                feature: TERM_DEPTH_LIMIT
+            },
+            "{name}"
+        );
+    }
+    for name in ["Nat", "Eq", "DeepTerm.z"] {
+        assert!(outcome_of(&outcomes, name).is_checked(), "{name}");
+    }
+
+    // Under every limit: the false theorem is never checked and no sound
+    // declaration is ever rejected. (The tower is 301 levels, the two
+    // equations 303.)
+    for limit in [
+        0, 1, 2, 3, 5, 10, 50, 100, 200, 299, 300, 301, 302, 303, 304, 305, 512, 4096,
+    ] {
+        let outcomes = replay_with_stack_limits("DeepTerm", None, Some(limit));
+        assert_a_limit_is_not_a_verdict(
+            &outcomes,
+            "DeepTerm.bad",
+            &[TERM_DEPTH_LIMIT, DEFERRED_DEPENDENCY],
+            &format!("term-depth limit {limit}"),
+        );
+        let tower = outcome_of(&outcomes, "DeepTerm.tower");
+        assert_eq!(tower.is_checked(), limit >= 301, "depth limit {limit}");
+        if limit >= 303 {
+            assert_eq!(split_of(&outcomes), (5, 0, 1), "term-depth limit {limit}");
+        }
+    }
+}
+
+#[test]
+fn a_term_that_grows_past_the_depth_limit_while_checking_spends_the_budget() {
+    // Nothing in `NestedReduction` is two hundred levels deep as written.
+    // But `count 400 0` hands its second argument on with one more `+ 1`
+    // around it at every step, and the kernel does not evaluate an argument
+    // it has not been asked for: after four hundred steps that argument is a
+    // term eight hundred levels deep.
+    let outcomes = replay_with_stack_limits("NestedReduction", None, Some(200));
+    if oxilean_kernel::fuel::TERM_DEPTH_TRACKED {
+        // A kernel that tracks the depth of its terms stops when the term
+        // crosses the limit: a named resource limit, for the sound theorem
+        // and for the false one alike.
+        assert_eq!(split_of(&outcomes), (62, 3, 0));
+        assert_eq!(
+            *outcome_of(&outcomes, "NestedReduction.deep._proof_1_1"),
+            ReplayOutcome::Unsupported {
+                feature: TERM_DEPTH_LIMIT
+            }
+        );
+        assert_eq!(
+            *outcome_of(&outcomes, "NestedReduction.bad"),
+            ReplayOutcome::Unsupported {
+                feature: TERM_DEPTH_LIMIT
+            }
+        );
+        assert!(outcome_of(&outcomes, "NestedReduction.shallow").is_checked());
+    } else {
+        // One that does not (the default build) can only refuse what is too
+        // deep as written; this file is not, and checks as with no limit.
+        assert_eq!(split_of(&outcomes), (64, 0, 1));
+    }
+    // In either build, and under any limit: never a verdict.
+    for limit in [0, 1, 4, 16, 64, 100, 150, 400, 799, 800, 801, 900, 2000] {
+        let outcomes = replay_with_stack_limits("NestedReduction", None, Some(limit));
+        assert_a_limit_is_not_a_verdict(
+            &outcomes,
+            "NestedReduction.bad",
+            &[TERM_DEPTH_LIMIT, DEFERRED_DEPENDENCY],
+            &format!("term-depth limit {limit}"),
+        );
+    }
+    // Both limits at once, as a WebAssembly build has them.
+    let outcomes = replay_with_stack_limits("NestedReduction", Some(256), Some(512));
+    assert_a_limit_is_not_a_verdict(
+        &outcomes,
+        "NestedReduction.bad",
+        &[TERM_DEPTH_LIMIT, REDUCTION_LIMIT, DEFERRED_DEPENDENCY],
+        "nesting 256, term depth 512",
+    );
+    assert_eq!(split_of(&outcomes), (62, 3, 0));
+}
+
+#[test]
+fn k_guard_collision_theorem_is_rejected() {
+    // A real lean4export file whose one theorem Lean's own kernel REJECTS
+    // (it was added with `debug.skipKernelTC`; see the fixture README).
+    //
+    // `KGuardCollision.bad` claims `Eq.rec m h = m` by `Eq.refl m` for a
+    // hypothesis `h : (fun y1 y2 y3 => c) = (fun y1 y2 y3 => y3)`. That holds
+    // by reflexivity only if K-like reduction fires on the variable `h`,
+    // which requires its two endpoints to be definitionally equal — they are
+    // not. The kernel checks that side condition in a nested checker seeded
+    // with the surrounding locals; before the free-variable id fix the nested
+    // def-eq opened `y3` with the id of the surrounding `c`, the endpoints
+    // opened to the same variable, K fired, and this file replayed as
+    // 4 checked / 0 unsupported / 0 rejected — a wrong ACCEPT.
+    assert_split("KGuardCollision", 3, 0, 1);
+
+    let file = read_str(&fixture("KGuardCollision")).unwrap_or_else(|e| panic!("parse: {e}"));
+    let report = replay_file(&file);
+    let bad = report
+        .entries
+        .iter()
+        .find(|e| e.name.to_string() == "KGuardCollision.bad")
+        .unwrap_or_else(|| panic!("KGuardCollision.bad must be in the fixture"));
+    assert_eq!(bad.kind, "thm");
+    assert!(
+        matches!(bad.outcome, ReplayOutcome::Rejected { .. }),
+        "a declaration Lean's kernel rejects must be REJECTED, got {:?}",
+        bad.outcome
+    );
+    // Everything else in the file is sound and still checks.
+    for entry in report
+        .entries
+        .iter()
+        .filter(|e| e.name.to_string() != "KGuardCollision.bad")
+    {
+        assert!(
+            entry.outcome.is_checked(),
+            "{}: {:?}",
+            entry.name,
+            entry.outcome
+        );
     }
 }
 
@@ -460,6 +1063,86 @@ fn kernel_detected_nested_inductive_is_named_unsupported() {
             feature: NESTED_INDUCTIVES
         },
         "kernel-detected nesting is unsupported, not rejected"
+    );
+}
+
+#[test]
+fn flagged_nested_inductive_with_matching_recursors_checks() {
+    // `inductive NestedT | mk : List NestedT → NestedT`, flagged nested, with the
+    // kernel-derived (restored) recursors supplied as the export would carry
+    // them: the nested-aware replay path specializes, derives, restores, matches
+    // every exported recursor by def-eq, and verifies to Checked.
+    use oxilean_kernel::{
+        check_and_derive_family_nested, restore_nested, ConstantInfo, InductiveSpec, RecursorVal,
+    };
+    let env = builtin_env();
+    let t = Expr::Const(Name::str("NestedT"), vec![]);
+    let list_t = Expr::App(
+        Node::new(Expr::Const(Name::str("List"), vec![Level::zero()])),
+        Node::new(t.clone()),
+    );
+    let mk_ty = Expr::Pi(
+        BinderInfo::Default,
+        Name::str("l"),
+        Node::new(list_t),
+        Node::new(t.clone()),
+    );
+
+    // Recursors the export would carry (kernel-derived, restored over real List).
+    let spec = InductiveSpec::new(
+        Name::str("NestedT"),
+        Expr::Sort(Level::succ(Level::zero())),
+        vec![(Name::str("NestedT.mk"), mk_ty.clone())],
+    );
+    let (raw, exp) = check_and_derive_family_nested(&env, &[], 0, &[spec]).expect("derive");
+    let restored = restore_nested(raw, &exp.expect("nested"));
+    let recs: Vec<RecursorVal> = restored
+        .recursors
+        .iter()
+        .filter_map(|ci| match ci {
+            ConstantInfo::Recursor(rv) => Some(rv.clone()),
+            _ => None,
+        })
+        .collect();
+
+    let bundle = ExportDecl::Inductive(InductiveBundle {
+        types: vec![InductiveVal {
+            common: ConstantVal {
+                name: Name::str("NestedT"),
+                level_params: vec![],
+                ty: Expr::Sort(Level::succ(Level::zero())),
+            },
+            num_params: 0,
+            num_indices: 0,
+            all: vec![Name::str("NestedT")],
+            ctors: vec![Name::str("NestedT.mk")],
+            num_nested: 1,
+            is_rec: true,
+            is_unsafe: false,
+            is_reflexive: false,
+            is_prop: false,
+        }],
+        ctors: vec![ConstructorVal {
+            common: ConstantVal {
+                name: Name::str("NestedT.mk"),
+                level_params: vec![],
+                ty: mk_ty,
+            },
+            induct: Name::str("NestedT"),
+            cidx: 0,
+            num_params: 0,
+            num_fields: 1,
+            is_unsafe: false,
+        }],
+        recs,
+    });
+
+    let mut env = env;
+    let entry = replay_decl(&mut env, &bundle);
+    assert!(
+        entry.outcome.is_checked(),
+        "a valid nested inductive with matching recursors must verify: {:?}",
+        entry.outcome
     );
 }
 

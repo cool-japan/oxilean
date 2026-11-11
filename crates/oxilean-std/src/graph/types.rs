@@ -215,13 +215,12 @@ impl TreewidthHeuristic {
         let mut eliminated = vec![false; self.n];
         let mut order = Vec::with_capacity(self.n);
         let mut tw_bound = 0usize;
-        for _ in 0..self.n {
-            let v = (0..self.n)
-                .filter(|&u| !eliminated[u])
-                .min_by_key(|&u| self.fill_count(u))
-                .expect(
-                    "at least one non-eliminated vertex exists: loop runs n times for n vertices",
-                );
+        // Each pass eliminates one more vertex, so the loop ends after `n`
+        // passes, when no vertex is left.
+        while let Some(v) = (0..self.n)
+            .filter(|&u| !eliminated[u])
+            .min_by_key(|&u| self.fill_count(u))
+        {
             let deg = self.adj[v].len();
             tw_bound = tw_bound.max(deg);
             let neighbors: Vec<usize> = self.adj[v].iter().copied().collect();
@@ -541,7 +540,7 @@ impl UndirectedGraph {
     }
     /// Check if all vertex degrees are even (necessary for Eulerian circuit).
     pub fn all_degrees_even(&self) -> bool {
-        (0..self.n).all(|u| self.adj[u].len() % 2 == 0)
+        (0..self.n).all(|u| self.adj[u].len().is_multiple_of(2))
     }
     /// Check if graph has an Eulerian circuit (connected + all even degrees).
     pub fn has_eulerian_circuit(&self) -> bool {
@@ -770,3 +769,5 @@ impl GraphonSampler {
         g
     }
 }
+#[cfg(test)]
+mod min_fill_tests;

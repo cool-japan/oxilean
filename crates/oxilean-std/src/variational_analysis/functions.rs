@@ -423,17 +423,14 @@ pub fn is_palais_smale_sequence(
     sequence: &[Vec<f64>],
     bound: f64,
 ) -> bool {
-    if sequence.is_empty() {
+    let Some(last) = sequence.last() else {
         return true;
-    }
+    };
     for x in sequence {
         if f(x).abs() > bound {
             return false;
         }
     }
-    let last = sequence
-        .last()
-        .expect("sequence is non-empty: checked by early return");
     let g = grad_f(last);
     let norm: f64 = g.iter().map(|gi| gi * gi).sum::<f64>().sqrt();
     norm < 0.1 * bound.max(1.0)

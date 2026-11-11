@@ -611,7 +611,7 @@ impl ComplexMatrix {
         }
         let half = self.power(k / 2);
         let sq = half.mul(&half);
-        if k % 2 == 0 {
+        if k.is_multiple_of(2) {
             sq
         } else {
             sq.mul(self)

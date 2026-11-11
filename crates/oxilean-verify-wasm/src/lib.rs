@@ -29,6 +29,22 @@
 //! it over a file, so a declaration's verdict is byte-for-byte the same on both
 //! (timing aside). Nothing is uploaded: the bytes never leave the WebAssembly
 //! linear memory in the page.
+//!
+//! ## Two limits the native tool does not have
+//!
+//! The kernel is recursive: a reduction nested inside another, and every
+//! level of a term it walks, holds a frame of the native stack. The native
+//! tool runs on a thread whose stack it chooses (512 MiB). Here the stack is
+//! the host's — about a megabyte in a browser — and it can be neither
+//! enlarged nor measured; running out of it is an exception thrown through
+//! the module, not a verdict. So this build gives the kernel two limits
+//! ([`reduction_nesting_limit`], [`term_depth_limit`]), sized to that stack,
+//! and a declaration that needs more is reported as **unsupported**, by
+//! name: `resource limit exceeded: reduction depth or step limit`,
+//! `resource limit exceeded: term depth`. Both are deterministic — they
+//! depend on the terms, not on how much stack happened to be free — and
+//! neither is ever a rejection. Below the limits the verdicts are the
+//! native tool's.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -57,6 +73,33 @@ use oxilean_verify::{
 /// [`kernel_kb_placeholder`].
 const KERNEL_KB_PLACEHOLDER: u32 = 0;
 
+/// How many reductions the kernel may nest inside one another in this build
+/// (`oxilean_kernel::fuel::set_reduction_nesting_limit`).
+///
+/// Measured under node 26 (V8, whose stack is 984 KB by default, as in
+/// Chrome): a level of nested reduction takes 0.80 KB of the engine's stack,
+/// so 256 levels take about 205 KB. Lean core `Init` and the Mathlib slice
+/// of the README replay with the verdicts of the native tool under a limit
+/// of 64; what goes deeper is evaluation by structural recursion (a `decide`
+/// proof recursing more than about 250 times).
+const REDUCTION_NESTING_LIMIT: u32 = 256;
+
+/// How deep a term may be in this build
+/// (`oxilean_kernel::fuel::set_term_depth_limit`).
+///
+/// Measured as above: comparing two terms takes 0.86 KB of the engine's
+/// stack per level, so 512 levels take about 440 KB; with the 205 KB of
+/// [`REDUCTION_NESTING_LIMIT`] and what the page itself uses, two thirds of
+/// the 984 KB. Lean core `Init` needs between 256 and 512 levels (three of
+/// its declarations are over a limit of 256, none over 512); the Mathlib
+/// slice less than 256.
+const TERM_DEPTH_LIMIT: u32 = 512;
+
+// The term-depth limit is only enforced by a kernel built to track the depth
+// of its terms; a wasm32 build of this crate without it must not compile.
+#[cfg(target_arch = "wasm32")]
+const _: () = assert!(oxilean_kernel::fuel::TERM_DEPTH_TRACKED);
+
 /// Which resource-limit preset a [`VerifySession`] runs with.
 ///
 /// Presets map to [`oxilean_export::Limits`]. The default is the small,
@@ -80,8 +123,8 @@ impl LimitsPreset {
         }
     }
 
-    /// The deterministic per-declaration resource budget (kernel `Expr`
-    /// nodes cloned) for this preset — a declaration exceeding it lands in
+    /// The deterministic per-declaration resource budget (units of kernel
+    /// work) for this preset — a declaration exceeding it lands in
     /// the *unsupported* bucket with the named
     /// [`oxilean_export::RESOURCE_LIMIT`] feature, so one declaration can
     /// never OOM the tab.
@@ -320,6 +363,12 @@ impl VerifySession {
         let mut acc = ReportAccumulator::new(false);
         let this = JsValue::NULL;
 
+        // The stack here is the host's: give the kernel the two limits that
+        // keep it within that stack (see the crate documentation). They are
+        // the thread's, and this module has one thread.
+        oxilean_kernel::fuel::set_reduction_nesting_limit(Some(REDUCTION_NESTING_LIMIT));
+        oxilean_kernel::fuel::set_term_depth_limit(Some(TERM_DEPTH_LIMIT));
+
         let options = VerifyOptions {
             limits: self.limits,
             fail_fast: false,
@@ -391,6 +440,23 @@ fn decl_verdict_from_event(event: &DeclEvent) -> DeclVerdict {
         micros,
         index: event.index,
     }
+}
+
+/// How many reductions the kernel may nest inside one another in this build;
+/// a declaration that needs more is `unsupported`
+/// (`resource limit exceeded: reduction depth or step limit`).
+#[wasm_bindgen]
+#[must_use]
+pub fn reduction_nesting_limit() -> u32 {
+    REDUCTION_NESTING_LIMIT
+}
+
+/// How deep a term may be in this build; a declaration with a deeper one, or
+/// that builds one, is `unsupported` (`resource limit exceeded: term depth`).
+#[wasm_bindgen]
+#[must_use]
+pub fn term_depth_limit() -> u32 {
+    TERM_DEPTH_LIMIT
 }
 
 /// The provenance pins as a JSON string, without needing a file: the build-time

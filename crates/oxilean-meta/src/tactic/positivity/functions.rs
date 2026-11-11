@@ -179,14 +179,14 @@ pub fn sign_of_power(base: &Sign, exp: u32) -> Sign {
         Sign::Pos => Sign::Pos,
         Sign::Nonneg => Sign::Nonneg,
         Sign::Neg => {
-            if exp % 2 == 0 {
+            if exp.is_multiple_of(2) {
                 Sign::Pos
             } else {
                 Sign::Neg
             }
         }
         Sign::Nonpos => {
-            if exp % 2 == 0 {
+            if exp.is_multiple_of(2) {
                 Sign::Nonneg
             } else {
                 Sign::Nonpos

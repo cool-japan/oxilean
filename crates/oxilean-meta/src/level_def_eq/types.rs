@@ -4,7 +4,7 @@
 
 use super::functions::*;
 use crate::basic::MetaContext;
-use oxilean_kernel::{Level, LevelMVarId};
+use oxilean_kernel::{Level, LevelMVarId, LevelView};
 use std::collections::HashSet;
 
 #[allow(dead_code)]
@@ -365,24 +365,24 @@ impl LevelDefEq {
     }
     /// Try to assign a level metavariable.
     fn try_level_mvar_assign(&mut self, l1: &Level, l2: &Level, ctx: &mut MetaContext) -> bool {
-        if let Level::MVar(LevelMVarId(id)) = l1 {
-            if ctx.get_level_assignment(*id).is_none() && !level_occurs_check(*id, l2) {
-                ctx.assign_level_mvar(*id, l2.clone());
+        if let LevelView::MVar(LevelMVarId(id)) = l1.view() {
+            if ctx.get_level_assignment(id).is_none() && !level_occurs_check(id, l2) {
+                ctx.assign_level_mvar(id, l2.clone());
                 return true;
             }
         }
-        if let Level::MVar(LevelMVarId(id)) = l2 {
-            if ctx.get_level_assignment(*id).is_none() && !level_occurs_check(*id, l1) {
-                ctx.assign_level_mvar(*id, l1.clone());
+        if let LevelView::MVar(LevelMVarId(id)) = l2.view() {
+            if ctx.get_level_assignment(id).is_none() && !level_occurs_check(id, l1) {
+                ctx.assign_level_mvar(id, l1.clone());
                 return true;
             }
         }
-        if let (Level::Succ(inner1), Level::Succ(inner2)) = (l1, l2) {
+        if let (LevelView::Succ(inner1), LevelView::Succ(inner2)) = (l1.view(), l2.view()) {
             return self.is_level_def_eq_impl(inner1, inner2, ctx, 0);
         }
-        if let Level::MVar(LevelMVarId(id)) = l1 {
-            if ctx.get_level_assignment(*id).is_none() && !level_occurs_check(*id, l2) {
-                ctx.assign_level_mvar(*id, l2.clone());
+        if let LevelView::MVar(LevelMVarId(id)) = l1.view() {
+            if ctx.get_level_assignment(id).is_none() && !level_occurs_check(id, l2) {
+                ctx.assign_level_mvar(id, l2.clone());
                 return true;
             }
         }
@@ -396,13 +396,15 @@ impl LevelDefEq {
         ctx: &mut MetaContext,
         depth: u32,
     ) -> bool {
-        match (l1, l2) {
-            (Level::Succ(a), Level::Succ(b)) => self.is_level_def_eq_impl(a, b, ctx, depth + 1),
-            (Level::Max(a1, b1), Level::Max(a2, b2)) => {
+        match (l1.view(), l2.view()) {
+            (LevelView::Succ(a), LevelView::Succ(b)) => {
+                self.is_level_def_eq_impl(a, b, ctx, depth + 1)
+            }
+            (LevelView::Max(a1, b1), LevelView::Max(a2, b2)) => {
                 self.is_level_def_eq_impl(a1, a2, ctx, depth + 1)
                     && self.is_level_def_eq_impl(b1, b2, ctx, depth + 1)
             }
-            (Level::IMax(a1, b1), Level::IMax(a2, b2)) => {
+            (LevelView::IMax(a1, b1), LevelView::IMax(a2, b2)) => {
                 self.is_level_def_eq_impl(a1, a2, ctx, depth + 1)
                     && self.is_level_def_eq_impl(b1, b2, ctx, depth + 1)
             }
@@ -867,16 +869,16 @@ impl LevelConstraintSolver {
         for (l, r) in eqs {
             let l_inst = self.instantiate(&l);
             let r_inst = self.instantiate(&r);
-            if let Level::MVar(id) = &l_inst {
+            if let LevelView::MVar(id) = l_inst.view() {
                 if !r_inst.has_mvar() {
-                    self.assignments.insert(*id, r_inst);
+                    self.assignments.insert(id, r_inst);
                     changed = true;
                     continue;
                 }
             }
-            if let Level::MVar(id) = &r_inst {
+            if let LevelView::MVar(id) = r_inst.view() {
                 if !l_inst.has_mvar() {
-                    self.assignments.insert(*id, l_inst);
+                    self.assignments.insert(id, l_inst);
                     changed = true;
                 }
             }

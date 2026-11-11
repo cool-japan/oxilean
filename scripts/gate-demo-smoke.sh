@@ -8,7 +8,7 @@
 # on-disk size, then kills the server. No COOP/COEP, no SharedArrayBuffer — the
 # whole point of the demo (brief §6, §8.3).
 #
-# This does NOT drive a headless browser (no node/headless Chrome in this env);
+# This does NOT drive a headless browser (browser driving is not implemented here);
 # it validates the static-serving contract only. The wasm-engine parity itself
 # is validated natively (see scripts/gate-determinism.sh) and structurally
 # (wasm-tools validate + kernel-symbol presence in the .wasm).
@@ -87,8 +87,8 @@ check_asset() {
     fi
 
     local served_bytes disk_bytes
-    served_bytes=$(curl -fsS "$url" 2>/dev/null | wc -c)
-    disk_bytes=$(stat -c%s "$disk")
+    served_bytes=$(curl -fsS "$url" 2>/dev/null | wc -c | tr -d ' ')
+    disk_bytes=$(wc -c < "$disk" | tr -d ' ')
 
     if [ "$served_bytes" -eq 0 ]; then
         echo "FAIL: $rel served 0 bytes (empty artifact)"

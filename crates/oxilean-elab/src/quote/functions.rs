@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
+use oxilean_kernel::{BinderInfo, Expr, Level, LevelView, Literal, Name};
 
 use super::types::{
     ExprBuilder, QuoteBinding, QuoteBuilder, QuoteContext, QuoteEnv, QuoteMatchResult,
@@ -257,21 +257,21 @@ fn unquote_name_q(expr: &Expr) -> Result<Name, String> {
 }
 /// Reflect a `Level` as an expression.
 fn reflect_level_q(level: &Level) -> Expr {
-    match level {
-        Level::Zero => mk_const("Level.zero"),
-        Level::Succ(l) => mk_app2(mk_const("Level.succ"), reflect_level_q(l)),
-        Level::Max(l1, l2) => mk_app3(
+    match level.view() {
+        LevelView::Zero => mk_const("Level.zero"),
+        LevelView::Succ(l) => mk_app2(mk_const("Level.succ"), reflect_level_q(l)),
+        LevelView::Max(l1, l2) => mk_app3(
             mk_const("Level.max"),
             reflect_level_q(l1),
             reflect_level_q(l2),
         ),
-        Level::IMax(l1, l2) => mk_app3(
+        LevelView::IMax(l1, l2) => mk_app3(
             mk_const("Level.imax"),
             reflect_level_q(l1),
             reflect_level_q(l2),
         ),
-        Level::Param(name) => mk_app2(mk_const("Level.param"), reflect_name_q(name)),
-        Level::MVar(_) => mk_const("Level.zero"),
+        LevelView::Param(name) => mk_app2(mk_const("Level.param"), reflect_name_q(name)),
+        LevelView::MVar(_) => mk_const("Level.zero"),
     }
 }
 /// Unquote a reflected level back to a `Level`.

@@ -327,7 +327,7 @@ impl Compactification {
     /// Check if this is a Calabi-Yau compactification (dim must be even, >= 4).
     pub fn calabi_yau(&self) -> bool {
         self.internal_dim >= 4
-            && self.internal_dim % 2 == 0
+            && self.internal_dim.is_multiple_of(2)
             && (self.manifold.contains("CY") || self.manifold.contains("Calabi"))
     }
     /// Rough estimate of number of generations from Euler characteristic χ.

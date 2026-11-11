@@ -158,7 +158,7 @@ pub fn mk_heq(alpha: Expr, a: Expr, beta: Expr, b: Expr) -> Expr {
 pub fn mk_arrow(domain: Expr, codomain: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(domain),
         Node::new(codomain),
     )
@@ -393,7 +393,7 @@ pub fn mk_subtype_mk(alpha: Expr, p: Expr, val: Expr, proof: Expr) -> Expr {
 pub fn mk_nat_to_nat() -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(Expr::Const(Name::str("Nat"), vec![])),
         Node::new(Expr::Const(Name::str("Nat"), vec![])),
     )

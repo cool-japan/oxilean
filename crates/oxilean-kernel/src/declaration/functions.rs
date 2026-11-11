@@ -4,7 +4,7 @@
 
 use crate::reduce::ReducibilityHint;
 use crate::Node;
-use crate::{Expr, Level, Name};
+use crate::{Expr, Level, LevelView, Name};
 use std::rc::Rc;
 
 use super::types::{
@@ -74,8 +74,8 @@ fn instantiate_level_params_core(expr: &Expr, param_names: &[Name], levels: &[Le
 }
 /// Instantiate a universe level parameter.
 fn instantiate_level_param(level: &Level, param_names: &[Name], levels: &[Level]) -> Level {
-    match level {
-        Level::Param(name) => {
+    match level.view() {
+        LevelView::Param(name) => {
             for (i, pn) in param_names.iter().enumerate() {
                 if pn == name {
                     if let Some(l) = levels.get(i) {
@@ -85,16 +85,16 @@ fn instantiate_level_param(level: &Level, param_names: &[Name], levels: &[Level]
             }
             level.clone()
         }
-        Level::Succ(l) => Level::succ(instantiate_level_param(l, param_names, levels)),
-        Level::Max(l1, l2) => Level::max(
+        LevelView::Succ(l) => Level::succ(instantiate_level_param(l, param_names, levels)),
+        LevelView::Max(l1, l2) => Level::max(
             instantiate_level_param(l1, param_names, levels),
             instantiate_level_param(l2, param_names, levels),
         ),
-        Level::IMax(l1, l2) => Level::imax(
+        LevelView::IMax(l1, l2) => Level::imax(
             instantiate_level_param(l1, param_names, levels),
             instantiate_level_param(l2, param_names, levels),
         ),
-        Level::Zero | Level::MVar(_) => level.clone(),
+        LevelView::Zero | LevelView::MVar(_) => level.clone(),
     }
 }
 #[cfg(test)]
@@ -279,13 +279,13 @@ fn collect_level_params_in_expr_impl(e: &Expr, out: &mut Vec<Name>) {
     }
 }
 fn collect_level_params_in_level(l: &Level, out: &mut Vec<Name>) {
-    match l {
-        Level::Param(n) if !out.contains(n) => {
+    match l.view() {
+        LevelView::Param(n) if !out.contains(n) => {
             out.push(n.clone());
         }
-        Level::Param(_) => {}
-        Level::Succ(inner) => collect_level_params_in_level(inner, out),
-        Level::Max(a, b) | Level::IMax(a, b) => {
+        LevelView::Param(_) => {}
+        LevelView::Succ(inner) => collect_level_params_in_level(inner, out),
+        LevelView::Max(a, b) | LevelView::IMax(a, b) => {
             collect_level_params_in_level(a, out);
             collect_level_params_in_level(b, out);
         }
@@ -401,7 +401,7 @@ mod extended_tests {
     }
     #[test]
     fn test_collect_level_params_in_sort() {
-        let e = Expr::Sort(Level::Param(Name::str("u")));
+        let e = Expr::Sort(Level::param(Name::str("u")));
         let params = collect_level_params_in_expr(&e);
         assert_eq!(params, vec![Name::str("u")]);
     }
@@ -409,7 +409,7 @@ mod extended_tests {
     fn test_collect_level_params_in_const() {
         let e = Expr::Const(
             Name::str("List"),
-            vec![Level::Param(Name::str("u")), Level::zero()],
+            vec![Level::param(Name::str("u")), Level::zero()],
         );
         let params = collect_level_params_in_expr(&e);
         assert!(params.contains(&Name::str("u")));
@@ -417,12 +417,12 @@ mod extended_tests {
     }
     #[test]
     fn test_check_level_params_consistent_ok() {
-        let e = Expr::Sort(Level::Param(Name::str("u")));
+        let e = Expr::Sort(Level::param(Name::str("u")));
         assert!(check_level_params_consistent(&e, &[Name::str("u")]).is_ok());
     }
     #[test]
     fn test_check_level_params_consistent_fail() {
-        let e = Expr::Sort(Level::Param(Name::str("v")));
+        let e = Expr::Sort(Level::param(Name::str("v")));
         let result = check_level_params_consistent(&e, &[Name::str("u")]);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Name::str("v"));

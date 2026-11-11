@@ -13,6 +13,49 @@
 
 ---
 
+## Status on the 0.1.4 tree (re-measured 2026-11-04, `86227a8`)
+
+Both builds were run on the same machine: Apple M3, 24 GB, macOS, one
+verification thread, `--limits corpus`, load average ≈4–5.
+
+| metric | 0.1.3 (crates.io) | 0.1.4 tree |
+|---|---|---|
+| Lean core `Init` (57,277 decls) | 35,424 verified · 21,853 unsupported · 0 rejected | **47,119 verified · 10,158 unsupported · 0 rejected** |
+| unsupported attribution | 1 nested-inductive root (`Lean.Syntax`) + 97 clone-fuel roots + 21,755 dependents | **643 clone-fuel roots + 9,515 dependents**; nested-inductive root cleared (C10) |
+| full-`Init` wall / peak RSS | 8 m 28 s / 3.5 GiB | 33 m 05 s / 2.1 GiB |
+| same-set throughput (`prelude-probe-u32`, 1,016 decls, both fully verified) | 3.03 s / 57 MB | 2.94 s / 35 MB |
+| `init-2000` slice | 1,905 · 95 · 0 in 8.4 s | 1,991 · 9 · 0 in 11.7 s |
+| wasm artifact (`gzip -9`, wasm-pack + `wasm-opt -Oz`) | 147,336 B | 168,728 B (~165 KB; 439,567 B raw) vs 400 KB budget |
+
+**Open on 0.1.4:**
+
+- [x] **Decompose the full-`Init` wall-clock increase** (8 m 28 s → 33 m 05 s).
+  On the 1,016-declaration probe, throughput is unchanged. That points at the
+  work 0.1.4 adds: the 11,695 newly verified declarations, and the 643
+  clone-fuel roots, each of which runs to its budget before it is degraded.
+  The increase is not decomposed yet. Next step: a `--json-full`
+  per-declaration timing run on both builds.
+  *(2026-11-11: the time was in the keys of the kernel's caches — hashing
+  terms, and formatting them to order a pair — on every cache lookup, in both
+  builds. The declarations the 0.1.4 tree verifies took 1,321 s of its run
+  and take 161 s now; the 1,016-declaration probe takes
+  0.46 s / 30 MB where 0.1.3 takes 3.01 s / 60 MB. `Init` takes
+  3 m 58 s. See "Performance work on the 0.1.4 tree" below.)*
+- [x] **Resource-limit tail**: 643 roots now exceed the 2^26 corpus clone-fuel
+  budget (97 on 0.1.3). Most of them were previously hidden behind the
+  `Lean.Syntax` cascade. *(634 after the kernel fixes of 2026-11-11, 632 after
+  the performance work, **0 after its second pass**: `Init` is
+  57,277 verified · 0 unsupported · 0 rejected. See "Budget tail, sharing and
+  def-eq work" below.)*
+- [x] **Re-run the lean4lean differential** on the 0.1.4 kernel. It was last
+  run during the 0.1.3 cycle, before C10. *(2026-11-11: 0 disagreements over
+  1,976 joined names, against lean4lean `779c51f` built on v4.32.0-rc1 — the
+  corpus's own toolchain, so without the earlier version skew.)*
+- [ ] **Refresh the committed demo artifact** (`web/verify-demo/pkg` is still the
+  0.1.3 build). *(2026-11-12: done for the 0.1.4 release — 168,785 B gzip, 427,914 B raw.)*
+
+---
+
 ## Campaign result (2026-07-15)
 
 The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
@@ -39,21 +82,516 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   ≥656 needed): structural, not incidental — deep-clone substitution over the
   unshared `Box` kernel `Expr`. Fix = structural sharing (hash-consing/`Rc`);
   deliberately out of scope: TCB surgery, own review cycle. Same fix removes
-  the ~16 GiB corpus memory footprint.
+  the ~16 GiB corpus memory footprint. *(Met on the 0.1.4 tree, 2026-11-11:
+  measured against lean4lean on one machine with one toolchain — see
+  "Performance work on the 0.1.4 tree".)*
 - **Nested inductives** (nested→mutual elaboration, `Lean.Syntax`): the single
   highest-leverage completeness item — would unlock up to 14,347 Syntax-only
-  followers of the 22,054 unsupported.
+  followers of the 22,054 unsupported. *(Done after the release: C10,
+  `b3c17f8`/`b3adf3f`, on the 0.1.4 tree. See the status section above.)*
 - **Resource-limit tail**: 175 legal-but-heavy roots stay in the NAMED
   resource-limit bucket at the 2^26 corpus fuel preset (spot-checked verified
   at 2^30 under a cage); raising the preset re-opens the C16b OOM, so it stays.
 - **G7 wasm half**: no node/deno/headless browser in this environment; native
-  half + structural wasm validation + shared engine path stand in.
+  half + structural wasm validation + shared engine path stand in. *(2026-11-12: node is available now, and the wasm build has been run under node over both corpora (see README, Kernel in a Tab); the gate script still does not implement the wasm half.)*
 - **lean4lean version skew**: no lean4lean tag for v4.32.0-rc1 (master =
   v4.29.0) — declaration-set skew documented, lands in ONLY-ONE-SIDE.
+  *(2026-11-11: lean4lean `779c51f`, which pins v4.32.2, builds on
+  v4.32.0-rc1 when its `lean-toolchain` is overridden; the differential was
+  re-run with it.)*
 - **Corpus re-export scripting** (`scripts/regen-corpus.sh` committed; the
   elan/lean4export install steps remain manual) — V5 residual.
 - **F1–F4** deliberate follow-ups (TCB slimming, MSRV, legacy export format,
   announcement) — unchanged.
+
+---
+
+## Kernel fixes on the 0.1.4 tree (2026-11-11, working copy on `eafe042`)
+
+Found while checking an external report: a pinned 0.1.4 snapshot run against
+Mathlib-based proof libraries, which named `AddCon.addGroup._proof_1`. S12, C23
+and C24 are described in the P0 sections below. All three are also in the
+published 0.1.3 (checked with the crates.io binary).
+
+Same machine as above, `--limits corpus`; three counts are verified ·
+unsupported · rejected.
+
+| corpus | before (`eafe042`) | after |
+|---|---|---|
+| Lean core `Init` (57,277 decls) | 47,119 · 10,158 · 0 | **47,127 · 10,150 · 0** |
+| Mathlib slice (28,832 decls) | 25,661 · 3,144 · **27** | **25,690 · 3,142 · 0** |
+| every declaration of `Mathlib.GroupTheory.Congruence.Defs`, with dependencies (1,611) | 1,595 · 0 · 16 | 1,611 · 0 · 0 |
+| `FreeGroup.instGroup` and `FreeGroup.induction_on`, with dependencies (419) | 416 · 0 · 3 | 419 · 0 · 0 |
+| fixture `QuotPartialApp` (66) | 63 · 0 · 3 | 66 · 0 · 0 |
+| fixture `ReductionChain` (36) | 34 · 0 · 2 | 36 · 0 · 0 |
+| fixture `KGuardCollision` (4, one of which Lean's kernel rejects) | 4 · 0 · 0 | 3 · 0 · 1 |
+
+The Mathlib slice is Mathlib `v4.32.0-rc1` (`360da6f`), exported with the pinned
+lean4export: the 12,831 non-internal declarations of the `Order`, `Data`,
+`Logic`, `Algebra`, `GroupTheory` and `Control` modules that
+`Mathlib.GroupTheory.Congruence.Defs` imports, with their dependencies. Per
+declaration, nothing moves except towards `verified`: on `Init`, 8 declarations
+leave `unsupported`; on the slice, the 27 rejections (9 roots, 18 dependents)
+and 2 unsupported ones.
+
+**Measured on the Mathlib slice while checking the report** (a 40 s sample of
+the slice run on the fixed kernel, 25,358 samples on the checking thread). The
+first three were taken up the same day — see "Performance work" below.
+
+One correction to the first version of this list. It put the `String`
+formatting in the sample (about 9% of it) down to
+`lit_op_arity(&name.to_string())`. That call is 4 samples of 25,358, and the
+formatting of its argument 11. The formatting in the sample belongs to
+`canonicalize_pair` in the equivalence manager, which
+formatted both terms of every pair it was asked about with `Debug`, to put the
+pair in a fixed order: 27% of the samples with the copying that goes with it.
+
+- [x] **Expression hashing is over half the run time.** 54.6% of the samples
+  are under the hashing of a map key (43% in SipHash itself, 28% hashing the
+  names inside terms). The hash was structural and uncached, and one
+  `is_def_eq` hashed both terms in full for the def-eq cache and for each of
+  `EquivManager`'s three maps; `whnf` hashed its term for the cache lookup
+  before it knew whether the term was small enough to be cached at all.
+- [x] **Pair canonicalisation formats both terms**: 27.1% of the samples (see
+  the correction above).
+- [x] **Local types are never removed from the checker's maps.** On 25,002
+  declarations of the slice, every binder opened while checking a declaration
+  was still in three maps when the check ended (largest: 14,677 + 2,068 for one
+  declaration; median 20), and each K-like or structure-eta attempt seeded a
+  nested checker with all of them.
+- [ ] **Budget tail on Mathlib.** 111 clone-fuel roots take 3,027 dependents
+  with them (`sdiff_inf_sdiff` alone a large share). `loop 1000 0 = 1000` by
+  `decide +kernel`, for a structurally recursive `loop` with an accumulator,
+  exhausts the 2^26 budget; Lean's kernel checks it at once.
+
+---
+
+## Performance work on the 0.1.4 tree (2026-11-11, working copy on `0abe648`)
+
+Four changes to the kernel. None of them changes what a term reduces to or
+which terms are definitionally equal; PF1, PF2 and PF4 do not change what is
+charged to the per-declaration budget either.
+
+- [x] **PF1. A structural hash cached on every node.** `Name`, `Level` and every
+  shared subterm of an `Expr` (`Node`) store a 64-bit hash of their structure,
+  computed when the value is built from the stored hashes of its immediate
+  children (`structural_hash.rs`). `Expr`'s `Hash` writes that one value, where
+  the derived implementation walked the whole term — as a tree, a shared
+  subterm once per path to it — on every cache lookup. `==` on nodes, names and
+  levels uses the stored hash as a negative test and otherwise compares as
+  before. The hash covers exactly the fields equality compares (binder names
+  and annotations included), is the same in every process, and is not keyed.
+- [x] **PF2. Pair canonicalisation without formatting.** `EquivManager` puts the
+  two terms of a pair in the order of their hashes. Only two terms with equal
+  hashes fall back to comparing their `Debug` text, which every call used to do.
+- [x] **PF3. Local types leave the mirrors when their binder closes**
+  (`local_types.rs`). `TypeChecker::pop_local` and the def-eq checker's binder
+  opening now remove the variable from the three mirrors of the local context,
+  so a nested K / structure-eta checker is seeded with the variables in scope
+  and not with every binder ever opened. Two things are kept about a closed
+  variable, in space bounded by the context depth: that its id was used (an id
+  bound again drops the owner's caches — the old check only caught a different
+  type for an id still in the map), and the largest id ever bound in each range
+  (a nested checker mints past it, exactly as it did when nothing was removed —
+  the S12 guarantee).
+- [x] **PF4. `expr_size_within` reads the cached rebuild cost.** That cost counts
+  each node once and each leaf once more, so `size <= cost <= 2 * size`: a cost
+  at or under the cap, or over twice the cap, decides without counting.
+
+**Layout.** A `Node` is now one pointer: `range`, `cost` and the hash sit in the
+shared allocation next to the subterm (through 0.1.3 `range` and `cost` sat on
+the edge). `Expr` is 40 bytes where it was 64, a node allocation 72 where it
+was 80. **Public API change:** `Node::rc()`, which exposed the `Rc<Expr>` the
+edge used to hold, is replaced by `Node::as_ptr()` (the address, for
+memoising over shared subterms) and `Node::ptr_eq()`. `Reducer` and
+`DefEqChecker` gain `forget_fvar_type`. What `Expr` and `Node` write to a
+`Hasher` is a different value than in 0.1.3; `Name`, `Level` and every `Debug`
+text are byte-for-byte what they were (pinned by tests against copies of the
+old types).
+
+**Verdicts** (`--limits corpus`, per declaration, against `0abe648`):
+
+| corpus | `0abe648` | after |
+|---|---|---|
+| Lean core `Init` (57,277 decls) | 47,127 · 10,150 · 0 | **47,133 · 10,144 · 0** |
+| Mathlib slice (28,832 decls) | 25,690 · 3,142 · 0 | 25,690 · 3,142 · 0 (identical report) |
+| the ten committed fixtures, both presets | — | identical reports |
+| `Init.Prelude` (1,814), `init-2000`, the three Mathlib closures above, both presets | — | identical reports |
+
+"Identical report" is the full `--json-full` output with the timing fields
+removed. On `Init` six declarations move from `unsupported` to `verified` and
+nothing else moves: `Std.Iter.step_filterM` and `Std.Iter.toList_attachWith`,
+which were over the clone-fuel budget, and the four declarations that were
+unsupported only because they depend on one of them.
+PF3 is the cause: a build with PF1 and PF2 alone gives an identical `Init`
+report, and PF4 does not touch the budget. A nested checker no longer pays for
+locals out of scope, which was enough to bring those two under it (they sit
+at its edge: exported on their own, `toList_attachWith` is over the budget in
+every build). Clone-fuel roots on `Init`: 634 → 632.
+
+**Time and memory** (same machine as above; one verification thread; load
+average ≈3–4 during the runs):
+
+| measurement | `0abe648` | after | |
+|---|---:|---:|---:|
+| Lean core `Init`, wall | 31 m 51 s | **3 m 58 s** | 8.0× |
+| Mathlib slice, wall | 5 m 50 s | **43 s** | 8.2× |
+| `init-2000` slice (`scripts/bench-verify.sh`, median of 3) | 10.1 s (199 decls/s) | **1.3 s (1,518 decls/s)** | 7.6× |
+| `Parity.isEven` fixture (same script) | 81 ms | 25 ms | 3.2× |
+| 1,016-declaration probe (`prelude-probe-u32`), wall / peak RSS | 2.48 s / 35 MB | 0.46 s / 30 MB | 5.4× |
+| instructions retired, `Init` | 32.0 × 10¹² | 4.0 × 10¹² | 8.0× |
+| peak live heap, `Init` (counting allocator) | 2,723 MB | 2,458 MB | −10% |
+| peak live heap, Mathlib slice | 1,349 MB | 1,213 MB | −10% |
+| bytes allocated, `Init` / Mathlib slice | 1,482 GB / 247 GB | 480 GB / 88 GB | −68% / −64% |
+| allocations, `Init` / Mathlib slice | 8.53 × 10⁹ / 1.50 × 10⁹ | 6.95 × 10⁹ / 1.23 × 10⁹ | −19% / −18% |
+| peak RSS, `Init` (`/usr/bin/time -l`) | 2.31 GiB | 2.54 and 2.56 GiB | |
+| wasm artifact (`gzip -9`; wasm-pack + `wasm-opt -Oz`) | 169,956 B | 161,375 B | −5% |
+
+The published 0.1.3 takes 3.01 s / 60 MB on the 1,016-declaration probe.
+
+Peak live heap is measured by linking the verify engine into a scratch binary
+with a counting global allocator (requested bytes). In both builds the peak
+is a declaration that runs into the clone-fuel budget, not the resident
+environment (on `Init`, 1.6 GB of terms on top of a 0.8 GB environment, for
+`WellFounded.partialExtrinsicFix₃_eq_partialExtrinsicFix`).
+
+`/usr/bin/time -l` is a poor instrument for this workload. Its "peak memory
+footprint" was 2.09 GiB in one run of the final build and 1.27 GiB in the
+next, with identical reports. Its "maximum resident set size" is steady (2.54
+and 2.56 GiB) but 0.2 GiB HIGHER than for `0abe648`, although the live heap is
+lower: resident pages include what the allocator keeps after a free.
+
+**Against Lean's kernel and lean4lean**, same machine, same toolchain
+(v4.32.0-rc1), same module: `Init.Prelude`, end-to-end wall, median of 9.
+"Start-up" is the same command on a module with no declarations.
+
+| checker | wall | start-up | checking |
+|---|---:|---:|---:|
+| Lean's own kernel (`leanchecker Init.Prelude`) | 254 ms | 200 ms | ~54 ms |
+| lean4lean `779c51f` (`--fresh`; 1,975 constants) | 535 ms | 398 ms | ~137 ms |
+| oxilean-verify `0abe648` (1,814 declarations) | 598 ms | ~5 ms | ~593 ms |
+| oxilean-verify, after | **208 ms** | ~5 ms | **~203 ms** |
+
+Net of start-up, oxilean-verify takes 1.5× lean4lean's time and
+3.8× the C++ kernel's on this set (4.3× and 11.0×
+before); its figure includes reading the 3.7 MB export. **The 5× budget of V7
+is met.** The earlier "~8× slower than lean4lean" was 0.1.3 on another machine,
+before structural sharing.
+
+The differential (V6) was re-run with that lean4lean on the same toolchain:
+**0 disagreements** over 1,976 joined names (1,810 agree; 166 on one side
+only — 162 auxiliary constants the export does not carry, and the four
+`Quot` constants, which lean4lean reports as one).
+
+The wasm build (`oxilean-verify-wasm`, run under node) gives the same
+per-declaration verdicts as the native binary on nine inputs, including
+`init-2000` with its budget-limited declarations, and went from 754 ms to
+292 ms on `Init.Prelude`.
+
+**Where the time goes now** (25 s sample of the slice run, 18,635 samples;
+inclusive shares, which overlap): building terms. `instantiate` 33%
+(allocation included), dropping terms 32%, level instantiation 10%,
+`Expr::clone` 8%; computing the cached hash at construction is 5%, hashing
+map keys 4%, `canonicalize_pair` 0.1%.
+
+**Open after this work:**
+
+- [x] **Substitution re-allocates the subtrees it skips.** `instantiate_at`
+  shares the CHILDREN of an untouched subtree, but copies its root into a new
+  allocation (`Node::new(expr.clone())`). Returning the existing `Node` would
+  remove an allocation, a free and a clone per skipped subtree; the fuel
+  charged for the skip would have to stay what it is. *(Done in the second
+  pass, T2 below — and the fuel did not stay what it was: T1.)*
+- [x] **`infer_type` has no cache**, so a shared subterm is inferred once per
+  occurrence. *(T3 below.)*
+- [x] **Budget tail**: 632 clone-fuel roots on `Init`, 111 on the Mathlib
+  slice. Peak memory is theirs as well. *(0 and 0, below.)*
+- [x] **`def_eq/types.rs` is 2,281 lines** (2,242 before this work; the limit
+  is 2,000). *(1,959: the general-purpose types that opened the file moved to
+  `def_eq/support_types.rs`, unchanged.)*
+- [ ] The committed demo artifact (`web/verify-demo/pkg`) is still the 0.1.3
+  build; `cargo formal`'s gates over `crates/oxilean-kernel/formal` were not
+  run here (the tool is not installed on this machine; `BigNat` is untouched
+  and the package's plain and randomized tests pass). *(2026-11-12: the demo artifact was rebuilt for the 0.1.4 release — 168,785 B gzip, 427,914 B raw. The `cargo formal` gates were still not run for this release.)*
+
+---
+
+## Budget tail, sharing and def-eq work on the 0.1.4 tree (2026-11-11, working copy on `0524489`)
+
+The three items left open by the performance work above — substitution
+re-allocating the subtrees it skips, `infer_type` without a cache, the budget
+tail — are closed, and with them the tail itself: **no declaration of Lean
+core `Init` or of the Mathlib slice runs out of budget any more.**
+
+| corpus | `0524489` | after |
+|---|---|---|
+| Lean core `Init` (57,277 decls), `--limits corpus` | 47,133 · 10,144 · 0 | **57,277 · 0 · 0** |
+| Mathlib slice (28,832 decls), `--limits corpus` | 25,690 · 3,142 · 0 | **27,523 · 1,309 · 0** |
+| both, under the DEFAULT limits | — | the same verdicts, declaration for declaration (exit status 0) |
+
+Every declaration verified before is verified after (per-declaration
+comparison of the `--json-full` reports); `rejected` stays 0. What is left
+`unsupported` on the slice is the four nested inductives the kernel cannot
+un-nest (`Lean.PersistentHashMap.Node`, `Lean.PersistentArrayNode`,
+`Lean.PrefixTreeNode`, `Lean.Meta.DiscrTree.Trie`) and the 1,305
+declarations that depend on them.
+
+**What was wrong.** The tail was not 632 hard declarations. It was three things
+the kernel did to terms with shared subterms, and one it did not do:
+
+- [x] **T1. The budget was charged for work that was not done.** A
+  substitution that SHARED an untouched subterm charged what rebuilding it node
+  by node would have cost — its size as a tree. That had been chosen (wave5) to
+  keep verdicts as they were before terms were shared. A proof term of a few
+  thousand shared nodes stands for millions of tree nodes (median over the 632
+  roots: 1,637 allocations, 287,467 as a tree), so these declarations spent
+  2^26 units in a tenth of a second and were cut off. A unit is now a subterm a
+  term builder REACHES — rebuilt, shared or found already rebuilt — plus one
+  per clone and per application the reducer allocates. Every allocated node is
+  still charged. With this change alone (measured separately): `Init`
+  47,133 → 53,354 verified, roots 632 → 67, nothing rejected — and 2.3× the
+  run time, because the declarations now did their work, as trees.
+- [x] **T2. The walks turned shared terms into trees.** `instantiate`,
+  `lift_loose_bvars`, `abstract_expr` and `instantiate_type_lparams` rebuilt a
+  shared subterm once per path to it. They now keep, per walk, what they
+  built for each shared subterm, by address and binder depth
+  (`node_memo.rs`; sound because the walk borrows the term for its whole
+  life), return an untouched subterm as the allocation it is — the item
+  "substitution re-allocates the subtrees it skips" — and put the substituted
+  argument in once per depth. β-reduction substitutes all the arguments a
+  head has in ONE walk (`instantiate_rev_nodes`), and the reducer passes
+  arguments around as the allocations the spine holds, where it copied the
+  root of each into a new one.
+- [x] **T3. The caches missed exactly the shared terms.** They kept a term
+  only if it was at most 4,096 nodes AS A TREE, and compared keys with `==`,
+  which follows every edge. `term_cache.rs`: `same_term`, structural equality
+  that visits a pair of shared subterms once; `TermCache` / `PairCache`,
+  tables keyed by the structural hash with the key verified by `same_term`,
+  for terms of any size. On them: the reduction cache (no size limit any
+  more), a table of def-eq verdicts for the pairs too big for the equivalence
+  manager, **the type-inference cache** (`TypeChecker::infer_type` — the item
+  "`infer_type` has no cache"; Lean's `m_infer_type`), the def-eq checker's
+  own quick inference, and the instantiated values of universe-polymorphic
+  constants (one `omega` certificate unfolds the same constants at the same
+  universes tens of thousands of times).
+- [x] **T4. `f a ≡ f b` was decided by unfolding `f`.** The def-eq checker
+  reduced both sides to weak head normal form first. When `f` recurses on an
+  argument that is stuck (`x % USize.size`: the divisor is
+  `2 ^ System.Platform.numBits`), that leaves a stuck eliminator with the next
+  recursive call in a branch, and comparing two of those walks the recursion
+  one unfolding at a time. It now compares the arguments of two applications
+  of one unfoldable definition first — the `f a =?= f b` step of Lean's lazy
+  delta reduction; `true` is conclusive by congruence, `false` decides
+  nothing. This is what cleared the last roots (conversions between `USize`,
+  `UInt64` and their signed counterparts), and it cut the work of the `omega`
+  certificates as well.
+- [x] **T5. The universe of a telescope.** The def-eq checker's quick
+  inference built the sort of a `Pi` with the raw `imax`, so an n-binder
+  telescope had an n-deep `imax`, and proof irrelevance asks of every pair
+  whether that level is `0` — which distributes over every nesting. Two
+  inductive types of Std (`Std.DTreeMap.Internal.Impl.WF`,
+  `Std.DHashMap.Raw.WF`) had been waiting behind the budget tail; once their
+  dependencies verified they took 18 s and more than 30 s (the deadline) to
+  check. With `mk_imax`, as in `TypeChecker::infer_type`, 36 ms and 65 ms.
+- [x] **T6. Facts on every node.** A `Node` stores three flags beside its
+  hash: contains a free variable, a universe parameter, a universe
+  metavariable (in the word of the tree size, whose saturation point moves
+  from 2^32 − 1 to 2^29 − 1: `REBUILD_COST_MAX`). `has_any_fvar`,
+  `has_level_param`, `has_level_mvar` and `has_loose_bvars` are O(1); universe
+  instantiation and abstraction pass over what cannot change; the universe
+  hygiene check of a declaration looks at each shared subterm once (it walked
+  the value as a tree, twice, outside the budget).
+- [x] **T7. A declaration must be a closed term** (soundness, Rust API only).
+  `check_constant_info`, `check_declaration` and the inductive-family entry
+  points now refuse a type, value, recursor rule or constructor type that
+  contains a free variable or a loose bound variable, as Lean's kernel does
+  (`check_no_metavar_no_fvar`). Free variables are the checker's own device,
+  numbered from 0; a declaration that brings one along can only be naming one
+  of those. The inference cache of T3 would have made that exploitable: in
+  this working copy, before the check went in,
+  `(fun (x : F) => x) (FVar 0)` checked as a proof of `F`, the argument being
+  given the type remembered for the bound variable (no committed kernel has
+  the cache without the check). Pinned by a test that fails with `Ok(())`
+  when the check is removed. No export can spell a free
+  variable (the format has no record for one), so `oxilean-verify` was never
+  exposed; an embedder building `ConstantInfo`s by hand was — and, less
+  directly, before this work too (a free variable under a binder of the same
+  number passed for the bound one and went into the environment; the
+  published 0.1.3 accepts `fun (x : F) => FVar 1 : F → F` and stores it).
+- [x] **T8. A small stack: two limits, off by default.** With T1 a declaration
+  gets as far as its work takes it, and the kernel is recursive: a reduction
+  nested inside another, and every level of a term it walks or frees, is a
+  frame of the native stack. The command-line tool has 512 MiB of it. The wasm
+  build has the page's megabyte — and where it used to report a deep
+  evaluation as over budget, after T1 it threw `RangeError: Maximum call stack
+  size exceeded` (a `decide` proof recursing 2,000 deep; `Init` itself). Two
+  limits a caller sets on its thread, neither set by default:
+  - `fuel::set_reduction_nesting_limit`: a reduction that would nest deeper
+    is not started — its term comes back unreduced, the event is recorded,
+    and a failure that follows is `unsupported` (`resource limit exceeded:
+    reduction depth or step limit`).
+  - `fuel::set_term_depth_limit`: the reader, which knows the depth of every
+    expression from its tables, does not materialize a declaration with a
+    deeper term (the release of a term is a recursion too); and a kernel
+    built with the new `term-depth` feature caches the depth of every shared
+    subterm (four bytes each; off by default) and treats a node over the
+    limit as the end of the declaration's budget. Reported as the new
+    `resource limit exceeded: term depth`.
+  - `oxilean-verify-wasm` sets 256 and 512 and turns the feature on for
+    `wasm32` only. Measured under node 26 (V8: 984 KB of stack, as in Chrome):
+    0.80 KB per nested reduction, 0.86 KB per level of a term being compared;
+    the deepest combinations the limits allow ran in 312 KB; `Init` and the
+    Mathlib slice replay with HALF the engine's stack and half the module's
+    own linear-memory stack.
+  - Cost to the native tool: one thread-local counter per reduction, 0.3% of
+    the instructions of an `Init` run. The verdicts are those of the build
+    without it, declaration for declaration.
+
+**How the result was checked.**
+
+- **Against Lean's own kernel, on wrong declarations.** For every theorem of
+  both corpora, its proof was checked against the STATEMENT OF ANOTHER theorem
+  (the nearest earlier one with a different statement) — by this kernel and,
+  through `Environment.addDeclCore`, by Lean's. 59,710 such mutants:
+  this kernel accepts 430 (statements that are definitionally
+  equal — `symmDiff_left_involutive` is proved in Mathlib by
+  `symmDiff_symmDiff_cancel_right _`) and Lean's kernel accepts exactly those;
+  it rejects 59,118 and Lean's kernel rejects every one of them;
+  on 162 it gives no verdict (a resource limit, or a dependency on a
+  nested inductive) where Lean rejects. **No disagreement on any verdict
+  given.** The previous build decided fewer (13,421 without a
+  verdict) and agreed with the new one wherever it did.
+- **lean4lean differential** (V6), re-run: **0 disagreements** over 1,976 joined names (1,810 agree; 166 on one side only), as before.
+- **The same mutants under the limits of T8** (256 nested reductions, terms
+  512 deep, depth tracked): 9 of the 59,710 move from
+  rejected to no verdict, and nothing else moves — no mutant is accepted
+  under the limits that is not accepted without them.
+- Four new fixtures, each compiled by Lean and with a `leanchecker` run:
+  `SharedSubterms` (a 60-level `let` tower, 2^60 additions as a tree:
+  57 · 3 · 0 before, 60 · 0 · 0 after, under the default budget);
+  `CongruenceFirst` (three `rfl` theorems that need T4, and a fourth that
+  Lean's kernel REJECTS — the same function on unequal arguments:
+  182 · 2 · 1 before, 184 · 0 · 1 after); `NestedReduction` (a reduction
+  nested four hundred deep, and `count 400 0 = 401`, which Lean's kernel
+  rejects: 64 · 0 · 1, and 62 · 3 · 0 under a nesting limit of 256);
+  `DeepTerm` (a term three hundred levels deep, and a false equation between
+  two such terms: 5 · 0 · 1, and 3 · 3 · 0 under a term-depth limit of 100).
+  The tests replay the last two under every limit from zero up and require
+  that the false theorem is never verified and no sound declaration is ever
+  rejected.
+- Tests: 33,725 pass in the workspace with every feature on
+  (746 skipped), and the three checker crates' 3,888
+  as they ship (63 added in this work). Each mechanism above was
+  removed in turn — T1's unit, T2's memo, T3's inference cache, big-pair table
+  and the reduction cache's size limit restored, T4, T5, T7, and of T8 the
+  record of a refused reduction, the reader's refusal, the kernel's refusal
+  and the spent budget — and each time a test named for it failed.
+- wasm (node 26): the verdicts of the native binary, declaration for declaration, on all of `Init` (57,277) and the Mathlib slice (28,832), in 1.3× and 1.6× its time, and on twelve of the fourteen fixtures; on `NestedReduction` and `DeepTerm` it differs as T8 intends (62 · 3 · 0 and 5 · 1 · 0: the deep theorem and the two false ones are `unsupported`). No exception on any input. A `decide` proof 2,000 or 8,000 recursions deep threw after T1 and before T8; a term 2,000 or 8,000 levels deep threw in every earlier build, `0524489` included.
+
+**Time and memory** (same machine; one verification thread; load average
+≈3–6 during the runs):
+
+| measurement | `0524489` | after | |
+|---|---:|---:|---:|
+| Lean core `Init`, wall | 3 m 58 s | **34 s** | 7.0× |
+| Mathlib slice, wall | 43 s | **11 s** | 4.0× |
+| `init-2000` slice (`scripts/bench-verify.sh`, median of 3) | 1.37 s (1,463 decls/s) | **381 ms (5,252 decls/s)** | 3.6× |
+| `Parity.isEven` fixture (same script) | 26.8 ms | 21.2 ms | 1.3× |
+| 1,016-declaration probe, wall / peak RSS | 0.49 s / 30 MB | 0.13 s / 16 MB | 3.6× |
+| peak live heap, `Init` (counting allocator) | 2,458 MB | **995 MB** | −60% |
+| peak live heap, Mathlib slice | 1,213 MB | **419 MB** | −65% |
+| bytes allocated, `Init` / Mathlib slice | 480 GB / 88 GB | 72 GB / 25 GB | |
+| peak RSS, `Init` (`/usr/bin/time -l`) | 2.54 GiB | 0.92 GiB | |
+| slowest declaration, `Init` | — | 201 ms (`Array.extract_append._proof_1_1`) | |
+| wasm artifact (`gzip -9`) | 161,375 B | 168,775 B | |
+| wasm, `Init` / Mathlib slice under node 26 | — | 54 s / 20 s | |
+
+The wall times, the benchmark rows and the table of checkers below were
+measured on the build just before T8. The final build gives the same reports,
+declaration for declaration, with the same peak live heap, and executes
+0.3% more instructions over `Init` (536.1 billion against
+534.3); by the time it was built the machine was busy with other work
+(load average ≈8–25), and its four `Init` runs took 36–52 s.
+
+The peak on `Init` is now the environment itself (995 MB with every declaration of `Init` in it); the largest
+amount any one declaration adds to it is 50 MB (`Array.extract_append._proof_1_1`).
+
+**The budget, in the new unit.** Over `Init`: median 2,254 units per
+declaration, 99th percentile 249,301, maximum 6,655,688
+(`Array.extract_append._proof_1_1`, an `omega` certificate, 201 ms).
+The default budget (2^24) is 2.5× the maximum and the corpus
+budget (2^26) 10×. The constants are unchanged; their
+documentation and `docs/VERIFY.md` now say what a unit is.
+
+**Against Lean's kernel and lean4lean**, same machine, same toolchain, same
+module (`Init.Prelude`, end-to-end wall, median of 9):
+
+| checker | wall | start-up | checking |
+|---|---:|---:|---:|
+| Lean's own kernel (`leanchecker Init.Prelude`) | 256 ms | 207 ms | ~49 ms |
+| lean4lean `779c51f` (`--fresh`; 1,975 constants) | 553 ms | 417 ms | ~135 ms |
+| oxilean-verify `0524489` (1,814 declarations) | 210 ms | ~5 ms | ~205 ms |
+| oxilean-verify, after | **159 ms** | ~5 ms | **~154 ms** |
+
+Net of start-up: 1.1× lean4lean's time and 3.2× the C++ kernel's
+(1.5× and 3.8× before). On whole modules of `omega`-heavy proofs the C++
+kernel is still well ahead: `leanchecker Init.Data.Array.Extract` takes 1.5 s
+of CPU for the module, and its 61 private lemmas alone take this kernel
+1.4 s.
+
+**Public API.** `expr::REBUILD_COST_MAX` (new); `Expr::rebuild_cost` /
+`Node::rebuild_cost` saturate there instead of at `u32::MAX`.
+`check_constant_info` and `check_declaration` refuse terms that are not closed
+(T7). The results of `instantiate`, `abstract_expr`, `lift_loose_bvars`,
+`instantiate_type_lparams` and the O(1) predicates are what they were; what
+they charge to the budget is not. `lift_loose_bvars` and `abstract_expr` no
+longer wrap an index of `u32::MAX` round to a small one (it stays where it
+is). New: `fuel::{set_reduction_nesting_limit, reduction_nesting_limit,
+set_term_depth_limit, term_depth_limit, term_depth_limit_hit,
+TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
+`oxilean-export` and `oxilean-verify`, `oxilean_export::TERM_DEPTH_LIMIT`
+(a new feature string in reports: `resource limit exceeded: term depth`;
+`ExportDecl::Oversized` can carry it), and in the wasm package
+`reduction_nesting_limit()` / `term_depth_limit()`.
+
+**Open after this work:**
+
+- [ ] **Nesting depth.** The reducer's own guard stops at 10,000 NESTED
+  reductions and reports the declaration as `unsupported` (reduction depth).
+  `loop 20000 0 = 20000` and a `List.foldl` over 20,000 elements, both by
+  `decide +kernel`, end there; Lean checks them. With the guard lifted in a
+  scratch build both verify, on a stack of 32 MiB (not 16); the verification
+  thread has 512 MiB by default. A caller can now LOWER the guard to its
+  stack (T8); it cannot raise it. Neither corpus has such a declaration.
+- [ ] **The recursion is still recursion.** T8 bounds the two things that
+  grow with the work — nested reductions and the depth of terms. It does not
+  bound every combination of them (a reduction nested 256 deep whose every
+  level types a term 512 deep would need more than a megabyte; no input seen
+  does this), nor universe levels and names, which are linked structures the
+  kernel also walks by recursion. One counter for all of the kernel's
+  recursion would. The wasm sizing was measured on V8 only.
+- [ ] **Long evaluations.** `(List.range 200000).foldl (· + ·) 0 = …` by
+  `decide +kernel` runs out of the corpus budget after 2.3 s (Lean's kernel
+  takes about 5 s for it); peak live heap 0.5 GB.
+- [ ] **Lazy delta reduction proper.** T4 covers two applications of the same
+  definition. Two DIFFERENT heads that unfold to the same one are still
+  reduced to weak head normal form first; Lean unfolds one step at a time,
+  the taller definition first.
+- [ ] **Rejections that end at a limit.** Of the mutants above, 154
+  that Lean's kernel rejects end here at a resource limit (reported
+  `unsupported`). Never a wrong verdict; a slower "no".
+- [x] **`def_eq/types.rs`** was 2,281 lines before this work (the limit is
+  2,000) and is 1,959: the general-purpose types that opened it
+  moved, unchanged, to `def_eq/support_types.rs`. The other files this work
+  touched are under the limit.
+- [ ] The committed demo artifact (`web/verify-demo/pkg`) is still the 0.1.3
+  build; `cargo formal`'s gates over `crates/oxilean-kernel/formal` were not
+  run here (the tool is not installed on this machine; `BigNat` is untouched
+  and the package's plain and randomized tests pass); MSRV 1.70 was not built
+  (`cargo clippy --target wasm32-unknown-unknown` on the wasm crate reports
+  `incompatible_msrv` for code `#[wasm_bindgen]` generates — 16 times before
+  this work, 18 after it). *(Later the same day: the MSRV is 1.89 and built
+  with 1.89.0, and those warnings are gone — see F2.)* *(2026-11-12: the demo artifact was rebuilt for the 0.1.4 release — 168,785 B gzip, 427,914 B raw. The `cargo formal` gates were still not run for this release.)*
 
 ---
 
@@ -122,6 +660,31 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   of erroring. (`audit-struct-eta.md`)
   *(Wave 2: returns `Result` with typed errors for head/param-count/telescope
   mismatches; `infer_proj` gated by the strict `is_structure_like` predicate.)*
+- [x] **S12. The nested K-guard checker reused the surrounding def-eq's
+  free-variable ids** (P0 wrong-ACCEPT; found 2026-11-11 while checking an
+  external report; present in the published 0.1.3) — K-like reduction types the
+  recursor's major premise in a nested `TypeChecker::with_fvar_types` seeded
+  with the surrounding locals and asks ITS def-eq whether the major's type is
+  the canonical constructor's. That def-eq opened binders from
+  `DEF_EQ_OPENED_FVAR_BASE` again, so a binder it opened could carry the id of a
+  binder the surrounding def-eq had opened — a local the compared terms mention.
+  Comparing `fun y1 y2 y3 => c` with `fun y1 y2 y3 => y3` opened `y3` as `c`,
+  the guard passed, K fired on a VARIABLE `h : lhs = rhs` with `lhs ≢ rhs`, and
+  `Eq.rec m h ≡ m` was accepted. End to end: `KGuardCollision.bad`, which Lean's
+  kernel and `leanchecker` both reject, replayed as 4 verified / 0 rejected
+  (0.1.3 and the 0.1.4 tree alike). The overwritten seed entry was never
+  restored either, so the nested checker went on mistyping that local.
+  *(`with_fvar_types` now keeps both id ranges of the nested checker clear of
+  the seeded locals: its own locals start past the largest seeded own-range id,
+  and its def-eq's opened ids past the largest seeded opened-range id
+  (`DefEqChecker::reserve_opened_fvars_through`). Pinned at three levels: the
+  kernel def-eq query (`k_guard_does_not_confuse_an_outer_local_with_a_nested_binder`),
+  the seeding invariants (`seeded_checker_*` in `defeq_open_terms`), and the
+  negative fixture `KGuardCollision` through `replay_smoke` and the CLI
+  (3 verified / 0 unsupported / 1 rejected, exit 1). Real corpora were touched
+  by the collision too: on Mathlib's `Con.liftOnUnits` family the reduction
+  path changes with the fix (`Con.liftOnUnits_mk`: 2 K-guard evaluations before,
+  32 after, about twice the time) — the verdicts are the same.)*
 
 ## P0 — Completeness bugs (kernel rejects real proofs → false `rejected` alarms)
 
@@ -179,8 +742,16 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   *(Wave 2: multi-motive derivation + iota for mutual families
   (Tree/Forest pinned); sibling recursor names follow lean4export's
   `<T>.rec` convention.)*
-- [>] **C10. Nested inductives** — decorative bool flag; no nested-to-mutual
+- [x] **C10. Nested inductives** — decorative bool flag; no nested-to-mutual
   compilation. Implement, or emit named `unsupported` verdict (three-bucket rule). (`audit-recursors.md`)
+  *(Wave 5, after the 0.1.3 release: implemented in `b3c17f8`/`b3adf3f`.
+  Nested occurrences are specialised into an auxiliary mutual family, the
+  recursors are derived and restored over the real container, and every
+  exported recursor is re-verified by def-eq.
+  `crates/oxilean-kernel/src/inductive/nested.rs` still answers
+  `UnsupportedNestedInductive` for the shapes that stage does not handle.
+  `Init` went from 35,223 to 47,119 verified with 0 rejected; re-measured on
+  2026-11-04 at `86227a8`: 47,119 · 10,158 · 0.)*
   *(Wave 2: the second disjunct landed — positivity checking rejects nested
   occurrences with typed `KernelError::UnsupportedNestedInductive` for the
   verify CLI's `unsupported` bucket; nested→mutual compilation itself is
@@ -319,6 +890,54 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   skip instead of a whole-file error, cumulative breach still hard-errors.
   Pinned: bomb recovery, cumulative-still-errors control, and the
   oversized→cascade regression in `replay_smoke`.)*
+- [x] **C23. A head that stepped to an application lost its outer arguments**
+  (P0 wrong-REJECT class, reported externally 2026-11 on Mathlib's
+  `AddCon.addGroup._proof_1`; also `AddCon.addGroup._proof_4`,
+  `Con.group._proof_1` / `_proof_4`, `Quot.congr_mk`, `Quotient.congr_mk`,
+  `OrderHom.antisymmetrization_apply_mk`,
+  `Antisymmetrization.prodEquiv._proof_3`,
+  `OrderIso.dualAntisymmetrization._proof_8`, and the two FreeGroup rejections
+  of wave5; present in 0.1.3) — C21's in-context head loop stepped a head that
+  had BECOME an application (a constant whose value is a partial application, a
+  projected instance field, a `let` body) on its own. Mathlib writes its
+  quotient maps point-free — `Quot.map f h := Quot.lift (fun x => ⟦f x⟧) _` —
+  so the exposed `Quot.lift` is one argument short and its major premise is an
+  OUTER argument: the bare head looked stuck and the application came back
+  unreduced. The same happened to a partially applied recursor
+  (`def pred : Nat → Nat := Nat.rec 0 (fun n _ => n)`), and a partially applied
+  literal operation (`Nat.add 2` awaiting an outer `3`) was unfolded instead of
+  folded.
+  *(The head loop re-attaches the outer arguments and hands the application
+  back to the chain loop, which re-flattens the spine — Lean's
+  `whnf_core(mk_rev_app(f, args))`. Pinned in the kernel for each way a head
+  becomes an application (delta, `let`, projection) and each operation
+  (`Quot.lift`, `Quot.ind`, a recursor, a literal op), and end to end by the
+  fixture `QuotPartialApp` (66 verified; 63 + 3 rejected before).)*
+- [x] **C24. The reducer's step cap turned long reduction chains into
+  rejections** (P0 wrong-REJECT; found 2026-11-11; present in 0.1.3) —
+  `whnf_env_depth` stopped a head-reduction chain after `max_depth` (10,000)
+  steps and returned the unfinished term as if it were a normal form, without a
+  trace; the chain's steps were also charged against the NESTING depth, so the
+  nested reductions of a long chain's later steps started out over the limit.
+  `chain 20000 = true := by decide +kernel` — tens of thousands of cheap steps
+  over a term that never grows — was REJECTED under both `--limits` presets
+  although no budget had been exceeded, against the contract that a declaration
+  over its resources is unsupported, never rejected.
+  *(The cap stays — it is also what lets def-eq abandon a reduction that is
+  going nowhere: lifting it outright under a budget cost 30 verified
+  declarations on the Mathlib slice, 17 of them new clone-fuel roots — but it
+  now latches `fuel::note_reduction_limit`, as does the nesting-depth guard.
+  A `Replayer` with a budget that sees a declaration FAIL with the latch set
+  repeats the check under a fresh budget with the cap lifted
+  (`fuel::set_reduction_cap(false)`): the budget bounds the chain, steps are no
+  longer charged against the nesting depth, and the second result is the
+  verdict. Where the check cannot be repeated (no budget armed, the stateless
+  entry points, the nesting-depth guard) the failure is the named unsupported
+  `REDUCTION_LIMIT`, never a rejection. Pinned in the kernel (capped and
+  recorded by default; runs to the end with the cap lifted under a budget; the
+  cap cannot be lifted without one; nesting guard) and by the fixture
+  `ReductionChain`: 36 verified under a budget and through the CLI; with no
+  budget 34 checked / 2 unsupported / 0 rejected.)*
 
 ## P1 — The product (new crates & artifacts)
 
@@ -439,6 +1058,9 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   **Budget NOT met** — honest number, recorded next to the baseline in
   `RESULTS-2026-07-12.md` §post-fix; root cause = unshared `Box` `Expr`,
   fix (structural sharing) tracked, not chased with constant-factor hacks.)*
+  *(2026-11-11, 0.1.4 tree: re-measured against lean4lean and against Lean's
+  own kernel on one machine with one toolchain; **budget met**. Figures in
+  "Performance work on the 0.1.4 tree" near the top.)*
 
 ## P1 — Gates & CI (brief §8)
 
@@ -567,8 +1189,19 @@ The campaign is **shipped** at 0.1.3 (branches `wave4/fuzz-ci`,
   congruence, termination) are publicly exposed. Quarantine toy `quotient/`
   re-exports now (part of C12); full de-bloat is a separate reviewed pass —
   the "auditable by eye" story depends on it.
-- [>] **F2. MSRV verification** — `rust-version = "1.70"` never tested; add CI job or
+- [x] **F2. MSRV verification** — `rust-version = "1.70"` never tested; add CI job or
   bump honestly.
+  *(2026-11-11: bumped honestly to `rust-version = "1.89"`, the floor the locked
+  dependencies already set (`safe_arch` 1.2.0 and `wide` 1.7.1 declare 1.89) —
+  1.70 never built. `cargo +1.89.0 check --workspace --all-targets
+  --all-features` passes. Clippy 1.99.1 is clean at the new MSRV: the 202
+  suggestions it unlocks (`is_multiple_of`, `div_ceil`, `repeat_n`,
+  `is_none_or`, `inspect_err`, `as_chunks`, …) are applied, with the 21 that
+  1.99's clippy raises at any MSRV; on wasm32, `oxilean-verify-wasm` and
+  `oxilean-wasm` report no `incompatible_msrv` any more. `try_update` (1.95)
+  is out of reach at this MSRV, so `AtomicRefCounter::dec` spells out the
+  compare-and-swap loop instead of the deprecated `fetch_update`. No CI job
+  yet — CI runs only `npm-publish.yml`.)*
 - [>] **F3. Legacy text-line export format** — current upstream lean4export emits
   NDJSON v3; old space-delimited format (trepplein-era) optional for
   cross-checking against older tools.
@@ -629,7 +1262,7 @@ inductives (C10), G7 wasm half, F1–F4.) Owner: Team Kitasan.*
   - [ ] **More deadline guards (hang whack-a-mole).** decl ~183,625 (another
     `CategoryTheory` decl) hangs in yet another non-fuel loop; needs the same
     `deadline::is_expired()` treatment as `is_leq_core`.
-  - [ ] **Fix the 2 FreeGroup false rejections** (`FreeGroup.instGroup._proof_12`,
+  - [x] **Fix the 2 FreeGroup false rejections** (`FreeGroup.instGroup._proof_12`,
     `FreeGroup.induction_on`). DIAGNOSED as a def-eq **completeness** gap (NOT
     unsoundness): `@rfl (1⁻¹ * 1)` proves the group law `1⁻¹ * 1 = 1`, definitional
     in FreeGroup (a `Quot` of lists) but the kernel fails to reduce the nested
@@ -637,3 +1270,7 @@ inductives (C10), G7 wasm half, F1–F4.) Owner: Team Kitasan.*
     reproducer (0.43 s / 11.7 MB): `~/work/oxilean-corpus/FreeGroup_rejections_repro.ndjson`.
     Fix = complete that reduction path; do NOT blanket-reclassify def-eq
     failures as unsupported (that would hide genuine corrupted-proof rejections).
+    *(Done 2026-11-11 by C23: the instance field is a point-free `Quot.lift`,
+    and its major premise was an outer argument. The closure of the two
+    declarations, re-exported from Mathlib `v4.32.0-rc1`, goes from 416
+    verified / 3 rejected to 419 verified / 0 rejected.)*

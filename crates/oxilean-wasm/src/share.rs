@@ -17,7 +17,7 @@ const BASE64URL_TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstu
 
 /// Encode arbitrary bytes as a URL-safe base64url string (no `+`, `/`, or `=`).
 pub(crate) fn base64url_encode(data: &[u8]) -> String {
-    let mut out = String::with_capacity((data.len() * 4 + 2) / 3);
+    let mut out = String::with_capacity((data.len() * 4).div_ceil(3));
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as usize;
         let b1 = if chunk.len() > 1 {
@@ -65,7 +65,7 @@ pub(crate) fn base64url_decode(s: &str) -> Result<Vec<u8>, String> {
         .collect();
     let chars = indices?;
 
-    let mut out = Vec::with_capacity((chars.len() * 3 + 3) / 4);
+    let mut out = Vec::with_capacity((chars.len() * 3).div_ceil(4));
     for chunk in chars.chunks(4) {
         let b0 = chunk[0] as usize;
         let b1 = if chunk.len() > 1 {

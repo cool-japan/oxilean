@@ -5,6 +5,7 @@
 use crate::Name;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::functions::{is_equivalent, is_leq};
 
@@ -305,37 +306,44 @@ impl<A, B> Either2<A, B> {
 /// A versioned record that stores a history of values.
 #[allow(dead_code)]
 pub struct VersionedRecord<T: Clone> {
-    history: Vec<T>,
+    /// Every earlier value, oldest first: version `n` is `earlier[n]`.
+    earlier: Vec<T>,
+    /// The latest value (version `earlier.len()`), declared last so it drops last.
+    current: T,
 }
 #[allow(dead_code)]
 impl<T: Clone> VersionedRecord<T> {
     /// Creates a new record with an initial value.
     pub fn new(initial: T) -> Self {
         Self {
-            history: vec![initial],
+            earlier: Vec::new(),
+            current: initial,
         }
     }
     /// Updates the record with a new version.
     pub fn update(&mut self, val: T) {
-        self.history.push(val);
+        let previous = std::mem::replace(&mut self.current, val);
+        self.earlier.push(previous);
     }
     /// Returns the current (latest) value.
     pub fn current(&self) -> &T {
-        self.history
-            .last()
-            .expect("VersionedRecord history is always non-empty after construction")
+        &self.current
     }
     /// Returns the value at version `n` (0-indexed), or `None`.
     pub fn at_version(&self, n: usize) -> Option<&T> {
-        self.history.get(n)
+        match self.earlier.get(n) {
+            Some(value) => Some(value),
+            None if n == self.earlier.len() => Some(&self.current),
+            None => None,
+        }
     }
     /// Returns the version number of the current value.
     pub fn version(&self) -> usize {
-        self.history.len() - 1
+        self.earlier.len()
     }
     /// Returns `true` if more than one version exists.
     pub fn has_history(&self) -> bool {
-        self.history.len() > 1
+        !self.earlier.is_empty()
     }
 }
 /// A simple mutable key-value store for test fixtures.
@@ -646,41 +654,36 @@ impl StackCalc {
     pub fn push(&mut self, n: i64) {
         self.stack.push(n);
     }
-    /// Adds the top two values.  Panics if fewer than two values.
-    pub fn add(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for add");
-        self.stack.push(a + b);
+    /// Replaces the top two values, `b` on top of `a`, with `op(a, b)` and
+    /// returns it.  Returns `None`, leaving the stack unchanged, if it holds
+    /// fewer than two values.
+    fn apply_binary(&mut self, op: impl FnOnce(i64, i64) -> i64) -> Option<i64> {
+        let (rest_len, a, b) = match self.stack[..] {
+            [ref rest @ .., a, b] => (rest.len(), a, b),
+            _ => return None,
+        };
+        let value = op(a, b);
+        self.stack.truncate(rest_len);
+        self.stack.push(value);
+        Some(value)
     }
-    /// Subtracts top from second.
-    pub fn sub(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for sub");
-        self.stack.push(a - b);
+    /// Adds the top two values and returns the sum, which replaces them.
+    /// Returns `None`, leaving the stack unchanged, if it holds fewer than
+    /// two values.
+    pub fn add(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a + b)
     }
-    /// Multiplies the top two values.
-    pub fn mul(&mut self) {
-        let b = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        let a = self
-            .stack
-            .pop()
-            .expect("stack must have at least two values for mul");
-        self.stack.push(a * b);
+    /// Subtracts top from second and returns the difference, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn sub(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a - b)
+    }
+    /// Multiplies the top two values and returns the product, which replaces
+    /// them.  Returns `None`, leaving the stack unchanged, if it holds fewer
+    /// than two values.
+    pub fn mul(&mut self) -> Option<i64> {
+        self.apply_binary(|a, b| a * b)
     }
     /// Peeks the top value.
     pub fn peek(&self) -> Option<i64> {
@@ -1081,114 +1084,226 @@ impl SimpleDag {
 ///
 /// Levels form expressions over zero, successor, max, imax, parameters,
 /// and metavariables.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Level {
+///
+/// Structural sharing (wave5 Stage F): `Level` is a newtype over a
+/// reference-counted cell holding its outermost node (`LevelKind`), so cloning
+/// a whole level — e.g. every element of the `Vec<Level>` a `Const` carries —
+/// is an O(1) refcount bump, and sub-levels are shared by pointer.
+/// Match on the outermost node through [`Level::view`].
+///
+/// Each level also stores a hash of its own structure, computed when it is
+/// built from the stored hashes of its sub-levels (see the kernel-private
+/// `structural_hash` module) — so an `Expr` that carries levels (a `Sort`, a
+/// `Const`) folds them into its own hash in O(1) each, without walking them.
+///
+/// Equality is exactly structural: the same allocation is equal, different
+/// stored hashes are different (equal levels always hash equal), and
+/// otherwise the nodes are compared. `Hash` writes the structure as it always
+/// did (not the stored hash), so a `HashMap<Level, _>` behaves as before.
+#[derive(Clone)]
+pub struct Level(Rc<LevelCell>);
+
+/// The shared allocation behind a [`Level`]: its node kind, and the hash of
+/// its structure.
+///
+/// Invariant: `hash` is the structural hash of `kind`, set where the cell is
+/// built (the constructors below) and never changed — a `Level` gives no
+/// mutable access to its cell.
+struct LevelCell {
+    hash: u64,
+    kind: LevelKind,
+}
+
+impl PartialEq for Level {
+    #[inline]
+    fn eq(&self, other: &Level) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+            || (self.0.hash == other.0.hash && self.0.kind == other.0.kind)
+    }
+}
+impl Eq for Level {}
+impl std::hash::Hash for Level {
+    /// Writes the structure, exactly as the derived implementation did when
+    /// `Level` wrapped the node kind directly.
+    #[inline]
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.kind.hash(state);
+    }
+}
+impl std::fmt::Debug for Level {
+    /// Formats as `Level(<kind>)` — the output of the derived implementation
+    /// when `Level` wrapped the node kind directly. Code that hashes or
+    /// orders terms by their `Debug` text depends on this spelling.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Level").field(&self.0.kind).finish()
+    }
+}
+
+/// The node kind behind a [`Level`]. Private: construct through [`Level`]'s
+/// constructors and inspect through [`Level::view`] and the accessor methods.
+#[derive(PartialEq, Eq, Hash, Debug)]
+enum LevelKind {
     /// Level 0 (Prop).
     Zero,
     /// Successor: u + 1.
-    Succ(Box<Level>),
+    Succ(Level),
     /// Maximum of two levels: max(u, v).
-    Max(Box<Level>, Box<Level>),
+    Max(Level, Level),
     /// Impredicative maximum: imax(u, v).
     ///
     /// Semantics: imax(u, v) = 0 if v = 0, else max(u, v).
     /// This ensures Prop -> Prop : Prop (impredicativity).
-    IMax(Box<Level>, Box<Level>),
+    IMax(Level, Level),
     /// Universe parameter (for polymorphism).
     Param(Name),
     /// Universe metavariable (for unification).
     MVar(LevelMVarId),
 }
+
+/// A borrowed view of a [`Level`]'s outermost node, for pattern matching.
+///
+/// Obtained from [`Level::view`]; mirrors the former public `Level` enum shape.
+pub enum LevelView<'a> {
+    /// Level 0 (Prop).
+    Zero,
+    /// Successor: u + 1.
+    Succ(&'a Level),
+    /// Maximum of two levels: max(u, v).
+    Max(&'a Level, &'a Level),
+    /// Impredicative maximum: imax(u, v).
+    IMax(&'a Level, &'a Level),
+    /// Universe parameter (for polymorphism).
+    Param(&'a Name),
+    /// Universe metavariable (for unification).
+    MVar(LevelMVarId),
+}
+
 impl Level {
+    /// Borrow this level's outermost node for matching. O(1).
+    #[inline]
+    pub fn view(&self) -> LevelView<'_> {
+        match &self.0.kind {
+            LevelKind::Zero => LevelView::Zero,
+            LevelKind::Succ(l) => LevelView::Succ(l),
+            LevelKind::Max(a, b) => LevelView::Max(a, b),
+            LevelKind::IMax(a, b) => LevelView::IMax(a, b),
+            LevelKind::Param(n) => LevelView::Param(n),
+            LevelKind::MVar(id) => LevelView::MVar(*id),
+        }
+    }
+    /// The hash of this level's structure, stored when the level was built.
+    /// O(1). Equal levels have equal hashes; see [`crate::structural_hash`].
+    #[inline]
+    #[must_use]
+    pub(crate) fn structural_hash(&self) -> u64 {
+        self.0.hash
+    }
+    /// Wrap a node kind with the hash of its structure. The only place a
+    /// [`LevelCell`] is built.
+    #[inline]
+    fn from_kind(kind: LevelKind) -> Self {
+        use crate::structural_hash::{
+            mix, LEVEL_IMAX, LEVEL_MAX, LEVEL_MVAR, LEVEL_PARAM, LEVEL_SUCC, LEVEL_ZERO,
+        };
+        let hash = match &kind {
+            LevelKind::Zero => LEVEL_ZERO,
+            LevelKind::Succ(l) => mix(LEVEL_SUCC, l.0.hash),
+            LevelKind::Max(l1, l2) => mix(mix(LEVEL_MAX, l1.0.hash), l2.0.hash),
+            LevelKind::IMax(l1, l2) => mix(mix(LEVEL_IMAX, l1.0.hash), l2.0.hash),
+            LevelKind::Param(name) => mix(LEVEL_PARAM, name.structural_hash()),
+            LevelKind::MVar(id) => mix(LEVEL_MVAR, id.0),
+        };
+        Level(Rc::new(LevelCell { hash, kind }))
+    }
     /// Create Zero level.
     pub fn zero() -> Self {
-        Level::Zero
+        Level::from_kind(LevelKind::Zero)
     }
     /// Create a successor level.
     pub fn succ(l: Level) -> Self {
-        Level::Succ(Box::new(l))
+        Level::from_kind(LevelKind::Succ(l))
     }
     /// Create a max level.
     pub fn max(l1: Level, l2: Level) -> Self {
-        Level::Max(Box::new(l1), Box::new(l2))
+        Level::from_kind(LevelKind::Max(l1, l2))
     }
     /// Create an imax level.
     pub fn imax(l1: Level, l2: Level) -> Self {
-        Level::IMax(Box::new(l1), Box::new(l2))
+        Level::from_kind(LevelKind::IMax(l1, l2))
     }
     /// Create a parameter level.
     pub fn param(name: Name) -> Self {
-        Level::Param(name)
+        Level::from_kind(LevelKind::Param(name))
     }
     /// Create a level metavariable.
     pub fn mvar(id: LevelMVarId) -> Self {
-        Level::MVar(id)
+        Level::from_kind(LevelKind::MVar(id))
     }
     /// Check if this is Zero.
     pub fn is_zero(&self) -> bool {
-        matches!(self, Level::Zero)
+        matches!(&self.0.kind, LevelKind::Zero)
     }
     /// Check if this is a parameter.
     pub fn is_param(&self) -> bool {
-        matches!(self, Level::Param(_))
+        matches!(&self.0.kind, LevelKind::Param(_))
     }
     /// Check if this is a metavariable.
     pub fn is_mvar(&self) -> bool {
-        matches!(self, Level::MVar(_))
+        matches!(&self.0.kind, LevelKind::MVar(_))
     }
     /// Check if this is a successor.
     pub fn is_succ(&self) -> bool {
-        matches!(self, Level::Succ(_))
+        matches!(&self.0.kind, LevelKind::Succ(_))
     }
     /// Check if this is a max.
     pub fn is_max(&self) -> bool {
-        matches!(self, Level::Max(_, _))
+        matches!(&self.0.kind, LevelKind::Max(_, _))
     }
     /// Check if this is an imax.
     pub fn is_imax(&self) -> bool {
-        matches!(self, Level::IMax(_, _))
+        matches!(&self.0.kind, LevelKind::IMax(_, _))
     }
     /// Check if this level is definitely not zero.
     ///
     /// Returns true if we can statically determine this is >= 1.
     pub fn is_not_zero(&self) -> bool {
-        match self {
-            Level::Zero => false,
-            Level::Succ(_) => true,
-            Level::Max(l1, l2) => l1.is_not_zero() || l2.is_not_zero(),
-            Level::IMax(_, l2) => l2.is_not_zero(),
-            Level::Param(_) | Level::MVar(_) => false,
+        match &self.0.kind {
+            LevelKind::Zero => false,
+            LevelKind::Succ(_) => true,
+            LevelKind::Max(l1, l2) => l1.is_not_zero() || l2.is_not_zero(),
+            LevelKind::IMax(_, l2) => l2.is_not_zero(),
+            LevelKind::Param(_) | LevelKind::MVar(_) => false,
         }
     }
     /// Check if this level contains any metavariables.
     pub fn has_mvar(&self) -> bool {
-        match self {
-            Level::MVar(_) => true,
-            Level::Succ(l) => l.has_mvar(),
-            Level::Max(l1, l2) | Level::IMax(l1, l2) => l1.has_mvar() || l2.has_mvar(),
-            Level::Zero | Level::Param(_) => false,
+        match &self.0.kind {
+            LevelKind::MVar(_) => true,
+            LevelKind::Succ(l) => l.has_mvar(),
+            LevelKind::Max(l1, l2) | LevelKind::IMax(l1, l2) => l1.has_mvar() || l2.has_mvar(),
+            LevelKind::Zero | LevelKind::Param(_) => false,
         }
     }
     /// Check if this level contains any parameters.
     pub fn has_param(&self) -> bool {
-        match self {
-            Level::Param(_) => true,
-            Level::Succ(l) => l.has_param(),
-            Level::Max(l1, l2) | Level::IMax(l1, l2) => l1.has_param() || l2.has_param(),
-            Level::Zero | Level::MVar(_) => false,
+        match &self.0.kind {
+            LevelKind::Param(_) => true,
+            LevelKind::Succ(l) => l.has_param(),
+            LevelKind::Max(l1, l2) | LevelKind::IMax(l1, l2) => l1.has_param() || l2.has_param(),
+            LevelKind::Zero | LevelKind::MVar(_) => false,
         }
     }
     /// Get the depth (nesting) of this level expression.
     pub fn depth(&self) -> usize {
-        match self {
-            Level::Zero | Level::Param(_) | Level::MVar(_) => 0,
-            Level::Succ(l) => 1 + l.depth(),
-            Level::Max(l1, l2) | Level::IMax(l1, l2) => 1 + l1.depth().max(l2.depth()),
+        match &self.0.kind {
+            LevelKind::Zero | LevelKind::Param(_) | LevelKind::MVar(_) => 0,
+            LevelKind::Succ(l) => 1 + l.depth(),
+            LevelKind::Max(l1, l2) | LevelKind::IMax(l1, l2) => 1 + l1.depth().max(l2.depth()),
         }
     }
     /// Create a numeric level `succ^n(zero)`.
     pub fn from_nat(n: u32) -> Self {
-        let mut l = Level::Zero;
+        let mut l = Level::zero();
         for _ in 0..n {
             l = Level::succ(l);
         }
@@ -1198,9 +1313,9 @@ impl Level {
     ///
     /// Returns `Some(n)` if this is `succ^n(zero)`, `None` otherwise.
     pub fn to_nat(&self) -> Option<u32> {
-        match self {
-            Level::Zero => Some(0),
-            Level::Succ(l) => l.to_nat().map(|n| n + 1),
+        match &self.0.kind {
+            LevelKind::Zero => Some(0),
+            LevelKind::Succ(l) => l.to_nat().map(|n| n + 1),
             _ => None,
         }
     }

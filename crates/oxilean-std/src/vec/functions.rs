@@ -294,7 +294,7 @@ pub fn vec_step_by<T: Clone>(v: &[T], start: usize, step: usize) -> Vec<T> {
     }
     v.iter()
         .enumerate()
-        .filter(|(i, _)| i >= &start && (i - start) % step == 0)
+        .filter(|(i, _)| i >= &start && (i - start).is_multiple_of(step))
         .map(|(_, x)| x.clone())
         .collect()
 }

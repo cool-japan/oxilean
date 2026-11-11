@@ -4,7 +4,7 @@
 
 use crate::lcnf::*;
 use oxilean_kernel::Node;
-use oxilean_kernel::{BinderInfo, Expr, Level, Literal, Name};
+use oxilean_kernel::{BinderInfo, Expr, Level, LevelView, Literal, Name, NameView};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use super::types::{
@@ -14,8 +14,8 @@ use super::types::{
 
 /// Convert a kernel `Name` to its string representation for LCNF.
 pub(super) fn name_to_string(name: &Name) -> String {
-    match name {
-        Name::Anonymous => "_".to_string(),
+    match name.view() {
+        NameView::Anonymous => "_".to_string(),
         _ => name.to_string(),
     }
 }
@@ -232,11 +232,11 @@ pub(super) fn convert_sort(
 }
 /// Convert a universe level to a u64 approximation.
 pub(super) fn level_to_u64(level: &Level) -> u64 {
-    match level {
-        Level::Zero => 0,
-        Level::Succ(inner) => level_to_u64(inner).saturating_add(1),
-        Level::Max(l1, l2) => level_to_u64(l1).max(level_to_u64(l2)),
-        Level::IMax(_, l2) => {
+    match level.view() {
+        LevelView::Zero => 0,
+        LevelView::Succ(inner) => level_to_u64(inner).saturating_add(1),
+        LevelView::Max(l1, l2) => level_to_u64(l1).max(level_to_u64(l2)),
+        LevelView::IMax(_, l2) => {
             let v2 = level_to_u64(l2);
             if v2 == 0 {
                 0
@@ -244,8 +244,8 @@ pub(super) fn level_to_u64(level: &Level) -> u64 {
                 v2
             }
         }
-        Level::Param(_) => 1,
-        Level::MVar(_) => 1,
+        LevelView::Param(_) => 1,
+        LevelView::MVar(_) => 1,
     }
 }
 /// Convert a named constant reference.

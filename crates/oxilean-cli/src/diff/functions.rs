@@ -118,31 +118,25 @@ fn group_into_hunks(changes: &[LineChange], context: usize) -> Vec<DiffHunk> {
         .filter(|(_, c)| c.kind != ChangeKind::Unchanged)
         .map(|(i, _)| i)
         .collect();
-    if change_indices.is_empty() {
+    let Some((&first_change, later_changes)) = change_indices.split_first() else {
         return Vec::new();
-    }
-    let mut groups: Vec<Vec<usize>> = Vec::new();
-    let mut current_group: Vec<usize> = vec![change_indices[0]];
-    for &idx in &change_indices[1..] {
-        let prev = *current_group
-            .last()
-            .expect("current_group is non-empty: initialized with one element");
-        if idx <= prev + 2 * context + 1 {
-            current_group.push(idx);
+    };
+    // Each group of nearby changes is kept as the indices of its first and
+    // last change, the only two the hunks are built from.
+    let mut groups: Vec<(usize, usize)> = Vec::new();
+    let (mut group_first, mut group_last) = (first_change, first_change);
+    for &idx in later_changes {
+        if idx <= group_last + 2 * context + 1 {
+            group_last = idx;
         } else {
-            groups.push(current_group);
-            current_group = vec![idx];
+            groups.push((group_first, group_last));
+            group_first = idx;
+            group_last = idx;
         }
     }
-    groups.push(current_group);
+    groups.push((group_first, group_last));
     let mut hunks = Vec::new();
-    for group in &groups {
-        let first = *group
-            .first()
-            .expect("group is non-empty: produced from non-empty current_group");
-        let last = *group
-            .last()
-            .expect("group is non-empty: produced from non-empty current_group");
+    for &(first, last) in &groups {
         let start = first.saturating_sub(context);
         let end = (last + context + 1).min(changes.len());
         let hunk_lc: Vec<LineChange> = changes[start..end].to_vec();
@@ -926,7 +920,7 @@ pub fn oxi_tokenize_line(line: &str) -> Vec<OxiDiffToken> {
     ];
     let mut tokens = Vec::new();
     let mut rest = line;
-    while !rest.is_empty() {
+    while let Some(ch) = rest.chars().next() {
         if rest.starts_with(|c: char| c.is_whitespace()) {
             let end = rest
                 .find(|c: char| !c.is_whitespace())
@@ -949,10 +943,6 @@ pub fn oxi_tokenize_line(line: &str) -> Vec<OxiDiffToken> {
             tokens.push(OxiDiffToken::Number(rest[..end].to_string()));
             rest = &rest[end..];
         } else {
-            let ch = rest
-                .chars()
-                .next()
-                .expect("rest is non-empty: loop condition ensures !rest.is_empty()");
             let len = ch.len_utf8();
             tokens.push(OxiDiffToken::Punct(ch.to_string()));
             rest = &rest[len..];
@@ -1877,3 +1867,5 @@ pub fn diff_supports_char_diff() -> bool {
 pub fn diff_supports_structural_diff() -> bool {
     true
 }
+#[cfg(test)]
+mod hunk_grouping_tests;

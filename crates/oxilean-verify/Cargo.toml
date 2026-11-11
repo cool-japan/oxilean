@@ -8,7 +8,10 @@ repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 rust-version.workspace = true
+readme = "README.md"
 description = "Independent Lean 4 proof checker — the oxilean-verify product CLI and streaming verify engine"
+categories = ["command-line-utilities", "development-tools", "science"]
+keywords = ["lean4", "lean", "proof-checker", "verification", "theorem-prover"]
 
 [[bin]]
 name = "oxilean-verify"
@@ -24,6 +27,13 @@ path = "src/lib.rs"
 # and JSON output are hand-rolled in this crate.
 oxilean-kernel = { workspace = true }
 oxilean-export = { workspace = true }
+
+[features]
+default = []
+# Build the kernel so that it tracks the depth of its terms and can enforce a
+# limit on it (`oxilean_kernel::fuel::set_term_depth_limit`); see the
+# kernel's feature of the same name.
+term-depth = ["oxilean-kernel/term-depth", "oxilean-export/term-depth"]
 
 [lints.rust]
 unsafe_code = "forbid"

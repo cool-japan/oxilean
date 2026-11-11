@@ -1,9 +1,11 @@
 # OxiLean — TODO
 
 > Master task list for the OxiLean project.
-> Last updated: 2026-07-16
+> Last updated: 2026-11-12
 >
-> **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). The project has 17 crates and 1.35M+ lines implemented.
+> Current release: version 0.1.4 (2026-11-12) — see CHANGELOG.md.
+>
+> **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). v0.1.4 released 2026-11-12. The project has 17 crates and 1.36M+ lines implemented.
 >
 > **Phases 1-5 Status**: The interactive-prover phases (1–5) are complete. The v0.1.3 campaign (Waves 1–4) delivered the independent verify product: oxilean-export, oxilean-verify, oxilean-verify-wasm, plus kernel soundness fixes (BigNat, quotients, struct eta, re-derived recursors, complete level defeq). See TODO_VERIFY.md for full status.
 
@@ -342,20 +344,28 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 | Phase 4: Tactics | ✅ Complete | ~5,000 | (included in elab) |
 | Phase 5+: Advanced | ✅ Complete | ~120,000+ | ~956,000+ |
 
-**Total Project Lines**: ~1,347,650 lines across 17 crates, 5,978 files
+**Total Project Lines**: ~1,360,584 lines across 17 crates, 6,168 files
 
 ---
 
-## Project Status: Phases 1-5 COMPLETE; v0.1.3 verify product shipped
+## Project Status: Phases 1-5 COMPLETE; v0.1.4 released
 
-**Phases 1-5 complete as of 2026-05-03. v0.1.3 shipped 2026-07-16.**
-- 17 crates, 5,978+ files, 1,347,650+ lines implemented
-- 33,238 tests passing (workspace)
+**Phases 1-5 complete as of 2026-05-03. v0.1.3 shipped 2026-07-16. v0.1.4 shipped 2026-11-12.**
+- 17 crates, 6,168 files, 1,360,584 lines implemented
+- 33,733 tests passing (workspace; 746 ignored)
 - 0 warnings
 - Mathlib4 compatibility: 99.7% parse rate (181,326/181,890 declarations)
 - 320 curated theorem proofs: 100% pass rate
 - oxilean-verify: independent Lean 4 proof checker, three-bucket verdicts (verified/unsupported/rejected)
-- oxilean-verify-wasm: 144 KB gzip (147,132 B at 0.1.3), 0 external deps, 0 unsafe, 39 exports
+- oxilean-verify-wasm: 165 KB gzip (168,785 B, 427,914 B raw at 0.1.4), 0 external deps, 0 unsafe, 41 exports (0.1.3: 144 KB gzip, 147,132 B, 39 exports)
+
+**v0.1.4 (released 2026-11-12)**:
+- Nested inductives in the kernel (nested-to-mutual elaboration, recursors re-verified by def-eq)
+- Lean core `Init` verifies in full: 57,277 verified · 0 unsupported · 0 rejected in 34 s (0.1.3: 35,424 · 21,853 · 0 in 8 m 28 s)
+- Two performance passes (terms carry their hash, shared terms walked once, `f a ≡ f b` from `a ≡ b`); peak heap on `Init` 2,723 MB → 995 MB
+- Three kernel fixes (a K-like wrong accept, point-free quotient maps, long reductions) and closed-term enforcement; opt-in term-depth / reduction-nesting limits for small stacks
+- Hygiene pass: `unwrap`/`expect` removed outside tests, three unsound safe-code paths closed
+- MSRV 1.89 (was a declared 1.70 that never built); `deny.toml` with the COOLJAPAN banned-crate list
 
 ## Verify Product (0.1.3)
 

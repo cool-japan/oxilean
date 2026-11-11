@@ -62,7 +62,10 @@ pub enum ExportDecl {
     /// trees would exceed the PER-DECLARATION materialization budget
     /// (`Limits::decl_materialize_budget` — C22: a single Lean-core theorem
     /// can legally DAG-share into a tree of hundreds of millions of nodes,
-    /// which would OOM the process before the kernel ever sees it).
+    /// which would OOM the process before the kernel ever sees it), or
+    /// because one of its terms is deeper than the checking thread allows
+    /// (`oxilean_kernel::fuel::set_term_depth_limit`: a thread whose stack
+    /// is small).
     ///
     /// Carries every name the declaration would have introduced (read from
     /// the interned name table WITHOUT materializing any expression), so the
@@ -81,7 +84,8 @@ pub struct OversizedVal {
     /// def/thm/opaque group: each member; for an inductive bundle: all
     /// types, constructors and recursors).
     pub names: Vec<Name>,
-    /// The stable named feature (see `reader::DECL_BUDGET_FEATURE`).
+    /// The stable named feature: `reader::DECL_BUDGET_FEATURE`, or
+    /// `replay::TERM_DEPTH_LIMIT` for a term too deep.
     pub feature: &'static str,
 }
 
@@ -113,11 +117,8 @@ impl ExportDecl {
             ExportDecl::Inductive(b) => b
                 .types
                 .first()
-                .map_or_else(|| Name::Anonymous, |t| t.common.name.clone()),
-            ExportDecl::Oversized(v) => v
-                .names
-                .first()
-                .map_or_else(|| Name::Anonymous, Clone::clone),
+                .map_or_else(Name::anonymous, |t| t.common.name.clone()),
+            ExportDecl::Oversized(v) => v.names.first().map_or_else(Name::anonymous, Clone::clone),
         }
     }
 

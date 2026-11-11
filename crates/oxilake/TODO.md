@@ -1,7 +1,7 @@
 # oxilake TODO
 
-> Status: v0.1.3 Ring 0 in progress
-> Last updated: 2026-05-29
+> Status: v0.1.4 — Ring 0 and Ring 1 complete
+> Last updated: 2026-11-12
 
 ## v0.1.3 (Ring 0 — complete)
 
@@ -40,3 +40,7 @@
   - **Tests:** package with well-typed theorem passes; package with type error reported; empty package clean.
 - [x] Workspace support (multi-package manifests) (2026-05-30)
 - [x] Cache at `~/.oxilake/cache/` (2026-05-30)
+
+## v0.1.4 (released 2026-11-12)
+
+- [x] MSRV 1.89: clippy suggestions applied (`lockfile.rs`, 3c75335); no behaviour change

@@ -32,7 +32,7 @@ pub fn prop() -> Expr {
     Expr::Sort(Level::zero())
 }
 pub fn sort_u() -> Expr {
-    Expr::Sort(Level::Param(Name::str("u")))
+    Expr::Sort(Level::param(Name::str("u")))
 }
 pub fn bvar(n: u32) -> Expr {
     Expr::BVar(n)

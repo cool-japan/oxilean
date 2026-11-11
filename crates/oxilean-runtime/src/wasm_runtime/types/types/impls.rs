@@ -145,15 +145,12 @@ impl WasmMemory {
         }
     }
     pub fn load_u32(&self, offset: usize) -> Option<u32> {
-        let end = offset.checked_add(4)?;
-        if end > self.data.len() {
-            return None;
+        // `None` when `offset` is past the end or fewer than four bytes
+        // follow it.
+        match self.data.get(offset..)? {
+            [b0, b1, b2, b3, ..] => Some(u32::from_le_bytes([*b0, *b1, *b2, *b3])),
+            _ => None,
         }
-        Some(u32::from_le_bytes(
-            self.data[offset..end]
-                .try_into()
-                .expect("slice is exactly 4 bytes as guaranteed by the bounds check above"),
-        ))
     }
     pub fn store_u32(&mut self, offset: usize, value: u32) -> bool {
         let end = match offset.checked_add(4) {

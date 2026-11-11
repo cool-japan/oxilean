@@ -344,7 +344,7 @@ pub fn is_simple_expr(s: &str) -> bool {
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub fn separator_line(width: usize, char_: char) -> String {
-    std::iter::repeat(char_).take(width).collect()
+    std::iter::repeat_n(char_, width).collect()
 }
 #[cfg(test)]
 mod extended_formatter_adv_tests_2 {
@@ -698,7 +698,7 @@ pub fn simple_expr(s: &str) -> bool {
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub fn sep_line(width: usize, ch: char) -> String {
-    std::iter::repeat(ch).take(width).collect()
+    std::iter::repeat_n(ch, width).collect()
 }
 /// Stabilise format.
 #[allow(dead_code)]

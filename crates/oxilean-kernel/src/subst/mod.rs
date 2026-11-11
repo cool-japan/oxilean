@@ -12,6 +12,8 @@ pub mod statsummary_traits;
 pub mod stringpool_traits;
 pub mod transformstat_traits;
 pub mod types;
+#[cfg(test)]
+mod walk_tests;
 pub mod windowiterator_traits;
 pub mod writeonce_traits;
 

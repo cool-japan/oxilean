@@ -652,11 +652,9 @@ pub fn validate_locals(entries: &[LocalEntry]) -> ContextValidation {
             result.add_error(format!("Duplicate FVar ID {} in context", entry.fvar.0));
         }
     }
-    let mut seen_names: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    let mut seen_names: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for entry in entries {
-        let name_str = entry.name.to_string();
-        let name_str_static: &str = unsafe { std::mem::transmute::<&str, &str>(name_str.as_str()) };
-        *seen_names.entry(name_str_static).or_insert(0) += 1;
+        *seen_names.entry(entry.name.to_string()).or_insert(0) += 1;
     }
     for (name, count) in &seen_names {
         if *count > 1 {
@@ -1198,3 +1196,5 @@ mod context_extended_tests {
         assert_eq!(entries[2].depth, 3);
     }
 }
+#[cfg(test)]
+mod name_count_tests;

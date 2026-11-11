@@ -15,7 +15,7 @@ pub struct DyckPath {
 impl DyckPath {
     /// Check whether a step sequence is a valid Dyck path.
     pub fn is_valid(steps: &[bool]) -> bool {
-        if steps.len() % 2 != 0 {
+        if !steps.len().is_multiple_of(2) {
             return false;
         }
         let n = steps.len() / 2;
@@ -563,7 +563,7 @@ impl CyclicSievingData {
     pub fn fixed_points(&self, k: usize) -> usize {
         self.orbits
             .iter()
-            .filter(|orbit| !orbit.is_empty() && (k % orbit.len()) == 0)
+            .filter(|orbit| !orbit.is_empty() && k.is_multiple_of(orbit.len()))
             .count()
     }
     /// Orbit sizes.
@@ -572,7 +572,9 @@ impl CyclicSievingData {
     }
     /// Check if all orbits have size dividing the order.
     pub fn is_valid_cyclic_action(&self) -> bool {
-        self.orbits.iter().all(|o| self.order % o.len() == 0)
+        self.orbits
+            .iter()
+            .all(|o| self.order.is_multiple_of(o.len()))
     }
 }
 /// Simplified Hopf algebra structure on the ring of symmetric functions,
@@ -598,7 +600,7 @@ impl SymFunctionHopf {
     }
     /// Antipode of h_n: S(h_n) = (-1)^n e_n (via the omega involution).
     pub fn antipode_h(&self, n: usize) -> (i64, usize) {
-        let sign = if n % 2 == 0 { 1i64 } else { -1i64 };
+        let sign = if n.is_multiple_of(2) { 1i64 } else { -1i64 };
         (sign, n)
     }
     /// Check that h_n and e_n are dual under the Hall inner product:
@@ -714,13 +716,9 @@ impl YoungDiagram {
     }
     /// Conjugate partition λ' (transpose of the Young diagram).
     pub fn conjugate_partition(&self) -> Self {
-        if self.parts.is_empty() {
+        let Some(&max_col) = self.parts.first() else {
             return Self { parts: vec![] };
-        }
-        let max_col = *self
-            .parts
-            .first()
-            .expect("parts is non-empty: checked by early return");
+        };
         let mut conj = vec![0usize; max_col];
         for &row_len in &self.parts {
             for col in 0..row_len {

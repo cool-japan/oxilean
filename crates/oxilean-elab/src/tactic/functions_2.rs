@@ -732,10 +732,7 @@ pub fn eval_tactic(
                 if new_state.is_complete() {
                     break;
                 }
-                match eval_tactic(&new_state, args_str, env) {
-                    Ok(s) => new_state = s,
-                    Err(e) => return Err(e),
-                }
+                new_state = eval_tactic(&new_state, args_str, env)?;
             }
             Ok(new_state)
         }
@@ -1436,10 +1433,7 @@ fn auto_search(
     if let Ok(s) = try_linarith_with_hyps(state) {
         return Ok(s);
     }
-    let goal = match get_focused_goal(state) {
-        Ok(g) => g.clone(),
-        Err(e) => return Err(e),
-    };
+    let goal = get_focused_goal(state)?.clone();
     if matches!(&goal.target, Expr::Pi(_, _, _, _)) {
         if let Ok(after_intro) = tactic_intro(state, Name::str("h_auto")) {
             if let Ok(s) = auto_search(&after_intro, depth - 1, env) {
@@ -1862,12 +1856,12 @@ fn is_prime(n: u64) -> bool {
     if n == 2 {
         return true;
     }
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         return false;
     }
     let mut i = 3u64;
     while i * i <= n {
-        if n % i == 0 {
+        if n.is_multiple_of(i) {
             return false;
         }
         i += 2;

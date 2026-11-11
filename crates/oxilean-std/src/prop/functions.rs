@@ -8,7 +8,7 @@ use oxilean_kernel::{BinderInfo, Declaration, Environment, Expr, Level, Name};
 pub fn arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )
@@ -275,7 +275,7 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
     })
     .map_err(|e| e.to_string())?;
     let u_name = Name::str("u");
-    let sort_u = Expr::Sort(Level::Param(u_name.clone()));
+    let sort_u = Expr::Sort(Level::param(u_name.clone()));
     env.add(Declaration::Axiom {
         name: Name::str("ite"),
         univ_params: vec![u_name.clone()],
@@ -311,7 +311,7 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
     let if_true_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("a"),
-        Node::new(Expr::Sort(Level::Param(u_name.clone()))),
+        Node::new(Expr::Sort(Level::param(u_name.clone()))),
         Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
@@ -349,7 +349,7 @@ pub fn build_prop_env(env: &mut Environment) -> Result<(), String> {
     let if_false_ty = Expr::Pi(
         BinderInfo::Implicit,
         Name::str("a"),
-        Node::new(Expr::Sort(Level::Param(u_name.clone()))),
+        Node::new(Expr::Sort(Level::param(u_name.clone()))),
         Node::new(Expr::Pi(
             BinderInfo::Default,
             Name::str("t"),
@@ -964,7 +964,7 @@ mod prop_simplify_tests {
 pub(super) fn prp_ext_arrow(a: Expr, b: Expr) -> Expr {
     Expr::Pi(
         BinderInfo::Default,
-        Name::Anonymous,
+        Name::anonymous(),
         Node::new(a),
         Node::new(b),
     )

@@ -484,10 +484,7 @@ fn parse_json_declarations(json: &str) -> Result<Vec<SerialDecl>, String> {
                 if depth == 0 {
                     if let Some(s) = obj_start.take() {
                         let obj = &rest[s..=i];
-                        match parse_decl_json_obj(obj) {
-                            Ok(d) => decls.push(d),
-                            Err(e) => return Err(e),
-                        }
+                        decls.push(parse_decl_json_obj(obj)?);
                     }
                 }
             }

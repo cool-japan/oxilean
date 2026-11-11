@@ -42,7 +42,7 @@ impl RtObject {
     /// Create a string object.
     pub fn string(s: String) -> Self {
         let heap = HeapObject::StringObj(StringData {
-            header: ObjectHeader::new(TypeTag::StringObj, ((s.len() + 7) / 8 + 1) as u16),
+            header: ObjectHeader::new(TypeTag::StringObj, (s.len().div_ceil(8) + 1) as u16),
             value: s,
             cached_hash: None,
         });
@@ -129,7 +129,7 @@ impl RtObject {
     /// Create a byte array.
     pub fn byte_array(bytes: Vec<u8>) -> Self {
         let heap = HeapObject::ByteArray(ByteArrayData {
-            header: ObjectHeader::new(TypeTag::ByteArray, ((bytes.len() + 7) / 8 + 1) as u16),
+            header: ObjectHeader::new(TypeTag::ByteArray, (bytes.len().div_ceil(8) + 1) as u16),
             bytes,
         });
         RtObject::from_heap(heap)

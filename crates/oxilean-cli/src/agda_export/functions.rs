@@ -228,15 +228,8 @@ pub fn translate_type_to_agda(ty: &str) -> String {
     if let Some(inner) = ty.strip_prefix("Option ") {
         return format!("Maybe {}", translate_type_to_agda(inner.trim()));
     }
-    if ty.find(" × ").or_else(|| ty.find(" * ")).is_some() {
-        let (lhs, rhs) = if let Some(i) = ty.find(" × ") {
-            (&ty[..i], &ty[i + 3..])
-        } else {
-            let i = ty
-                .find(" * ")
-                .expect("find(' * ') is Some because or_else branch was taken");
-            (&ty[..i], &ty[i + 3..])
-        };
+    if let Some(i) = ty.find(" × ").or_else(|| ty.find(" * ")) {
+        let (lhs, rhs) = (&ty[..i], &ty[i + 3..]);
         return format!(
             "{} × {}",
             translate_type_to_agda(lhs.trim()),
@@ -989,3 +982,5 @@ mod agda_extra_tests_3 {
         );
     }
 }
+#[cfg(test)]
+mod product_tests;

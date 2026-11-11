@@ -3,7 +3,7 @@
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
 use crate::Node;
-use crate::{BinderInfo, Expr, Level, Name};
+use crate::{BinderInfo, Expr, Level, LevelView, Name, NameView};
 use std::rc::Rc;
 
 use super::types::{
@@ -16,16 +16,16 @@ use super::types::{
 
 /// Convert a level to a natural number if possible.
 pub(super) fn level_to_nat(level: &Level) -> Option<u32> {
-    match level {
-        Level::Zero => Some(0),
-        Level::Succ(l) => level_to_nat(l).map(|n| n + 1),
+    match level.view() {
+        LevelView::Zero => Some(0),
+        LevelView::Succ(l) => level_to_nat(l).map(|n| n + 1),
         _ => None,
     }
 }
 /// Decompose a level into (base, offset) where level = succ^offset(base).
 pub(super) fn level_to_offset(level: &Level) -> (&Level, u32) {
-    match level {
-        Level::Succ(l) => {
+    match level.view() {
+        LevelView::Succ(l) => {
             let (base, offset) = level_to_offset(l);
             (base, offset + 1)
         }
@@ -43,37 +43,57 @@ pub(super) fn collect_app_args(expr: &Expr) -> (&Expr, Vec<&Expr>) {
     args.reverse();
     (e, args)
 }
+/// Writes what one fresh `ExprPrinter` produces: `build` makes the printer
+/// and `print` runs one of its printing methods.
+struct Printed<B, P> {
+    build: B,
+    print: P,
+}
+impl<B, P> std::fmt::Display for Printed<B, P>
+where
+    B: Fn() -> ExprPrinter,
+    P: Fn(&mut ExprPrinter) -> std::fmt::Result,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut printer = (self.build)();
+        (self.print)(&mut printer)?;
+        f.write_str(&printer.output())
+    }
+}
+/// The text one fresh `ExprPrinter` produces.
+fn printed(
+    build: impl Fn() -> ExprPrinter,
+    print: impl Fn(&mut ExprPrinter) -> std::fmt::Result,
+) -> String {
+    // `to_string` meets no error here, as `format!` would not: every `?` in
+    // `ExprPrinter` applies to a `write!` / `writeln!` into its `String`
+    // buffer or to another of its printing methods, and no code in this
+    // crate, which has no dependencies, constructs a `fmt::Error`; so an
+    // error could come only from a write into a `String` or into the
+    // `String`-backed `Formatter` of `to_string`, and neither fails.
+    Printed { build, print }.to_string()
+}
 /// Pretty print an expression with unicode symbols.
 pub fn print_expr(expr: &Expr) -> String {
-    let mut printer = ExprPrinter::new();
-    printer
-        .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
-    printer.output()
+    printed(ExprPrinter::new, |printer| printer.print(expr))
 }
 /// Pretty print an expression without unicode symbols.
 pub fn print_expr_ascii(expr: &Expr) -> String {
-    let mut printer = ExprPrinter::new().with_unicode(false);
-    printer
-        .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
-    printer.output()
+    printed(
+        || ExprPrinter::new().with_unicode(false),
+        |printer| printer.print(expr),
+    )
 }
 /// Pretty print with a specific configuration.
 pub fn print_expr_with_config(expr: &Expr, config: PrintConfig) -> String {
-    let mut printer = ExprPrinter::with_config(config);
-    printer
-        .print(expr)
-        .expect("pretty-printer must succeed on valid expression");
-    printer.output()
+    printed(
+        || ExprPrinter::with_config(config.clone()),
+        |printer| printer.print(expr),
+    )
 }
 /// Pretty print a level expression.
 pub fn print_level(level: &Level) -> String {
-    let mut printer = ExprPrinter::new();
-    printer
-        .print_level(level)
-        .expect("pretty-printer must succeed on valid level");
-    printer.output()
+    printed(ExprPrinter::new, |printer| printer.print_level(level))
 }
 #[cfg(test)]
 mod tests {
@@ -231,7 +251,7 @@ mod tests {
     }
     #[test]
     fn test_print_level_mvar() {
-        let level = Level::MVar(crate::LevelMVarId(42));
+        let level = Level::mvar(crate::LevelMVarId(42));
         let output = print_level(&level);
         assert_eq!(output, "?u_42");
     }
@@ -325,7 +345,7 @@ pub fn print_name_str(name: &Name) -> String {
 /// Check if a name is a simple (single-component) name.
 #[allow(dead_code)]
 pub fn is_simple_name(name: &Name) -> bool {
-    matches!(name, Name::Str(parent, _) if matches!(parent.as_ref(), Name::Anonymous))
+    matches!(name.view(), NameView::Str(parent, _) if matches!(parent.view(), NameView::Anonymous))
 }
 /// Produce a one-line summary of an expression for debug output.
 #[allow(dead_code)]
@@ -488,13 +508,13 @@ mod extra_prettyprint_tests {
     }
     #[test]
     fn test_is_simple_name_true() {
-        let n = Name::Str(Box::new(Name::Anonymous), "foo".to_string());
+        let n = Name::mk_str(Name::anonymous(), "foo".to_string());
         assert!(is_simple_name(&n));
     }
     #[test]
     fn test_is_simple_name_false() {
-        let n = Name::Str(
-            Box::new(Name::Str(Box::new(Name::Anonymous), "A".to_string())),
+        let n = Name::mk_str(
+            Name::mk_str(Name::anonymous(), "A".to_string()),
             "b".to_string(),
         );
         assert!(!is_simple_name(&n));
@@ -860,3 +880,5 @@ mod tests_typed_utilities {
         assert!(!ms.is_cached());
     }
 }
+#[cfg(test)]
+mod wrapper_tests;

@@ -111,11 +111,8 @@ pub fn camel_to_snake(s: &str) -> String {
             if !result.is_empty() {
                 result.push('_');
             }
-            result.push(
-                c.to_lowercase()
-                    .next()
-                    .expect("to_lowercase always yields at least one char"),
-            );
+            // The first char of the lowercase mapping, which always has one.
+            result.extend(c.to_lowercase().take(1));
         } else {
             result.push(c);
         }
@@ -130,11 +127,8 @@ pub fn snake_to_camel(s: &str) -> String {
         if c == '_' {
             capitalise_next = true;
         } else if capitalise_next {
-            result.push(
-                c.to_uppercase()
-                    .next()
-                    .expect("to_uppercase always yields at least one char"),
-            );
+            // The first char of the uppercase mapping, which always has one.
+            result.extend(c.to_uppercase().take(1));
             capitalise_next = false;
         } else {
             result.push(c);
@@ -156,13 +150,10 @@ pub fn snake_to_pascal(s: &str) -> String {
 /// A valid identifier starts with a letter or `_`, followed by letters,
 /// digits, `_`, or `'`.
 pub fn is_valid_ident(s: &str) -> bool {
-    if s.is_empty() {
-        return false;
-    }
     let mut chars = s.chars();
-    let first = chars
-        .next()
-        .expect("s is non-empty: checked by early return");
+    let Some(first) = chars.next() else {
+        return false;
+    };
     if !first.is_alphabetic() && first != '_' {
         return false;
     }
@@ -562,7 +553,7 @@ pub fn build_string_env(env: &mut oxilean_kernel::Environment) -> Result<(), Str
     let cst = |s: &str| -> Expr { Expr::Const(Name::str(s), vec![]) };
     let app = |f: Expr, a: Expr| -> Expr { Expr::App(Node::new(f), Node::new(a)) };
     let arr = |a: Expr, b: Expr| -> Expr {
-        Expr::Pi(Bi::Default, Name::Anonymous, Node::new(a), Node::new(b))
+        Expr::Pi(Bi::Default, Name::anonymous(), Node::new(a), Node::new(b))
     };
     let type1 = || -> Expr { Expr::Sort(Level::succ(Level::zero())) };
     let nat_ty = || -> Expr { cst("Nat") };
@@ -1930,3 +1921,5 @@ pub fn str_dec_eq_sym(a: &str, b: &str) -> bool {
     let result = (a == b) == (b == a);
     result
 }
+#[cfg(test)]
+mod case_mapping_tests;

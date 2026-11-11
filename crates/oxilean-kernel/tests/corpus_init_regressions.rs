@@ -577,17 +577,26 @@ fn get_head_const_name(e: &Expr) -> Option<Name> {
 
 // ---------------------------------------------------------------------------
 // 5. C16b (Init decl #3864, `Array.extract_append_extract._proof_1_1`): a
-//    `let`-tower duplicates its value at every level, so full instantiation
-//    is exponential in the tower height. Substitution rebuilds spine nodes
-//    WITHOUT passing through `Expr::clone`, so the per-declaration fuel used
-//    to stay uncharged and `infer_type` allocated unboundedly (>12 GiB on a
-//    14 GiB machine) with the budget long exhausted. Now every node visited
-//    by the substitution builders is charged, and `infer_type` observes the
-//    latch: a typed error, never an OOM — and never a truncated term.
+//    `let`-tower uses its value twice at every level, so written out as a
+//    tree it is exponential in the tower height.
+//
+//    History. Substitution rebuilt the tree node by node WITHOUT passing
+//    through `Expr::clone`, so the per-declaration fuel stayed uncharged and
+//    `infer_type` allocated unboundedly (>12 GiB on a 14 GiB machine) with
+//    the budget long exhausted. The first fix charged every node the
+//    substitution builders visited and made `infer_type` observe the latch:
+//    a typed error, never an OOM — and never a truncated term. That made the
+//    tower a resource limit, although Lean's kernel checks it at once.
+//
+//    Now the tower is CHECKED: a `let` value goes in as one shared subterm,
+//    a shared subterm stays shared in what a substitution builds, and the
+//    checker remembers the type of what it has typed — a few thousand units
+//    of work for sixty levels. The budget still bounds the work, and running
+//    out of it is still a typed error attributable to the budget.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn let_tower_exhausts_fuel_with_typed_error_never_oom() {
+fn let_tower_is_checked_and_too_small_a_budget_is_a_typed_error() {
     let mut env = Environment::new();
     let n = Name::str("N");
     axiom(&mut env, n.clone(), Expr::Sort(Level::succ(Level::zero())));
@@ -603,7 +612,7 @@ fn let_tower_exhausts_fuel_with_typed_error_never_oom() {
     axiom(&mut env, Name::str("a"), cnst(n.clone()));
 
     // let x0 = P a a in let x1 = P x0 x0 in … in let x59 = P x58 x58 in x59
-    // Full instantiation is ~2^60 nodes: unrepresentable, must be cut off.
+    // As a tree the value of `x59` is ~2^60 nodes.
     let mut body = Expr::BVar(0);
     for i in (0..60).rev() {
         let val = if i == 0 {
@@ -622,14 +631,31 @@ fn let_tower_exhausts_fuel_with_typed_error_never_oom() {
         );
     }
 
+    // With a budget a tree walk would exhaust a trillion times over, the
+    // tower is typed, for a small part of it.
     oxilean_kernel::fuel::set_budget(Some(1_000_000));
+    let mut tc = TypeChecker::new(&env);
+    let res = tc.infer_type(&body);
+    let used = oxilean_kernel::fuel::used();
+    let exhausted = oxilean_kernel::fuel::is_exhausted();
+    oxilean_kernel::fuel::set_budget(None);
+    assert_eq!(
+        res.unwrap_or_else(|e| panic!("the let-tower must be typed: {e:?}")),
+        cnst(n)
+    );
+    assert!(!exhausted, "the tower is far below the budget");
+    assert!(used < 20_000, "a 60-level let tower charged {used} units");
+
+    // With too little, inference stops with a typed error, and the error is
+    // the budget's.
+    oxilean_kernel::fuel::set_budget(Some(100));
     let mut tc = TypeChecker::new(&env);
     let res = tc.infer_type(&body);
     let exhausted = oxilean_kernel::fuel::is_exhausted();
     oxilean_kernel::fuel::set_budget(None);
     assert!(
         res.is_err(),
-        "exponential let-tower must abort with a typed error"
+        "100 units cannot type the tower: inference must abort with a typed error"
     );
     assert!(
         exhausted,
