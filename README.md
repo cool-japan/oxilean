@@ -633,7 +633,7 @@ Copyright (c) COOLJAPAN OU (Team KitaSan). Licensed under [Apache-2.0](LICENSE).
 
 - [OxiZ](https://github.com/cool-japan/oxiz) -- Pure Rust SMT solver
 - [Legalis-RS](https://github.com/cool-japan/legalis-rs) -- Law-as-Code framework
-- [SciRS2](https://github.com/cool-japan/scirs2) -- Scientific computing library
+- [SciRS2](https://github.com/cool-japan/scirs) -- Scientific computing library
 - [OxiBLAS](https://github.com/cool-japan/oxiblas) -- Pure Rust BLAS
 - [OxiFFT](https://github.com/cool-japan/oxifft) -- Pure Rust FFT
 
