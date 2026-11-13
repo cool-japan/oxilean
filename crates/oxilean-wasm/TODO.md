@@ -1,7 +1,7 @@
 # oxilean-wasm TODO
 
-> Status: v0.1.4 — WASM bindings and browser playground complete; GitHub Pages deploy of the playground is the one open item.
-> Last updated: 2026-11-12
+> Status: v0.1.5 — WASM bindings and browser playground complete; GitHub Pages deploy of the playground is the one open item.
+> Last updated: 2026-11-13
 
 ## v0.1.2 (Complete)
 

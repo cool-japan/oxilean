@@ -36,6 +36,10 @@ pub fn init_builtin_env(env: &mut Environment) -> Result<(), String> {
     add_prod_inductive(env)?;
     add_list_inductive(env)?;
     add_string_type(env)?;
+    // `Nat.pred`, `Nat.blt`, `Nat.log2` and the `String` operations are
+    // declared above without a definition: in this environment their
+    // meaning is the reducer's rule for them.
+    env.declare_literal_primitives();
     Ok(())
 }
 /// Declare a single builtin inductive through the checked kernel path.

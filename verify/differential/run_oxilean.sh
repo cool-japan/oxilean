@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+# Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.
 #
 # run_oxilean.sh — drive oxilean-verify over a lean4export NDJSON file and emit
 # a normalized per-declaration verdict file that diff_verdicts.py can join.

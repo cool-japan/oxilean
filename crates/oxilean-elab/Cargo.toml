@@ -27,3 +27,6 @@ oxilean-std = { path = "../oxilean-std" }
 
 [features]
 default = []
+
+[lints]
+workspace = true

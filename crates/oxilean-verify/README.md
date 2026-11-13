@@ -19,7 +19,11 @@ A non-zero exit on any `rejected` verdict makes the checker CI-friendly.
 
 `unsupported` always carries a named reason (e.g.,
 `"resource limit exceeded: term depth"`) so that the gap can be tracked and
-closed. (Nested inductives, formerly a named gap, are supported since 0.1.4.)
+closed. (Nested inductives are supported since 0.1.4 when the family has no
+parameters; a nested inductive with parameters, or one nested through a mutual
+container, is still the named gap `"nested inductives"`; and three shapes
+without parameters that Lean's kernel accepts are `rejected`, false alarms
+tracked as C25, C28 and C29 in the workspace's `TODO_VERIFY.md`.)
 
 ## TCB story
 
@@ -103,7 +107,7 @@ rebuilt), not a cloned tree node.
 
 ```toml
 [dependencies]
-oxilean-verify = "0.1.4"
+oxilean-verify = "0.1.5"
 ```
 
 - Size: 1,839 SLOC in 8 source files under `src/`; 50 tests
@@ -114,4 +118,4 @@ oxilean-verify = "0.1.4"
 See `docs/VERIFY.md` for the full three-bucket schema, exit codes, JSON report
 format, and unsupported-feature list.
 
-Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.

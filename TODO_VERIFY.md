@@ -660,6 +660,14 @@ TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
   of erroring. (`audit-struct-eta.md`)
   *(Wave 2: returns `Result` with typed errors for head/param-count/telescope
   mismatches; `infer_proj` gated by the strict `is_structure_like` predicate.)*
+  *(2026-11-12: that gate was stricter than Lean's `infer_proj` — a wrong
+  REJECT of every projection out of a recursive or an indexed one-constructor
+  inductive, so of every ordinary recursive `structure`; measured against
+  Lean v4.32.0-rc1. `infer_proj` and the def-eq checker's
+  `quick_proj_type` now ask for exactly one constructor (`infer::proj_target`);
+  `is_structure_like` stays the condition of structure eta, of eta inside iota
+  and of unit-like equality. Fixture `ProjRecIndexed`,
+  `crates/oxilean-kernel/tests/proj_structure.rs`.)*
 - [x] **S12. The nested K-guard checker reused the surrounding def-eq's
   free-variable ids** (P0 wrong-ACCEPT; found 2026-11-11 while checking an
   external report; present in the published 0.1.3) — K-like reduction types the
@@ -685,8 +693,267 @@ TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
   by the collision too: on Mathlib's `Con.liftOnUnits` family the reduction
   path changes with the fix (`Con.liftOnUnits_mk`: 2 K-guard evaluations before,
   32 after, about twice the time) — the verdicts are the same.)*
+- [x] **S13. A rejected inductive bundle stayed half installed** (P0 wrong-ACCEPT
+  from a hand-edited export; found 2026-11-12 by an adversarial pass on the
+  projection fix; present in the published 0.1.3 and 0.1.4) — the export
+  replay pre-checked a bundle against the kernel's derivation and then added
+  the exported types, constructors and recursors ONE BY ONE through
+  `check_constant_info`; a member refused late returned the error with the
+  earlier members already in the environment, and the cascade to dependents
+  only fired on `UnknownConstant`. A bundle whose type lists one of its two
+  constructors (the second constructor's record still in the bundle: refused,
+  "not listed") left a one-constructor type and that constructor behind. A
+  projection out of it and structure eta on it then checked:
+  `∀ t : Two, t = Two.mk t.0` by `rfl`, false of the other constructor, was
+  reported verified, and so was any declaration naming only the type of a
+  bundle refused at a constructor. `replay.rs` documented "a failing bundle
+  installs nothing".
+  *(A bundle is now added whole or not at all: `check_constant_infos_atomic`
+  checks the group in order and takes the earlier members out on a failure;
+  the kernel-derived family of a nested inductive goes through
+  `add_derived_family` and `Environment::add_constants`, which adds nothing
+  unless every name is free.
+  Second line: every name of a failed record joins the rejected (or deferred)
+  set, and `Replayer::blocked_by_an_earlier_failure` refuses a record that
+  mentions such a name — as a constant or as the structure of a projection —
+  before the kernel sees it, whether or not a constant of that name is
+  present; a record that declares such a name again is rejected. Pinned by
+  `group_atomic` (kernel), the bundle tests of `replay_bundles` (export), and the
+  hand-edited negative fixture `CtorListLie` through `replay_bundles` and the CLI
+  (3 verified / 0 unsupported / 7 rejected, exit 1; 5 / 0 / 5 on 0.1.3 and
+  0.1.4).)*
+- [x] **S14. The export replay took `isRec` (and more) from the file** (P0
+  wrong-ACCEPT from a hand-edited export; found 2026-11-12; present in the
+  published 0.1.3 and 0.1.4) — the exported `InductiveVal` was installed with
+  the file's `isRec`, which `is_structure_like` reads: a recursive
+  one-constructor type recorded as `isRec: false` got structure eta, eta
+  inside iota and unit-like equality (two declarations Lean's kernel rejects
+  verified). `isReflexive`, `numNested`, the `isUnsafe` flags and, on the
+  nested path, `numIndices` and every constructor field were not compared
+  with anything either (none of those changed a verdict by itself).
+  *(Every field of a bundle that Lean's kernel computes is now compared with
+  this kernel's derivation, `replay::compare_with_derivation`, and a
+  difference rejects the bundle before anything is added. The derivation of
+  `is_rec` / `is_reflexive` was brought to Lean's: for the family as a whole,
+  from the constructor types as written — measured on Lean v4.32.0-rc1 with
+  raw declarations, where the previous reading, after reduction, differed on
+  a field of type `K T` with `K` dropping its argument, and on a field whose
+  type is a function into the family only after unfolding. Pinned by
+  `what_a_bundle_says_beyond_its_declaration_is_held_to_the_derivation`
+  (`replay_bundles`, 21 edits of one field each) and the two flag tests of
+  `group_atomic`. NOT closed here: the safety of a declaration. Lean's kernel
+  refuses a safe declaration that uses an unsafe or a partial one; this
+  kernel reads neither `isUnsafe` nor `safety`. lean4export writes no unsafe
+  declaration, so it takes a hand-made file or a declaration added without
+  Lean's kernel check.)*
+- [x] **S15. A recursor record was not tied to its type** (P0 wrong-ACCEPT from
+  a hand-edited export; found 2026-11-12; present in the published 0.1.3 and
+  0.1.4) — `verify_recursor_val` accepted a recursor that matched ANY derived
+  recursor of its family and the replay only counted the records: in a mutual
+  block `B.rec` could be a renamed copy of `A.rec`, or the two names
+  exchanged, and a declaration that applies `B.rec` to an `A` verified. On
+  the nested path a record was paired with the derived recursor whose rules
+  fire on the same constructors and gave it its NAME, so two recursors could
+  be exchanged throughout a bundle. A recursor's rules were looked up by
+  constructor name, in any order.
+  *(A record is compared with the derived recursor of its own name — `T.rec`;
+  on the nested path `<first type>.rec_<k>` for the `k`-th auxiliary type,
+  `nested_recursor_name` — rule by rule in the constructors' order. The same
+  change repairs a wrong reject of honest Lean: two auxiliary types with the
+  same constructors (`A | mk : List B → A`, `B | mk : List A → B`;
+  `T | mk : List (List T) → T`) could not be told apart by their rules.
+  Pinned by `declaration_conditions` (kernel) and five tests of
+  `replay_bundles` (export).)*
+- [x] **S16. A theorem did not have to state a proposition** (P1 wrong-ACCEPT;
+  found 2026-11-12; present in 0.1.3 and 0.1.4) — `theorem t : Nat := 5`
+  verified; Lean: "type of theorem 't' is not a proposition". *(Both theorem
+  branches of `check/functions.rs` go through `check_theorem_type`. Known
+  difference kept: a sort that is zero only after normalisation and has no
+  parameter, `Sort (max 0 0)`, is accepted; Lean compares it as written.)*
+- [x] **S17. Quotients were installed over a misshapen `Eq`** (P0 wrong-ACCEPT
+  from a hand-made export; found 2026-11-12; present in 0.1.3 and 0.1.4) —
+  `add_quot` asked for an inductive `Eq` in `Prop` with one constructor; with
+  `refl : (a b : α) → Eq a b`, a unary `Eq`, an `Eq` over `Type u` only, or
+  two universe parameters, the quotient records verified. *(`check_eq_present`
+  compares `Eq`'s type and its constructor's type with the ones the
+  primitives assume, as Lean's `check_eq_type` does; measured against Lean on
+  fourteen shapes, three of which Lean accepts and so does this kernel.)*
+- [x] **S18. An inductive declaration was read more generously than Lean reads
+  it** (P0 wrong-ACCEPT from a hand-made export; found 2026-11-12; present in
+  0.1.3 and 0.1.4) — (a) an index of a constructor's result, or of a
+  recursive field, could mention a type of the family:
+  `inductive I : Prop → Prop | mk : I (I True → False)` derived, and with
+  propositional extensionality that type is inconsistent; (b) parameters, a
+  constructor's fields and its result were found by unfolding definitions,
+  where Lean reads them off the type as written. *(`as_valid_ind_app`
+  refuses an index that mentions the family; `build_family_pre`,
+  `peel_against_params` and `check_ctor` read parameters, fields and result
+  as written; a type's indices and sort may still be behind a definition, as
+  in Lean.)*
+- [x] **S19. A replayed file's `Nat.pred` was computed by the reducer's own
+  rule** (P0 wrong-ACCEPT from a hand-made export or a non-core environment;
+  found 2026-11-12; present in 0.1.3 and 0.1.4) — the literal rules for
+  `Nat.pred`, `Nat.blt`, `Nat.log2`, `String.length`, `String.append`,
+  `String.beq` belong to the builtin environment, which declares those
+  operations without a definition; they fired on any constant of those
+  names. In a file that defines `Nat.pred` as the identity, `Nat.pred 5 = 4`
+  checked by `Eq.refl`. Lean's kernel computes none of the six by name.
+  *(`lit_op_arity(name, primitives)`: the six fire only when
+  `Environment::has_literal_primitives()`, which `init_builtin_env` sets.
+  SHARED LIMIT, not closed: the operations of Lean's own extension —
+  `Nat.add`, `sub`, `mul`, `div`, `mod`, `gcd`, `beq`, `ble`, `land`, `lor`,
+  `xor`, `shiftLeft`, `shiftRight`, `pow`, `Nat.succ` on a literal, a string
+  literal against `String.ofList` — are computed by name in every
+  environment, here as in Lean's kernel (measured with each declared as an
+  axiom): both believe an environment about them.)*
+- [x] **S20. A second `quot` record verified** (P2; found 2026-11-12) — *(the
+  replayer keeps the primitives a `quot` record has declared and rejects a
+  second record of one.)*
+- [ ] **S21. The safety of a declaration is not read** (difference from Lean
+  in which declarations may be used where; found 2026-11-12) — a safe
+  declaration that uses an unsafe or a partial one verifies; Lean refuses it.
+  Nothing is relaxed for a flag (measured: an unsafe inductive with a
+  non-positive occurrence, an unsafe and a partial definition that refer to
+  themselves, ill-typed unsafe declarations are all rejected, and every
+  verdict is the same with the flags cleared).
 
+- [x] **S22. A recursor record was installed after a comparison by definitional
+  equality alone** (P0 wrong-ACCEPT from a hand-edited export: a closed proof
+  of `False` from no axiom; found 2026-11-12 by an adversarial pass; present
+  in the published 0.1.3 and 0.1.4) — `verify_recursor_val` compared an
+  exported recursor's type and rule right-hand sides with the derived ones by
+  `is_def_eq`, `check_constant_info` then added the EXPORTED recursor, and
+  iota ran on its rules; neither term was type-checked. Proof irrelevance
+  reads the type of a proof off its head (`quick_infer_type` does not check
+  an argument against its domain), so `mk b (B.rec (motive := fun x => P x)
+  (P.mk B.f) (P.mk B.f) b)` compared equal to `mk b h`, and
+  `T.rec .. (T.mk B.t (P.mk B.t))` reduced to `mk B.t (P.mk B.f)`. The same
+  through the recursor's type in a family with a proof index. On the nested
+  path the derived family was installed already, the exported recursors
+  compared the same way (and in an environment without the family). The
+  `quot` records' types and `Quot.sound`'s were compared by `is_def_eq`
+  before (or without) a type check as well.
+  *(The invariant: a term from outside is in the environment, or reaches
+  definitional equality, WHNF or iota, only after the kernel type-checked it;
+  where the kernel derives a term, the derived term is installed and the
+  supplied one only held against it. `check_constant_info` adds the DERIVED
+  recursor (`verify_recursor_val` returns it, under the supplied name and
+  universe parameter names); `inductive::supplied` compares a supplied term
+  as written (`same_up_to_binders`, the supplied universe parameter names
+  taken first) and otherwise type-checks
+  it — in a private copy of the environment that holds the kernel's family —
+  before `is_def_eq`. A comparison as written alone would refuse honest
+  Lean: this kernel's derivation keeps `γ : outParam (Type w)` where Lean's
+  recursor has `γ : Type w` (98 of `Init`'s 610 recursors). Pinned by
+  `derived_recursor` (kernel), `replay_installed` (export), the fixtures
+  `RecRuleTruth` / `RecRuleJunk` / `RecRuleControl` and the CLI (7 verified /
+  0 unsupported / 8 rejected on `RecRuleJunk`; 14 / 0 / 1 on 0.1.3 and
+  0.1.4, `boom : False` among the verified).)*
+- [x] **S23. The types of a block were checked with the block already
+  declared** (P1 wrong-ACCEPT from a hand-made export; found 2026-11-12;
+  present in 0.1.3 and 0.1.4) — `check_and_derive_family` stages the block's
+  types into a working environment (the constructor types need them) and
+  type-checked the types themselves there, so `mutual C : Type; A : C → Type`
+  — an inductive-inductive definition — was accepted as an ordinary mutual
+  family; Lean: "unknown constant 'C'". *(`check_types_do_not_mention_the_block`;
+  a nested declaration whose auxiliary type would be `T → Type` is refused
+  by the same check, as by Lean.)*
+- [x] **S24. A nested constructor record could name the auxiliary type** (P1
+  wrong-ACCEPT from a hand-made export; found 2026-11-12; present in 0.1.4)
+  — `b : T._nested_0 → T` beside `a : List T → T` type-checked in the
+  specialized family and was installed as `b : List T → T`; Lean: "unknown
+  constant". *(`verify_nested_bundle` requires restore ∘ specialize to give
+  back every declared type and constructor type, `declared_family_restored`.)*
+- [x] **S25. A recursor record under a name Lean never gives** (P0
+  wrong-ACCEPT from a hand-edited export: a closed proof of `False` from no
+  axiom; found 2026-11-13 by an adversarial pass; present in the published
+  0.1.3 and 0.1.4) — `verify_recursor_val` derives a family's recursors in
+  the style of the record it is asked about: Lean's `A.rec` (the component
+  `rec` under `A`) or the one flat component `"A.rec"` the kernel's own
+  tests write. A mutual bundle with one record of each style was installed
+  with rules that called recursors no one installed (`C.rec` calling the
+  hierarchical `A.rec`); a later `def A.rec` answered the call, and
+  `boom : False` verified (13 / 0 / 0, exit 0). *(The export replay accepts a
+  recursor record only under Lean's names, `T.rec` or `<first type>.rec_<k>`
+  (`check_recursor_record_names`); and the kernel guards the installs of
+  the export replay's two bundle paths and of the quotient primitives
+  (`inductive::installed`): each constant a derived term names resolves in
+  the environment the install leaves, and a name the derivation gives a
+  recursor or a type of the family is that constant — in
+  `check_constant_infos_atomic` (the ordinary path), in
+  `add_derived_family` (the nested path) and in `add_quot`.
+  `add_inductive_family` is neither atomic nor guarded (S27). Pinned by `derived_references` (kernel, both paths),
+  `replay_installed` (export), the fixtures `RecNameMixedStyle` /
+  `RecNameMixedStyleTruth` / `RecNameFlat` and the CLI (8 / 0 / 5 and
+  7 / 0 / 8, exit 1).)*
+- [ ] **S26. A name Lean's kernel gives a constant of a refused bundle is
+  free** (difference from Lean's replay, older than 0.1.5; found 2026-11-13)
+  — a bundle refused for its records installs nothing, and the rejected set
+  holds the names as the records spell them; a later record that declares
+  the name Lean's kernel gives a constant of the declaration (`def A.rec`
+  after a bundle whose record was `«A.rec»`) is checked as the declaration
+  of a free name and verifies, where Lean's replay, which keeps the
+  kernel's constants of the declaration, finds the name taken. Well typed;
+  every record that names the bundle is refused. 0.1.3 and 0.1.4 alike.
+- [ ] **S27. `add_inductive_family` is neither atomic nor guarded** (kernel
+  API, older than 0.1.5; found 2026-11-13 by an adversarial pass; the same
+  on the base) — it derives the family (nothing is added when that fails)
+  and then adds the constants one by one with `Environment::add_constant`,
+  without the guard of `inductive::installed`. With `axiom C.rec : B`
+  declared, the mutual block `A | mk : (b : B) → P b → C → A ;
+  C | base | step : A → C` returns `duplicate declaration: C.rec` and
+  leaves `A`, `C`, `A.mk`, `C.base`, `C.step` and `A.rec` installed, and
+  the installed `A.rec`'s rule for `A.mk` names `C.rec`, the axiom. Not a
+  verdict of `oxilean-verify`: the export replay never calls it (it uses
+  `check_constant_infos_atomic` and `add_derived_family`), so no file
+  reaches it. Its callers: `init_builtin_env` (`builtin/functions.rs`,
+  `add_builtin_inductive`), `InductiveEnv::register_in_env`
+  (`inductive/types.rs`) and the kernel's tests. The one-line change:
+  `add_derived_family(env, fam.into_constant_infos())` in place of the
+  `add_constant` loop, which makes it atomic and guarded. Not made: it
+  changes how the builtin environment is built (the guard would then run
+  on every member of each builtin family, its types and constructors
+  too), and that has not been measured — first `init_builtin_env` under
+  the guard, then the whole workspace's suites. *(Reproducer: the
+  declarations above, handed to `add_inductive_family` — `axiom C.rec : B`
+  first, then the mutual block. The original probe is section 7 of
+  `ISSUE-4.md` on the cargo-formal side, which is not in this
+  repository.)*
 ## P0 — Completeness bugs (kernel rejects real proofs → false `rejected` alarms)
+
+- [ ] **C25. A container nested twice gets two auxiliary types** (wrong REJECT
+  of honest Lean; found 2026-11-12; present in 0.1.4) —
+  `inductive T | mk : List T → Arr T → T` with `Arr α | mk : List α → Arr α`:
+  Lean makes ONE auxiliary type for `List T`; `inductive::nested::specialize`
+  makes a second one when it meets `List T` again inside the auxiliary copy
+  of `Arr`, derives four recursors where the export has three, and the
+  bundle is rejected.
+- [ ] **C28. A universe-polymorphic nested inductive is rejected** (wrong
+  REJECT of honest Lean; found 2026-11-13; present in 0.1.4) —
+  `NU.{u} : Type u | mk : LU.{u} NU.{u} → NU.{u}`: `specialize` refers to
+  the auxiliary type with no universe arguments while the staged auxiliary
+  constant carries the family's universe parameters (`universe parameter
+  count mismatch for NU._nested_0: expected 1, got 0`). The fix changes how
+  the auxiliary constant takes universe parameters.
+- [ ] **C29. The order of nested occurrences matters** (wrong REJECT of
+  honest Lean; found 2026-11-13; present in 0.1.4) — `T | mk : List T →
+  Option (List T) → T` is rejected, `Option (List T) → List T → T` and
+  `Option (List T) → T` verify. With `List T` specialized first, the
+  auxiliary type of `Option (List T)` is recorded with its argument already
+  the first auxiliary type, and restoration does not give the declared
+  constructor type back (by reading; the message, `'T.mk' is not declared
+  with the type the kernel derives for it (a declaration must not name an
+  auxiliary type of its own nesting)`, does not fit: the declaration names
+  none). C25's neighbour.
+- [ ] **C26. An inductive bundle gets no second attempt past the reducer's
+  chain cap** (no verdict where Lean accepts; found 2026-11-12) — a
+  constructor whose type needs a head-reduction chain longer than the cap is
+  `unsupported: reduction depth or step limit` at both limit presets; a
+  definition in the same situation is checked again with the cap lifted
+  (`Replayer::check`), a bundle is not.
+- [ ] **C27. A definition whose hints say `opaque` is not unfolded** (wrong
+  REJECT; found 2026-11-12 with a hand-edited export) — Lean's kernel uses a
+  definition's hints only to choose which side to unfold first.
 
 - [x] **C1. Struct eta NOT in def_eq** — `s ≡ ⟨s.1, s.2⟩` returns false; `struct_eta/`
   module is dead code (zero external callers) and itself buggy. Implement lazy
@@ -1178,7 +1445,7 @@ TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
   (`docs/reports/2026-07-15-lean-core-init.md`) plus the per-run
   `unsupported_features` array in every JSON report.)*
 - [x] **R7. LICENSE name consistency** — "KitaSan" vs "Kitasan".
-  *(Wave 4: unified to "COOLJAPAN OU (Team Kitasan)" across LICENSE and crate
+  *(Wave 4: unified to "COOLJAPAN OU (Team KitaSan)" across LICENSE and crate
   metadata.)*
 
 ## P3 — Deliberate follow-ups (out of this pass, tracked)
@@ -1231,7 +1498,7 @@ Final quality loop green: 33,231 tests passed / 746 ignored, clippy
 `-D warnings` silent, fmt clean, TCB doc-tests pass, all gates pass, all three
 fuzz targets build + smoke clean, `cargo tree -p oxilean-verify` = internal
 0.1.3 pins only. Open: structural sharing (throughput/memory), nested
-inductives (C10), G7 wasm half, F1–F4.) Owner: Team Kitasan.*
+inductives (C10), G7 wasm half, F1–F4.) Owner: Team KitaSan.*
 
 ---
 

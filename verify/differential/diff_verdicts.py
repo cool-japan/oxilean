@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+# Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.
 """Join two checkers' per-declaration verdicts and emit an agree/disagree table.
 
 This is the core of the differential-testing harness (engineering brief §5).

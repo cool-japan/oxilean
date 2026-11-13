@@ -51,7 +51,7 @@ oxilean-doc multi --output-dir docs/ src/Foo.lean src/Bar.lean
 
 ```toml
 [dependencies]
-oxilean-doc = "0.1.4"
+oxilean-doc = "0.1.5"
 ```
 
 - License: Apache-2.0
@@ -59,4 +59,4 @@ oxilean-doc = "0.1.4"
 - Rust version: 1.89+
 - Depends on: `oxilean-parse` (for source parsing)
 
-Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.

@@ -717,7 +717,12 @@ impl ConstantInfo {
             ConstantInfo::Theorem(_) | ConstantInfo::Quotient(_) => false,
         }
     }
-    /// Check if this is a structure-like inductive (single constructor, not recursive).
+    /// Check if this is a structure-like inductive: a single constructor, no
+    /// indices, not recursive.
+    ///
+    /// This is the condition of structure eta, of unit-like equality and of
+    /// eta inside iota — not of a projection, which is typed for every
+    /// inductive type with one constructor (`infer/proj_target.rs`).
     pub fn is_structure_like(&self) -> bool {
         match self {
             ConstantInfo::Inductive(v) => v.ctors.len() == 1 && !v.is_rec && v.num_indices == 0,

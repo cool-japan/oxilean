@@ -1279,7 +1279,7 @@ Shows version information:
 oxilean version
 
 Output:
-OxiLean version 0.1.4
+OxiLean version 0.1.5
 Kernel: zero external dependencies, #![forbid(unsafe_code)]
 ```
 
@@ -1361,7 +1361,7 @@ oxilean repl
 You'll see:
 
 ```
-OxiLean REPL v0.1.4
+OxiLean REPL v0.1.5
 Type :help for help, :quit to exit
 
 oxilean[1]>

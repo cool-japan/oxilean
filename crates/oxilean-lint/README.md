@@ -92,7 +92,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-lint = "0.1.4"
+oxilean-lint = "0.1.5"
 ```
 
 ### Running the Engine
@@ -129,4 +129,4 @@ cargo test -p oxilean-lint -- --nocapture
 
 ## License
 
-Copyright COOLJAPAN OU (Team Kitasan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.
+Copyright COOLJAPAN OU (Team KitaSan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.

@@ -272,10 +272,14 @@ pub enum KernelError {
     NotAFunction(Expr),
     /// Inductive type error
     InductiveError(String),
-    /// Nested inductive types (an occurrence of the declared type under
-    /// another type constructor, e.g. `mk : List T → T`) are not yet
-    /// compiled to mutual inductives; the declaration is cleanly rejected
-    /// so a verifier can bucket it as "unsupported: nested inductives".
+    /// A nested inductive type (an occurrence of the declared type under
+    /// another type constructor, e.g. `mk : List T → T`) that is not compiled
+    /// to a mutual inductive: the ordinary derivation (`add_inductive_family`)
+    /// takes none, and the nested path (`verify_nested_bundle`, since 0.1.4)
+    /// none with family parameters, none nested through a mutual container
+    /// and none with the family in a container's index. The declaration is
+    /// cleanly rejected so a verifier can bucket it as
+    /// "unsupported: nested inductives".
     UnsupportedNestedInductive(Name),
     /// Other error with description
     Other(String),

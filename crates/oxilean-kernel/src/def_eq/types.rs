@@ -7,6 +7,8 @@ use crate::equiv_manager::EquivManager;
 use crate::expr_util::{
     get_app_args, get_app_fn, get_app_fn_args, has_loose_bvar, has_loose_bvars, mk_app,
 };
+use crate::infer::proj_prop::{is_prop_sort, structure_type_sort};
+use crate::infer::proj_target::{proj_target, proj_type_params};
 use crate::instantiate::instantiate_type_lparams;
 use crate::level;
 use crate::reduce::{Reducer, ReducibilityHint, TransparencyMode};
@@ -1652,9 +1654,12 @@ impl<'env> DefEqChecker<'env> {
     /// Mirrors `TypeChecker::infer_proj_field_type`: instantiates the
     /// constructor's type with the universe levels and inductive parameters
     /// read off `inner`'s (whnf'd) type, substitutes earlier fields with
-    /// projections of `inner`, and returns the `idx`-th Pi domain. Returns
-    /// `None` whenever anything does not line up — this is a best-effort
-    /// helper; the full `TypeChecker` reports typed errors instead.
+    /// projections of `inner`, and returns the `idx`-th Pi domain. Which
+    /// inductive type may be named is the `TypeChecker`'s rule
+    /// (`infer::proj_target`: one constructor; recursion and indices are
+    /// admitted). Returns `None` whenever anything does not line up — this
+    /// is a best-effort helper; the full `TypeChecker` reports typed errors
+    /// instead.
     fn quick_proj_type(
         &mut self,
         struct_name: &crate::Name,
@@ -1662,39 +1667,39 @@ impl<'env> DefEqChecker<'env> {
         inner: &Expr,
         inner_ty: &Expr,
     ) -> Option<Expr> {
-        if !self.env.is_structure_like(struct_name) {
-            return None;
-        }
-        let ind_val = self.env.get_inductive_val(struct_name)?.clone();
-        let ctor_name = ind_val.ctors.first()?.clone();
-        let ctor_val = self.env.get_constructor_val(&ctor_name)?.clone();
-        if idx >= ctor_val.num_fields {
-            return None;
-        }
+        let (ind_val, ctor_val) = proj_target(self.env, struct_name, idx).ok()?;
         let inner_ty_whnf = self.reducer.whnf_env(inner_ty, self.env);
         let levels: Vec<Level> = match get_app_fn(&inner_ty_whnf) {
             Expr::Const(name, lvls) if name == struct_name => lvls.clone(),
             _ => return None,
         };
         let ty_args: Vec<Expr> = get_app_args(&inner_ty_whnf).into_iter().cloned().collect();
-        if ty_args.len() != ind_val.num_params as usize {
-            return None;
-        }
+        let params = proj_type_params(ind_val, &ty_args)?;
         let level_params = &ind_val.common.level_params;
         let mut cur_ty = if level_params.is_empty() || levels.is_empty() {
             ctor_val.common.ty.clone()
         } else {
             instantiate_type_lparams(&ctor_val.common.ty, level_params, &levels)
         };
-        for param in &ty_args {
+        for param in params {
             match cur_ty {
                 Expr::Pi(_, _, _, body) => cur_ty = instantiate(&body, param),
                 _ => return None,
             }
         }
+        // No data out of a proof, as in the `TypeChecker` (see
+        // `infer::proj_prop`): a projection it refuses gets no type here.
+        // The sort is that of `S ps is`: read past the indices too.
+        let sort = structure_type_sort(ind_val, &levels, &ty_args, |e| {
+            self.reducer.whnf_env(e, self.env)
+        });
+        let struct_is_prop = is_prop_sort(&sort)?;
         for j in 0..idx {
             match cur_ty {
-                Expr::Pi(_, _, _, body) => {
+                Expr::Pi(_, _, dom, body) => {
+                    if struct_is_prop && has_loose_bvars(&body) && !self.quick_is_prop(&dom) {
+                        return None;
+                    }
                     let field_val = Expr::Proj(struct_name.clone(), j, Node::new(inner.clone()));
                     cur_ty = instantiate(&body, &field_val);
                 }
@@ -1702,9 +1707,19 @@ impl<'env> DefEqChecker<'env> {
             }
         }
         match cur_ty {
-            Expr::Pi(_, _, dom, _) => Some((*dom).clone()),
+            Expr::Pi(_, _, dom, _) if !struct_is_prop || self.quick_is_prop(&dom) => {
+                Some((*dom).clone())
+            }
             _ => None,
         }
+    }
+    /// Whether the type `ty` is known to be a proposition (its sort is
+    /// `Prop` up to universe equivalence); `false` when it cannot be typed.
+    fn quick_is_prop(&mut self, ty: &Expr) -> bool {
+        let Some(sort) = self.quick_infer_type(ty) else {
+            return false;
+        };
+        is_prop_sort(&self.reducer.whnf_env(&sort, self.env)) == Some(true)
     }
     /// Check proof irrelevance: two proofs of the same Prop are definitionally equal.
     ///

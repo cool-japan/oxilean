@@ -31,3 +31,6 @@ oxilean-std = { workspace = true }
 
 [features]
 default = []
+
+[lints]
+workspace = true

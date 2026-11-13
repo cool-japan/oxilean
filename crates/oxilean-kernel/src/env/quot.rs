@@ -498,41 +498,126 @@ fn canonical_quot_val(name: Name, kind: QuotKind) -> QuotVal {
     }
 }
 
-/// Verify that `Eq` is present with its expected inductive shape:
-/// a single-constructor inductive living in `Prop`, whose sole constructor is
-/// registered and points back to `Eq`.
+/// The type the quotient primitives assume for `Eq`, over `Eq`'s own
+/// universe parameter `u`: `{α : Sort u} → α → α → Prop`.
+fn expected_eq_type(u: &Level) -> Expr {
+    Expr::Pi(
+        BinderInfo::Implicit,
+        Name::str("α"),
+        Node::new(Expr::Sort(u.clone())),
+        Node::new(rel_type(0)),
+    )
+}
+
+/// The type the quotient primitives assume for `Eq`'s constructor, over the
+/// constructor's own universe parameter `u`:
+/// `{α : Sort u} → (a : α) → @Eq.{u} α a a`.
+fn expected_eq_refl_type(u: &Level) -> Expr {
+    Expr::Pi(
+        BinderInfo::Implicit,
+        Name::str("α"),
+        Node::new(Expr::Sort(u.clone())),
+        Node::new(Expr::Pi(
+            BinderInfo::Default,
+            Name::str("a"),
+            Node::new(Expr::BVar(0)),
+            Node::new(eq_app(
+                u.clone(),
+                Expr::BVar(1),
+                Expr::BVar(0),
+                Expr::BVar(0),
+            )),
+        )),
+    )
+}
+
+/// Whether two terms are the same up to the names and the binder
+/// information of their binders — the comparison Lean's kernel makes
+/// between `Eq`'s declared types and the ones it expects. (Not definitional
+/// equality: a type that only reduces to the expected one is refused, as
+/// Lean refuses it.)
 ///
-/// This mirrors Lean's `check_eq_type` precondition of `add_quot`: `Quot.lift`'s
-/// soundness hypothesis is stated with `Eq`, so `Eq` must already exist.
+/// This is kept apart from the public
+/// [`crate::inductive::supplied::same_up_to_binders`] on purpose: it covers
+/// only the terms the two expected types are built of (no `let`, literal,
+/// projection or free variable compares equal here), so merging the two
+/// would change what an `Eq` declaration may be compared equal to.
+fn same_up_to_binders(a: &Expr, b: &Expr) -> bool {
+    match (a, b) {
+        (Expr::Pi(_, _, t1, b1), Expr::Pi(_, _, t2, b2))
+        | (Expr::Lam(_, _, t1, b1), Expr::Lam(_, _, t2, b2)) => {
+            same_up_to_binders(t1, t2) && same_up_to_binders(b1, b2)
+        }
+        (Expr::App(f1, a1), Expr::App(f2, a2)) => {
+            same_up_to_binders(f1, f2) && same_up_to_binders(a1, a2)
+        }
+        (Expr::Sort(l1), Expr::Sort(l2)) => l1 == l2,
+        (Expr::Const(n1, ls1), Expr::Const(n2, ls2)) => n1 == n2 && ls1 == ls2,
+        (Expr::BVar(i), Expr::BVar(j)) => i == j,
+        // The expected types are built of nothing else.
+        _ => false,
+    }
+}
+
+/// Verify that `Eq` is the inductive type the quotient primitives assume:
 ///
-/// The check is deliberately agnostic about the exact spelling of the
-/// constructor name (`Eq.refl` may be encoded either as a flat single-atom
-/// `Name` or as a hierarchical `Eq.refl`), and instead validates the structural
-/// relationship (`ctor.induct == Eq`).
+/// * an inductive type with exactly one universe parameter `u` and the type
+///   `{α : Sort u} → α → α → Prop`;
+/// * with exactly one constructor, which has one universe parameter and the
+///   type `{α : Sort u} → (a : α) → @Eq α a a`.
+///
+/// This is Lean's `check_eq_type`, the precondition of its `add_quot`
+/// (measured on Lean 4 v4.32.0-rc1, 2026-11-12: "failed to initialize quot
+/// module, unexpected number of universe params at 'Eq' type" / "'Eq' has
+/// an expected type" / "unexpected number of constructors for 'Eq' type" /
+/// "unexpected type for 'Eq' type constructor"). `Quot.lift`'s hypothesis
+/// `∀ a b, r a b → f a = f b` and `Quot.sound`'s conclusion are stated with
+/// `Eq`: under an `Eq` of another shape — one whose constructor relates any
+/// two elements, say — they would say something else, and the canonical
+/// types of the primitives might not even be well typed.
+///
+/// The two types are compared up to the names and the binder information of
+/// their binders, as Lean compares them, and the constructor is looked at
+/// for its type, not for its name (Lean accepts `Eq` with a constructor
+/// called otherwise, and with either split of its arguments into
+/// parameters and indices: measured). `Eq.refl` may therefore be spelled as
+/// a flat single-atom `Name` or as the hierarchical `Eq.refl`.
 fn check_eq_present(env: &Environment) -> Result<(), EnvError> {
+    let invalid = |msg: &str| Err(EnvError::InvalidQuotient(msg.into()));
     let eq_name = name_eq();
-    let iv = env.get_inductive_val(&eq_name).ok_or_else(|| {
-        EnvError::InvalidQuotient("`Eq` must be declared before quotients".into())
-    })?;
-    // Lean's `Eq` is a `Prop`-valued inductive with exactly one constructor.
-    if iv.ctors.len() != 1 {
-        return Err(EnvError::InvalidQuotient(
-            "`Eq` must be an inductive with exactly one constructor".into(),
-        ));
+    let Some(iv) = env.get_inductive_val(&eq_name) else {
+        return invalid("`Eq` must be declared (as an inductive type) before quotients");
+    };
+    let [u] = iv.common.level_params.as_slice() else {
+        return invalid("`Eq` must have exactly one universe parameter");
+    };
+    if !same_up_to_binders(&iv.common.ty, &expected_eq_type(&Level::param(u.clone()))) {
+        return invalid("`Eq` must have the type `{α : Sort u} → α → α → Prop`");
     }
+    let [ctor_name] = iv.ctors.as_slice() else {
+        return invalid("`Eq` must be an inductive with exactly one constructor");
+    };
+    let Some(cv) = env.get_constructor_val(ctor_name) else {
+        return invalid("`Eq`'s constructor must be registered");
+    };
+    let [u] = cv.common.level_params.as_slice() else {
+        return invalid("`Eq`'s constructor must have exactly one universe parameter");
+    };
+    if !same_up_to_binders(
+        &cv.common.ty,
+        &expected_eq_refl_type(&Level::param(u.clone())),
+    ) {
+        return invalid(
+            "`Eq`'s constructor must have the type `{α : Sort u} → (a : α) → @Eq α a a`",
+        );
+    }
+    // Implied by the two types for a constructor the kernel checked; kept
+    // for a constant that reached the environment unchecked.
     if !iv.is_prop {
-        return Err(EnvError::InvalidQuotient(
-            "`Eq` must be a `Prop`-valued inductive".into(),
-        ));
+        return invalid("`Eq` must be a `Prop`-valued inductive");
     }
-    let ctor_name = &iv.ctors[0];
-    let cv = env
-        .get_constructor_val(ctor_name)
-        .ok_or_else(|| EnvError::InvalidQuotient("`Eq`'s constructor must be registered".into()))?;
     if cv.induct != eq_name {
-        return Err(EnvError::InvalidQuotient(
-            "`Eq`'s constructor does not point back to `Eq`".into(),
-        ));
+        return invalid("`Eq`'s constructor does not point back to `Eq`");
     }
     Ok(())
 }
@@ -544,10 +629,12 @@ impl Environment {
     /// This is the trusted `#QUOT` entry point, mirroring Lean's
     /// `add_quot` in `src/kernel/quot.cpp`:
     ///
-    /// - **Precondition:** `Eq` must already exist as an inductive of the
-    ///   expected shape (one constructor `Eq.refl`), because `Quot.lift`'s
-    ///   soundness hypothesis mentions `Eq`. A typed error is returned
-    ///   otherwise.
+    /// - **Precondition:** `Eq` must already exist as the inductive type the
+    ///   primitives assume — one universe parameter, the type
+    ///   `{α : Sort u} → α → α → Prop`, and one constructor of type
+    ///   `{α : Sort u} → (a : α) → @Eq α a a` (`check_eq_present`) — because
+    ///   `Quot.lift`'s soundness hypothesis mentions `Eq`. A typed error is
+    ///   returned otherwise.
     /// - All four types are constructed **in-kernel** (universe-polymorphic in
     ///   `u`, plus `v` for `Quot.lift`); the caller never supplies them.
     /// - The four constants are added atomically. If any name already exists,
@@ -572,6 +659,25 @@ impl Environment {
         for (name, _) in &decls {
             if self.contains(name) {
                 return Err(EnvError::DuplicateDeclaration(name.clone()));
+            }
+        }
+        // The guard of an install (`crate::inductive::installed`): every
+        // constant a canonical type names resolves once the four are in —
+        // one of the four primitives, or the `Eq` that `check_eq_present`
+        // has just held to the shape they assume — and is that constant.
+        let eq_name = name_eq();
+        for (name, kind) in &decls {
+            let ty = canonical_quot_type(*kind);
+            let stray = crate::expr_util::find_mentioned_name(&ty, |c| {
+                let primitive = decls.iter().any(|(p, _)| p == c);
+                let eq = c == &eq_name && self.get_inductive_val(c).is_some();
+                !(primitive || eq)
+            });
+            if let Some(c) = stray {
+                return Err(EnvError::InvalidQuotient(format!(
+                    "the canonical type of '{name}' names '{c}', which is neither a quotient \
+                     primitive nor the inductive `Eq` they assume"
+                )));
             }
         }
         for (name, kind) in decls {

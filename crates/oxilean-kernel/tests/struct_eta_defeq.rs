@@ -5,6 +5,20 @@
 //!
 //! Semantics target: Lean 4 kernel `isDefEqEtaStruct`, `isDefEqUnitLike`,
 //! `tryEtaExpansionCore`, and `inferProj` (audit items C1, C2, S11).
+//!
+//! Two predicates, not one. Structure eta and unit-like equality hold for a
+//! structure-like inductive: one constructor, no indices, not recursive
+//! (the condition Lean's library calls `Lean.isNonRecStructure`; see
+//! `infer/proj_target.rs` for where that name comes from). A projection is TYPED for any
+//! inductive with exactly one constructor, recursive and indexed ones
+//! included. S11 first gated `infer_proj` by the eta predicate, and two
+//! tests of section (h) pinned that gate; measured against Lean 4
+//! v4.32.0-rc1 (2026-11-12) it is stricter than Lean's kernel, which
+//! accepts `fun (s : S) => s.0` for a recursive `S` and for an indexed
+//! one-constructor family while it rejects `s = S.mk s.0 s.1` by `rfl` for
+//! both — so every ordinary recursive `structure` was rejected. Those two
+//! tests now pin what Lean does; section (f) still pins that such a type has
+//! no eta. `tests/proj_structure.rs` covers the projection rule itself.
 
 use oxilean_kernel::declaration::{
     AxiomVal, ConstantInfo, ConstantVal, ConstructorVal, InductiveVal,
@@ -760,7 +774,10 @@ fn fun_eta_three_binders() {
 }
 
 // ---------------------------------------------------------------------------
-// (h) S11: projection typing is strict — typed errors, no fabricated types
+// (h) S11: projection typing is strict — typed errors, no fabricated types —
+//     and asks of the inductive type what Lean's `infer_proj` asks: exactly
+//     one constructor. Recursion and indices are admitted (they are what
+//     structure eta refuses, section (f)).
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -784,23 +801,52 @@ fn infer_proj_two_constructor_is_error() {
     );
 }
 
+/// Was `infer_proj_recursive_is_error`. Lean's kernel accepts a projection
+/// out of a recursive single-constructor type (measured: `fun (s : Str) =>
+/// s.0` and the generated projections of a recursive `structure` are
+/// accepted), so `st.0` and `st.1` are typed — `MyStream.cons : (h : Prop) →
+/// MyStream → MyStream`. That `st` has no eta is pinned by
+/// `no_eta_for_recursive_single_constructor`.
 #[test]
-fn infer_proj_recursive_is_error() {
+fn infer_proj_recursive_is_typed() {
     let env = env_negatives();
     let mut tc = TypeChecker::new(&env);
+    let head_ty = tc
+        .infer_type(&proj("MyStream", 0, cnst("st")))
+        .expect("a projection out of a recursive single-constructor type is typed");
+    assert_eq!(head_ty, sort0(), "type of st.0 must be the field's, Prop");
+    let tail_ty = tc
+        .infer_type(&proj("MyStream", 1, cnst("st")))
+        .expect("the recursive field is typed as well");
+    assert_eq!(tail_ty, cnst("MyStream"), "type of st.1 must be MyStream");
     assert!(
-        tc.infer_type(&proj("MyStream", 0, cnst("st"))).is_err(),
-        "projections on a recursive single-constructor type must be rejected"
+        tc.infer_type(&proj("MyStream", 2, cnst("st"))).is_err(),
+        "a field index past the last field stays a typed error"
     );
 }
 
+/// Was `infer_proj_indexed_is_error`. Lean's kernel accepts a projection out
+/// of a single-constructor indexed family (measured: `fun (v : I1 0) => v.0`
+/// is accepted), so `ix.0` and `ix.1` are typed for `ix : MyIdx i0` —
+/// `MyIdx.mk : (i : Prop) → (x : Prop) → MyIdx i`. The index of the
+/// operand's type is not a constructor argument: field 0 is the FIRST
+/// binder of the constructor. That `ix` has no eta is pinned by
+/// `no_eta_for_indexed_family`.
 #[test]
-fn infer_proj_indexed_is_error() {
+fn infer_proj_indexed_is_typed() {
     let env = env_negatives();
     let mut tc = TypeChecker::new(&env);
+    let i_ty = tc
+        .infer_type(&proj("MyIdx", 0, cnst("ix")))
+        .expect("a projection out of an indexed single-constructor family is typed");
+    assert_eq!(i_ty, sort0(), "type of ix.0 must be the field's, Prop");
+    let x_ty = tc
+        .infer_type(&proj("MyIdx", 1, cnst("ix")))
+        .expect("the second field is typed as well");
+    assert_eq!(x_ty, sort0(), "type of ix.1 must be the field's, Prop");
     assert!(
-        tc.infer_type(&proj("MyIdx", 0, cnst("ix"))).is_err(),
-        "projections on an indexed family must be rejected"
+        tc.infer_type(&proj("MyIdx", 2, cnst("ix"))).is_err(),
+        "a field index past the last field stays a typed error"
     );
 }
 

@@ -44,7 +44,7 @@ pub fn check_declaration(env: &mut Environment, decl: Declaration) -> Result<(),
         }
         Declaration::Theorem { ty, val, .. } => {
             let mut tc = TypeChecker::new(env);
-            tc.ensure_sort(ty)?;
+            check_theorem_type(&mut tc, &name, ty)?;
             let val_ty = tc.infer_type(val)?;
             tc.check_type(val, &val_ty, ty)?;
         }
@@ -62,6 +62,30 @@ pub fn check_declaration(env: &mut Environment, decl: Declaration) -> Result<(),
         EnvError::NotFound(_) => KernelError::Other(format!("declaration not found: {}", name)),
         EnvError::InvalidQuotient(msg) => KernelError::Other(msg),
     })
+}
+/// A theorem states a proposition: its declared type must be a type, and
+/// the sort of that type must be `Prop`.
+///
+/// Lean's kernel refuses a theorem whose type is not a proposition
+/// (`theorem t : Nat := 5`, `theorem t : Type := Nat`: "type of theorem 't'
+/// is not a proposition"), and so does this one. The sort is the one the
+/// type's own type reduces to, and it is compared with `Sort 0` up to the
+/// equivalence of universe levels: a type in `Sort (imax u 0)` is a
+/// proposition for every `u`.
+#[allow(clippy::result_large_err)]
+fn check_theorem_type(
+    tc: &mut TypeChecker<'_>,
+    name: &crate::Name,
+    ty: &crate::Expr,
+) -> Result<(), KernelError> {
+    let sort = tc.ensure_sort(ty)?;
+    if !crate::level::is_equivalent(&sort, &crate::Level::zero()) {
+        return Err(KernelError::Other(format!(
+            "type of theorem '{name}' is not a proposition: it is a type in Sort {sort}, not in \
+             Prop"
+        )));
+    }
+    Ok(())
 }
 /// Enforce universe-parameter hygiene for a declaration (S8).
 ///
@@ -314,6 +338,12 @@ pub fn check_declarations(
 /// Unlike `check_declaration`, this function handles the richer LEAN 4-style
 /// constant info types that include inductive types, constructors, recursors, and
 /// quotient type components.
+///
+/// A term of `ci` is in the environment afterwards only if it was
+/// type-checked here — with one kind of exception, a constant the kernel
+/// derives itself. For a `Recursor` the constant that is added is **the
+/// kernel's own derivation** (under the supplied name and universe parameter
+/// names); the supplied type and rules are compared with it and dropped.
 #[allow(clippy::result_large_err)]
 pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<(), KernelError> {
     let name = ci.name().clone();
@@ -321,6 +351,7 @@ pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<()
     // `Param`s in the type/value, and any `Level` metavariable — for every
     // `ConstantInfo` variant, mirroring the `check_declaration` path.
     check_univ_param_hygiene_ci(&ci)?;
+    let mut derived_recursor: Option<RecursorVal> = None;
     match &ci {
         ConstantInfo::Axiom(av) => {
             let mut tc = TypeChecker::new(env);
@@ -334,7 +365,7 @@ pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<()
         }
         ConstantInfo::Theorem(tv) => {
             let mut tc = TypeChecker::new(env);
-            tc.ensure_sort(&tv.common.ty)?;
+            check_theorem_type(&mut tc, &name, &tv.common.ty)?;
             let val_ty = tc.infer_type(&tv.value)?;
             tc.check_type(&tv.value, &val_ty, &tv.common.ty)?;
         }
@@ -357,12 +388,19 @@ pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<()
                 check_term_depth(&name, &rule.rhs)?;
                 check_closed_term(&name, &rule.rhs)?;
             }
-            check_recursor_val(env, rv)?;
+            // A recursor is not checked, it is derived: what is added is
+            // the kernel's own recursor, and the supplied declaration was
+            // only held against it.
+            derived_recursor = Some(check_recursor_val(env, rv)?);
         }
         ConstantInfo::Quotient(qv) => {
             check_quotient_val(env, qv)?;
         }
     }
+    let ci = match derived_recursor {
+        Some(derived) => ConstantInfo::Recursor(derived),
+        None => ci,
+    };
     env.add_constant(ci).map_err(|e| match e {
         crate::env::EnvError::DuplicateDeclaration(_) => {
             KernelError::Other(format!("duplicate declaration: {}", name))
@@ -384,6 +422,60 @@ pub fn check_constant_infos(
     }
     Ok(())
 }
+/// Check a group of `ConstantInfo` declarations in order and add them as a
+/// unit: every one of them, or none.
+///
+/// Each constant is checked against the environment that already holds the
+/// ones before it, as with [`check_constant_infos`] — a constructor is
+/// checked against its inductive type, a recursor against the type and its
+/// constructors. Unlike [`check_constant_infos`], a failure takes the
+/// earlier members of the group out again before the error is returned, so
+/// the environment is exactly what it was before the call.
+///
+/// This is the entry point for a declaration that arrives as several
+/// constants (an exported inductive family). Left half installed, a refused
+/// family would still answer for the names it did install: a later
+/// declaration that names only those would be checked against a type the
+/// kernel never accepted as a whole — for one, a type that lists fewer
+/// constructors than it was declared with.
+///
+/// **The guard.** Once every member is in, the recursors the group
+/// installed — the kernel's derivations — are held to the names they
+/// mention: their rules call the sibling recursors of the family by name,
+/// and each constant a derived term names must resolve in the environment
+/// as it now stands, a name the derivation gives a recursor or a type of
+/// the family to that constant of the family
+/// ([`crate::inductive::installed`]). A name that does not takes the whole
+/// group out again: a rule calling a recursor that is not installed would
+/// let a later declaration define it with another type.
+#[allow(clippy::result_large_err)]
+pub fn check_constant_infos_atomic(
+    env: &mut Environment,
+    cis: Vec<ConstantInfo>,
+) -> Result<(), KernelError> {
+    let mut added: Vec<crate::Name> = Vec::with_capacity(cis.len());
+    for ci in cis {
+        let name = ci.name().clone();
+        if let Err(e) = check_constant_info(env, ci) {
+            env.remove_constants(&added);
+            return Err(e);
+        }
+        added.push(name);
+    }
+    let guarded = {
+        let installed: Vec<&ConstantInfo> = added.iter().filter_map(|n| env.find(n)).collect();
+        crate::inductive::installed::check_derived_references(
+            env,
+            &installed,
+            crate::inductive::installed::DerivedTerms::Recursors,
+        )
+    };
+    if let Err(e) = guarded {
+        env.remove_constants(&added);
+        return Err(e);
+    }
+    Ok(())
+}
 /// Validate an `InductiveVal`.
 ///
 /// Beyond the sort check, the declared telescope must match the announced
@@ -393,7 +485,8 @@ pub fn check_constant_infos(
 /// recomputed from the type when the recursor is checked anyway).
 /// Constructor types are checked via `check_constructor_val` when each
 /// constructor `ConstantInfo` is added; recursors are re-derived and
-/// compared in `check_recursor_val`. Empty inductives (0 constructors, like
+/// compared in `check_recursor_val`, and the re-derived one is what is
+/// added. Empty inductives (0 constructors, like
 /// `Empty`) are valid.
 #[allow(clippy::result_large_err)]
 pub(super) fn check_inductive_val(
@@ -416,16 +509,19 @@ pub(super) fn check_constructor_val(
 ) -> Result<(), KernelError> {
     crate::inductive::derive::verify_constructor_val(env, cv)
 }
-/// Validate a `RecursorVal` by *re-deriving* it: the kernel reconstructs
-/// the recursors for the declared inductive family (motives, minor premises
-/// with induction hypotheses, elimination universe, K flag, iota rules) and
-/// requires the supplied declaration to match the derivation up to
-/// definitional equality. Externally-supplied recursors are never trusted.
+/// Validate a `RecursorVal` by *re-deriving* it, and return the derived
+/// recursor: the kernel reconstructs the recursors for the declared
+/// inductive family (motives, minor premises with induction hypotheses,
+/// elimination universe, K flag, iota rules) and requires the supplied
+/// declaration to be the derivation — as written, or type-checked and then
+/// definitionally equal. An externally-supplied recursor is never
+/// installed: the caller adds the returned one, which is the kernel's own
+/// under the supplied name and universe parameter names.
 #[allow(clippy::result_large_err)]
 pub(super) fn check_recursor_val(
     env: &mut Environment,
     rv: &RecursorVal,
-) -> Result<(), KernelError> {
+) -> Result<RecursorVal, KernelError> {
     crate::inductive::derive::verify_recursor_val(env, rv)
 }
 /// Validate a `QuotVal`: verify the supplied type is definitionally equal to

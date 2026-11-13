@@ -133,4 +133,4 @@ Both are recorded in full in `RESULTS-2026-07-12.md`.
 
 ---
 
-*Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.*
+*Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.*

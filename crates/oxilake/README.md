@@ -49,11 +49,11 @@ tested independently, respecting the inter-package dependency graph.
 
 ```toml
 [dependencies]
-oxilake = "0.1.4"
+oxilake = "0.1.5"
 ```
 
 - License: Apache-2.0
 - Edition: 2021
 - Rust version: 1.89+
 
-Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.

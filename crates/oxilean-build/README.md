@@ -81,7 +81,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-build = "0.1.4"
+oxilean-build = "0.1.5"
 ```
 
 ### Running a Build
@@ -127,4 +127,4 @@ cargo test -p oxilean-build -- --nocapture
 
 ## License
 
-Copyright COOLJAPAN OU (Team Kitasan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.
+Copyright COOLJAPAN OU (Team KitaSan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.

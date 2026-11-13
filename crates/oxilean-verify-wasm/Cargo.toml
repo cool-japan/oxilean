@@ -53,3 +53,6 @@ oxilean-kernel = { workspace = true, features = ["term-depth"] }
 # Run wasm-opt -Oz when the wasm-opt binary is available (wasm-pack fetches it,
 # or falls back gracefully). Strips DWARF, folds constants, size-optimizes.
 wasm-opt = ["-Oz", "--strip-debug"]
+
+[lints]
+workspace = true

@@ -48,14 +48,14 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean = "0.1.4"
+oxilean = "0.1.5"
 ```
 
 Or with all library components:
 
 ```toml
 [dependencies]
-oxilean = { version = "0.1.4", features = ["full"] }
+oxilean = { version = "0.1.5", features = ["full"] }
 ```
 
 ## Feature Flags
@@ -89,7 +89,7 @@ use oxilean::meta::{MetaContext, TacticState, InstanceSynthesizer, DiscrTree};
 
 ```toml
 # Cargo.toml
-oxilean = { version = "0.1.4", features = ["full"] }
+oxilean = { version = "0.1.5", features = ["full"] }
 ```
 
 ```rust
@@ -110,7 +110,7 @@ Include only what you need to minimize compile times:
 
 ```toml
 # Cargo.toml -- kernel + standard library only
-oxilean = { version = "0.1.4", default-features = false, features = ["kernel", "std-lib"] }
+oxilean = { version = "0.1.5", default-features = false, features = ["kernel", "std-lib"] }
 ```
 
 ```rust
@@ -184,4 +184,4 @@ OxiLean is part of the [COOLJAPAN](https://github.com/cool-japan) Pure Rust ecos
 
 ## License
 
-Copyright COOLJAPAN OU (Team Kitasan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.
+Copyright COOLJAPAN OU (Team KitaSan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.

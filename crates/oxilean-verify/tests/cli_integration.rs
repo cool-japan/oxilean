@@ -164,6 +164,286 @@ fn declaration_lean_kernel_rejects_exits_one() {
 }
 
 #[test]
+fn projection_out_of_a_proposition_exits_one() {
+    // The committed negative fixture `ProjOutOfProp` (see the fixture
+    // README): a definition that reads the witness out of a proof of an
+    // existential, and a closed, axiom-free proof of `False` built on that
+    // projection. Lean's own kernel rejects both. Before the kernel had the
+    // side condition on projections this run printed `7 verified ·
+    // 0 unsupported · 0 rejected` and exited 0.
+    let out = run(&["--quiet", fixture("ProjOutOfProp").to_str().unwrap()]);
+    assert_eq!(
+        code(&out),
+        1,
+        "a declaration Lean's kernel rejects must exit 1; stdout: {}",
+        stdout(&out)
+    );
+    assert_eq!(
+        parse_summary_counts(&stdout(&out)),
+        (5, 0, 2),
+        "ProjOutOfProp: the 5 sound declarations verify, the definition and the proof of False are rejected"
+    );
+
+    // And each rejection is attributed to its declaration, under the
+    // default limits and under the corpus preset alike.
+    for limits in [&[][..], &["--limits", "corpus"][..]] {
+        let fixture_path = fixture("ProjOutOfProp");
+        let mut args: Vec<&str> = limits.to_vec();
+        args.push(fixture_path.to_str().unwrap());
+        let out = run(&args);
+        assert_eq!(code(&out), 1, "limits {limits:?}: stdout: {}", stdout(&out));
+        let text = stdout(&out);
+        for bad in ["ProjOutOfProp.wit", "ProjOutOfProp.false_of_proj"] {
+            let bad_line = text
+                .lines()
+                .find(|l| l.split_whitespace().any(|word| word == bad))
+                .unwrap_or_else(|| panic!("no line for {bad} in: {text}"));
+            assert!(
+                bad_line.contains("rejected"),
+                "{bad} must be a rejected declaration (limits {limits:?}): {bad_line}"
+            );
+        }
+    }
+}
+
+#[test]
+fn projections_out_of_recursive_and_indexed_inductives_exit_zero() {
+    // The committed positive fixture `ProjRecIndexed` (see the fixture
+    // README): ordinary Lean with two recursive structures and an indexed
+    // one-constructor family, and the projections out of them. Lean's
+    // kernel accepted every declaration. While the kernel asked of a
+    // projection's inductive type the condition of structure eta (no
+    // recursion, no indices) this run printed `14 verified · 0 unsupported ·
+    // 8 rejected` and exited 1 — a false alarm on every recursive structure.
+    for limits in [&[][..], &["--limits", "corpus"][..]] {
+        let fixture_path = fixture("ProjRecIndexed");
+        let mut args: Vec<&str> = limits.to_vec();
+        args.push(fixture_path.to_str().unwrap());
+        let out = run(&args);
+        let text = stdout(&out);
+        assert_eq!(
+            code(&out),
+            0,
+            "limits {limits:?}: ordinary Lean must not trip the alarm; stdout: {text}"
+        );
+        assert_eq!(
+            parse_summary_counts(&text),
+            (22, 0, 0),
+            "limits {limits:?}: ProjRecIndexed: all 22 declarations verify"
+        );
+        // Each projection, and the theorem that uses them, is a verified
+        // declaration of its own (not merely absent from the rejections).
+        for good in [
+            "ProjRecIndexed.Tree.label",
+            "ProjRecIndexed.Tree.kids",
+            "ProjRecIndexed.Stream.head",
+            "ProjRecIndexed.Stream.tail",
+            "ProjRecIndexed.Tagged.val",
+            "ProjRecIndexed.Tagged.tag",
+            "ProjRecIndexed.proj_mk",
+        ] {
+            let line = text
+                .lines()
+                .find(|l| l.split_whitespace().any(|word| word == good))
+                .unwrap_or_else(|| panic!("no line for {good} in: {text}"));
+            assert!(
+                line.contains('\u{2713}') && !line.contains("rejected"),
+                "{good} must be a verified declaration (limits {limits:?}): {line}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_bundle_that_lies_about_its_constructors_exits_one() {
+    // The committed negative fixture `CtorListLie` (see the fixture README):
+    // a real export in which three inductive types were cut down, by hand,
+    // to their first constructor, followed by four declarations that read a
+    // field out of them with a projection Lean's kernel refuses — one of
+    // them the false statement `∀ t : Two, t = Two.mk t.0`. Each bundle is
+    // refused. While a refused bundle stayed half installed this run printed
+    // `5 verified · 0 unsupported · 5 rejected`, with `two_proj` and
+    // `two_eta` among the verified.
+    let bundles = ["CtorListLie.Two", "CtorListLie.L2", "CtorListLie.TI"];
+    let dependents = [
+        "CtorListLie.two_proj",
+        "CtorListLie.two_eta",
+        "CtorListLie.l2_proj",
+        "CtorListLie.ti_proj",
+    ];
+    for limits in [&[][..], &["--limits", "corpus"][..]] {
+        let fixture_path = fixture("CtorListLie");
+        let mut args: Vec<&str> = limits.to_vec();
+        args.push(fixture_path.to_str().unwrap());
+        let out = run(&args);
+        let text = stdout(&out);
+        assert_eq!(code(&out), 1, "limits {limits:?}: stdout: {text}");
+        assert_eq!(
+            parse_summary_counts(&text),
+            (3, 0, 7),
+            "limits {limits:?}: `Nat`, `Eq` and `Bool` verify; the three bundles and the four \
+             declarations that name them are rejected"
+        );
+        let line_of = |name: &str| {
+            text.lines()
+                .find(|l| l.split_whitespace().any(|word| word == name))
+                .unwrap_or_else(|| panic!("no line for {name} in: {text}"))
+        };
+        for bundle in bundles {
+            let line = line_of(bundle);
+            assert!(
+                line.contains("rejected") && line.contains("is not listed"),
+                "{bundle} must be rejected for the constructor it does not list \
+                 (limits {limits:?}): {line}"
+            );
+        }
+        for dependent in dependents {
+            let line = line_of(dependent);
+            assert!(
+                line.contains("rejected") && line.contains("depends on rejected declaration"),
+                "{dependent} must be rejected as a dependent of a rejected bundle \
+                 (limits {limits:?}): {line}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_recursor_rule_that_is_not_the_kernels_exits_one_and_proves_nothing() {
+    // The committed negative fixture `RecRuleJunk` (see the fixture README):
+    // a file written by hand in which ONE thing differs from what Lean's
+    // kernel makes of the same declarations — the right-hand side of the
+    // only rule of `T.rec` carries an ill-typed proof term. The bundle is
+    // refused, and with it every declaration that names it: `val`, `fst`,
+    // `val_eq`, and the statements made about them, among them
+    // `bad_f_eq_t : B.f = B.t` and `boom : False`. While a recursor record
+    // was accepted by definitional equality alone and then installed, this
+    // run printed `14 verified · 0 unsupported · 1 rejected`, with `boom`
+    // among the verified and the honest `honest_val_is_t` the one rejected.
+    let dependents = [
+        "val",
+        "fst",
+        "val_eq",
+        "honest_val_is_t",
+        "bad_val_is_f",
+        "bad_f_eq_t",
+        "boom",
+    ];
+    for limits in [&[][..], &["--limits", "corpus"][..]] {
+        let fixture_path = fixture("RecRuleJunk");
+        let mut args: Vec<&str> = limits.to_vec();
+        args.push(fixture_path.to_str().unwrap());
+        let out = run(&args);
+        let text = stdout(&out);
+        assert_eq!(code(&out), 1, "limits {limits:?}: stdout: {text}");
+        assert_eq!(
+            parse_summary_counts(&text),
+            (7, 0, 8),
+            "limits {limits:?}: `B`, `P`, `Eq`, `False`, `True`, `get` and `get_eq` verify; the \
+             bundle `T` and the seven declarations that name it or one another are rejected"
+        );
+        let line_of = |name: &str| {
+            text.lines()
+                .find(|l| l.split_whitespace().any(|word| word == name))
+                .unwrap_or_else(|| panic!("no line for {name} in: {text}"))
+        };
+        let bundle = line_of("T");
+        assert!(
+            bundle.contains("rejected")
+                && bundle.contains("does not match the kernel-derived recursor"),
+            "T must be rejected for its recursor (limits {limits:?}): {bundle}"
+        );
+        for dependent in dependents {
+            let line = line_of(dependent);
+            assert!(
+                line.contains("rejected") && line.contains("depends on rejected declaration"),
+                "{dependent} must be rejected as a dependent of the rejected bundle \
+                 (limits {limits:?}): {line}"
+            );
+        }
+    }
+
+    // The same family as Lean's kernel makes it, and an ill-typed term of
+    // the same making as the value of a theorem and of a definition: this
+    // build and Lean's kernel agree on every declaration of both files.
+    for (name, split) in [("RecRuleTruth", (12, 0, 3)), ("RecRuleControl", (3, 0, 2))] {
+        let out = run(&["--quiet", fixture(name).to_str().unwrap()]);
+        assert_eq!(code(&out), 1, "{name}: stdout: {}", stdout(&out));
+        assert_eq!(parse_summary_counts(&stdout(&out)), split, "{name}");
+    }
+}
+
+#[test]
+fn a_recursor_record_under_a_name_lean_never_gives_exits_one_and_proves_nothing() {
+    // The committed negative fixtures `RecNameMixedStyle` and `RecNameFlat`
+    // (see the fixture README): a recursor record named with the one flat
+    // component `"A.rec"` (printed `«A.rec»`) where Lean's kernel names the
+    // recursor of `A` `A.rec`, the component `rec` under `A`. In the mutual
+    // block of `RecNameMixedStyle` the derived rules then called recursors
+    // that were never installed, the file defined one of them, and this run
+    // printed `13 verified · 0 unsupported · 0 rejected` with `boom : False`
+    // among the verified, exit 0. Now the bundle is refused for its name.
+    for limits in [&[][..], &["--limits", "corpus"][..]] {
+        for (name, ty, split, dependents) in [
+            (
+                "RecNameMixedStyle",
+                "A",
+                (8, 0, 5),
+                &["X", "get_X_is_f", "bad_f_eq_t", "boom"][..],
+            ),
+            (
+                "RecNameFlat",
+                "T",
+                (7, 0, 8),
+                &["val", "fst", "val_eq", "honest_val_is_t", "boom"][..],
+            ),
+        ] {
+            let fixture_path = fixture(name);
+            let mut args: Vec<&str> = limits.to_vec();
+            args.push(fixture_path.to_str().unwrap());
+            let out = run(&args);
+            let text = stdout(&out);
+            assert_eq!(code(&out), 1, "{name}, limits {limits:?}: stdout: {text}");
+            assert_eq!(
+                parse_summary_counts(&text),
+                split,
+                "{name}, limits {limits:?}"
+            );
+            let line_of = |word: &str| {
+                text.lines()
+                    .find(|l| l.split_whitespace().any(|w| w == word))
+                    .unwrap_or_else(|| panic!("no line for {word} in: {text}"))
+            };
+            let bundle = line_of(ty);
+            assert!(
+                bundle.contains("rejected")
+                    && bundle.contains(&format!("recursor record '«{ty}.rec»'"))
+                    && bundle.contains("is not named as Lean's kernel names a recursor"),
+                "{name}: {ty} must be rejected for its recursor's name (limits {limits:?}): \
+                 {bundle}"
+            );
+            for dependent in dependents {
+                let line = line_of(dependent);
+                assert!(
+                    line.contains("rejected") && line.contains("depends on rejected declaration"),
+                    "{name}: {dependent} must be rejected as a dependent (limits {limits:?}): \
+                     {line}"
+                );
+            }
+        }
+    }
+
+    // The mutual block as Lean's kernel makes it: this build and Lean's
+    // kernel agree on every declaration (9 · 0 · 4).
+    let out = run(&[
+        "--quiet",
+        fixture("RecNameMixedStyleTruth").to_str().unwrap(),
+    ]);
+    assert_eq!(code(&out), 1, "stdout: {}", stdout(&out));
+    assert_eq!(parse_summary_counts(&stdout(&out)), (9, 0, 4));
+}
+
+#[test]
 fn congruence_first_fixture_verifies_all_but_the_theorem_lean_rejects() {
     // The second committed negative fixture (see the fixture README):
     // `CongruenceFirst.bad` equates one function applied to unequal
@@ -350,7 +630,7 @@ fn parse_summary_counts(text: &str) -> (usize, usize, usize) {
 /// investigate, never re-pin to make the table pretty.
 #[test]
 fn fixture_three_bucket_splits_are_pinned() {
-    let expected: [(&str, usize, usize, usize); 10] = [
+    let expected: [(&str, usize, usize, usize); 11] = [
         ("simple_add", 23, 0, 0),
         ("Nat.add_succ", 19, 0, 0),
         ("Tree_Forest", 1, 0, 0),
@@ -361,6 +641,7 @@ fn fixture_three_bucket_splits_are_pinned() {
         ("QuotPartialApp", 66, 0, 0),
         ("ReductionChain", 36, 0, 0),
         ("SharedSubterms", 60, 0, 0),
+        ("ProjRecIndexed", 22, 0, 0),
     ];
     for (name, verified, unsupported, rejected) in expected {
         let out = run(&["--quiet", fixture(name).to_str().unwrap()]);

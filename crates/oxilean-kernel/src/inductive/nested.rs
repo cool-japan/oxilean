@@ -6,8 +6,8 @@
 //! kernel compiles these by SPECIALIZING each container into an auxiliary
 //! mutual inductive (the family type becomes a fresh leading parameter),
 //! CHECKING that genuinely-mutual family with the ordinary machinery, then
-//! RESTORING recursors stated over the *real* container so the exported
-//! recursor re-verifies by def-eq.
+//! RESTORING recursors stated over the *real* container, which are what is
+//! installed and what an exported recursor is held against.
 //!
 //! This module is built in stages (see
 //! `docs/audit/2026-07-17-nested-inductives/design.md`):
@@ -21,14 +21,13 @@
 //! - **S3:** `restore` — repackage the derived recursors over the real
 //!   container and drop the abstracted parameters.
 
-use super::derive::{
-    check_and_derive_family, has_const_occ, recursor_matches, DerivedFamily, InductiveSpec,
-};
+use super::derive::{check_and_derive_family, has_const_occ, DerivedFamily, InductiveSpec};
+use super::supplied::{derived_under_supplied_names, recursor_matches, same_up_to_binders};
 use crate::declaration::{ConstantInfo, InductiveVal, RecursorRule, RecursorVal};
 use crate::expr_util::{get_app_fn_args, mk_app, replace_expr};
 use crate::instantiate::instantiate_type_lparams;
 use crate::subst::instantiate;
-use crate::{Environment, Expr, KernelError, Level, Name, NameView, TypeChecker};
+use crate::{Environment, Expr, KernelError, Level, Name, NameView};
 
 /// A nested occurrence `C Ds Is`: a family-being-defined type appears inside the
 /// arguments of an already-declared foreign inductive `C`.
@@ -539,14 +538,27 @@ pub fn restore(fam: DerivedFamily, exp: &ExpandedFamily) -> DerivedFamily {
 // S4 — export replay: verify exported recursors against the restored family.
 // ---------------------------------------------------------------------------
 
-/// The sorted set of constructor names a recursor's rules fire on. Uniquely
-/// identifies which (original or container) member a restored recursor belongs
-/// to, so exported and re-derived recursors can be paired without relying on a
-/// naming convention.
-fn rule_ctor_set(rv: &RecursorVal) -> Vec<Name> {
-    let mut s: Vec<Name> = rv.rules.iter().map(|r| r.ctor.clone()).collect();
-    s.sort();
-    s
+/// The name Lean's kernel gives the recursor at `position` of a nested
+/// family's derivation: `T.rec` for the declaration's own types, in their
+/// order, then `<first type>.rec_1`, `<first type>.rec_2`, ... for the
+/// auxiliary types, in the order the nested occurrences are specialized (the
+/// declaration's types, their constructors and their fields in order, then
+/// the auxiliary types' own).
+///
+/// The name is the key by which an exported recursor is paired with a
+/// derived one. Pairing by anything the file is free to arrange — the set of
+/// constructors a recursor's rules fire on, say — would let a file exchange
+/// the names of two recursors throughout a bundle, and a later declaration
+/// would then eliminate one type with the recursor that carries another's
+/// name.
+fn nested_recursor_name(specs: &[InductiveSpec], position: usize) -> Name {
+    match specs.get(position) {
+        Some(spec) => Name::mk_str(spec.name.clone(), "rec"),
+        None => {
+            let first = specs.first().map(|s| s.name.clone()).unwrap_or_default();
+            Name::mk_str(first, format!("rec_{}", position + 1 - specs.len()))
+        }
+    }
 }
 
 /// Rewrite recursor self-references according to `name_map` (provisional → real
@@ -596,16 +608,75 @@ fn rename_recursors(fam: DerivedFamily, name_map: &[(Name, Name)]) -> DerivedFam
     }
 }
 
+/// The family the nested derivation returns is the DECLARED one: restoring
+/// the specialized family gives back every declared type and every declared
+/// constructor type as it was written (up to binder names and binder
+/// information).
+///
+/// It does not when the declaration itself names an auxiliary type of its
+/// own specialization (`T._nested_0`). That name is a constant only while
+/// the specialized family is checked — so a constructor `b : T._nested_0 → T`
+/// type-checks there, although no such constant is declared — and
+/// restoration writes the container back in its place (`b : List T → T`):
+/// the family that would be installed is not the one the declaration states.
+/// Lean's kernel refuses such a declaration (unknown constant), and so does
+/// this check.
+#[allow(clippy::result_large_err)]
+fn declared_family_restored(
+    specs: &[InductiveSpec],
+    restored: &DerivedFamily,
+) -> Result<(), KernelError> {
+    let family = specs.first().map(|s| s.name.clone()).unwrap_or_default();
+    let differs = |name: &Name| {
+        KernelError::InvalidInductive(format!(
+            "nested inductive '{family}': '{name}' is not declared with the type the kernel \
+             derives for it (a declaration must not name an auxiliary type of its own nesting)"
+        ))
+    };
+    if restored.inductives.len() != specs.len() {
+        return Err(differs(&family));
+    }
+    for (spec, ci) in specs.iter().zip(&restored.inductives) {
+        if ci.name() != &spec.name || !same_up_to_binders(ci.ty(), &spec.ty) {
+            return Err(differs(&spec.name));
+        }
+    }
+    let declared = specs.iter().flat_map(|spec| spec.ctors.iter());
+    if restored.constructors.len() != declared.clone().count() {
+        return Err(differs(&family));
+    }
+    for (ctor_name, ctor_ty) in declared {
+        let same = restored
+            .constructors
+            .iter()
+            .find(|ci| ci.name() == ctor_name)
+            .is_some_and(|ci| same_up_to_binders(ci.ty(), ctor_ty));
+        if !same {
+            return Err(differs(ctor_name));
+        }
+    }
+    Ok(())
+}
+
 /// Verify a nested `inductive` bundle for export replay and return the
-/// kernel-derived family to install (recursors renamed to the exported names).
+/// kernel-derived family to install (recursors renamed to the exported names
+/// and put under the exported universe parameter names).
 ///
 /// Runs the nested-aware derivation (specialize → derive → restore), pairs each
-/// re-derived recursor with an exported one by the set of constructors its rules
-/// fire on, renames the re-derived recursors to the exported names (so
-/// self-references align), then requires every exported recursor to be
-/// definitionally equal to the corresponding re-derived one
-/// (`recursor_matches`). A missing pair or a failed def-eq is a rejection —
-/// no exported recursor is ever accepted without a sound kernel re-derivation.
+/// re-derived recursor with the exported one that carries the name Lean's
+/// kernel gives it (`nested_recursor_name`: `T.rec` for a type of the
+/// declaration, `<first type>.rec_<k>` for the `k`-th auxiliary type), renames
+/// the re-derived recursors to those names (so self-references align), then
+/// requires every exported recursor to be the re-derived one of its name
+/// (`recursor_matches`: the same as written, or type-checked against the
+/// derived family and then definitionally equal — never compared by
+/// definitional equality unchecked). A missing pair or a recursor that is not
+/// the derived one is a rejection, and none is accepted under another
+/// recursor's name. No exported recursor is ever installed: the family this
+/// returns is the kernel's, and its rules call one another by the names it
+/// was renamed to. It is added with [`super::installed::add_derived_family`],
+/// whose guard holds every name a term of the family mentions to the
+/// constants the install leaves in the environment.
 ///
 /// Returns [`KernelError::UnsupportedNestedInductive`] for shapes this stage
 /// cannot un-nest (parametrized families, family in an index position,
@@ -626,6 +697,7 @@ pub fn verify_nested_bundle(
         ));
     };
     let restored = restore(raw, &exp);
+    declared_family_restored(specs, &restored)?;
 
     if restored.recursors.len() != exported_recs.len() {
         return Err(KernelError::InvalidRecursor(format!(
@@ -636,48 +708,63 @@ pub fn verify_nested_bundle(
         )));
     }
 
-    // Pair each re-derived recursor with an exported one by rule-constructor set.
+    // Pair each re-derived recursor with the exported one of the name Lean's
+    // kernel gives it. With as many exported recursors as derived ones and
+    // the derived names distinct, every exported recursor is then paired
+    // with exactly one derived recursor.
     let mut name_map: Vec<(Name, Name)> = Vec::with_capacity(restored.recursors.len());
-    for ci in &restored.recursors {
+    for (position, ci) in restored.recursors.iter().enumerate() {
         if let ConstantInfo::Recursor(rv) = ci {
-            let set = rule_ctor_set(rv);
-            let er = exported_recs
-                .iter()
-                .find(|er| rule_ctor_set(er) == set)
-                .ok_or_else(|| {
-                    KernelError::InvalidRecursor(format!(
-                        "nested inductive '{}': no exported recursor eliminates the same \
-                         constructors as the kernel-derived '{}'",
-                        specs[0].name, rv.common.name
-                    ))
-                })?;
-            name_map.push((rv.common.name.clone(), er.common.name.clone()));
+            let lean_name = nested_recursor_name(specs, position);
+            if !exported_recs.iter().any(|er| er.common.name == lean_name) {
+                return Err(KernelError::InvalidRecursor(format!(
+                    "nested inductive '{}': the export has no recursor named '{}', which the \
+                     kernel derives",
+                    specs[0].name, lean_name
+                )));
+            }
+            name_map.push((rv.common.name.clone(), lean_name));
         }
     }
 
     let renamed = rename_recursors(restored, &name_map);
 
-    // Every exported recursor must def-eq the re-derived one of the same name.
-    let mut tc = TypeChecker::new(env);
-    for er in exported_recs {
-        let mut ok = false;
-        for ci in &renamed.recursors {
-            if let ConstantInfo::Recursor(d) = ci {
-                if d.common.name == er.common.name && recursor_matches(&mut tc, d, er) {
-                    ok = true;
-                    break;
-                }
+    // Every exported recursor must be the re-derived one of the same name;
+    // the re-derived one, under the exported universe parameter names, is
+    // what the family is returned with.
+    let family: [&[ConstantInfo]; 3] = [
+        &renamed.inductives,
+        &renamed.constructors,
+        &renamed.recursors,
+    ];
+    let mut installed: Vec<ConstantInfo> = Vec::with_capacity(renamed.recursors.len());
+    for ci in &renamed.recursors {
+        let ConstantInfo::Recursor(d) = ci else {
+            continue;
+        };
+        let matched = exported_recs
+            .iter()
+            .filter(|er| er.common.name == d.common.name)
+            .find_map(|er| {
+                let under_names = derived_under_supplied_names(d, er)?;
+                recursor_matches(env, &family, &under_names, er).then_some(under_names)
+            });
+        match matched {
+            Some(under_names) => installed.push(ConstantInfo::Recursor(under_names)),
+            None => {
+                return Err(KernelError::InvalidRecursor(format!(
+                    "exported recursor '{}' does not match the kernel-derived nested recursor",
+                    d.common.name
+                )));
             }
-        }
-        if !ok {
-            return Err(KernelError::InvalidRecursor(format!(
-                "exported recursor '{}' does not match the kernel-derived nested recursor",
-                er.common.name
-            )));
         }
     }
 
-    Ok(renamed)
+    Ok(DerivedFamily {
+        inductives: renamed.inductives,
+        constructors: renamed.constructors,
+        recursors: installed,
+    })
 }
 
 #[cfg(test)]
@@ -1104,7 +1191,8 @@ mod tests {
             .iter()
             .filter_map(|ci| match ci {
                 ConstantInfo::Recursor(rv) => {
-                    let exported = if rule_ctor_set(rv).contains(&Name::str("NestedT.mk")) {
+                    let on_mk = rv.rules.iter().any(|r| r.ctor == Name::str("NestedT.mk"));
+                    let exported = if on_mk {
                         Name::mk_str(Name::str("NestedT"), "rec".to_string())
                     } else {
                         Name::mk_str(Name::str("NestedT"), "rec_1".to_string())

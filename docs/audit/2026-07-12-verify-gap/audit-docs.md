@@ -254,7 +254,7 @@ All crate READMEs: "Apache-2.0" ✓
 
 ### 5.2 Copyright Holder: CORRECT
 CONTRIBUTING.md line 711: "licensed under Apache-2.0" — contributions absorbed.
-Cargo.toml workspace: `authors = ["COOLJAPAN OU (Team Kitasan)"]` ✓
+Cargo.toml workspace: `authors = ["COOLJAPAN OU (Team KitaSan)"]` ✓
 LICENSE file line 189: `Copyright 2026 COOLJAPAN OU (Team KitaSan)` ✓ (Note: different capitalization — see §5.3)
 
 ### 5.3 Minor Inconsistency: "KitaSan" vs "Kitasan"

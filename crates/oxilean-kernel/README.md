@@ -18,7 +18,7 @@ The kernel is the core responsible for type checking in the Calculus of Inductiv
 
 ```toml
 [dependencies]
-oxilean-kernel = "0.1.4"
+oxilean-kernel = "0.1.5"
 ```
 
 ### Cargo features
@@ -130,7 +130,13 @@ with `Node::new(expr)`; identity is `Node::ptr_eq` / `Node::as_ptr` (the
   they are shared: a shared subterm is rebuilt once per walk, not once per path.
 - Type inference remembers what it has typed (a type-inference cache), and
   definitional equality tries congruence first (`f a ≡ f b`) before unfolding.
-- Nested inductives are elaborated to mutual inductives.
+- Nested inductives are elaborated to mutual inductives (`verify_nested_bundle`)
+  when the family has no parameters and is nested through a container that is
+  not part of a mutual block; any other nested inductive is refused as
+  `UnsupportedNestedInductive`. Within that scope three shapes Lean's kernel
+  accepts are still refused, with other errors (C25, C28 and C29 in the
+  workspace's `TODO_VERIFY.md`). `add_inductive_family` takes no nested
+  inductive.
 - `check_constant_info` checks that a constant's terms are closed.
 
 ## Usage
@@ -168,4 +174,4 @@ cargo test -p oxilean-kernel -- --nocapture  # verbose
 
 ## License
 
-Copyright COOLJAPAN OU (Team Kitasan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.
+Copyright COOLJAPAN OU (Team KitaSan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.

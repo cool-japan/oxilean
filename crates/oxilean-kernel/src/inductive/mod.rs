@@ -6,10 +6,12 @@ pub mod functions;
 pub mod inductiveenv_traits;
 pub mod inductiveerror_traits;
 pub mod inductivetypebuilder_traits;
+pub mod installed;
 pub mod labelset_traits;
 pub mod nested;
 pub mod smallmap_traits;
 pub mod statsummary_traits;
+pub mod supplied;
 pub mod transformstat_traits;
 pub mod types;
 pub mod windowiterator_traits;
@@ -24,6 +26,7 @@ pub use functions::*;
 pub use inductiveenv_traits::*;
 pub use inductiveerror_traits::*;
 pub use inductivetypebuilder_traits::*;
+pub use installed::{add_derived_family, escaped_name};
 pub use labelset_traits::*;
 pub use nested::{
     check_and_derive_family_nested, detect as detect_nested, restore as restore_nested,
@@ -31,6 +34,7 @@ pub use nested::{
 };
 pub use smallmap_traits::*;
 pub use statsummary_traits::*;
+pub use supplied::{same_up_to_binders, supplied_type_matches};
 pub use transformstat_traits::*;
 pub use types::*;
 pub use windowiterator_traits::*;

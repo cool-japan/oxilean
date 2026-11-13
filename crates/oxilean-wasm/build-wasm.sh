@@ -39,7 +39,7 @@ pkg.license = 'Apache-2.0';
 pkg.repository = { type: 'git', url: 'https://github.com/cool-japan/oxilean' };
 pkg.homepage = 'https://github.com/cool-japan/oxilean';
 pkg.bugs = { url: 'https://github.com/cool-japan/oxilean/issues' };
-pkg.author = 'COOLJAPAN OU (Team Kitasan)';
+pkg.author = 'COOLJAPAN OU (Team KitaSan)';
 fs.writeFileSync('pkg/package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
     echo "--- Patched package.json with @cooljapan/oxilean ---"

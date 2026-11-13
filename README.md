@@ -70,7 +70,9 @@ Qualifiers that must travel with the number:
 - **The default limits are enough.** Both corpora get the same verdicts
   without `--limits corpus`. The heaviest declaration of `Init` uses
   40% of the default per-declaration budget.
-- **What changed since 0.1.3.** Nested inductives are supported, and the
+- **What changed since 0.1.3.** Nested inductives such as `Lean.Syntax` are
+  supported (not every nested shape yet; the four Mathlib types above are
+  among those that are not), and the
   per-declaration budget is charged for the work the kernel does, not for the
   size a shared term would have as a tree (see
   [What's New in v0.1.4](#whats-new-in-v014)). In 0.1.3, one
@@ -502,7 +504,11 @@ Supports bundler (webpack/vite), web (browser), and Node.js targets. See [oxilea
   Recursors are derived on that family and restored over the real container,
   and every exported recursor is re-verified by def-eq, never trusted. On Lean
   core `Init`, verified rises from **35,424 to 47,119 (82.3%)**, still with
-  **0 rejected**.
+  **0 rejected**. This covers a family without parameters, nested through a
+  container that is not part of a mutual block; any other nested inductive is
+  still reported `unsupported` (`nested inductives`). Within that scope three
+  shapes Lean's kernel accepts are rejected (C25, C28 and C29 in
+  `TODO_VERIFY.md`).
 - **Structural sharing, Stage F**: `Name`/`Level` Rc-newtype interning. It is
   memory-only and moved no verdict. Peak RSS on full `Init` falls from 3.5 GiB
   to 2.1 GiB (same machine; see the table above).
@@ -606,7 +612,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Sponsorship
 
-OxiLean is developed and maintained by **COOLJAPAN OU (Team Kitasan)**.
+OxiLean is developed and maintained by **COOLJAPAN OU (Team KitaSan)**.
 
 If you find OxiLean useful, please consider sponsoring the project to support continued development of the Pure Rust ecosystem.
 
@@ -621,7 +627,7 @@ Your sponsorship helps us:
 
 ## License
 
-Copyright (c) COOLJAPAN OU (Team Kitasan). Licensed under [Apache-2.0](LICENSE).
+Copyright (c) COOLJAPAN OU (Team KitaSan). Licensed under [Apache-2.0](LICENSE).
 
 ## Related Projects (COOLJAPAN Ecosystem)
 
@@ -634,8 +640,8 @@ Copyright (c) COOLJAPAN OU (Team Kitasan). Licensed under [Apache-2.0](LICENSE).
 ## Acknowledgments
 
 - Inspired by [Lean 4](https://github.com/leanprover/lean4)
-- Built by [COOLJAPAN OU (Team Kitasan)](https://github.com/cool-japan)
+- Built by [COOLJAPAN OU (Team KitaSan)](https://github.com/cool-japan)
 
 ---
 
-**v0.1.4** (2026-11-12) | Under active development
+**v0.1.5** (2026-11-13) | Current release

@@ -19,12 +19,35 @@ use super::types::{
 
 /// Arity of a kernel literal-reduction operation (`Nat`/`String` extension).
 ///
-/// Mirrors the Lean 4 kernel: `Nat.succ` is the only unary Nat extension
-/// there; `Nat.pred`, `Nat.blt`, and the `String` operations are safe,
-/// semantics-preserving extras that compute exactly what the exported
-/// definitions would. The extension fires only at **exactly** this arity, so
-/// an over-applied operation is left stuck and no argument is ever dropped.
-pub(crate) fn lit_op_arity(name: &str) -> Option<usize> {
+/// Two groups, and they are not the same thing:
+///
+/// * **Lean's own extension**: `Nat.succ` on a literal, and the binary
+///   `Nat.add`, `sub`, `mul`, `div`, `mod`, `gcd`, `beq`, `ble`, `land`,
+///   `lor`, `xor`, `shiftLeft`, `shiftRight`, `pow`. Lean 4's kernel computes
+///   these on literals **by name**, whatever the environment declares under
+///   the name (measured on v4.32.0-rc1, 2026-11-12, with each operation
+///   declared as an axiom: `Nat.add 7 5 = 12` checks by `Eq.refl`). This
+///   kernel does the same: an environment that declares one of them
+///   otherwise is believed about it by both kernels alike.
+/// * **This kernel's own primitives** ([`lit_op_is_kernel_primitive`]):
+///   `Nat.pred`, `Nat.blt`, `Nat.log2`, `String.length`, `String.append`,
+///   `String.beq`. Lean's kernel computes none of them by name (measured
+///   the same way: each such theorem is refused). They are reduction rules
+///   of the builtin environment, which declares these operations without a
+///   definition (`builtin::init_builtin_env`), and they fire only in an
+///   environment that says so ([`Environment::has_literal_primitives`],
+///   passed here as `primitives`). In any other environment — every
+///   environment replayed from an export, where the file declares its own
+///   `Nat.pred` — the name is an ordinary constant and reduces by its
+///   declaration: a file that defines `Nat.pred` as the identity must not
+///   have `Nat.pred 5 = 4` checked by `Eq.refl`.
+///
+/// The extension fires only at **exactly** this arity, so an over-applied
+/// operation is left stuck and no argument is ever dropped.
+pub(crate) fn lit_op_arity(name: &str, primitives: bool) -> Option<usize> {
+    if !primitives && lit_op_is_kernel_primitive(name) {
+        return None;
+    }
     match name {
         "Nat.succ" | "Nat.pred" | "Nat.log2" | "String.length" => Some(1),
         "Nat.add" | "Nat.sub" | "Nat.mul" | "Nat.div" | "Nat.mod" | "Nat.pow" | "Nat.gcd"
@@ -32,6 +55,14 @@ pub(crate) fn lit_op_arity(name: &str) -> Option<usize> {
         | "Nat.shiftLeft" | "Nat.shiftRight" | "String.append" | "String.beq" => Some(2),
         _ => None,
     }
+}
+/// The literal operations that are this kernel's own primitives and not
+/// part of Lean's kernel extension (see [`lit_op_arity`]).
+pub(crate) fn lit_op_is_kernel_primitive(name: &str) -> bool {
+    matches!(
+        name,
+        "Nat.pred" | "Nat.blt" | "Nat.log2" | "String.length" | "String.append" | "String.beq"
+    )
 }
 /// Interpret a WHNF'd expression as a Nat literal.
 ///
@@ -58,15 +89,17 @@ fn as_nat_lit_ext(e: &Expr) -> Option<std::borrow::Cow<'_, BigNat>> {
 /// [`lit_op_arity`]); `None` means the term stays stuck. `Nat.pow` and
 /// `Nat.shiftLeft` also return `None` when the result would exceed
 /// [`crate::bignat::MAX_RESULT_BITS`] — reduction then stays stuck rather
-/// than producing a wrong or memory-exhausting value.
-pub(super) fn try_reduce_nat_app(head: &Expr, args: &[Expr]) -> Option<Expr> {
+/// than producing a wrong or memory-exhausting value. `primitives` says
+/// whether the environment declares this kernel's own literal primitives
+/// (see [`lit_op_arity`]); without it only Lean's extension is computed.
+pub(super) fn try_reduce_nat_app(head: &Expr, args: &[Expr], primitives: bool) -> Option<Expr> {
     let name = if let Expr::Const(name, _) = head {
         name
     } else {
         return None;
     };
     let name_str = name.to_string();
-    let arity = lit_op_arity(&name_str)?;
+    let arity = lit_op_arity(&name_str, primitives)?;
     if args.len() != arity {
         return None;
     }
@@ -325,19 +358,19 @@ mod tests {
         let head = Expr::Const(Name::str("Nat.div"), vec![]);
         let args = vec![Expr::Lit(Literal::nat(10)), Expr::Lit(Literal::nat(3))];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::nat(3)))
         );
         let head = Expr::Const(Name::str("Nat.mod"), vec![]);
         let args = vec![Expr::Lit(Literal::nat(10)), Expr::Lit(Literal::nat(3))];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::nat(1)))
         );
         let head = Expr::Const(Name::str("Nat.gcd"), vec![]);
         let args = vec![Expr::Lit(Literal::nat(12)), Expr::Lit(Literal::nat(8))];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::nat(4)))
         );
     }
@@ -349,7 +382,7 @@ mod tests {
             Expr::Lit(Literal::nat(0b1010)),
         ];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::nat(0b1000)))
         );
         let head = Expr::Const(Name::str("Nat.lor"), vec![]);
@@ -358,7 +391,7 @@ mod tests {
             Expr::Lit(Literal::nat(0b1010)),
         ];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::nat(0b1110)))
         );
         let head = Expr::Const(Name::str("Nat.xor"), vec![]);
@@ -367,7 +400,7 @@ mod tests {
             Expr::Lit(Literal::nat(0b1010)),
         ];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::nat(0b0110)))
         );
     }
@@ -376,7 +409,7 @@ mod tests {
         let head = Expr::Const(Name::str("String.length"), vec![]);
         let args = vec![Expr::Lit(Literal::Str("hello".to_string()))];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::nat(5)))
         );
         let head = Expr::Const(Name::str("String.append"), vec![]);
@@ -385,7 +418,7 @@ mod tests {
             Expr::Lit(Literal::Str(" world".to_string())),
         ];
         assert_eq!(
-            try_reduce_nat_app(&head, &args),
+            try_reduce_nat_app(&head, &args, true),
             Some(Expr::Lit(Literal::Str("hello world".to_string())))
         );
     }

@@ -1399,13 +1399,15 @@ impl Reducer {
                         Expr::Const(name, levels) => {
                             // 1. Literal folding (Nat/String kernel
                             //    extension), before delta — the Lean order.
-                            if let Some(arity) = lit_op_arity(&name.to_string()) {
+                            let primitives = env.has_literal_primitives();
+                            if let Some(arity) = lit_op_arity(&name.to_string(), primitives) {
                                 if args.len() == arity {
                                     let args_whnf: Vec<Expr> = args
                                         .iter()
                                         .map(|a| self.whnf_env_depth(a, env, depth + 1))
                                         .collect();
-                                    if let Some(reduced) = try_reduce_nat_app(head_ref, &args_whnf)
+                                    if let Some(reduced) =
+                                        try_reduce_nat_app(head_ref, &args_whnf, primitives)
                                     {
                                         let reduced = respell_bool_const_for_env(reduced, env);
                                         return StepOutcome::Continue(reduced);

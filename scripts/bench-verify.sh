@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+# Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.
 #
 # bench-verify.sh — measure oxilean-verify throughput (declarations/second) on
 #   (a) the six committed fixtures, and

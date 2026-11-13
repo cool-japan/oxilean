@@ -8,6 +8,8 @@ pub mod labelset_traits;
 #[cfg(test)]
 mod local_scope_tests;
 pub mod pathbuf_traits;
+pub(crate) mod proj_prop;
+pub(crate) mod proj_target;
 pub mod rewriteruleset_traits;
 pub mod smallmap_traits;
 pub mod stackcalc_traits;

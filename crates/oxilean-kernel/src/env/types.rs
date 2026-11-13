@@ -235,6 +235,9 @@ pub struct Environment {
     /// [`Environment::add_quot`]. Quotient constants may only be added through
     /// that once-only entry point (mirroring Lean's `environment::quot_initialized`).
     quot_initialized: bool,
+    /// Whether this environment declares the kernel's own literal
+    /// primitives (see [`Environment::has_literal_primitives`]).
+    literal_primitives: bool,
 }
 impl Environment {
     /// Create a new empty environment.
@@ -243,6 +246,7 @@ impl Environment {
             declarations: HashMap::new(),
             constants: HashMap::new(),
             quot_initialized: false,
+            literal_primitives: false,
         }
     }
     /// Add a legacy declaration to the environment.
@@ -278,9 +282,69 @@ impl Environment {
         self.constants.insert(name, ci);
         Ok(())
     }
+    /// Add a group of constants as a unit: every one of them, or none.
+    ///
+    /// The whole group is looked at before anything is inserted. When one of
+    /// its names is already declared, occurs twice in the group, or belongs
+    /// to a quotient constant (see [`Environment::add_constant`]), the error
+    /// is returned and the environment is exactly what it was. This is how a
+    /// declaration that consists of several constants — an inductive family
+    /// with its constructors and recursors — is installed: a caller that
+    /// added them one by one would leave the first ones behind when a later
+    /// one is refused.
+    pub fn add_constants(&mut self, cis: Vec<ConstantInfo>) -> Result<(), EnvError> {
+        for (i, ci) in cis.iter().enumerate() {
+            if ci.is_quotient() {
+                return Err(EnvError::InvalidQuotient(
+                    "quotient constants may only be added via Environment::add_quot".to_string(),
+                ));
+            }
+            let name = ci.name();
+            if self.contains(name) || cis[..i].iter().any(|earlier| earlier.name() == name) {
+                return Err(EnvError::DuplicateDeclaration(name.clone()));
+            }
+        }
+        for ci in cis {
+            self.constants.insert(ci.name().clone(), ci);
+        }
+        Ok(())
+    }
+    /// Take constants out again. Only for undoing, within one kernel call,
+    /// what that same call added through [`Environment::add_constant`] (see
+    /// `check::check_constant_infos_atomic`): a name added that way was
+    /// free before, so removing it restores the environment exactly. It is
+    /// not public — removing a constant that other constants were checked
+    /// against would leave them unchecked.
+    pub(crate) fn remove_constants(&mut self, names: &[Name]) {
+        for name in names {
+            self.constants.remove(name);
+        }
+    }
     /// Whether the four `#QUOT` primitives have been installed.
     pub fn quot_initialized(&self) -> bool {
         self.quot_initialized
+    }
+    /// Whether this environment declares the kernel's own literal
+    /// primitives — `Nat.pred`, `Nat.blt`, `Nat.log2`, `String.length`,
+    /// `String.append`, `String.beq` — as operations without a definition,
+    /// computed on literals by the reducer.
+    ///
+    /// `false` for an empty environment, and so for every environment
+    /// replayed from an export: there a constant of one of these names is
+    /// whatever the file declared, and it reduces by that declaration. Lean
+    /// 4's kernel computes none of the six by name; only the operations it
+    /// does compute by name (`Nat.add`, `Nat.sub`, ...) are computed
+    /// regardless of this flag. See `reduce::lit_op_arity`.
+    pub fn has_literal_primitives(&self) -> bool {
+        self.literal_primitives
+    }
+    /// Say that this environment declares the kernel's own literal
+    /// primitives (see [`Environment::has_literal_primitives`]). Called by
+    /// the builtin environment, which declares them without a definition;
+    /// it is not public, so that an environment built from declarations of
+    /// someone else's cannot turn the reduction rules on for them.
+    pub(crate) fn declare_literal_primitives(&mut self) {
+        self.literal_primitives = true;
     }
     /// Insert a pre-validated quotient constant.
     ///

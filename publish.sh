@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Publish script for oxilean crates
-# Copyright: COOLJAPAN OU (Team Kitasan)
+# Copyright: COOLJAPAN OU (Team KitaSan)
 # Default: dry-run mode. Pass --publish for real publish.
 
 # Colors

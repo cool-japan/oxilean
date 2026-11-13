@@ -5,22 +5,36 @@
 //!
 //! 1. **Signature checking** — every type in the family is a telescope of
 //!    `num_params` shared parameters followed by indices, ending in a sort;
-//!    all types of a mutual family must land in the *same* sort.
+//!    all types of a mutual family must land in the *same* sort. The
+//!    parameters are binders of the type **as written**; the indices and
+//!    the sort may be reached by unfolding (`inductive T : Fam` with
+//!    `Fam := Nat → Type` has one index — measured against Lean 4
+//!    v4.32.0-rc1, which refuses the same type with one *parameter*).
 //! 2. **Constructor checking** — each constructor takes the family
 //!    parameters first (definitionally equal binders), then fields; each
 //!    field's universe must fit the inductive's universe (no constraint when
 //!    the family lives in `Prop`); the codomain must be the parent type
-//!    applied to exactly the parameters followed by index terms.
+//!    applied to exactly the parameters followed by index terms, and no
+//!    index term may mention a type of the family. The telescope and the
+//!    codomain are read off the constructor's type **as written**: a
+//!    constructor whose type only unfolds to such a telescope is refused,
+//!    as Lean refuses it ("invalid return type").
 //! 3. **Strict positivity** — constructor argument types are reduced to WHNF
 //!    (so negativity hidden behind definitions is found) and occurrences of
 //!    any family member may only appear as the codomain of a field telescope
-//!    applied to exactly the parameters. Occurrences nested under another
+//!    applied to exactly the parameters, with indices that do not mention
+//!    the family. Occurrences nested under another
 //!    type constructor (`mk : List T → T`) are *nested inductives*, which
-//!    this kernel deliberately rejects with
-//!    [`KernelError::UnsupportedNestedInductive`] instead of compiling them
-//!    to mutual families.
+//!    this derivation rejects with
+//!    [`KernelError::UnsupportedNestedInductive`]. Since 0.1.4 the nested
+//!    path (`nested::check_and_derive_family_nested`, `verify_nested_bundle`)
+//!    first specializes them into an auxiliary mutual family, for a family
+//!    without parameters nested through a container that is not part of a
+//!    mutual block, and derives that family here.
 //! 4. **Recursor derivation** — the recursors are derived *by the kernel*
-//!    (never trusted from the outside): one recursor per family member,
+//!    (never taken from the outside: a recursor that arrives as a
+//!    declaration is compared with the derivation, and the derivation is
+//!    what is installed — see [`super::supplied`]): one recursor per family member,
 //!    each carrying all `k` motives and all minor premises. Minor premises
 //!    include induction hypotheses for recursive fields (Pi-wrapped for
 //!    reflexive fields). The elimination universe is decided by the kernel:
@@ -37,12 +51,12 @@
 //! reduction applies it to the recursor's premises and the constructor's
 //! fields and lets beta do the rest (see `reduce::iota`).
 
+use super::supplied::{derived_under_supplied_names, recursor_matches};
 use crate::declaration::{
     ConstantInfo, ConstantVal, ConstructorVal, InductiveVal, RecursorRule, RecursorVal,
 };
 use crate::expr_util::{get_app_fn, get_app_fn_args, mk_app};
 use crate::infer::LocalDecl;
-use crate::instantiate::instantiate_type_lparams;
 use crate::level::{is_equivalent, is_geq, normalize as normalize_level};
 use crate::subst::instantiate;
 use crate::Node;
@@ -368,9 +382,27 @@ fn peel_all(ctx: &mut DeriveCtx<'_>, ty: &Expr) -> (Vec<Binder>, Expr) {
     }
 }
 
+/// Peel the Pi binders `ty` has **as written** into fresh fvars — nothing
+/// is unfolded to find one — returning the binders and the
+/// fvar-instantiated remainder. This is how Lean's kernel reads the fields
+/// of a constructor: a constructor type that reaches a binder only by
+/// unfolding a definition has, for Lean, no such field.
+fn peel_binders_as_written(ctx: &mut DeriveCtx<'_>, ty: &Expr) -> (Vec<Binder>, Expr) {
+    let mut out = Vec::new();
+    let mut cur = ty.clone();
+    while let Expr::Pi(bi, name, dom, body) = cur {
+        let b = ctx.fresh(bi, name, (*dom).clone());
+        cur = instantiate(&body, &fv(&b));
+        out.push(b);
+    }
+    (out, cur)
+}
+
 /// Peel `params.len()` binders from `ty`, instantiating each with the
 /// corresponding shared parameter fvar. In checked mode the binder domain
-/// must be definitionally equal to the parameter's type.
+/// must be definitionally equal to the parameter's type. The binders are
+/// the ones `ty` has as written: a parameter is not looked for behind a
+/// definition (Lean: "incorrect number of parameters").
 #[allow(clippy::result_large_err)]
 fn peel_against_params(
     ctx: &mut DeriveCtx<'_>,
@@ -381,11 +413,7 @@ fn peel_against_params(
 ) -> Result<Expr, KernelError> {
     let mut cur = ty.clone();
     for (i, p) in params.iter().enumerate() {
-        let curw = if matches!(cur, Expr::Pi(_, _, _, _)) {
-            cur
-        } else {
-            ctx.whnf(&cur)
-        };
+        let curw = cur;
         match curw {
             Expr::Pi(_, _, dom, body) => {
                 if ctx.is_checked() && !ctx.is_def_eq(&dom, &p.ty) {
@@ -466,15 +494,13 @@ fn build_family_pre(
         }
     }
 
-    // Shared parameter telescope from the first type.
+    // Shared parameter telescope from the first type: its first `np`
+    // binders as written (the indices after them may be behind a
+    // definition, the parameters may not).
     let mut params = Vec::new();
     let mut cur = types[0].1.clone();
     for i in 0..np {
-        let curw = if matches!(cur, Expr::Pi(_, _, _, _)) {
-            cur
-        } else {
-            ctx.whnf(&cur)
-        };
+        let curw = cur;
         match curw {
             Expr::Pi(bi, name, dom, body) => {
                 let b = ctx.fresh(bi, name, (*dom).clone());
@@ -537,8 +563,18 @@ fn build_family_pre(
     })
 }
 
-/// `T_j params index-args` with exactly the declared levels and parameters?
+/// `T_j params index-args` with exactly the declared levels and parameters,
+/// and with index arguments that do not mention a type of the family?
 /// Returns the family position and the index argument terms.
+///
+/// The last condition is Lean's as well (`mk : J (J Type)` for
+/// `J : Type 1 → Type 1`: "invalid return type for 'J.mk'"), and it is not a
+/// formality: a type that occurs in its own index occurs in a place whose
+/// variance nothing has checked. `inductive I : Prop → Prop | mk : I (I True
+/// → False)` passes every other condition, and with propositional
+/// extensionality it is inconsistent — `I True` implies, by the recursor,
+/// `True = (I True → False)` and so its own negation; hence `¬ I True`,
+/// hence `(I True → False) = True`, hence `I True` by `mk`.
 fn as_valid_ind_app(pre: &FamilyPre, e: &Expr, strict: bool) -> Option<(usize, Vec<Expr>)> {
     let (head, args) = get_app_fn_args(e);
     let (n, levels) = match head {
@@ -562,6 +598,13 @@ fn as_valid_ind_app(pre: &FamilyPre, e: &Expr, strict: bool) -> Option<(usize, V
             if **arg != Expr::FVar(p.fvar) {
                 return None;
             }
+        }
+        if args
+            .iter()
+            .skip(pre.np)
+            .any(|index| has_const_occ(index, &pre.names))
+        {
+            return None;
         }
     }
     let idx = args.iter().skip(pre.np).map(|e| (*e).clone()).collect();
@@ -633,7 +676,8 @@ fn check_positivity(
                 }
                 _ => Err(KernelError::InvalidInductive(format!(
                     "invalid occurrence of '{}' in constructor '{}' (recursive occurrences \
-                     must be applied to exactly the family parameters)",
+                     must be applied to exactly the family parameters, with indices that do \
+                     not mention the family)",
                     decl_name, ctor_name
                 ))),
             }
@@ -677,7 +721,9 @@ fn check_ctor(
     }
     let decl_name = &pre.names[type_idx];
     let rest = peel_against_params(ctx, cty, &pre.params, "constructor", cname)?;
-    let (field_binders, cod) = peel_all(ctx, &rest);
+    // The fields and the codomain as the type is written (see the module
+    // docs): nothing is unfolded to find a field or the family.
+    let (field_binders, cod) = peel_binders_as_written(ctx, &rest);
 
     let mut fields = Vec::with_capacity(field_binders.len());
     for b in field_binders {
@@ -706,20 +752,19 @@ fn check_ctor(
         });
     }
 
-    let codw = ctx.whnf(&cod);
     let ret_index_args = if ctx.is_checked() {
-        match as_valid_ind_app(pre, &codw, true) {
+        match as_valid_ind_app(pre, &cod, true) {
             Some((j, idx)) if j == type_idx => idx,
             _ => {
                 return Err(KernelError::InvalidInductive(format!(
                     "constructor '{}' must return '{}' applied to exactly the family \
-                     parameters followed by index terms",
+                     parameters followed by index terms that do not mention the family",
                     cname, decl_name
                 )));
             }
         }
     } else {
-        match as_valid_ind_app(pre, &codw, false) {
+        match as_valid_ind_app(pre, &cod, false) {
             Some((j, idx)) if j == type_idx => idx,
             _ => {
                 return Err(KernelError::InvalidInductive(format!(
@@ -736,6 +781,51 @@ fn check_ctor(
         fields,
         ret_index_args,
     })
+}
+
+// ---------------------------------------------------------------------------
+// The `is_rec` and `is_reflexive` flags.
+// ---------------------------------------------------------------------------
+
+/// The `is_rec` and `is_reflexive` flags of a family, as Lean 4's kernel
+/// computes them when it adds the declaration: for the family as a whole
+/// (every type of a mutual block carries the same pair), and from the
+/// constructor types **as written**, before any reduction.
+///
+/// * `is_rec`: the type of some binder of some constructor names a type of
+///   the family.
+/// * `is_reflexive`: the type of some binder of some constructor is
+///   written as a function type and names a type of the family.
+///
+/// This is not the classification the recursor is derived from
+/// ([`classify_rec_field`]), which reduces a field's type first: a field of
+/// type `K T`, where `K` is a definition that drops its argument, gets no
+/// induction hypothesis, and Lean's kernel still records the family as
+/// recursive; a field of type `F T`, where `F T` unfolds to `Nat → T`, gets
+/// a function-shaped induction hypothesis, and Lean's kernel does not
+/// record the family as reflexive. Measured on Lean 4 v4.32.0-rc1 with
+/// declarations handed to its kernel directly (2026-11-12).
+///
+/// The flags decide which definitional rules apply to the type —
+/// `ConstantInfo::is_structure_like` asks for a type that is not
+/// recursive — so they follow Lean's computation and not this kernel's own
+/// reading of "recursive".
+fn family_rec_flags(family: &[Name], specs: &[InductiveSpec]) -> (bool, bool) {
+    let mut is_rec = false;
+    let mut is_reflexive = false;
+    for (_, ctor_ty) in specs.iter().flat_map(|spec| spec.ctors.iter()) {
+        let mut cur = ctor_ty;
+        while let Expr::Pi(_, _, dom, body) = cur {
+            if has_const_occ(dom, family) {
+                is_rec = true;
+                if matches!(&**dom, Expr::Pi(_, _, _, _)) {
+                    is_reflexive = true;
+                }
+            }
+            cur = &**body;
+        }
+    }
+    (is_rec, is_reflexive)
 }
 
 // ---------------------------------------------------------------------------
@@ -975,15 +1065,7 @@ fn derive_family_core(
     }
 
     // --- Inductive + constructor infos --------------------------------------
-    let is_rec_family = ctors
-        .iter()
-        .flatten()
-        .any(|c| c.fields.iter().any(|f| f.rec.is_some()));
-    let is_reflexive = ctors.iter().flatten().any(|c| {
-        c.fields
-            .iter()
-            .any(|f| matches!(&f.rec, Some(rf) if !rf.ds.is_empty()))
-    });
+    let (is_rec_family, is_reflexive) = family_rec_flags(&pre.names, specs);
     let is_prop = pre.ind_level.is_zero();
 
     let mut inductives = Vec::with_capacity(k);
@@ -1067,6 +1149,46 @@ fn check_distinct_ctor_names(specs: &[InductiveSpec]) -> Result<(), KernelError>
     Ok(())
 }
 
+/// The type of a type of the block mentions no type of the block.
+///
+/// Lean's kernel checks the types of a block before any of them is a
+/// constant, so a type that names a type of its own block names an unknown
+/// constant: `mutual inductive C : Type ..; inductive A : C → Type ..` is
+/// refused ("unknown constant 'C'"), and so is a nested declaration whose
+/// auxiliary type would be `T → Type` (measured on Lean 4 v4.32.0-rc1,
+/// 2026-11-12). Here the types of the block are checked in a working copy of
+/// the environment that already holds them — the constructor types need them
+/// there — so, without this check, the type of `A` above type-checks, and the
+/// block is accepted as an ordinary mutual family although its second type
+/// is indexed by its first.
+#[allow(clippy::result_large_err)]
+fn check_types_do_not_mention_the_block(
+    specs: &[InductiveSpec],
+    family_names: &[Name],
+) -> Result<(), KernelError> {
+    for spec in specs {
+        check_type_does_not_mention_the_block(&spec.name, &spec.ty, family_names)?;
+    }
+    Ok(())
+}
+
+/// [`check_types_do_not_mention_the_block`] for one type of the block.
+#[allow(clippy::result_large_err)]
+fn check_type_does_not_mention_the_block(
+    name: &Name,
+    ty: &Expr,
+    family_names: &[Name],
+) -> Result<(), KernelError> {
+    if has_const_occ(ty, family_names) {
+        return Err(KernelError::InvalidInductive(format!(
+            "the type of inductive type '{}' mentions a type of the block being declared: the \
+             types of a block are checked before any of them is a constant",
+            name
+        )));
+    }
+    Ok(())
+}
+
 /// Check an inductive family against `env` and derive its constructors and
 /// recursors, without modifying `env`. This is the kernel's independent
 /// re-derivation path: signature checking, constructor telescope/universe
@@ -1086,6 +1208,7 @@ pub fn check_and_derive_family(
     check_distinct_ctor_names(specs)?;
     check_specs_closed(specs)?;
     let family_names: Vec<Name> = specs.iter().map(|s| s.name.clone()).collect();
+    check_types_do_not_mention_the_block(specs, &family_names)?;
 
     // Stage the type constants so constructor types can mention them.
     let mut work = env.clone();
@@ -1146,8 +1269,24 @@ pub fn check_and_derive_family(
 }
 
 /// Check an inductive family and add its types, constructors, and
-/// kernel-derived recursors to `env`. This is the entry point an export
-/// replayer should use for `inductive` blocks (mutual families included).
+/// kernel-derived recursors to `env`, one constant at a time.
+///
+/// The derivation ([`check_and_derive_family`]) comes first, and when it
+/// fails nothing is added. The constants are then added one by one with
+/// [`Environment::add_constant`]: not as a unit, and without the guard of
+/// [`super::installed`] (every constant a derived term names resolves, and
+/// to the constant the derivation meant). When a name of the family is
+/// already declared, the error is returned and the members added before it
+/// stay in the environment; a recursor among them can then call, by that name,
+/// the constant that was declared before, not the one the derivation meant.
+///
+/// Its callers are this kernel's own: `init_builtin_env`,
+/// `InductiveEnv::register_in_env` and the tests. The export replay does
+/// not use it: it installs a bundle whole or not at all, after the guard,
+/// with [`check_and_derive_family`] and
+/// [`crate::check_constant_infos_atomic`] (the ordinary path), or with
+/// [`crate::verify_nested_bundle`] and [`super::installed::add_derived_family`]
+/// (the nested path).
 #[allow(clippy::result_large_err)]
 pub fn add_inductive_family(
     env: &mut Environment,
@@ -1223,6 +1362,9 @@ pub(crate) fn validate_inductive_val(
         "inductive type",
         &iv.common.name,
     )?;
+    // The types of a block are checked before any of them is a constant;
+    // here a sibling that was added first is one already.
+    check_type_does_not_mention_the_block(&iv.common.name, &iv.common.ty, &iv.all)?;
     let mut ctx = DeriveCtx::checked(env);
     ctx.ensure_sort(&iv.common.ty)?;
     let (binders, rest) = peel_all(&mut ctx, &iv.common.ty);
@@ -1390,14 +1532,50 @@ pub(crate) fn verify_constructor_val(
     Ok(())
 }
 
-/// Verify an externally-supplied `RecursorVal` by *re-deriving* the
-/// recursors for its inductive family from the environment and requiring
-/// the supplied declaration to match the derivation: identical structural
-/// metadata (param/index/motive/minor counts, K flag) and definitionally
-/// equal type and rule right-hand sides (up to level-parameter renaming).
-/// This is the "re-derive, don't trust" hardening for export replay.
+/// Hold an externally-supplied `RecursorVal` against the recursor the
+/// kernel derives, and return **the derived recursor**: the one to install.
+///
+/// Lean's kernel takes no recursor from its input; it derives the recursors
+/// of a family when the family is declared. So does this one: the recursors
+/// of the supplied declaration's family are re-derived from the environment
+/// (the types and constructors it holds), and what the caller installs is
+/// the derivation — its type, its rules, its counts and its `k` flag — under
+/// the supplied name and the supplied universe parameter names
+/// ([`derived_under_supplied_names`]). The supplied declaration is only
+/// compared with it, and a declaration that is not the derived one is
+/// refused: the same counts and `k` flag, the same rules for the same
+/// constructors in the same order, and the same type and right-hand sides —
+/// as written (up to binder names and binder information) or, failing that,
+/// type-checked first and then definitionally equal (see
+/// [`super::supplied`]). No supplied term is handed to definitional equality
+/// before it was type-checked, and none is ever what iota reduction runs on.
+///
+/// **Which derived recursor.** The supplied declaration is compared with
+/// the derived recursor *of its own name* and with no other: Lean's kernel
+/// names the recursor of a type `T` `T.rec`, so the name says which type
+/// of the family the declaration eliminates. A declaration named after no
+/// type of its family is refused, and so is one that carries a sibling's
+/// name over another type's recursor — in a mutual block `B.rec` must not
+/// be a copy of `A.rec`, nor the two exchanged: a term that applies
+/// `B.rec` to an `A` would otherwise check.
+///
+/// **The names its rules call.** The derivation names the recursors of the
+/// whole family, and in a mutual family a rule calls the sibling recursors
+/// by those names. They are named in the style of the supplied name: Lean's
+/// hierarchical `T.rec`, or — for this kernel's own tests — the one flat
+/// component `"T.rec"`. A group whose records mix the two styles would
+/// install rules that call recursors it never installs, and a later
+/// declaration could define them: the guard of
+/// [`crate::check_constant_infos_atomic`] (`super::installed`) holds every
+/// name a derived recursor mentions to the recursors and types of the
+/// family as installed, and refuses the group otherwise. The export replay
+/// accepts only Lean's names (`T.rec`, `<first type>.rec_<k>`), so it never
+/// reaches the flat style.
 #[allow(clippy::result_large_err)]
-pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result<(), KernelError> {
+pub(crate) fn verify_recursor_val(
+    env: &Environment,
+    rv: &RecursorVal,
+) -> Result<RecursorVal, KernelError> {
     if rv.all.is_empty() {
         return Err(KernelError::InvalidRecursor(format!(
             "recursor '{}' has an empty mutual group",
@@ -1408,12 +1586,15 @@ pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result
     let mut lparams: Option<Vec<Name>> = None;
     let mut np: Option<u32> = None;
     let mut specs = Vec::with_capacity(rv.all.len());
-    let single = rv.all.len() == 1;
-    // Sibling recursor names inside rule RHSes must match structurally. For
-    // a single-type family the only possible self-reference is the recursor
-    // being verified, so use its own name; for mutual families follow the
-    // supplied name's style (hierarchical `T.rec` vs flat `"T.rec"`).
-    let flat_style = rv.common.name.depth() <= 1;
+    // The recursor of `T` is `T.rec`. The kernel's own tests also spell a
+    // name as one flat component (`"T.rec"`): the derived names follow the
+    // supplied name's style, so that the references to sibling recursors
+    // inside rule right-hand sides match structurally. The rules call the
+    // siblings by those names; that the names are the ones the group
+    // installs is the guard's to hold (`super::installed`). The export
+    // replay names every recursor as Lean does and never reaches the flat
+    // style.
+    let flat_style = super::installed::is_flat_style(&rv.common.name);
     for tname in &rv.all {
         let iv = env.get_inductive_val(tname).ok_or_else(|| {
             KernelError::InvalidRecursor(format!(
@@ -1450,13 +1631,7 @@ pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result
             })?;
             ctors.push((cname.clone(), cval.common.ty.clone()));
         }
-        let rec_name = if single {
-            rv.common.name.clone()
-        } else if flat_style {
-            Name::str(format!("{}.rec", tname))
-        } else {
-            Name::mk_str(tname.clone(), "rec")
-        };
+        let rec_name = super::installed::recursor_name(tname, flat_style);
         specs.push(InductiveSpec {
             name: tname.clone(),
             ty: iv.common.ty.clone(),
@@ -1468,63 +1643,38 @@ pub(crate) fn verify_recursor_val(env: &Environment, rv: &RecursorVal) -> Result
     let np = np.unwrap_or(0);
     let fam = check_and_derive_family(env, &lparams, np, &specs)?;
 
-    let mut tc = TypeChecker::new(env);
-    for d_ci in &fam.recursors {
+    // The type this declaration is named after, once found.
+    let mut named_after: Option<&Name> = None;
+    for (tname, d_ci) in rv.all.iter().zip(&fam.recursors) {
         if let ConstantInfo::Recursor(d) = d_ci {
-            if recursor_matches(&mut tc, d, rv) {
-                return Ok(());
+            // The name condition: only the derived recursor that carries
+            // the supplied name is looked at.
+            if d.common.name != rv.common.name {
+                continue;
             }
+            // The derived recursor is what gets installed; the supplied
+            // one is only held against it.
+            if let Some(installed) = derived_under_supplied_names(d, rv) {
+                if recursor_matches(env, &[&fam.recursors], &installed, rv) {
+                    return Ok(installed);
+                }
+            }
+            named_after = Some(tname);
         }
     }
-    Err(KernelError::InvalidRecursor(format!(
-        "recursor '{}' does not match the kernel-derived recursor for '{}'",
-        rv.common.name, rv.all[0]
-    )))
-}
-
-pub(crate) fn recursor_matches(
-    tc: &mut TypeChecker<'_>,
-    d: &RecursorVal,
-    rv: &RecursorVal,
-) -> bool {
-    if d.common.level_params.len() != rv.common.level_params.len() {
-        return false;
-    }
-    if d.num_params != rv.num_params
-        || d.num_indices != rv.num_indices
-        || d.num_motives != rv.num_motives
-        || d.num_minors != rv.num_minors
-        || d.k != rv.k
-        || d.rules.len() != rv.rules.len()
-    {
-        return false;
-    }
-    // Align the derived declaration onto the supplied level parameter names.
-    let levels: Vec<Level> = rv
-        .common
-        .level_params
-        .iter()
-        .cloned()
-        .map(Level::param)
-        .collect();
-    let d_ty = instantiate_type_lparams(&d.common.ty, &d.common.level_params, &levels);
-    if !tc.is_def_eq(&d_ty, &rv.common.ty) {
-        return false;
-    }
-    for drule in &d.rules {
-        let srule = match rv.get_rule(&drule.ctor) {
-            Some(r) => r,
-            None => return false,
-        };
-        if srule.nfields != drule.nfields {
-            return false;
-        }
-        let d_rhs = instantiate_type_lparams(&drule.rhs, &d.common.level_params, &levels);
-        if !tc.is_def_eq(&d_rhs, &srule.rhs) {
-            return false;
-        }
-    }
-    true
+    Err(KernelError::InvalidRecursor(match named_after {
+        Some(tname) => format!(
+            "recursor '{}' does not match the kernel-derived recursor for '{}'",
+            rv.common.name, tname
+        ),
+        None => format!(
+            "recursor '{}' is not named after a type of its family: the kernel derives '{}' \
+             for '{}'",
+            rv.common.name,
+            specs[0].effective_rec_name(),
+            rv.all[0]
+        ),
+    }))
 }
 
 #[cfg(test)]

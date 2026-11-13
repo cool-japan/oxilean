@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+# Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.
 #
 # run_lean4lean.sh — drive lean4lean over a Lean module and emit a normalized
 # per-declaration verdict file that diff_verdicts.py can join.

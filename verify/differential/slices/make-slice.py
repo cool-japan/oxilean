@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+# Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.
 """Cut a deterministic, self-contained NDJSON slice from a lean4export corpus.
 
 The lean4export NDJSON format is an append-only, index-addressed graph: name /

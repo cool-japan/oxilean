@@ -37,7 +37,7 @@ A: OxiLean fills several niches:
 
 ### Q: Is OxiLean production-ready?
 
-A: OxiLean v0.1.4 has all core features complete:
+A: OxiLean v0.1.5 has all core features complete:
 
 - Type checker and kernel (126,740 SLOC in `src/`)
 - Lexer and parser (oxilean-parse)
@@ -633,5 +633,5 @@ OxiLean supports metaprogramming via the oxilean-meta crate:
 ---
 
 **Last updated:** November 2026
-**OxiLean version:** 0.1.4
+**OxiLean version:** 0.1.5
 **Status:** All phases complete

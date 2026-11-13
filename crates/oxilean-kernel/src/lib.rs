@@ -383,7 +383,10 @@ pub use axiom::{
 };
 pub use beta::{beta_normalize, beta_step, beta_under_binder, is_beta_normal, mk_beta_redex};
 pub use builtin::{init_builtin_env, is_nat_op, is_string_op};
-pub use check::{check_constant_info, check_constant_infos, check_declaration, check_declarations};
+pub use check::{
+    check_constant_info, check_constant_infos, check_constant_infos_atomic, check_declaration,
+    check_declarations,
+};
 pub use congruence::{
     mk_congr_theorem, mk_congr_theorem_with_fixed, CongrArgKind, CongruenceClosure,
     CongruenceTheorem,
@@ -397,9 +400,10 @@ pub use export::{
     ModuleCache,
 };
 pub use inductive::{
-    add_inductive_family, check_and_derive_family, check_and_derive_family_nested, check_inductive,
-    derive_family_unchecked, reduce_recursor, restore_nested, verify_nested_bundle, DerivedFamily,
-    InductiveEnv, InductiveSpec, InductiveType, IntroRule,
+    add_derived_family, add_inductive_family, check_and_derive_family,
+    check_and_derive_family_nested, check_inductive, derive_family_unchecked, escaped_name,
+    reduce_recursor, restore_nested, same_up_to_binders, supplied_type_matches,
+    verify_nested_bundle, DerivedFamily, InductiveEnv, InductiveSpec, InductiveType, IntroRule,
 };
 pub use match_compile::{
     CompileResult, ConstructorInfo as MatchConstructorInfo, DecisionTree, MatchArm, MatchCompiler,

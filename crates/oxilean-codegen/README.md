@@ -115,7 +115,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-codegen = "0.1.4"
+oxilean-codegen = "0.1.5"
 ```
 
 ## Dependencies
@@ -131,4 +131,4 @@ cargo test -p oxilean-codegen -- --nocapture
 
 ## License
 
-Copyright COOLJAPAN OU (Team Kitasan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.
+Copyright COOLJAPAN OU (Team KitaSan). Apache-2.0 -- See [LICENSE](../../LICENSE) for details.

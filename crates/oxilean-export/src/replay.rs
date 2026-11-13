@@ -9,27 +9,101 @@
 //!   `check_constant_info` (type-checks and adds to the env).
 //! * `inductive` bundles are checked as a family
 //!   (`check_and_derive_family`: telescopes, universes, WHNF-hardened strict
-//!   positivity) and installed with the exported declarations, each
-//!   re-verified by the kernel; exported **recursors are never trusted** —
-//!   the kernel re-derives them and requires a definitional match.
+//!   positivity). The types and constructors are installed as the file
+//!   declares them, each re-verified by the kernel. An exported **recursor
+//!   is never installed**: Lean's kernel takes no recursor from its input,
+//!   and neither does this one — the recursor in the environment is the one
+//!   the kernel derives (its type, its rules, its counts, its `k` flag),
+//!   under the record's name and universe parameter names. The record is
+//!   only held against it, each record with the derived recursor of **its
+//!   own name** (`T.rec`; on the nested path `<first type>.rec_<k>` for the
+//!   `k`-th auxiliary type): its type and each rule's right-hand side must
+//!   be the derived ones as written (up to the names and the binder
+//!   information of binders) or, failing that, be well typed and only then
+//!   definitionally equal to them. A comparison by definitional equality
+//!   alone is not a check — it takes an ill-typed proof term for a proof.
+//!   What the file says about the family beyond its declaration
+//!   (`numIndices`, `isRec`, `isReflexive`, `numNested`, the mutual group,
+//!   `cidx`, `numFields`, ...) is what Lean's kernel computes when it adds
+//!   the declaration; it is compared with this kernel's own derivation and
+//!   a difference rejects the bundle. A bundle is installed **whole or not
+//!   at all**.
+//! * A `thm` record must state a proposition: the kernel refuses a theorem
+//!   whose type is not in `Prop`, as Lean's does.
 //! * `quot` records install the four `#QUOT` primitives via the kernel's
-//!   once-only `Environment::add_quot` (kernel-constructed canonical types);
-//!   each exported record is then validated against the installed primitive.
+//!   once-only `Environment::add_quot` (kernel-constructed canonical types;
+//!   `Eq` must be the inductive type they assume, type and constructor
+//!   type compared as Lean compares them); each exported record is then
+//!   held against the installed primitive, once per primitive — its type
+//!   compared as a recursor's is, and never installed.
 //! * The `Quot.sound` **axiom** (a plain axiom record in exports) is validated
 //!   against the kernel's canonical soundness type — an export cannot smuggle
-//!   an arbitrary assertion under that trusted name.
+//!   an arbitrary assertion under that trusted name — and then checked and
+//!   added like any other axiom.
+//!
+//! ## What is installed
+//!
+//! A term of the file is in the environment — and reaches definitional
+//! equality, weak-head reduction or iota — only after the kernel
+//! type-checked it: the type of an axiom; the type and the value of a
+//! definition, a theorem and an opaque constant; an inductive type; a
+//! constructor's type. Where the kernel derives a term itself — a recursor
+//! (its type and its rules, on the ordinary and on the nested path) and the
+//! quotient primitives — its own term is installed, and the file's record is
+//! compared with it and dropped.
+//!
+//! A derived term names other constants, and the installed rules of a
+//! mutual or nested family call the sibling recursors **by name**. Two
+//! things keep those names to the constants installed. A recursor record is
+//! accepted only under the name Lean's kernel gives the recursor
+//! (`T.rec`, the component `rec` under the type's name, or
+//! `<first type>.rec_<k>`), so the derivation names every recursor as Lean
+//! does; and the kernel's guard (`oxilean_kernel::inductive::installed`)
+//! holds every constant a derived term names to the environment as the
+//! install leaves it — it must resolve, and a name the derivation gives a
+//! recursor or a type of the family must be that constant — and refuses the
+//! bundle otherwise. (Before both, a record under the one flat component
+//! `"A.rec"` made the derivation name the family in that style: the rules
+//! called recursors that were never installed, and a later record could
+//! define one and prove `False` through iota.)
 //!
 //! ## Three buckets
 //!
 //! Every declaration lands in exactly one bucket ([`ReplayOutcome`]):
 //!
 //! * `Checked` — the kernel accepted it.
-//! * `Unsupported { feature }` — valid Lean the kernel cannot replay *yet*,
-//!   with a named feature (currently: [`NESTED_INDUCTIVES`]; plus
-//!   [`DEFERRED_DEPENDENCY`] for declarations that only fail because they
-//!   depend on an unsupported one).
+//! * `Unsupported { feature }` — no verdict, with a named feature: valid
+//!   Lean the kernel cannot replay *yet* ([`NESTED_INDUCTIVES`]: a nested
+//!   inductive it does not un-nest, such as one with parameters or one
+//!   nested through a mutual container), or a declaration that ran into a
+//!   resource limit ([`RESOURCE_LIMIT`], [`REDUCTION_LIMIT`],
+//!   [`TERM_DEPTH_LIMIT`], or [`DECL_BUDGET_FEATURE`](crate::DECL_BUDGET_FEATURE)
+//!   when the reader would not materialize it) — a limit is never a verdict
+//!   on the proof; plus [`DEFERRED_DEPENDENCY`] for declarations that only
+//!   fail because they depend on an unsupported one.
 //! * `Rejected { reason }` — the kernel judged it ill-typed (or it depends on
 //!   a rejected declaration; the reason names the root cause).
+//!
+//! ## What a failed record leaves behind
+//!
+//! Nothing of its own. A record that is not `Checked` adds none of its
+//! declarations to the environment — an inductive bundle refused at its
+//! last recursor adds neither its types nor its constructors — and every
+//! name it declares joins the replayer's set of rejected (or deferred)
+//! names. (The first `quot` record makes the kernel install its four
+//! canonical quotient primitives, which are the kernel's own and stay
+//! whatever becomes of the record; a `quot` record that is then refused
+//! still has its name in the rejected set.) A later record that mentions
+//! such a name, as a constant or as the structure of a projection, is not
+//! handed to the kernel at all: it "depends on rejected declaration" (or on
+//! an unsupported one) whether or not a constant of that name is present.
+//! A later record that declares such a name again is rejected: a name is
+//! declared once in a Lean environment. The same holds for a name a record
+//! declared and was accepted for — the kernel refuses a second constant of
+//! a name, and a second `quot` record for a primitive an earlier `quot`
+//! record declared is refused by the replayer (the kernel has installed all
+//! four primitives by then and could not tell) — and that name then joins
+//! the rejected set, with the same consequence for the records after it.
 //!
 //! ## Corpus-scale replay
 //!
@@ -47,10 +121,12 @@ use oxilean_kernel::env::{
     canonical_quot_level_params, canonical_quot_sound_level_params, canonical_quot_sound_type,
     canonical_quot_type, quot_sound_name,
 };
+use oxilean_kernel::expr_util::find_mentioned_name;
 use oxilean_kernel::instantiate::instantiate_type_lparams;
 use oxilean_kernel::{
-    check_constant_info, AxiomVal, ConstantInfo, Environment, InductiveSpec, KernelError, Level,
-    Name, QuotVal, TypeChecker,
+    check_constant_info, check_constant_infos_atomic, escaped_name, supplied_type_matches,
+    AxiomVal, ConstantInfo, DerivedFamily, Environment, Expr, InductiveSpec, KernelError, Level,
+    Name, NameView, QuotVal,
 };
 
 use crate::error::ExportResult;
@@ -148,9 +224,11 @@ impl ReplayReport {
 pub const DEFERRED_DEPENDENCY: &str = "dependency on an unsupported declaration";
 
 /// The named feature for nested inductive types (an inductive occurring under
-/// a non-family type constructor in a constructor field). The kernel does not
-/// implement Lean's nested-to-mutual elaboration yet and reports
-/// `KernelError::UnsupportedNestedInductive`; replay surfaces that as this
+/// a non-family type constructor in a constructor field) that the kernel does
+/// not un-nest. Since 0.1.4 the kernel elaborates a nested inductive to a
+/// mutual family when the family has no parameters and the container is not
+/// part of a mutual block; for any other nesting it reports
+/// `KernelError::UnsupportedNestedInductive`, and replay surfaces that as this
 /// named unsupported feature (three-bucket rule: valid Lean, not replayable
 /// yet, never a rejection).
 pub const NESTED_INDUCTIVES: &str = "nested inductives";
@@ -201,13 +279,18 @@ pub const TERM_DEPTH_LIMIT: &str = "resource limit exceeded: term depth";
 /// bookkeeping needed for honest three-bucket reporting:
 ///
 /// * `deferred` — names whose declarations were *unsupported* (e.g. nested
-///   inductives). A later declaration failing only with
-///   `KernelError::UnknownConstant` on a deferred name is reported as
-///   `Unsupported` ([`DEFERRED_DEPENDENCY`]) rather than as a rejection, and
-///   its own name joins the set (the cascade).
+///   inductives). A later declaration that mentions a deferred name is
+///   reported as `Unsupported` ([`DEFERRED_DEPENDENCY`]) rather than as a
+///   rejection, and its own name joins the set (the cascade).
 /// * `rejected` — names whose declarations the kernel *rejected*. A later
-///   declaration failing only with `UnknownConstant` on a rejected name is
-///   reported as `Rejected` with a reason naming the root cause.
+///   declaration that mentions a rejected name is reported as `Rejected`
+///   with a reason naming the root cause, and its own name joins the set.
+///
+/// A declaration is looked at for such a name **before** the kernel sees
+/// it (`Replayer::blocked_by_an_earlier_failure`), so the cascade does not
+/// depend on the name being absent from the environment; a failure with
+/// `KernelError::UnknownConstant` on a name of either set is mapped the
+/// same way.
 ///
 /// This keeps `Rejected` meaning exactly "the kernel could not verify this"
 /// and `Unsupported` meaning "valid Lean this build cannot replay yet".
@@ -215,6 +298,12 @@ pub struct Replayer {
     env: Environment,
     deferred: HashSet<Name>,
     rejected: HashSet<Name>,
+    /// The quotient primitives a `quot` record of this file has declared.
+    /// The kernel installs all four at the first record, so the environment
+    /// cannot say which of them the file has already declared; a second
+    /// record for one of these names is rejected like a second record of
+    /// any other name.
+    quot_records: HashSet<Name>,
     /// Deterministic per-declaration resource budget, in units of kernel work
     /// (`None` = unlimited). See [`RESOURCE_LIMIT`].
     per_decl_fuel: Option<u64>,
@@ -242,6 +331,7 @@ impl Replayer {
             env: Environment::new(),
             deferred: HashSet::new(),
             rejected: HashSet::new(),
+            quot_records: HashSet::new(),
             per_decl_fuel: None,
             per_decl_time_budget: None,
         })
@@ -292,13 +382,103 @@ impl Replayer {
         self.arm_budgets();
         let name = decl.primary_name();
         let kind = decl.kind_label();
-        let outcome = match decl {
-            ExportDecl::Axiom(v) => self.check(|| ConstantInfo::Axiom(v.clone()), &name),
-            ExportDecl::Definition(v) => self.check(|| ConstantInfo::Definition(v.clone()), &name),
-            ExportDecl::Theorem(v) => self.check(|| ConstantInfo::Theorem(v.clone()), &name),
-            ExportDecl::Opaque(v) => self.check(|| ConstantInfo::Opaque(v.clone()), &name),
+        let outcome = match self.blocked_by_an_earlier_failure(decl) {
+            Some(outcome) => outcome,
+            None => self.replay_unblocked(decl, &name),
+        };
+        ReplayEntry {
+            name,
+            kind,
+            outcome,
+        }
+    }
+
+    /// The outcome of a record that names a declaration this replay has
+    /// already failed on, or `None` when it names none — the record then
+    /// goes to the kernel.
+    ///
+    /// Two ways of naming one:
+    ///
+    /// * **Declaring it again.** A name of the rejected or of the deferred
+    ///   set that the record itself declares: rejected. A failed record
+    ///   leaves nothing in the environment, so the kernel would not see the
+    ///   clash; and a file in which a name is declared twice is not the
+    ///   export of a Lean environment.
+    /// * **Mentioning it** in a type, a value or a recursor rule — as a
+    ///   constant, or as the structure a projection reads. A rejected name
+    ///   makes the record "depends on rejected declaration" (rejected); a
+    ///   deferred one, with no rejected name beside it, makes it a
+    ///   [`DEFERRED_DEPENDENCY`] (unsupported). This holds **whether or not
+    ///   a constant of that name is in the environment**: the verdict on a
+    ///   dependent must not rest on every failing path having cleaned up
+    ///   after itself.
+    ///
+    /// Every name the record declares joins the set its outcome belongs to.
+    /// With both sets empty — every record so far was checked — no term is
+    /// walked.
+    fn blocked_by_an_earlier_failure(&mut self, decl: &ExportDecl) -> Option<ReplayOutcome> {
+        if self.rejected.is_empty() && self.deferred.is_empty() {
+            return None;
+        }
+        let own = declared_names(decl);
+        let again = own
+            .iter()
+            .find(|n| self.rejected.contains(*n) || self.deferred.contains(*n));
+        if let Some(n) = again {
+            let reason = format!(
+                "declares '{n}' again: an earlier record of this file declared it and was not accepted"
+            );
+            self.reject_all(&own);
+            return Some(ReplayOutcome::Rejected { reason });
+        }
+        let mut rejected_dep: Option<&Name> = None;
+        let mut deferred_dep = false;
+        for term in declared_terms(decl) {
+            rejected_dep = find_mentioned_name(term, |n| {
+                if self.rejected.contains(n) {
+                    return true;
+                }
+                deferred_dep = deferred_dep || self.deferred.contains(n);
+                false
+            });
+            if rejected_dep.is_some() {
+                break;
+            }
+        }
+        if let Some(n) = rejected_dep {
+            let reason = format!("depends on rejected declaration '{n}'");
+            self.reject_all(&own);
+            return Some(ReplayOutcome::Rejected { reason });
+        }
+        if deferred_dep {
+            self.defer_all(&own);
+            return Some(ReplayOutcome::Unsupported {
+                feature: DEFERRED_DEPENDENCY,
+            });
+        }
+        None
+    }
+
+    /// Hand a record that names no failed declaration to the kernel.
+    fn replay_unblocked(&mut self, decl: &ExportDecl, name: &Name) -> ReplayOutcome {
+        match decl {
+            ExportDecl::Axiom(v) => self.check(|| ConstantInfo::Axiom(v.clone()), name),
+            ExportDecl::Definition(v) => self.check(|| ConstantInfo::Definition(v.clone()), name),
+            ExportDecl::Theorem(v) => self.check(|| ConstantInfo::Theorem(v.clone()), name),
+            ExportDecl::Opaque(v) => self.check(|| ConstantInfo::Opaque(v.clone()), name),
             ExportDecl::Quot(v) => {
-                let res = replay_quot_core(&mut self.env, v);
+                // The first record of a primitive's name is held against the
+                // installed primitive; a second one declares the name again.
+                let res = if self.quot_records.contains(name) {
+                    Err(SeamFailure::Reason(format!(
+                        "declares '{name}' again: an earlier quot record of this file declared it"
+                    )))
+                } else {
+                    replay_quot_core(&mut self.env, v)
+                };
+                if res.is_ok() {
+                    self.quot_records.insert(name.clone());
+                }
                 self.finish_group(std::slice::from_ref(&v.common.name), res)
             }
             ExportDecl::Inductive(bundle) => {
@@ -315,11 +495,6 @@ impl Replayer {
                 self.defer_all(&v.names);
                 ReplayOutcome::Unsupported { feature: v.feature }
             }
-        };
-        ReplayEntry {
-            name,
-            kind,
-            outcome,
         }
     }
 
@@ -467,6 +642,43 @@ fn bundle_names(bundle: &InductiveBundle) -> Vec<Name> {
         .collect()
 }
 
+/// Every name a record declares.
+fn declared_names(decl: &ExportDecl) -> Vec<Name> {
+    match decl {
+        ExportDecl::Axiom(v) => vec![v.common.name.clone()],
+        ExportDecl::Definition(v) => vec![v.common.name.clone()],
+        ExportDecl::Theorem(v) => vec![v.common.name.clone()],
+        ExportDecl::Opaque(v) => vec![v.common.name.clone()],
+        ExportDecl::Quot(v) => vec![v.common.name.clone()],
+        ExportDecl::Inductive(bundle) => bundle_names(bundle),
+        ExportDecl::Oversized(v) => v.names.clone(),
+    }
+}
+
+/// Every term a record carries: its types, its values, and the right-hand
+/// sides of its recursor rules. (An oversized record carries none: its terms
+/// were never built.)
+fn declared_terms(decl: &ExportDecl) -> Vec<&Expr> {
+    match decl {
+        ExportDecl::Axiom(v) => vec![&v.common.ty],
+        ExportDecl::Definition(v) => vec![&v.common.ty, &v.value],
+        ExportDecl::Theorem(v) => vec![&v.common.ty, &v.value],
+        ExportDecl::Opaque(v) => vec![&v.common.ty, &v.value],
+        ExportDecl::Quot(v) => vec![&v.common.ty],
+        ExportDecl::Inductive(bundle) => {
+            let mut terms: Vec<&Expr> = Vec::new();
+            terms.extend(bundle.types.iter().map(|t| &t.common.ty));
+            terms.extend(bundle.ctors.iter().map(|c| &c.common.ty));
+            for r in &bundle.recs {
+                terms.push(&r.common.ty);
+                terms.extend(r.rules.iter().map(|rule| &rule.rhs));
+            }
+            terms
+        }
+        ExportDecl::Oversized(_) => Vec::new(),
+    }
+}
+
 /// Replay a whole [`ExportFile`] into a fresh, empty environment, returning a
 /// per-declaration [`ReplayReport`].
 ///
@@ -587,9 +799,11 @@ enum SeamFailure {
 /// types (it requires `Eq` to be declared first). Every quot record —
 /// including the triggering one — is then validated against the installed
 /// primitive: same kind under that name, matching level-parameter count, and
-/// a type definitionally equal to the canonical one (after aligning level
-/// parameter names). Records that validate are `Checked` (the primitive is
-/// already installed); mismatches are rejections.
+/// a type that is the canonical one (after aligning level parameter names) —
+/// the same as written, or type-checked first and then definitionally equal
+/// (`oxilean_kernel::supplied_type_matches`). Records that validate are
+/// `Checked` (the primitive is already installed; the record's type is
+/// dropped); mismatches are rejections.
 #[allow(clippy::result_large_err)] // KernelError is large; replay is not a hot error path
 fn replay_quot_core(env: &mut Environment, qv: &QuotVal) -> Result<(), SeamFailure> {
     if !env.quot_initialized() {
@@ -629,8 +843,10 @@ fn replay_quot_core(env: &mut Environment, qv: &QuotVal) -> Result<(), SeamFailu
             canonical_params.len()
         ))
     })?;
-    let mut tc = TypeChecker::new(env);
-    if !tc.is_def_eq(&qv.common.ty, &aligned) {
+    // The record's type is only held against the canonical one (which is
+    // what is installed): the same as written, or a type the kernel checked
+    // and then found definitionally equal — never compared unchecked.
+    if !supplied_type_matches(env, &aligned, &qv.common.ty) {
         return Err(SeamFailure::Reason(format!(
             "quot record '{}' does not have the canonical type of its primitive",
             qv.common.name
@@ -693,8 +909,10 @@ fn validate_quot_sound_axiom(env: &Environment, av: &AxiomVal) -> Option<String>
             canonical_params.len()
         ));
     };
-    let mut tc = TypeChecker::new(env);
-    if !tc.is_def_eq(&av.common.ty, &aligned) {
+    // As written, or type-checked first and then definitionally equal: the
+    // axiom's type is not handed to definitional equality unchecked. (The
+    // kernel checks it once more when the axiom is added.)
+    if !supplied_type_matches(env, &aligned, &av.common.ty) {
         return Some(
             "axiom 'Quot.sound' does not have the canonical quotient soundness type".into(),
         );
@@ -713,23 +931,46 @@ fn validate_quot_sound_axiom(env: &Environment, av: &AxiomVal) -> Option<String>
 /// mutual group), constructor telescopes are the exported constructor types in
 /// the order listed by each `InductiveVal`.
 ///
-/// The bundle is first fully checked *without modifying the environment*
-/// (`check_and_derive_family`: signature checks, constructor telescopes and
-/// universes, WHNF-hardened strict positivity, recursor derivation), so a
-/// failing bundle installs nothing. The **exported** declarations are then
-/// installed through `check_constant_info` in dependency order — inductives,
-/// constructors, recursors — each re-verified by the kernel; in particular
-/// every exported recursor is compared against the kernel's re-derived one
-/// (`verify_recursor_val`) and a mismatch is a rejection, never a silent
-/// substitution.
+/// **Whole or not at all.** The bundle is first fully checked *without
+/// modifying the environment* (`check_and_derive_family`: signature checks,
+/// constructor telescopes and universes, WHNF-hardened strict positivity,
+/// recursor derivation). The **exported** declarations are then handed to
+/// the kernel as one group (`check_constant_infos_atomic`) in dependency
+/// order — inductives, constructors, recursors. The types and constructors
+/// are re-verified and added as exported. A recursor record is compared with
+/// the kernel's re-derived recursor of the same name (`verify_recursor_val`:
+/// as written, or type-checked and then by definitional equality), and a
+/// record that is not it is a rejection; what the kernel then adds is its
+/// OWN recursor, under the record's name and universe parameter names — the
+/// record's type and rules are never installed. A failure at any member
+/// takes the earlier ones out again: a bundle that is not accepted leaves no
+/// constant behind, neither its types nor its first constructors.
+///
+/// **Derived, and compared.** A Lean declaration of an inductive family is
+/// its universe parameters, its number of parameters, and each type's name,
+/// type and constructors (name and type), with one `isUnsafe` flag. Every
+/// other field of the bundle is what Lean's kernel computes from that when
+/// it adds the declaration, so a file whose value differs from the
+/// computation is not the export of a Lean environment. This kernel makes
+/// the same computation and the bundle is held to it
+/// ([`compare_with_derivation`], and the kernel's own checks of the group):
+/// a difference is a rejection. One field is not exported at all:
+/// lean4export does not emit `isProp` (the reader defaults it to `false`),
+/// so it is taken from the derivation.
 ///
 /// Nested inductives (exporter-flagged `num_nested > 0`) are specialized into
 /// an auxiliary mutual family, derived, and their recursors restored over the
-/// real container; every exported recursor is then re-verified by def-eq
-/// (`verify_nested_bundle`). Shapes this stage cannot un-nest (and any nesting
-/// the kernel's positivity check surfaces as
-/// `KernelError::UnsupportedNestedInductive`) are reported as the named
-/// unsupported feature [`NESTED_INDUCTIVES`].
+/// real container; the family that comes back must be the declared one, and
+/// every exported recursor is then held, in the same way, against the
+/// derived recursor that carries Lean's name for it
+/// (`verify_nested_bundle`); the kernel-derived family is added as one
+/// group. Shapes this stage cannot un-nest (and any nesting the kernel's
+/// positivity check surfaces as `KernelError::UnsupportedNestedInductive`)
+/// are reported as the named unsupported feature [`NESTED_INDUCTIVES`] —
+/// unless the kernel can tell that the file's `numNested` is wrong (a family
+/// flagged nested that checks as an ordinary one; a family flagged ordinary
+/// that verifies as a nested one), which is a rejection like any other
+/// field that differs from the derivation.
 #[allow(clippy::result_large_err)] // KernelError is large; replay is not a hot error path
 fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(), SeamFailure> {
     let first = b
@@ -746,6 +987,9 @@ fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(
             )));
         }
     }
+    // Every recursor record under the name Lean's kernel gives a recursor of
+    // this declaration, before anything is derived.
+    check_recursor_record_names(b)?;
     // Faithful translation: name + full type + constructor telescopes, in the
     // exported constructor order (each InductiveVal's `ctors` list).
     let mut specs = Vec::with_capacity(b.types.len());
@@ -772,47 +1016,387 @@ fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(
     }
     // Nested inductives (exporter-flagged `num_nested > 0`): specialize into an
     // auxiliary mutual family, derive, restore the recursors over the real
-    // container, and require every EXPORTED recursor to def-eq the kernel's
+    // container, and require every EXPORTED recursor to be the kernel's
     // re-derivation (`verify_nested_bundle`). A shape this stage cannot un-nest
     // surfaces as `UnsupportedNestedInductive` → the named unsupported feature.
     if b.types.iter().any(|t| t.num_nested > 0) {
-        let family =
-            oxilean_kernel::verify_nested_bundle(env, &lparams, num_params, &specs, &b.recs)
-                .map_err(map_inductive_kernel_error)?;
-        for ci in family.into_constant_infos() {
-            env.add_constant(ci)
-                .map_err(|e| SeamFailure::Reason(e.to_string()))?;
-        }
-        return Ok(());
+        let derived = match oxilean_kernel::verify_nested_bundle(
+            env, &lparams, num_params, &specs, &b.recs,
+        ) {
+            Ok(derived) => derived,
+            Err(KernelError::UnsupportedNestedInductive(_)) => {
+                // No verdict from the nested stage. If the family checks as
+                // an ordinary one, it has no nested occurrence at all and
+                // the file's count is not what the kernel computes.
+                let ordinary =
+                    oxilean_kernel::check_and_derive_family(env, &lparams, num_params, &specs);
+                return Err(match ordinary {
+                    Ok(_) => differs(&first.common.name, "numNested", &first.num_nested, &0u32),
+                    Err(_) => SeamFailure::Unsupported(NESTED_INDUCTIVES),
+                });
+            }
+            Err(e) => return Err(SeamFailure::Kernel(e)),
+        };
+        // Nothing of the file's bundle is installed on this path but its
+        // declaration; what it says beyond it is compared in full.
+        compare_with_derivation(b, &derived, true)?;
+        let is_unsafe = first.is_unsafe;
+        let group = derived
+            .into_constant_infos()
+            .into_iter()
+            .map(|ci| with_safety_flag(ci, is_unsafe))
+            .collect();
+        // One group, after the guard (every constant a term of the derived
+        // family names resolves once the group is in, and to the constant
+        // the derivation meant): no constant of it is added unless every
+        // name is free.
+        return oxilean_kernel::add_derived_family(env, group).map_err(|e| match e {
+            // The group's own names are not free: the environment's message.
+            KernelError::Other(msg) => SeamFailure::Reason(msg),
+            other => SeamFailure::Kernel(other),
+        });
     }
-    // Atomicity pre-check: fully check + derive the family against the current
-    // environment WITHOUT modifying it. A bundle that fails here installs
-    // nothing.
-    let derived = oxilean_kernel::check_and_derive_family(env, &lparams, num_params, &specs)
-        .map_err(map_inductive_kernel_error)?;
-    // Install the EXPORTED declarations in dependency order, each re-verified
-    // by the kernel (metadata lies — wrong num_indices, cidx, num_fields, ... —
-    // are caught here even though the family itself derived cleanly).
+    // Fully check + derive the family against the current environment WITHOUT
+    // modifying it. A bundle that fails here installs nothing.
+    let derived = match oxilean_kernel::check_and_derive_family(env, &lparams, num_params, &specs) {
+        Ok(derived) => derived,
+        Err(KernelError::UnsupportedNestedInductive(_)) => {
+            // The file says the family is not nested and the kernel finds
+            // a nested occurrence. If the family verifies as a nested one,
+            // the file's count is not what the kernel computes; if not,
+            // there is no verdict (the named unsupported feature).
+            let nested =
+                oxilean_kernel::verify_nested_bundle(env, &lparams, num_params, &specs, &b.recs);
+            return Err(match nested {
+                Ok(family) => differs(
+                    &first.common.name,
+                    "numNested",
+                    &first.num_nested,
+                    &derived_num_nested(&family),
+                ),
+                Err(_) => SeamFailure::Unsupported(NESTED_INDUCTIVES),
+            });
+        }
+        Err(e) => return Err(SeamFailure::Kernel(e)),
+    };
+    // What the file says beyond the declaration and the kernel does not
+    // compare when it checks the members one by one: before anything is added.
+    compare_with_derivation(b, &derived, false)?;
+    // The EXPORTED declarations, in dependency order, each re-verified by the
+    // kernel (wrong num_indices, cidx, num_fields, a constructor its type does
+    // not list, a recursor that is not the derived one, ... are caught here),
+    // as ONE group: a failure at any member takes the earlier ones out again.
+    // For a recursor record the kernel adds its own derivation, not the record.
     //
     // One field is NOT exported: lean4export does not emit `isProp` (the
     // reader defaults it to `false`), so it is taken from the kernel's own
     // derivation instead of the file — the kernel would otherwise correctly
     // reject every Prop-valued inductive for carrying a wrong flag.
+    let mut group = Vec::with_capacity(b.types.len() + b.ctors.len() + b.recs.len());
     for (i, t) in b.types.iter().enumerate() {
         let mut iv = t.clone();
         if let Some(ConstantInfo::Inductive(d)) = derived.inductives.get(i) {
             iv.is_prop = d.is_prop;
         }
-        check_constant_info(env, ConstantInfo::Inductive(iv))
-            .map_err(map_inductive_kernel_error)?;
+        group.push(ConstantInfo::Inductive(iv));
+    }
+    group.extend(b.ctors.iter().cloned().map(ConstantInfo::Constructor));
+    group.extend(b.recs.iter().cloned().map(ConstantInfo::Recursor));
+    check_constant_infos_atomic(env, group).map_err(map_inductive_kernel_error)
+}
+
+/// The rejection of a bundle whose file says `said` for a field the kernel
+/// derives as `derived`.
+fn differs(
+    name: &Name,
+    field: &str,
+    said: &dyn std::fmt::Display,
+    derived: &dyn std::fmt::Display,
+) -> SeamFailure {
+    SeamFailure::Reason(format!(
+        "'{name}': the file says {field} = {said} and the kernel derives {derived} from the \
+         declaration"
+    ))
+}
+
+/// Every recursor record of a bundle is named as Lean's kernel names a
+/// recursor of the declaration: `T.rec` — the component `rec` under the
+/// name of a type `T` of the bundle — or `<first type>.rec_<k>` (`k` ≥ 1),
+/// the name of the recursor of the `k`-th auxiliary type of a nested
+/// declaration. A record under any other name is refused, with the name
+/// expected. (Whether the declaration has a `k`-th auxiliary type is the
+/// derivation's to say, as is the file's `numNested`: a record of that
+/// shape is paired, or refused, by the derivation.)
+///
+/// The name is not a label. The kernel derives the family's recursors under
+/// the names of the records it is handed, and in a mutual or nested family
+/// a derived rule calls the sibling recursors by name; Lean's kernel never
+/// gives a recursor the one flat component `"T.rec"` (which prints as
+/// `T.rec` too), and a bundle whose records mixed the two installed rules
+/// that called a recursor of the other spelling, never installed — a later
+/// record could then define it and prove `False` through iota. The kernel's
+/// guard refuses such a group as well (`oxilean_kernel::inductive::installed`);
+/// this is the rule that keeps the replay to Lean's names in the first
+/// place. (Which recursor a record is paired with, and that every derived
+/// one has its record, is decided later, by the derivation.)
+fn check_recursor_record_names(b: &InductiveBundle) -> Result<(), SeamFailure> {
+    let Some(first) = b.types.first() else {
+        return Err(SeamFailure::Reason("empty inductive bundle".into()));
+    };
+    let of_a_type = |name: &Name| {
+        b.types
+            .iter()
+            .any(|t| *name == Name::mk_str(t.common.name.clone(), "rec"))
+    };
+    let auxiliary = |name: &Name| match name.view() {
+        NameView::Str(parent, s) if *parent == first.common.name => {
+            s.strip_prefix("rec_").is_some_and(|k| {
+                !k.is_empty() && !k.starts_with('0') && k.bytes().all(|d| d.is_ascii_digit())
+            })
+        }
+        _ => false,
+    };
+    for r in &b.recs {
+        let name = &r.common.name;
+        if of_a_type(name) || auxiliary(name) {
+            continue;
+        }
+        let spelled = escaped_name(name);
+        // The same spelling under another structure — `«T.rec»` for
+        // `T.rec` — names the one expected; otherwise list them.
+        let expected = match b
+            .types
+            .iter()
+            .find(|t| format!("{}.rec", t.common.name) == name.to_string())
+        {
+            Some(t) => format!(
+                "the recursor of '{}' is '{}', the component 'rec' under '{}'",
+                t.common.name,
+                escaped_name(&Name::mk_str(t.common.name.clone(), "rec")),
+                t.common.name
+            ),
+            None => {
+                let names: Vec<String> = b
+                    .types
+                    .iter()
+                    .map(|t| escaped_name(&Name::mk_str(t.common.name.clone(), "rec")))
+                    .collect();
+                format!(
+                    "expected {} (or {}.rec_<k> for the k-th auxiliary type of a nested \
+                     declaration)",
+                    names.join(" or "),
+                    escaped_name(&first.common.name)
+                )
+            }
+        };
+        return Err(SeamFailure::Reason(format!(
+            "recursor record '{spelled}' of inductive bundle '{}' is not named as Lean's kernel \
+             names a recursor of this declaration: {expected}",
+            first.common.name
+        )));
+    }
+    Ok(())
+}
+
+/// A list of names as it is written: `[A, A.B]`.
+struct Names<'a>(&'a [Name]);
+
+impl std::fmt::Display for Names<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("[")?;
+        for (i, name) in self.0.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            write!(f, "{name}")?;
+        }
+        f.write_str("]")
+    }
+}
+
+/// The number of nested occurrences the kernel found for a derived family.
+fn derived_num_nested(derived: &DerivedFamily) -> u32 {
+    derived
+        .inductives
+        .iter()
+        .find_map(|ci| ci.to_inductive_val().map(|iv| iv.num_nested))
+        .unwrap_or(0)
+}
+
+/// A kernel-derived constant of an inductive family with the family's
+/// declared `isUnsafe` flag (the derivation itself produces safe constants).
+fn with_safety_flag(mut ci: ConstantInfo, is_unsafe: bool) -> ConstantInfo {
+    match &mut ci {
+        ConstantInfo::Inductive(v) => v.is_unsafe = is_unsafe,
+        ConstantInfo::Constructor(v) => v.is_unsafe = is_unsafe,
+        ConstantInfo::Recursor(v) => v.is_unsafe = is_unsafe,
+        _ => {}
+    }
+    ci
+}
+
+/// Hold what a bundle says beyond its declaration against the kernel's
+/// derivation of the family; the first difference is a rejection.
+///
+/// On both paths:
+///
+/// * one `isUnsafe` flag for the whole bundle (a Lean declaration has one);
+/// * for every type: `all` (the family, in the bundle's order), `numNested`,
+///   `isRec` and `isReflexive` — the two flags are Lean's, computed for the
+///   family as a whole from the constructor types as written (see
+///   `oxilean_kernel::inductive`'s derivation). `isRec` is what
+///   `is_structure_like` reads, and with it structure eta, unit-like
+///   equality and eta inside iota: a recursive type that claims
+///   `isRec: false` would get all three.
+///
+/// On the ordinary path the kernel then checks the exported members one by
+/// one and compares the rest itself (`numIndices` against the type's
+/// telescope; a constructor's `induct`, `cidx`, `numParams`, `numFields` and
+/// universe parameters against its type and the inductive's list; each
+/// recursor against the derived recursor of ITS OWN NAME, rule by rule in
+/// the constructors' order — and it is the derived recursor the kernel then
+/// adds, not the record), and one more thing is asked here: one recursor
+/// record per type. On the nested path (`full`) nothing of the file is
+/// handed to the kernel member by member — the derived family is what gets
+/// installed, after the kernel has held the declared types, the declared
+/// constructor types and the recursor records against it
+/// (`verify_nested_bundle`) — so those fields are compared here as well, and
+/// a constructor record that no type of the bundle lists is refused.
+///
+/// **How a term of a recursor record is compared with the derived term**
+/// (the recursor's type, a rule's right-hand side; the kernel does it,
+/// `oxilean_kernel::inductive::supplied`): as written, up to the names and
+/// the binder information of binders; failing that, the record's term must
+/// be closed and well typed — a type must be a type, a right-hand side must
+/// have the type of the derived one — and only then is it compared by
+/// definitional equality. Either way the record's term is dropped: the
+/// derived one is what is installed.
+///
+/// **How a record is paired with a derived item.** By its name, on both
+/// paths, and one to one:
+///
+/// * a type record is the family member of its name — the family handed to
+///   the derivation IS the type records, in their order, and a name that
+///   occurs twice is refused by the derivation;
+/// * a constructor record is found by its name in the `ctors` list of a
+///   type (the derivation takes each listed constructor's type from the
+///   record of that name; a listed name without a record, a record no list
+///   names, a second record of a name are each refused), and its `cidx` is
+///   its place in the list of the type it names as `induct`;
+/// * a recursor record is the recursor Lean's kernel gives that name:
+///   `T.rec` for a type `T` of the declaration, and on the nested path
+///   `<first type>.rec_<k>` for the `k`-th auxiliary type. A record under
+///   any other name (`check_recursor_record_names`, before anything is
+///   derived — the one flat component `"T.rec"` among them), a second
+///   record of a name (the kernel refuses a second constant of a name) and
+///   a missing record (the count) are refused, so every derived recursor is
+///   matched by exactly one record and every record matches exactly one.
+///   The derived rules call the sibling recursors by these names, and the
+///   kernel's guard holds them to the recursors the bundle installs;
+/// * rule `i` of a recursor record is the rule of the type's `i`-th
+///   constructor.
+#[allow(clippy::result_large_err)] // KernelError is large; replay is not a hot error path
+fn compare_with_derivation(
+    b: &InductiveBundle,
+    derived: &DerivedFamily,
+    full: bool,
+) -> Result<(), SeamFailure> {
+    let internal = |what: &str| SeamFailure::Reason(format!("internal: derivation without {what}"));
+    let Some(first) = b.types.first() else {
+        return Err(SeamFailure::Reason("empty inductive bundle".into()));
+    };
+    let is_unsafe = first.is_unsafe;
+    let mixed = b.types.iter().any(|t| t.is_unsafe != is_unsafe)
+        || b.ctors.iter().any(|c| c.is_unsafe != is_unsafe)
+        || b.recs.iter().any(|r| r.is_unsafe != is_unsafe);
+    if mixed {
+        return Err(SeamFailure::Reason(format!(
+            "inductive bundle '{}' mixes safe and unsafe records: a declaration has one isUnsafe \
+             flag",
+            first.common.name
+        )));
+    }
+    if derived.inductives.len() != b.types.len() {
+        return Err(internal("one inductive per type"));
+    }
+    for (t, d) in b.types.iter().zip(&derived.inductives) {
+        let d = d
+            .to_inductive_val()
+            .ok_or_else(|| internal("an inductive"))?;
+        let name = &t.common.name;
+        if t.all != d.all {
+            return Err(differs(name, "all", &Names(&t.all), &Names(&d.all)));
+        }
+        if t.num_nested != d.num_nested {
+            return Err(differs(name, "numNested", &t.num_nested, &d.num_nested));
+        }
+        if t.is_rec != d.is_rec {
+            return Err(differs(name, "isRec", &t.is_rec, &d.is_rec));
+        }
+        if t.is_reflexive != d.is_reflexive {
+            return Err(differs(
+                name,
+                "isReflexive",
+                &t.is_reflexive,
+                &d.is_reflexive,
+            ));
+        }
+        if full && t.num_indices != d.num_indices {
+            return Err(differs(name, "numIndices", &t.num_indices, &d.num_indices));
+        }
+    }
+    if !full {
+        if b.recs.len() != b.types.len() {
+            return Err(SeamFailure::Reason(format!(
+                "inductive bundle '{}' has {} recursor record(s) for {} type(s): the kernel \
+                 derives one recursor per type",
+                first.common.name,
+                b.recs.len(),
+                b.types.len()
+            )));
+        }
+        return Ok(());
+    }
+    if derived.constructors.len() != b.ctors.len() {
+        return Err(SeamFailure::Reason(format!(
+            "inductive bundle '{}' has {} constructor record(s) and its types list {}",
+            first.common.name,
+            b.ctors.len(),
+            derived.constructors.len()
+        )));
     }
     for c in &b.ctors {
-        check_constant_info(env, ConstantInfo::Constructor(c.clone()))
-            .map_err(map_inductive_kernel_error)?;
-    }
-    for r in &b.recs {
-        check_constant_info(env, ConstantInfo::Recursor(r.clone()))
-            .map_err(map_inductive_kernel_error)?;
+        let name = &c.common.name;
+        let d = derived
+            .constructors
+            .iter()
+            .filter_map(ConstantInfo::to_constructor_val)
+            .find(|d| &d.common.name == name)
+            .ok_or_else(|| {
+                SeamFailure::Reason(format!(
+                    "constructor record '{name}' is not listed by a type of its bundle"
+                ))
+            })?;
+        if c.induct != d.induct {
+            return Err(differs(name, "induct", &c.induct, &d.induct));
+        }
+        if c.common.level_params != d.common.level_params {
+            return Err(differs(
+                name,
+                "levelParams",
+                &Names(&c.common.level_params),
+                &Names(&d.common.level_params),
+            ));
+        }
+        if c.cidx != d.cidx {
+            return Err(differs(name, "cidx", &c.cidx, &d.cidx));
+        }
+        if c.num_params != d.num_params {
+            return Err(differs(name, "numParams", &c.num_params, &d.num_params));
+        }
+        if c.num_fields != d.num_fields {
+            return Err(differs(name, "numFields", &c.num_fields, &d.num_fields));
+        }
     }
     Ok(())
 }
@@ -1006,8 +1590,9 @@ pub fn replay_streaming<R: BufRead>(reader: R, limits: ReplayLimits) -> ExportRe
 ///   once-only `add_quot` and validates each exported record against the
 ///   installed canonical primitive.
 /// * [`replay_inductive`](crate::replay::wave3b::replay_inductive) — checks the mutual group as a family and installs
-///   the exported declarations, with the kernel **re-deriving** recursors and
-///   comparing them against the exported ones.
+///   the exported types and constructors and the recursors the kernel
+///   **re-derives**; the exported recursors are compared with those and
+///   never installed.
 ///
 /// Both are *stateless* (no dependency cascade); [`Replayer`] applies the
 /// cascade on top of the same logic.
@@ -1043,7 +1628,10 @@ pub mod wave3b {
 
     /// Replay a `quot` record: install the four quotient primitives via the
     /// kernel's `add_quot` on first sight, then validate the record against
-    /// the installed canonical primitive. See the module docs.
+    /// the installed canonical primitive. See the module docs. (Stateless:
+    /// it keeps no memory of the records it has seen, so a second record
+    /// for a primitive is validated like the first; [`super::Replayer`]
+    /// rejects it.)
     #[must_use]
     pub fn replay_quot(env: &mut Environment, decl: &ExportDecl) -> ReplayOutcome {
         oxilean_kernel::fuel::clear_reduction_limit();
@@ -1059,8 +1647,9 @@ pub mod wave3b {
     }
 
     /// Replay an `inductive` bundle: check the mutual family, install the
-    /// exported declarations, and have the kernel re-derive and compare the
-    /// recursors. See the module docs.
+    /// exported types and constructors and the recursors the kernel
+    /// re-derives (the exported ones are compared with them). See the module
+    /// docs.
     #[must_use]
     pub fn replay_inductive(env: &mut Environment, decl: &ExportDecl) -> ReplayOutcome {
         oxilean_kernel::fuel::clear_reduction_limit();

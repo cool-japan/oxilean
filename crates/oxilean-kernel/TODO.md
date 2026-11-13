@@ -1,7 +1,7 @@
 # oxilean-kernel — TODO
 
 > Task list for the kernel crate (Trusted Computing Base).
-> Last updated: 2026-11-12
+> Last updated: 2026-11-13
 
 ## ✅ Completed (Phase 0): Core Types
 
@@ -56,7 +56,7 @@
 - [x] Inference for: `Let`, `Lit`
 - [x] `ensure_sort(e)` — WHNF + verify is Sort
 - [x] `ensure_pi(e)` — WHNF + verify is Pi
-- [x] `infer_proj(e)` — structure-like gate (1 ctor, no indices, non-recursive, per Lean `isStructureLike`) + telescopes through the constructor to find the field type; telescope/parameter mismatches are typed errors, never fabricated types (2026-07-12)
+- [x] `infer_proj(e)` — one-constructor gate, as Lean's `infer_proj` (recursive and indexed inductives are admitted; the structure-like gate of 2026-07-12 — 1 ctor, no indices, non-recursive — was stricter than Lean and rejected every recursive `structure`; it stays the gate of η and unit-like equality) + telescopes through the constructor, instantiated with the parameters and not the indices, to find the field type; telescope/argument mismatches are typed errors, never fabricated types (2026-07-12; gate corrected 2026-11-12, `infer/proj_target.rs`)
 
 ### Definitional Equality (`def_eq.rs` — 428 lines)
 - [x] Pointer/index equality fast path

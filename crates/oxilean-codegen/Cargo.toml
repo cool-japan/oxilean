@@ -16,3 +16,6 @@ categories = ["development-tools::build-utils"]
 [dependencies]
 oxilean-kernel = { workspace = true }
 tiny-keccak = { workspace = true }
+
+[lints]
+workspace = true

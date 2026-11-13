@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+# Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.
 #
 # test_harness.sh — self-contained smoke test for the differential harness.
 #

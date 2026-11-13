@@ -21,9 +21,9 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
-authors = ["COOLJAPAN OU (Team Kitasan)"]
+authors = ["COOLJAPAN OU (Team KitaSan)"]
 license = "Apache-2.0"
 repository = "https://github.com/cool-japan/oxilean"
 homepage = "https://github.com/cool-japan/oxilean"
@@ -50,19 +50,19 @@ num-rational = { version = "0.4", default-features = false, features = ["num-big
 oxiarc-deflate = "0.4.2"
 
 # Internal dependencies
-oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.4" }
-oxilean-export = { path = "crates/oxilean-export", version = "0.1.4" }
-oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.4" }
-oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.4" }
-oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.4" }
-oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.4" }
-oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.4" }
-oxilean-std = { path = "crates/oxilean-std", version = "0.1.4" }
-oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.4" }
-oxilean-build = { path = "crates/oxilean-build", version = "0.1.4" }
-oxilean-verify = { path = "crates/oxilean-verify", version = "0.1.4" }
-oxilean-verify-wasm = { path = "crates/oxilean-verify-wasm", version = "0.1.4" }
-oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.4" }
+oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.5" }
+oxilean-export = { path = "crates/oxilean-export", version = "0.1.5" }
+oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.5" }
+oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.5" }
+oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.5" }
+oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.5" }
+oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.5" }
+oxilean-std = { path = "crates/oxilean-std", version = "0.1.5" }
+oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.5" }
+oxilean-build = { path = "crates/oxilean-build", version = "0.1.5" }
+oxilean-verify = { path = "crates/oxilean-verify", version = "0.1.5" }
+oxilean-verify-wasm = { path = "crates/oxilean-verify-wasm", version = "0.1.5" }
+oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.5" }
 
 # WASM glue for the oxilean-verify-wasm "Kernel in a Tab" shim. Non-optional
 # there (that crate exists only for wasm); listed here for a single version pin.
@@ -84,6 +84,18 @@ criterion = { version = "0.8", features = ["html_reports"] }
 
 # Serialization (OxiCode - COOLJAPAN Pure Rust serialization, replaces bincode)
 oxicode = { version = "0.2.6" }
+
+# Cargo's own manifest lints (`cargo::…`, reported by default from Cargo 1.100).
+# The workspace keeps `homepage` equal to `repository`, and lists every member
+# in [workspace.dependencies] even when no member depends on it (here
+# `oxilean-verify-wasm`); both are kept as they are, so the two lints are allowed.
+# Members inherit this with `[lints] workspace = true`; oxilean-export and
+# oxilean-verify keep their own [lints.rust] and repeat the allow instead.
+# Cargo 1.98 and older do not know `lints.cargo` and print
+# "unused manifest key `lints.cargo`" for it.
+[workspace.lints.cargo]
+redundant_homepage = "allow"
+unused_workspace_dependencies = "allow"
 
 [profile.release]
 lto = true
@@ -108,6 +120,9 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 publish = false
+
+[lints]
+workspace = true
 
 [[test]]
 name = "integration_test"

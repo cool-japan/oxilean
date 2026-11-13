@@ -38,3 +38,6 @@ default = []
 wasm = ["wasm-bindgen", "serde", "serde-wasm-bindgen"]
 
 [dev-dependencies]
+
+[lints]
+workspace = true

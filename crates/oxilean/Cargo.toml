@@ -44,3 +44,6 @@ std-lib = ["dep:oxilean-std"]
 lint = ["dep:oxilean-lint"]
 build-sys = ["dep:oxilean-build"]
 wasm = ["dep:oxilean-wasm"]
+
+[lints]
+workspace = true

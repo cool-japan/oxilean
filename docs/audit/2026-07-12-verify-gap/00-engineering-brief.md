@@ -2,7 +2,7 @@
 
 **Project:** `oxilean-verify` — an independent Lean 4 proof checker
 **Demo:** *Kernel in a Tab*
-**Owner:** COOLJAPAN OU (Team Kitasan)
+**Owner:** COOLJAPAN OU (Team KitaSan)
 **License:** Apache-2.0
 **Status:** Draft v1 — for engineering execution
 
@@ -327,4 +327,4 @@ Not risks — **things to find out in the first fortnight**, because each one ch
 
 ---
 
-*Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.*
+*Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.*

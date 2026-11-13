@@ -463,6 +463,67 @@ pub fn occurs_const(e: &Expr, name: &Name) -> bool {
         _ => false,
     }
 }
+/// The first declaration name `e` mentions for which `wanted` holds, in a
+/// left-to-right walk of the term; `None` when it mentions no such name.
+///
+/// A term mentions a declaration in two ways: as a constant (`Const(n, _)`),
+/// and as the structure a projection reads (`Proj(n, _, _)` names the
+/// inductive type `n` without any constant standing for it).
+///
+/// Every shared subterm is looked at once (the set of addresses already
+/// seen — sound for the duration of this walk, during which `e` is borrowed
+/// and none of its subterms can be freed), so the cost is the number of
+/// distinct subterms, not the size of the tree they unfold to.
+pub fn find_mentioned_name<'a>(
+    e: &'a Expr,
+    mut wanted: impl FnMut(&Name) -> bool,
+) -> Option<&'a Name> {
+    let mut seen: std::collections::HashSet<*const Expr, crate::node_memo::WordBuildHasher> =
+        std::collections::HashSet::default();
+    let mut pending: Vec<&'a Node> = Vec::new();
+    let mut current: Option<&'a Expr> = Some(e);
+    loop {
+        let cur: &'a Expr = match current.take() {
+            Some(cur) => cur,
+            None => match pending.pop() {
+                Some(node) => {
+                    if !seen.insert(node.as_ptr()) {
+                        continue;
+                    }
+                    node
+                }
+                None => return None,
+            },
+        };
+        match cur {
+            Expr::Const(n, _) => {
+                if wanted(n) {
+                    return Some(n);
+                }
+            }
+            Expr::App(f, a) => {
+                pending.push(a);
+                pending.push(f);
+            }
+            Expr::Lam(_, _, ty, body) | Expr::Pi(_, _, ty, body) => {
+                pending.push(body);
+                pending.push(ty);
+            }
+            Expr::Let(_, ty, val, body) => {
+                pending.push(body);
+                pending.push(val);
+                pending.push(ty);
+            }
+            Expr::Proj(n, _, inner) => {
+                if wanted(n) {
+                    return Some(n);
+                }
+                pending.push(inner);
+            }
+            Expr::BVar(_) | Expr::FVar(_) | Expr::Sort(_) | Expr::Lit(_) => {}
+        }
+    }
+}
 /// Count the number of leading lambdas.
 pub fn count_lambdas(e: &Expr) -> u32 {
     match e {

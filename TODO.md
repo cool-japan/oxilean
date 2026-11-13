@@ -1,11 +1,11 @@
 # OxiLean — TODO
 
 > Master task list for the OxiLean project.
-> Last updated: 2026-11-12
+> Last updated: 2026-11-13
 >
-> Current release: version 0.1.4 (2026-11-12) — see CHANGELOG.md.
+> Current release: 0.1.5 (2026-11-13); previous release: 0.1.4 (2026-11-12) — see CHANGELOG.md.
 >
-> **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). v0.1.4 released 2026-11-12. The project has 17 crates and 1.36M+ lines implemented.
+> **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). v0.1.4 released 2026-11-12. v0.1.5 released 2026-11-13. The project has 17 crates and 1.36M+ lines implemented.
 >
 > **Phases 1-5 Status**: The interactive-prover phases (1–5) are complete. The v0.1.3 campaign (Waves 1–4) delivered the independent verify product: oxilean-export, oxilean-verify, oxilean-verify-wasm, plus kernel soundness fixes (BigNat, quotients, struct eta, re-derived recursors, complete level defeq). See TODO_VERIFY.md for full status.
 
@@ -82,7 +82,11 @@ See `crates/oxilean-kernel/TODO.md` for detailed status.
 - [x] Re-derived recursors: kernel derives canonical RecursorVals from inductives/ctors and validates
   exported ones by def-eq comparison — tampered types/rules rejected (Wave 2, S3/S4)
 - [x] Strict positivity re-check on import of inductive families (Wave 2, S3)
-- [x] Mutual inductives and nested inductives supported via `add_inductive_family` (Wave 2)
+- [x] Mutual inductives supported via `add_inductive_family` (Wave 2). Nested inductives are not:
+  `add_inductive_family` refuses a nested occurrence (`UnsupportedNestedInductive`); since 0.1.4 they
+  go through `check_and_derive_family_nested` / `verify_nested_bundle` (the export replay's nested
+  path), for a family without parameters nested through a container that is not part of a mutual block
+  — except the shapes C25, C28 and C29 (`TODO_VERIFY.md`), rejected where Lean's kernel accepts them
 - [x] Builtin inductives (Nat, Bool, Unit, Empty, String, Eq) re-derived; `Eq` is
   Lean-exact (2 params/1 index/K flag); rule RHSes are closed lambdas (Wave 2, S6)
 
@@ -348,9 +352,9 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 
 ---
 
-## Project Status: Phases 1-5 COMPLETE; v0.1.4 released
+## Project Status: Phases 1-5 COMPLETE; v0.1.5 released
 
-**Phases 1-5 complete as of 2026-05-03. v0.1.3 shipped 2026-07-16. v0.1.4 shipped 2026-11-12.**
+**Phases 1-5 complete as of 2026-05-03. v0.1.3 shipped 2026-07-16. v0.1.4 shipped 2026-11-12. v0.1.5 shipped 2026-11-13.**
 - 17 crates, 6,168 files, 1,360,584 lines implemented
 - 33,733 tests passing (workspace; 746 ignored)
 - 0 warnings
@@ -360,12 +364,19 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 - oxilean-verify-wasm: 165 KB gzip (168,785 B, 427,914 B raw at 0.1.4), 0 external deps, 0 unsafe, 41 exports (0.1.3: 144 KB gzip, 147,132 B, 39 exports)
 
 **v0.1.4 (released 2026-11-12)**:
-- Nested inductives in the kernel (nested-to-mutual elaboration, recursors re-verified by def-eq)
+- Nested inductives in the kernel (nested-to-mutual elaboration, recursors re-verified by def-eq), for a family without parameters (except C25, C28 and C29, rejected where Lean's kernel accepts them); any other nested inductive is still `unsupported`
 - Lean core `Init` verifies in full: 57,277 verified · 0 unsupported · 0 rejected in 34 s (0.1.3: 35,424 · 21,853 · 0 in 8 m 28 s)
 - Two performance passes (terms carry their hash, shared terms walked once, `f a ≡ f b` from `a ≡ b`); peak heap on `Init` 2,723 MB → 995 MB
 - Three kernel fixes (a K-like wrong accept, point-free quotient maps, long reductions) and closed-term enforcement; opt-in term-depth / reduction-nesting limits for small stacks
 - Hygiene pass: `unwrap`/`expect` removed outside tests, three unsound safe-code paths closed
 - MSRV 1.89 (was a declared 1.70 that never built); `deny.toml` with the COOLJAPAN banned-crate list
+
+**v0.1.5 (2026-11-13)**: the cargo-formal side has applied its patch and confirmed it on site (2026-11-13); from its side the tree may be committed and released. Still open, all older than 0.1.5 (details: CHANGELOG `[0.1.5]` → Known differences, and `TODO_VERIFY.md`):
+- S26: a name Lean's kernel gives a constant of a refused bundle (`A.rec`, `N.rec_1`, …) stays free, so a later `def` of that name verifies
+- S27: `add_inductive_family` (kernel API) is neither atomic nor guarded. No file reaches it, but `init_builtin_env` uses it, so the one-line change written out in S27 waits for a measurement
+- Universe levels equal under every assignment are identified; Lean's kernel compares normal forms and refuses. This kernel decides more than Lean's does, and nothing false follows
+- Weaker than Lean: the nested shapes C25, C28 and C29 are rejected, plus C26 and C27; safety flags are not read; a theorem in `Sort (max 0 0)` is accepted
+- [ ] **`normalize` (universe levels) is not idempotent.** `succ (imax (max v w) (max w v))` normalizes to `succ (max v w)`, which normalizes further to `max (succ v) (succ w)`. `prop_normalize_idempotent` (`crates/oxilean-kernel/tests/level_defeq.rs`, 2,000 random cases) draws such an input on about one run in 200 (found 2026-11-13 on runs 276 and 188 of two loops). It fails with `normalize not idempotent on Level(Succ(Level(IMax(…))))`, and a re-run passes only because it draws other inputs. The level code and the test are unchanged since 0.1.4 (cargo-formal: ISSUE-5). Until this is fixed, a run whose only failure is this test with that message is this issue; any other failing test is a real failure. Fix `normalize` (`src/level/functions.rs`) and pin the input above as a regression case
 
 ## Verify Product (0.1.3)
 

@@ -35,3 +35,6 @@ default = []
 # the stack. Off by default: it adds four bytes to every shared subterm.
 # (`oxilean-verify-wasm` turns it on — a browser's stack is about a megabyte.)
 term-depth = []
+
+[lints]
+workspace = true

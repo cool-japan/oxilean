@@ -1,7 +1,7 @@
 # oxilean-codegen — TODO
 
 > Task list for the code generation crate.
-> Last updated: 2026-11-12
+> Last updated: 2026-11-13
 
 ## ✅ Completed
 

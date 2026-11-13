@@ -51,8 +51,11 @@ exceed the budget return a typed error rather than panicking or OOMing.
 |---|---|---|
 | `term-depth` | off | Forwards to `oxilean-kernel/term-depth`: the kernel tracks term depth so `oxilean_kernel::fuel::set_term_depth_limit` can be enforced. A term over the limit is reported as the named unsupported feature `TERM_DEPTH_LIMIT` (`"resource limit exceeded: term depth"`), never a rejection. |
 
-0.1.4 also replays nested inductives (via the kernel's nested-to-mutual
-elaboration) and counts the per-declaration budget in subterms reached by a
+0.1.4 also replays nested inductives without parameters (via the kernel's
+nested-to-mutual elaboration; a nested inductive with parameters, or one nested
+through a mutual container, is the named unsupported feature
+`NESTED_INDUCTIVES`, and three shapes without parameters that Lean's kernel
+accepts are rejected — C25, C28 and C29 in the workspace's `TODO_VERIFY.md`) and counts the per-declaration budget in subterms reached by a
 term builder; new fixtures live under the workspace's `tests/fixtures/lean4export/`.
 
 ## Format pin
@@ -70,7 +73,7 @@ list.
 
 ```toml
 [dependencies]
-oxilean-export = "0.1.4"
+oxilean-export = "0.1.5"
 ```
 
 - Size: 2,530 SLOC in 7 source files under `src/`; 99 tests
@@ -79,4 +82,4 @@ oxilean-export = "0.1.4"
 - Rust version: 1.89+
 - No build scripts; no proc macros; no C dependencies
 
-Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.

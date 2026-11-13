@@ -26,3 +26,8 @@ term-depth = ["oxilean-kernel/term-depth"]
 
 [lints.rust]
 unsafe_code = "forbid"
+
+# The cargo lints of [workspace.lints.cargo]; this crate keeps its own
+# [lints.rust], so it cannot inherit [workspace.lints].
+[lints.cargo]
+redundant_homepage = "allow"

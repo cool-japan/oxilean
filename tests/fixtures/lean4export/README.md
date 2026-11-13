@@ -29,6 +29,15 @@
 | `CongruenceFirst.ndjson` | 382846 | 7018 | Export of four theorems from `CongruenceFirst.lean` (in this directory, Lean v4.32.0-rc1). Three are `rfl` proofs of `f a = f b` with `a` and `b` definitionally equal, for an `f` whose unfolding does not end in reasonable time: `same_function_equal_args` (`slow 1000000000 (k + 0) = slow 1000000000 k`, `k` opaque), `mod_stuck_divisor` (`(2^64 - 1) % USize.size = (2^64 - 1) % 2 ^ System.Platform.numBits`, the comparison inside Lean core's `UInt64.toUSize_ofNatClamp_of_le`) and the control `short_fuel`. Lean's kernel compares the arguments before it unfolds `f`; before 2026-11-11 `oxilean-verify` unfolded first and the first two ran out of budget. **The fourth is a negative control**: `CongruenceFirst.bad : slow 5 k = slow 6 k`, a declaration Lean's own kernel REJECTS (added with `debug.skipKernelTC`). Expected split: 184 verified · 0 unsupported · 1 rejected, exit code 1. The only fixture with `opaque` records. 185 declarations total. |
 | `NestedReduction.ndjson` | 122374 | 2237 | Export of three theorems from `NestedReduction.lean` (in this directory, Lean v4.32.0-rc1) about `count n acc`, which counts `n` down by structural recursion: `deep` (`count 400 0 = 400`) and the control `shallow` (`count 40 0 = 40`), both by kernel evaluation (`decide +kernel`). Evaluating `count n 0` is a reduction nested about `n` deep, and each level holds a frame of the checker's native stack — so how deep it may go is a property of the stack, not of the proof. `oxilean-verify` checks all of it on its own thread (512 MiB of stack, no limit on the nesting). A checker given a limit on the nesting reports `deep` as `unsupported` (`resource limit exceeded: reduction depth or step limit`), never as rejected; the WebAssembly build sets 256 and also limits the depth of terms, and stops at whichever comes first (here the depth: the argument `count` hands on is 512 levels deep after 256 steps). **The third theorem is a negative control**: `NestedReduction.bad : count 400 0 = 401`, a declaration Lean's own kernel REJECTS (added with `debug.skipKernelTC`), which takes the same four hundred levels to find out; with the room it must be rejected, without it `unsupported`, and under no limit verified. Expected split: 64 verified · 0 unsupported · 1 rejected, exit code 1 (62 · 3 · 0 under a nesting limit of 256). 65 declarations total. |
 | `DeepTerm.ndjson` | 28865 | 720 | Export of `tower`, `tower_eq` and `bad` from `DeepTerm.lean` (in this directory, Lean v4.32.0-rc1). `tower` is `Nat.succ` applied three hundred times to `Nat.zero`, written out as a term (the shape of a long list literal: every element one level further down), and `tower_eq` says the same tower over `z`, a definition that unfolds to zero, equals it. A kernel walks a term by recursion — to type it, to compare it, to release it — so the depth of a term is native stack as well. `oxilean-verify` sets no limit on it. A checker given one — the WebAssembly build sets 512 — does not read a declaration with a deeper term into memory and reports it as `unsupported` (`resource limit exceeded: term depth`); three hundred levels are within 512, and the tests use a lower limit to see the refusal. **The third declaration is a negative control**: `DeepTerm.bad`, the tower over `z` equated with a tower one level TALLER, which Lean's own kernel REJECTS (added with `debug.skipKernelTC`). Expected split: 5 verified · 0 unsupported · 1 rejected, exit code 1 (3 · 3 · 0 under a term-depth limit of 100). 6 declarations total; 633 of the 720 records are applications. |
+| `ProjOutOfProp.ndjson` | 14083 | 241 | **Negative fixture**: export of `ProjOutOfProp.wit` and `ProjOutOfProp.false_of_proj` from `ProjOutOfProp.lean` (in this directory, Lean v4.32.0-rc1), two declarations Lean's own kernel REJECTS — they were added with `debug.skipKernelTC` so that they could be exported. Both rest on `Expr.proj Exists 0 h` for `h : ∃ n : Nat, True`: the witness read out of a proof. `wit` is that function as a definition; `false_of_proj` is a closed proof of `False` from it, with no axiom (any two proofs of the existential are definitionally equal, so their witnesses are, and the witnesses of `⟨0, _⟩` and `⟨1, _⟩` reduce to `0` and `1`). Lean's kernel refuses the projection itself: out of a proposition only a proposition may be projected. Expected split: 5 verified · 0 unsupported · 2 rejected, exit code 1. Before the kernel had that side condition `oxilean-verify` reported both VERIFIED — 7 verified · 0 unsupported · 0 rejected, exit 0 (a wrong accept of `False`, present in the published 0.1.3 and 0.1.4). 7 declarations total. |
+| `ProjRecIndexed.ndjson` | 39606 | 666 | Export of `ProjRecIndexed.proj_mk` from `ProjRecIndexed.lean` (in this directory, Lean v4.32.0-rc1) — ordinary Lean, nothing added without kernel checking: every declaration is one Lean's own kernel ACCEPTED. `Tree` is a recursive `structure` whose recursion is nested through `List`, `Stream` a recursive `structure` whose recursion is direct, and `Tagged α : Nat → Type` a one-constructor family with a parameter and an index. The six `proj` records are projections out of them: `Tree.label`, `Tree.kids`, `Stream.head`, `Stream.tail` (generated by `structure`) and `Tagged.val`, `Tagged.tag` (the `inductive` command generates none; they are written `t.1` / `t.2`, which Lean elaborates to `Expr.proj`); `Tree.firstLabel` and the theorem `proj_mk` use them on variables and on constructor applications. Lean's kernel types a projection out of ANY inductive with exactly one constructor; structure eta and unit-like equality are narrower (no recursion, no indices). Expected split: 22 verified · 0 unsupported · 0 rejected, exit code 0. While the kernel asked the eta condition of a projection `oxilean-verify` reported 14 verified · 0 unsupported · 8 rejected, exit 1 — a wrong REJECT of every recursive `structure` (present in the published 0.1.3 and 0.1.4). 22 declarations total. |
+| `CtorListLie.ndjson` | 16821 | 257 | **Negative fixture, edited by hand**: the export of four declarations from `CtorListLie.lean` (in this directory, Lean v4.32.0-rc1) with THREE RECORDS CHANGED after the export (the commands are below). `Two` (`mk (n : Nat)` / `nil`), `L2` (`cons` / `nil`, recursive) and `TI : Nat → Type` (`a` / `b`, indexed) each have two constructors; in each `inductive` record the type's `ctors` list was cut down to the first, the second constructor's own record left in the bundle. No Lean environment looks like that — the kernel builds the constructor list itself — so each bundle must be refused AS A WHOLE, and with it every declaration that names a part of it. The four declarations after them read a field with a raw projection, which Lean's own kernel REJECTS for a type with two constructors (added with `debug.skipKernelTC`): `two_proj`, `two_eta` (`∀ t : Two, t = Two.mk t.0` by `rfl` — false of `Two.nil`), `l2_proj`, `ti_proj`. Expected split: 3 verified · 0 unsupported · 7 rejected, exit code 1 (`Nat`, `Eq`, `Bool` verify). Through 0.1.4 a refused bundle stayed half installed — the type with one constructor, and that constructor — and `oxilean-verify` reported `two_proj` and `two_eta` VERIFIED against it: 5 verified · 0 unsupported · 5 rejected (a wrong accept, present in the published 0.1.3 and 0.1.4); with projections out of recursive and indexed one-constructor types admitted, `l2_proj` and `ti_proj` as well (7 · 0 · 3). 10 declarations total. |
+| `RecRuleTruth.ndjson` | 16183 | 267 | **Written by hand** (not an export: see below). A family in which one recursor rule matters, every `inductive` record as Lean v4.32.0-rc1's kernel makes it: `B : Type` (`t`, `f`); `P : B → Prop` with `mk : (b : B) → P b`; `T : Type` with `mk : (b : B) → P b → T`; `Eq`, `False`, `True`; `get b h : B` (the index a proof of `P b` was built at, by large elimination of `P`); `val t` and `fst t`, which for `t = T.mk b h` are `get b h` and `b`; `get_eq`, `val_eq : ∀ t, val t = fst t`. Twelve declarations Lean's kernel accepts, among them `honest_val_is_t : val (T.mk B.t (P.mk B.t)) = B.t` by `rfl`, and three it REJECTS: `bad_val_is_f` (the same with `B.f`), `bad_f_eq_t : B.f = B.t := val_eq _` and `boom : False` from it. Expected split: 12 verified · 0 unsupported · 3 rejected, exit code 1. 15 declarations total. |
+| `RecRuleJunk.ndjson` | 16818 | 279 | **Negative fixture, written by hand**: `RecRuleTruth` with ONE thing changed — the right-hand side of the only rule of `T.rec`, from `fun motive mk b h => mk b h` to `fun motive mk b h => mk b (B.rec (motive := fun x => P x) (P.mk B.f) (P.mk B.f) b)`. The inserted term is ILL TYPED (its first minor premise must have the type `P B.t` and has the type `P B.f`); its type read off its head is `P b`, so a comparison by definitional equality takes it for the proof `h`. No Lean environment looks like that — the kernel derives every recursor itself — so the bundle must be refused, and with it every declaration that names it or a dependent of it. Expected split: 7 verified · 0 unsupported · 8 rejected, exit code 1 (`B`, `P`, `Eq`, `False`, `True`, `get`, `get_eq` verify). Through 0.1.4 the record was accepted by definitional equality alone AND INSTALLED: `val (T.mk B.t (P.mk B.t))` reduced through the inserted term to `B.f`, and `oxilean-verify` reported `bad_val_is_f`, `bad_f_eq_t` and `boom : False` VERIFIED — a closed proof of `False` from no axiom — and the honest `honest_val_is_t` rejected: 14 verified · 0 unsupported · 1 rejected (a wrong accept, present in the published 0.1.3 and 0.1.4). 15 declarations total. |
+| `RecRuleControl.ndjson` | 4817 | 77 | **Written by hand**: the control of `RecRuleJunk`. `B` and `P` as there, and an ill-typed term of the same making as the one put into the rule — `B.rec (motive := fun _ => P B.t) (P.mk B.f) (P.mk B.f) B.t`, whose first minor premise must have the type `P B.t` and has the type `P B.f` — as the value of a theorem (`ctrl_thm_junk_is_proof`) and of a definition (`ctrl_def_junk`), beside an honest proof (`ctrl_thm_real_proof`). Where a kernel infers the type of such a term it refuses it — Lean's: "application type mismatch" — and so did the published 0.1.3 and 0.1.4: 3 verified · 0 unsupported · 2 rejected, exit code 1. Such a term was only ever accepted where its type was not inferred: in a recursor record. 5 declarations total. |
+| `RecNameMixedStyleTruth.ndjson` | 20892 | 341 | **Written by hand** (not an export: see below). The control of `RecNameMixedStyle`: `B`, `P`, `Eq`, `False`, `True`, `get`, `get_eq` as in `RecRuleTruth`, the mutual block of `A` (one constructor `A.mk : (b : B) → P b → C → A`) and `C` (`C.base : C`, `C.step : A → C`) as Lean v4.32.0-rc1's kernel makes it (recursors `A.rec` and `C.rec`), then the records of `RecNameMixedStyle`'s attack: `def A.rec` (a definition of another type under the name the kernel gave the recursor of `A`), `X : P B.t` by `C.rec`'s iota at `C.step`, `get_X_is_f`, `bad_f_eq_t : B.f = B.t` and `boom : False`. Lean's kernel accepts nine and REJECTS four: `A.rec` (the name is taken), `get_X_is_f`, `bad_f_eq_t`, `boom`. Expected split: 9 verified · 0 unsupported · 4 rejected, exit code 1. 13 declarations total. |
+| `RecNameMixedStyle.ndjson` | 21870 | 359 | **Negative fixture, written by hand**: `RecNameMixedStyleTruth` with ONE record edited — the recursor record of `A` named with the ONE flat component `"A.rec"` (Lean writes it `«A.rec»`), where Lean's kernel names it `A.rec`, the component `rec` under `A`, and its two recursor constants with it. Lean's kernel never gives a recursor such a name, so the bundle must be refused, with the name expected, and with it every declaration that names it or a dependent of it. Expected split: 8 verified · 0 unsupported · 5 rejected, exit code 1 (`A`; `X`, `get_X_is_f`, `bad_f_eq_t`, `boom` as its dependents; `def A.rec` verifies: no constant of that name is installed). Through 0.1.4 — and in every build before the name rule — the kernel derived the family's recursors in the style of each record's name, so the installed `C.rec` called a hierarchical `A.rec` and the installed `«A.rec»` a flat `«C.rec»`, neither of them installed; the file's `def A.rec` then answered `C.rec`'s call, `X : P B.t` reduced to a proof of `P B.f`, and `oxilean-verify` reported every declaration VERIFIED, `boom : False` among them — a closed proof of `False` from no axiom: 13 verified · 0 unsupported · 0 rejected, exit code 0 (present in the published 0.1.3 and 0.1.4). 13 declarations total. |
+| `RecNameFlat.ndjson` | 16239 | 268 | **Negative fixture, written by hand**: the family of `RecRuleTruth` (`T` with `T.mk : (b : B) → P b → T`; `val`, `fst`, `val_eq` and the four statements) with the recursor record of `T` named with the one flat component `"T.rec"`. Expected split: 7 verified · 0 unsupported · 8 rejected, exit code 1 (`T` for its recursor's name; `val`, `fst`, `val_eq`, `honest_val_is_t` and the three Lean rejects in any case as dependents). Through 0.1.4 the record was accepted and the recursor installed under the flat name, so `val` and `fst`, which name Lean's `T.rec`, were refused for an unknown constant, and `val_eq` and `honest_val_is_t` with them, where Lean's kernel accepts all four: 8 verified · 0 unsupported · 7 rejected, with `T` verified where Lean's kernel refuses the record. 15 declarations total. |
 
 ## Verification
 
@@ -201,6 +210,221 @@ PATH="$TC/bin:$PATH" LEAN_PATH="$work:$TC/lib/lean" "$TC/bin/leanchecker" KGuard
 # leanchecker found a problem in KGuardCollision … (kernel) declaration type mismatch
 ```
 
+### `ProjOutOfProp` (negative fixture, source in this directory)
+
+`ProjOutOfProp.ndjson` is generated the same way from `ProjOutOfProp.lean`,
+which imports `Lean` to build its terms with `Expr.proj` (the elaborator will
+not write a projection out of an `Exists`) and to add the two declarations
+without kernel checking:
+
+```sh
+TC="$HOME/.elan/toolchains/leanprover--lean4---v4.32.0-rc1"
+work="$(mktemp -d)"
+( cd tests/fixtures/lean4export && "$TC/bin/lean" -o "$work/ProjOutOfProp.olean" ProjOutOfProp.lean )
+PATH="$TC/bin:$PATH" LEAN_PATH="$work:$TC/lib/lean" \
+  ~/work/lean4export/.lake/build/bin/lean4export ProjOutOfProp -- \
+  ProjOutOfProp.wit ProjOutOfProp.false_of_proj \
+  > tests/fixtures/lean4export/ProjOutOfProp.ndjson
+```
+
+Compiling the source prints `LEAN KERNEL: REJECTED ProjOutOfProp.wit` and
+`LEAN KERNEL: REJECTED ProjOutOfProp.false_of_proj` — the verdicts of Lean's
+kernel on the two declarations. Lean's environment re-checker stops at the
+first of them on the compiled module:
+
+```sh
+PATH="$TC/bin:$PATH" LEAN_PATH="$work:$TC/lib/lean" "$TC/bin/leanchecker" ProjOutOfProp
+# leanchecker found a problem in ProjOutOfProp … while replaying declaration 'ProjOutOfProp.wit':
+# (kernel) invalid projection
+```
+
+### `ProjRecIndexed` (positive fixture, source in this directory)
+
+`ProjRecIndexed.ndjson` is generated the same way from `ProjRecIndexed.lean`,
+which imports nothing beyond the Lean prelude and adds nothing without kernel
+checking:
+
+```sh
+TC="$HOME/.elan/toolchains/leanprover--lean4---v4.32.0-rc1"
+work="$(mktemp -d)"
+( cd tests/fixtures/lean4export && "$TC/bin/lean" -o "$work/ProjRecIndexed.olean" ProjRecIndexed.lean )
+PATH="$TC/bin:$PATH" LEAN_PATH="$work:$TC/lib/lean" \
+  ~/work/lean4export/.lake/build/bin/lean4export ProjRecIndexed -- ProjRecIndexed.proj_mk \
+  > tests/fixtures/lean4export/ProjRecIndexed.ndjson
+```
+
+Compiling the source prints nothing — Lean's kernel accepts every declaration —
+and Lean's environment re-checker agrees on the compiled module:
+
+```sh
+PATH="$TC/bin:$PATH" LEAN_PATH="$work:$TC/lib/lean" "$TC/bin/leanchecker" ProjRecIndexed
+# no output, exit code 0
+```
+
+`Tagged`'s index must stay an index for the fixture to make its point: Lean's
+`inductive` command turns an index into a parameter when a constructor
+argument is used as the index of every result type AND comes first among the
+constructor's arguments (`mk (tag : Nat) (val : α) : Tagged α tag` would give
+`Tagged : Type → Nat → Type` with TWO parameters and no index). `tag` follows
+`val`, so it cannot be promoted; `oxilean-export`'s `replay_smoke` pins
+`num_params = 1`, `num_indices = 1`.
+
+### `CtorListLie` (negative fixture, source in this directory, three records edited by hand)
+
+`CtorListLie.ndjson` is generated the same way from `CtorListLie.lean`, which
+imports `Lean` to build its four terms with `Expr.proj` (the elaborator will
+not write a projection out of a type with two constructors) and to add them
+without kernel checking — and is then EDITED: the export goes through `sed`
+before it is written.
+
+```sh
+TC="$HOME/.elan/toolchains/leanprover--lean4---v4.32.0-rc1"
+work="$(mktemp -d)"
+( cd tests/fixtures/lean4export && "$TC/bin/lean" -o "$work/CtorListLie.olean" CtorListLie.lean )
+PATH="$TC/bin:$PATH" LEAN_PATH="$work:$TC/lib/lean" \
+  ~/work/lean4export/.lake/build/bin/lean4export CtorListLie -- \
+  CtorListLie.two_proj CtorListLie.two_eta CtorListLie.l2_proj CtorListLie.ti_proj \
+  | sed -e 's/"types":\[{"all":\[13\],"ctors":\[14,15\]/"types":[{"all":[13],"ctors":[14]/' \
+        -e 's/"types":\[{"all":\[32\],"ctors":\[33,34\]/"types":[{"all":[32],"ctors":[33]/' \
+        -e 's/"types":\[{"all":\[48\],"ctors":\[49,50\]/"types":[{"all":[48],"ctors":[49]/' \
+  > tests/fixtures/lean4export/CtorListLie.ndjson
+```
+
+The three expressions are the whole hand edit, one record each (257 records
+before and after; three differ; 16,830 bytes before, 16,821 after). The
+numbers are the export's name ids: 13 is `CtorListLie.Two`, 14 `Two.mk`,
+15 `Two.nil`; 32 is `CtorListLie.L2`, 33 `L2.cons`, 34 `L2.nil`; 48 is
+`CtorListLie.TI`, 49 `TI.a`, 50 `TI.b`. Each expression takes the second
+constructor out of the `ctors` list of the TYPE (`"types":[{…,"ctors":[…]`);
+the record of that constructor, further on in the same `inductive` record,
+is not touched, and neither is the recursor.
+
+Compiling the source prints `LEAN KERNEL: REJECTED` for each of
+`CtorListLie.two_proj`, `CtorListLie.two_eta`, `CtorListLie.l2_proj` and
+`CtorListLie.ti_proj` — the verdicts of Lean's kernel on the four declarations,
+over the three types as they really are (the compiler also prints a panic of
+its library-suggestions extension, which meets the ill-typed terms when the
+module is written; the exit code is 0). Lean's environment re-checker stops at
+the first of them on the compiled module:
+
+```sh
+PATH="$TC/bin:$PATH" LEAN_PATH="$work:$TC/lib/lean" "$TC/bin/leanchecker" CtorListLie
+# leanchecker found a problem in CtorListLie … while replaying declaration 'CtorListLie.two_proj':
+# (kernel) invalid projection
+```
+
+Lean cannot be shown the edited file — it reads no export — and needs not be:
+its kernel computes the constructor list of an inductive type when the type
+is declared, so the edited records say something no Lean environment says.
+Without the edit the export replays as 6 verified · 0 unsupported ·
+4 rejected: the three types are accepted and the four declarations refused
+for their projections, as by Lean.
+
+### `RecRuleTruth`, `RecRuleJunk`, `RecRuleControl` (a recursor rule that is not the kernel's; written by hand)
+
+These three files have no Lean source, and lean4export did not write them. No
+Lean session can export `RecRuleJunk`: Lean's kernel derives every recursor
+when an inductive type is declared and takes none from anywhere, so a file
+whose recursor record differs from the derivation has to be made by hand. Its
+truthful twin and its control were made the same way, so that the three differ
+in nothing but what they are about.
+
+They were written on 2026-11-12 by a script outside this repository that
+emits the records of format 3.1.0 directly (names, levels and expressions
+interned as lean4export interns them). Every `inductive` record in them is
+what Lean 4 v4.32.0-rc1's kernel makes of the declaration: the declaration —
+each type's name and type, each constructor's name and type — was handed to
+`Lean.Environment.addDeclCore` in an environment that held the file's earlier
+declarations and nothing else, and the types, constructors and recursors the
+kernel then holds were written back as the record. `RecRuleJunk` is that file
+with one field of one record changed afterwards: the `rhs` of the one rule of
+the recursor record `T.rec` (see the inventory row for the two terms). The
+script numbers the records of each file afresh, so the two files do not
+compare line by line; `fixtures_end_to_end` pins that they declare the same
+fifteen names in the same order and that the lie is six `app`, five `lam` and
+one `const` record more than the truth.
+
+Lean cannot be shown a file as such — it reads no export — but its kernel can
+be given every record of one: replayed record by record into an empty
+environment through `Environment.addDeclCore` (an inductive record as the
+declaration it states, the constants the kernel then holds compared with the
+record), the three files get these verdicts from Lean 4 v4.32.0-rc1:
+
+- `RecRuleTruth`: twelve declarations accepted; `bad_val_is_f` and
+  `bad_f_eq_t` rejected ("declaration type mismatch"), `boom` rejected
+  ("unknown constant 'bad_f_eq_t'").
+- `RecRuleControl`: three accepted; `ctrl_thm_junk_is_proof` and
+  `ctrl_def_junk` rejected ("application type mismatch … argument has type
+  `P B.f` but function has type … `B.t` → …").
+- `RecRuleJunk`: the kernel accepts the declaration of `T`, and the `T.rec`
+  it derives is not the file's record (rule 0, `rhs`). Against the kernel's
+  own recursor the declarations after it get the verdicts of `RecRuleTruth`:
+  `honest_val_is_t` accepted; `bad_val_is_f`, `bad_f_eq_t`, `boom` rejected.
+
+`oxilean-verify` refuses the bundle `T` of `RecRuleJunk` — a file whose
+recursor record is not the derived recursor describes no Lean environment —
+and therefore every declaration that names `T`, `T.mk`, `T.rec` or a
+dependent of them: `val`, `fst`, `val_eq`, `honest_val_is_t` and the three
+that Lean's kernel rejects in any case.
+
+The files are restored with `git checkout`; their SHA-256:
+
+```
+eaf3c38c0638fe1b2d6b42b5a38eb5ebe9136dcc39fc07bfa0e33057db81d63a  RecRuleTruth.ndjson
+9f88927a96df3c7b439b1d6441e199b0f9e1504a9d8d7a29dad468b0bd3cc8a9  RecRuleJunk.ndjson
+1ab47077e7aa6400eaf11bf02cd8800ef770392bbd846e04a5298f219aa1d919  RecRuleControl.ndjson
+```
+
+### `RecNameMixedStyleTruth`, `RecNameMixedStyle`, `RecNameFlat` (a recursor record under a name Lean never gives; written by hand)
+
+Like `RecRule*`, these files have no Lean source and lean4export did not write
+them; they were made on 2026-11-12/13 by the same kind of script (the format
+3.1.0 records emitted directly), every `inductive` record completed by Lean 4
+v4.32.0-rc1's kernel as described for `RecRule*`, and then — in the two
+negative files — ONE record edited: the name of a recursor record, from Lean's
+hierarchical `A.rec` (the string `rec` under the name `A`) to the one flat
+component `"A.rec"`, and in `RecNameMixedStyle` the recursor constants of that
+record's own type and rules with it. A name of one component that contains a
+dot prints as the hierarchical name does; Lean writes it `«A.rec»`.
+
+The name matters because the kernel derives the recursors of a whole family
+and, in a mutual (or nested) family, a recursor's rules call the recursors of
+the sibling types by name. The kernel's own tests spell recursor names in the
+flat style too, and a family is derived in the style of the record that is
+checked, so a mutual bundle with one record of each style was installed with
+rules that called recursors no one installed: here `C.rec`'s rule for
+`C.step` called the hierarchical `A.rec`. A later record then defines
+`A.rec`. `oxilean-verify` now refuses a recursor record under any name but
+the one Lean's kernel gives it (`T.rec`, or `<first type>.rec_<k>` for an
+auxiliary type of a nested declaration), and the kernel holds every name a
+derived term mentions to the constants the install leaves in the environment.
+
+Replayed record by record into an empty environment through
+`Environment.addDeclCore`, Lean 4 v4.32.0-rc1 gives:
+
+- `RecNameMixedStyleTruth`: nine accepted; `A.rec` rejected ("already
+  declared"), `get_X_is_f` and `bad_f_eq_t` rejected ("declaration type
+  mismatch"), `boom` rejected ("unknown constant").
+- `RecNameMixedStyle`: the kernel accepts the declaration of `A` and `C`, and
+  the recursors it makes are not the file's records (it made no recursor
+  `«A.rec»`, and no record of the file is its `A.rec`). Against the kernel's
+  own constants the records after it get the verdicts of the truth: `A.rec`,
+  `get_X_is_f`, `bad_f_eq_t`, `boom` rejected.
+- `RecNameFlat`: the record of `T` is not the kernel's (no recursor
+  `«T.rec»`); the records after it get `RecRuleTruth`'s verdicts.
+
+`oxilean-verify` installs nothing of a refused bundle. `RecNameMixedStyle`'s
+`def A.rec` is then the definition of a free name and verifies, where Lean's
+replay — which keeps its own constants for the declaration — finds the name
+taken; every record that names the bundle is refused.
+
+The files are restored with `git checkout`; their SHA-256:
+
+```
+1f36640514c59330a0f6bd7faab1f5c5fd078155bd809272555d9682a68a5af0  RecNameMixedStyleTruth.ndjson
+0df8e3d31665a47128aa6da412df065936637a8ae4cafe623e37a3fb06d908cf  RecNameMixedStyle.ndjson
+a7fcb06a69cb6616821d990d769c36b7e8f11a4489a1f68aca1698aac9893cc9  RecNameFlat.ndjson
+```
 ## Notes
 
 - These fixtures are sufficient for smoke-testing the `oxilean-export` reader and

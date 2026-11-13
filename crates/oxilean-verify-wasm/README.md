@@ -89,4 +89,4 @@ const summary = session.finish((decl) => {
 `reduction_nesting_limit()` and `term_depth_limit()` return the two limits of
 the section above, for a page that wants to show them.
 
-Copyright 2026 COOLJAPAN OU (Team Kitasan). Apache-2.0.
+Copyright 2026 COOLJAPAN OU (Team KitaSan). Apache-2.0.

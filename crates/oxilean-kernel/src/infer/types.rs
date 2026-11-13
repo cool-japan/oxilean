@@ -2,10 +2,11 @@
 //!
 //! 🤖 Generated with [SplitRS](https://github.com/cool-japan/splitrs)
 
+use super::proj_target::{proj_target, proj_type_params};
 use crate::declaration::{ConstructorVal, InductiveVal};
 use crate::def_eq::DefEqChecker;
 use crate::error::KernelError;
-use crate::expr_util::{get_app_args, get_app_fn, has_any_fvar, mk_app};
+use crate::expr_util::{get_app_args, get_app_fn, has_any_fvar, has_loose_bvars, mk_app};
 use crate::instantiate::instantiate_type_lparams;
 use crate::reduce::{Reducer, TransparencyMode};
 use crate::subst::{abstract_expr, instantiate};
@@ -1128,7 +1129,9 @@ impl<'env> TypeChecker<'env> {
             _ => Err(KernelError::NotAFunction(f_ty_whnf)),
         }
     }
-    /// Infer the type of a structure projection.
+    /// Infer the type of a projection. Which inductive type it may name —
+    /// any with exactly one constructor, recursive and indexed ones
+    /// included, as in Lean's `infer_proj` — is decided in `proj_target`.
     #[allow(clippy::result_large_err)]
     fn infer_proj(
         &mut self,
@@ -1136,46 +1139,21 @@ impl<'env> TypeChecker<'env> {
         idx: u32,
         struct_expr: &Expr,
     ) -> Result<Expr, KernelError> {
-        let ind_val = self
-            .env
-            .get_inductive_val(struct_name)
-            .ok_or_else(|| KernelError::Other(format!("not a structure type: {}", struct_name)))?
-            .clone();
-        if !self.env.is_structure_like(struct_name) {
-            return Err(KernelError::Other(format!(
-                "invalid projection: {} is not structure-like \
-                 (requires exactly one constructor, no indices, and no recursion; \
-                 has {} constructors, {} indices, is_rec = {})",
-                struct_name,
-                ind_val.ctors.len(),
-                ind_val.num_indices,
-                ind_val.is_rec
-            )));
-        }
-        let ctor_name = &ind_val.ctors[0];
-        let ctor_val = self
-            .env
-            .get_constructor_val(ctor_name)
-            .ok_or_else(|| KernelError::Other(format!("constructor not found: {}", ctor_name)))?
-            .clone();
-        if idx >= ctor_val.num_fields {
-            return Err(KernelError::Other(format!(
-                "field index {} out of range for {} (has {} fields)",
-                idx, struct_name, ctor_val.num_fields
-            )));
-        }
+        let (ind_val, ctor_val) = proj_target(self.env, struct_name, idx)?;
         let struct_ty = self.infer_type(struct_expr)?;
-        self.infer_proj_field_type(&ind_val, &ctor_val, idx, struct_expr, &struct_ty)
+        self.infer_proj_field_type(ind_val, ctor_val, idx, struct_expr, &struct_ty)
     }
     /// Compute the type of a projection field.
     ///
     /// Telescopes through the constructor's Pi-type, instantiating:
     /// 1. Universe parameters from the struct type's head constant
     /// 2. Inductive parameters from the struct type's applied arguments
+    ///    (the leading ones: the indices that follow are arguments of the
+    ///    type, not of the constructor)
     /// 3. Preceding fields with `Proj(S, j, struct_expr)` for `j < idx`
     ///
     /// Returns the domain of the `idx`-th Pi binder. Any mismatch — the
-    /// operand's type not being the structure type, a parameter-count
+    /// operand's type not being the structure type, an argument-count
     /// mismatch, or the constructor telescope running short — is a typed
     /// error rather than a fabricated type.
     #[allow(clippy::result_large_err)]
@@ -1205,16 +1183,18 @@ impl<'env> TypeChecker<'env> {
             instantiate_type_lparams(&ctor_ty, level_params, &levels)
         };
         let struct_args: Vec<Expr> = get_app_args(&struct_ty_whnf).into_iter().cloned().collect();
-        if struct_args.len() != ind_val.num_params as usize {
+        let Some(params) = proj_type_params(ind_val, &struct_args) else {
             return Err(KernelError::Other(format!(
-                "invalid projection: {} expects {} parameters, but the operand type {} supplies {}",
+                "invalid projection: {} expects {} parameters and {} indices, \
+                 but the operand type {} supplies {} arguments",
                 ind_val.common.name,
                 ind_val.num_params,
+                ind_val.num_indices,
                 struct_ty_whnf,
                 struct_args.len()
             )));
-        }
-        for param in &struct_args {
+        };
+        for param in params {
             match cur_ty {
                 Expr::Pi(_, _, _, body) => {
                     cur_ty = instantiate(&body, param);
@@ -1228,9 +1208,17 @@ impl<'env> TypeChecker<'env> {
                 }
             }
         }
+        // No data out of a proof (Lean's `infer_proj`; see `proj_prop`): of
+        // a proposition, the projected field and every earlier field a
+        // later field's type depends on must be propositions themselves.
+        // The sort is that of `S ps is`: read past the indices too.
+        let struct_is_prop = self.proj_struct_is_prop(ind_val, &levels, &struct_args)?;
         for j in 0..idx {
             match cur_ty {
-                Expr::Pi(_, _, _, body) => {
+                Expr::Pi(_, _, dom, body) => {
+                    if struct_is_prop && has_loose_bvars(&body) {
+                        self.ensure_prop_field(ind_val, j, &dom)?;
+                    }
                     let field_val = Expr::Proj(
                         ind_val.common.name.clone(),
                         j,
@@ -1248,7 +1236,12 @@ impl<'env> TypeChecker<'env> {
             }
         }
         match cur_ty {
-            Expr::Pi(_, _, dom, _) => Ok((*dom).clone()),
+            Expr::Pi(_, _, dom, _) => {
+                if struct_is_prop {
+                    self.ensure_prop_field(ind_val, idx, &dom)?;
+                }
+                Ok((*dom).clone())
+            }
             _ => Err(KernelError::Other(format!(
                 "invalid projection: constructor {} telescope has no field {} for {}",
                 ctor_val.common.name, idx, ind_val.common.name
