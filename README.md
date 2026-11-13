@@ -644,4 +644,4 @@ Copyright (c) COOLJAPAN OU (Team KitaSan). Licensed under [Apache-2.0](LICENSE).
 
 ---
 
-**v0.1.5** (2026-11-13) | Current release
+**v0.1.6** (unreleased) | Under active development

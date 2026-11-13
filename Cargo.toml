@@ -21,7 +21,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 authors = ["COOLJAPAN OU (Team KitaSan)"]
 license = "Apache-2.0"
@@ -50,19 +50,19 @@ num-rational = { version = "0.4", default-features = false, features = ["num-big
 oxiarc-deflate = "0.4.2"
 
 # Internal dependencies
-oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.5" }
-oxilean-export = { path = "crates/oxilean-export", version = "0.1.5" }
-oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.5" }
-oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.5" }
-oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.5" }
-oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.5" }
-oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.5" }
-oxilean-std = { path = "crates/oxilean-std", version = "0.1.5" }
-oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.5" }
-oxilean-build = { path = "crates/oxilean-build", version = "0.1.5" }
-oxilean-verify = { path = "crates/oxilean-verify", version = "0.1.5" }
-oxilean-verify-wasm = { path = "crates/oxilean-verify-wasm", version = "0.1.5" }
-oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.5" }
+oxilean-kernel = { path = "crates/oxilean-kernel", version = "0.1.6" }
+oxilean-export = { path = "crates/oxilean-export", version = "0.1.6" }
+oxilean-meta = { path = "crates/oxilean-meta", version = "0.1.6" }
+oxilean-parse = { path = "crates/oxilean-parse", version = "0.1.6" }
+oxilean-elab = { path = "crates/oxilean-elab", version = "0.1.6" }
+oxilean-codegen = { path = "crates/oxilean-codegen", version = "0.1.6" }
+oxilean-runtime = { path = "crates/oxilean-runtime", version = "0.1.6" }
+oxilean-std = { path = "crates/oxilean-std", version = "0.1.6" }
+oxilean-lint = { path = "crates/oxilean-lint", version = "0.1.6" }
+oxilean-build = { path = "crates/oxilean-build", version = "0.1.6" }
+oxilean-verify = { path = "crates/oxilean-verify", version = "0.1.6" }
+oxilean-verify-wasm = { path = "crates/oxilean-verify-wasm", version = "0.1.6" }
+oxilean-wasm = { path = "crates/oxilean-wasm", version = "0.1.6" }
 
 # WASM glue for the oxilean-verify-wasm "Kernel in a Tab" shim. Non-optional
 # there (that crate exists only for wasm); listed here for a single version pin.

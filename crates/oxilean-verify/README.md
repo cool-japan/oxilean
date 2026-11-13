@@ -107,7 +107,7 @@ rebuilt), not a cloned tree node.
 
 ```toml
 [dependencies]
-oxilean-verify = "0.1.5"
+oxilean-verify = "0.1.6"
 ```
 
 - Size: 1,839 SLOC in 8 source files under `src/`; 50 tests

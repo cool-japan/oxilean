@@ -3,7 +3,7 @@
 > Master task list for the OxiLean project.
 > Last updated: 2026-11-13
 >
-> Current release: 0.1.5 (2026-11-13); previous release: 0.1.4 (2026-11-12) — see CHANGELOG.md.
+> Development version 0.1.6 (unreleased); latest release: 0.1.5 (2026-11-13) — see CHANGELOG.md.
 >
 > **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). v0.1.4 released 2026-11-12. v0.1.5 released 2026-11-13. The project has 17 crates and 1.36M+ lines implemented.
 >

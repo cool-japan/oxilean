@@ -73,7 +73,7 @@ list.
 
 ```toml
 [dependencies]
-oxilean-export = "0.1.5"
+oxilean-export = "0.1.6"
 ```
 
 - Size: 2,530 SLOC in 7 source files under `src/`; 99 tests

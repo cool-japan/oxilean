@@ -115,7 +115,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-codegen = "0.1.5"
+oxilean-codegen = "0.1.6"
 ```
 
 ## Dependencies
