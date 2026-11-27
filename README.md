@@ -9,17 +9,29 @@
 [![Crates.io](https://img.shields.io/crates/v/oxilean-kernel.svg)](https://crates.io/crates/oxilean-kernel)
 [![npm](https://img.shields.io/npm/v/@cooljapan/oxilean)](https://www.npmjs.com/package/@cooljapan/oxilean)
 
+> **v0.1.6 — an independent check of the Lean proof of the Riemann Hypothesis.**
+> `oxilean-verify` re-checked every one of the 204,583 declarations of the compact
+> edition of the Lean proof of RH and of GRH for Dirichlet L-functions
+> ([lsernau/grh-lean](https://github.com/lsernau/grh-lean) `72fead10`) —
+> **204,583 verified · 0 unsupported · 0 rejected** — and its new `--compare` mode
+> confirmed that the five theorems prove exactly the challenge statements from
+> `propext`, `Classical.choice` and `Quot.sound` only. A seventh, independent
+> kernel, written in Rust, next to the six that had accepted the proof.
+> **Verification report** (environment, timings, reproduction):
+> [riemann_verified.en.md](riemann_verified.en.md) · 日本語: [riemann_verified.md](riemann_verified.md)
+
 ## Overview
 
 OxiLean is a **memory-safe, high-performance Interactive Theorem Prover (ITP)** written entirely in Rust with zero C/Fortran dependencies. Inspired by Lean 4, it brings formal verification to the Rust ecosystem with:
 
 - **Zero-dependency kernel** -- Trusted Computing Base with zero external crate dependencies
 - **1.36M+ lines of Rust** across 6,168 source files and 17 crates
-- **33,733 tests passing** -- comprehensive test suite with zero warnings (746 ignored)
+- **33,953 tests passing** -- comprehensive test suite with zero warnings (779 ignored)
 - **WASM support** -- Runs in the browser with no server required
 - **Tactic framework** -- intro, apply, simp, ring, omega, and more. The decision procedures (omega, linarith, polyrith) rebuild a proof term from their certificate and have the kernel check it; a goal they cannot certify falls back to `sorry`
 - **Interactive REPL** -- Theorem proving from the command line
-- **oxilean-verify** -- Independent Lean 4 proof checker over lean4export files ("Kernel in a Tab")
+- **oxilean-verify** -- Independent Lean 4 proof checker over lean4export files ("Kernel in a Tab"); it has re-checked the Lean proof of the Riemann Hypothesis ([report](riemann_verified.en.md))
+- **cargo-formal** -- formal verification for Rust crates, [built on OxiLean](#built-on-oxilean-cargo-formal)
 
 ## oxilean-verify — Independent Lean 4 Proof Checker
 
@@ -32,6 +44,54 @@ no C++. Its Trusted Computing Base is exactly two crates, **`oxilean-kernel` +
 `gate-forbid-unsafe.sh` and `gate-allow-list.sh`, run locally as release gates).
 The CLI crate `oxilean-verify` itself is in the same zero-dep, no-unsafe
 regime — argument parsing and JSON reporting are hand-rolled.
+
+### Result on the Lean proof of RH / GRH (compact edition) — 2026-11-27
+
+The compact edition of the Lean proof of the Riemann Hypothesis and of the
+Generalized Riemann Hypothesis for Dirichlet L-functions
+([lsernau/grh-lean](https://github.com/lsernau/grh-lean), commit `72fead10`;
+Lean v4.35.0, Mathlib `56a00585`), checked from the export Andrew Sutherland
+published (5.17 GB, SHA-256 `ab7b4223…115b`, identical to the published value):
+
+```
+204583 verified · 0 unsupported · 0 rejected
+  ✓  target riemannHypothesis                        statement identical to the challenge; proof verified
+  ✓  target riemannZeta_eq_zero_re                   statement identical to the challenge; proof verified
+  ✓  target LFunction_ne_zero_of_half_lt_re          statement identical to the challenge; proof verified
+  ✓  target LFunction_eq_zero_re                     statement identical to the challenge; proof verified
+  ✓  target LFunction_eq_zero_re_of_isPrimitive      statement identical to the challenge; proof verified
+  statement closure: 52172 of 52173 challenge records identical in the solution (0 differ, 0 missing; sorryAx excluded)
+  target closure: 204579 declaration records; 0 not verified; 0 unsafe/partial; 0 constants undeclared
+  axioms used by the targets: Classical.choice, Quot.sound, propext (permitted: propext, Classical.choice, Quot.sound)
+compare verdict: ESTABLISHED — the solution proves the 5 challenge statement(s) from the permitted axioms
+```
+
+- **Command:** `oxilean-verify --limits corpus --decl-fuel 2^30 --decl-timeout 1800 --stack-size 16384 --compare challenge.ndjson compact-solution.ndjson`
+- **Time and memory:** 35 min 38 s on one thread, peak 13.2 GiB (Intel Xeon
+  Gold 5315Y, 8 vCPUs, 44 GiB, Ubuntu 22.04, rustc 1.100.0).
+- **Under the default limits** (budget 2^26): 204,425 verified · 158
+  unsupported · 0 rejected — eight heavy declarations over the budget and the
+  ones that depend on them; still no rejection.
+- **What `--compare` checks** (as `lake comparator` does besides the kernel
+  replay): each target is a theorem with the challenge's exact statement;
+  every other declaration of the challenge — `riemannZeta`,
+  `DirichletCharacter.LFunction`, `Complex`, `Real` and everything below them
+  — occurs identically in the solution; and the targets depend on permitted
+  axioms and verified declarations only.
+
+| Checker (same export) | Implementation | Accepted | Wall clock | Peak memory |
+|---|---|---:|---:|---:|
+| Lean default kernel (`leanchecker --from-export`) | C++ | all | 33 min 05 s | 7.0 GiB |
+| lean4lean | Lean | 204,580 | 28 min 39 s | 6.9 GiB |
+| con-leche | — | 204,583 | 1 min 53 s (parallel) | 13.7 GiB |
+| con-ron | — | 204,583 | 1 min 16 s (parallel) | 7.5 GiB |
+| **OxiLean `oxilean-verify`** | **Rust** | **204,583** | **35 min 38 s (1 thread)** | **13.2 GiB** |
+
+The other checkers' figures are from Sutherland's logs, on a different machine
+(192 cores, 1.5 TB). Full report — environment, timings, the slowest
+declarations, reproduction steps, and the five kernel and CLI changes the
+check led to: **[riemann_verified.en.md](riemann_verified.en.md)**
+(日本語: [riemann_verified.md](riemann_verified.md)).
 
 ### Three-bucket semantics (never a wrong verdict)
 
@@ -443,13 +503,13 @@ Supports bundler (webpack/vite), web (browser), and Node.js targets. See [oxilea
   first: on the GRH export it evaluated `2000000 • x` in ℝ as two million
   nested `Real.add`s, which overflowed the stack, ran out of memory at 33 GB,
   or spent the whole budget, on proofs Lean's kernel checks in a second. `exists_data._proof_1_66`: 70 s with a budget of 2^32 and a 16 GiB
-  stack → **95 ms** under the default limits; `g₂_g₃_eq_eisenstein`: 17.4 s →
-  **213 ms**. Proof irrelevance now compares the two propositions as inferred.
+  stack → **72 ms** under the default limits; `g₂_g₃_eq_eisenstein`: 17.4 s →
+  **207 ms** (times from the run of the report). Proof irrelevance now compares the two propositions as inferred.
 - **Inductive declarations close their telescopes with the sharing-aware
   abstraction.** The inductive module had its own `abstract_fvar` that walked
   a term once per path to each subterm; Mathlib-style structures with large
   shared field types made it exponential. `IsPrimeTriangle`: 116.5 s →
-  **0.6 s**.
+  **0.87 s**; peak memory on the GRH export 19.7 GiB → 13.2 GiB.
 - **Term rendering is bounded** (2,048 subterms, then `…`). An error message
   that rendered a shared proof term as a tree ran one declaration to 24 GB
   before it could be reported.
@@ -657,7 +717,7 @@ cargo test --workspace
 ### Running Tests
 
 ```bash
-# All tests (33,733 tests; 746 ignored)
+# All tests (33,953 tests; 779 ignored)
 cargo test --workspace
 
 # With cargo-nextest (recommended; about 140 s on an Apple M3)
@@ -711,11 +771,12 @@ Your sponsorship helps us:
 - Provide long-term support and security updates
 
 **Supporting OxiLean through the products built on it.** OxiLean is
-Apache-2.0 and will stay so; its continued development — the kernel that
-re-checked the Lean proof of the Riemann Hypothesis among it — is carried by
-the products built on it, [cargo-formal](https://crates.io/crates/cargo-formal)
-first among them. We would be delighted if more individuals and companies
-became supporters (sponsors) of any of these products, cargo-formal included.
+Apache-2.0 and will stay so. To keep developing it — the kernel that
+re-checked the Lean proof of the Riemann Hypothesis included — we rely on
+support for the products built on it,
+[cargo-formal](https://crates.io/crates/cargo-formal) first among them. We
+would be delighted if more individuals and companies became supporters
+(sponsors) of any of these products, cargo-formal included.
 A sponsorship that covers cargo-formal is also what its BUSL-1.1 license asks
 for production use, so supporting the tool you use and supporting OxiLean are
 the same step.
