@@ -375,7 +375,7 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 - S26: a name Lean's kernel gives a constant of a refused bundle (`A.rec`, `N.rec_1`, …) stays free, so a later `def` of that name verifies
 - S27: `add_inductive_family` (kernel API) is neither atomic nor guarded. No file reaches it, but `init_builtin_env` uses it, so the one-line change written out in S27 waits for a measurement
 - Universe levels equal under every assignment are identified; Lean's kernel compares normal forms and refuses. This kernel decides more than Lean's does, and nothing false follows
-- Weaker than Lean: the nested shapes C25, C28 and C29 are rejected, plus C26 and C27; safety flags are not read; a theorem in `Sort (max 0 0)` is accepted
+- Weaker than Lean: the nested shapes C25, C28 and C29 are rejected, plus C26 and C27; safety flags are not read (read since 0.1.6: `check_reference_safety`); a theorem in `Sort (max 0 0)` is accepted
 - [ ] **`normalize` (universe levels) is not idempotent.** `succ (imax (max v w) (max w v))` normalizes to `succ (max v w)`, which normalizes further to `max (succ v) (succ w)`. `prop_normalize_idempotent` (`crates/oxilean-kernel/tests/level_defeq.rs`, 2,000 random cases) draws such an input on about one run in 200 (found 2026-11-13 on runs 276 and 188 of two loops). It fails with `normalize not idempotent on Level(Succ(Level(IMax(…))))`, and a re-run passes only because it draws other inputs. The level code and the test are unchanged since 0.1.4 (cargo-formal: ISSUE-5). Until this is fixed, a run whose only failure is this test with that message is this issue; any other failing test is a real failure. Fix `normalize` (`src/level/functions.rs`) and pin the input above as a regression case
 
 **v0.1.6 (released 2026-11-27)**:
