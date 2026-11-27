@@ -15,8 +15,11 @@ use oxilean_verify::cli::{
     help_text, parse_args, render_decl_line, render_summary_line, version_text, Command, RunConfig,
     UsageError,
 };
-use oxilean_verify::engine::{verify_stream, VerifyError, VerifyOptions};
-use oxilean_verify::report::{render_report, InputMeta, ReportAccumulator};
+use oxilean_verify::compare::{Auditor, ChallengeFile, CompareOutcome};
+use oxilean_verify::engine::{verify_stream_inspect, VerifyError, VerifyOptions};
+use oxilean_verify::report::{
+    render_report_with_compare, CompareSection, InputMeta, ReportAccumulator,
+};
 use oxilean_verify::sha256::Sha256;
 use oxilean_verify::{Summary, VERSION};
 
@@ -30,6 +33,24 @@ mod exit {
     pub const REJECTED: u8 = 1;
     /// Usage error, I/O error, or malformed export input.
     pub const USAGE_OR_IO: u8 = 2;
+    /// With `--compare`: nothing rejected, but the challenge statements were
+    /// not established.
+    pub const NOT_ESTABLISHED: u8 = 3;
+}
+
+/// SHA-256 of a file, streamed with a bounded buffer.
+fn sha256_file(path: &str) -> std::io::Result<String> {
+    let file = std::fs::File::open(path)?;
+    let mut reader = BufReader::new(file);
+    let mut h = Sha256::new();
+    let mut buf = [0u8; 1 << 16];
+    loop {
+        match reader.read(&mut buf)? {
+            0 => break,
+            n => h.update(&buf[..n]),
+        }
+    }
+    Ok(h.finalize_hex())
 }
 
 fn main() -> ExitCode {
@@ -128,6 +149,53 @@ fn run(cfg: RunConfig) -> ExitCode {
     let mut json_input: Option<InputMeta> = None;
     let mut json_pins: Option<oxilean_verify::EnvironmentPins> = None;
 
+    // `--compare`: read the challenge first, so that every declaration of the
+    // solution can be compared with it as the kernel checks it.
+    let mut auditor: Option<Auditor> = None;
+    let mut challenge_sha = String::new();
+    if let Some(cc) = &cfg.compare {
+        challenge_sha = match sha256_file(&cc.challenge_path) {
+            Ok(h) => h,
+            Err(e) => {
+                eprintln!(
+                    "oxilean-verify: cannot read challenge '{}': {e}",
+                    cc.challenge_path
+                );
+                return ExitCode::from(exit::USAGE_OR_IO);
+            }
+        };
+        let file = match std::fs::File::open(&cc.challenge_path) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!(
+                    "oxilean-verify: cannot read challenge '{}': {e}",
+                    cc.challenge_path
+                );
+                return ExitCode::from(exit::USAGE_OR_IO);
+            }
+        };
+        let challenge =
+            match ChallengeFile::load(BufReader::new(file), limits, cc.theorems.as_deref()) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("oxilean-verify: {}: {e}", cc.challenge_path);
+                    return ExitCode::from(exit::USAGE_OR_IO);
+                }
+            };
+        {
+            let mut h = human_writer(&stdout, &stderr, human_to_stderr);
+            let targets: Vec<String> = challenge.targets().iter().map(|n| n.to_string()).collect();
+            let _ = writeln!(
+                h,
+                "compare: challenge {} read ({} declaration records); targets: {}",
+                cc.challenge_path,
+                challenge.declarations(),
+                targets.join(", ")
+            );
+        }
+        auditor = Some(Auditor::new(challenge, &cc.allowed_axioms));
+    }
+
     for path in &cfg.files {
         // Fingerprint the file and feed the engine WITHOUT holding it in memory:
         // a whole-corpus export (Mathlib is ~6 GiB) must not sit in RAM
@@ -143,30 +211,13 @@ fn run(cfg: RunConfig) -> ExitCode {
                 return ExitCode::from(exit::USAGE_OR_IO);
             }
         };
-        let sha = {
-            let file = match std::fs::File::open(path) {
-                Ok(f) => f,
-                Err(e) => {
-                    let mut err = stderr.lock();
-                    let _ = writeln!(err, "oxilean-verify: cannot read '{path}': {e}");
-                    return ExitCode::from(exit::USAGE_OR_IO);
-                }
-            };
-            let mut reader = BufReader::new(file);
-            let mut h = Sha256::new();
-            let mut buf = [0u8; 1 << 16];
-            loop {
-                match reader.read(&mut buf) {
-                    Ok(0) => break,
-                    Ok(n) => h.update(&buf[..n]),
-                    Err(e) => {
-                        let mut err = stderr.lock();
-                        let _ = writeln!(err, "oxilean-verify: read error '{path}': {e}");
-                        return ExitCode::from(exit::USAGE_OR_IO);
-                    }
-                }
+        let sha = match sha256_file(path) {
+            Ok(h) => h,
+            Err(e) => {
+                let mut err = stderr.lock();
+                let _ = writeln!(err, "oxilean-verify: read error '{path}': {e}");
+                return ExitCode::from(exit::USAGE_OR_IO);
             }
-            h.finalize_hex()
         };
 
         if cfg.files.len() > 1 && !cfg.quiet {
@@ -191,16 +242,20 @@ fn run(cfg: RunConfig) -> ExitCode {
         let color = cfg.color;
         let result = {
             let mut human = human_writer(&stdout, &stderr, human_to_stderr);
-            verify_stream(
+            let auditor = &mut auditor;
+            verify_stream_inspect(
                 reader,
                 VERSION,
                 VerifyOptions {
                     limits,
                     fail_fast: cfg.fail_fast,
-                    per_decl_fuel: cfg.limits.decl_fuel(),
-                    per_decl_time_budget: cfg.limits.decl_time_budget(),
+                    per_decl_fuel: cfg.decl_fuel(),
+                    per_decl_time_budget: cfg.decl_time_budget(),
                 },
-                |event| {
+                |decl, event| {
+                    if let Some(a) = auditor.as_mut() {
+                        a.observe(decl, event);
+                    }
                     if need_json {
                         json_accumulator.record(event);
                     }
@@ -270,10 +325,31 @@ fn run(cfg: RunConfig) -> ExitCode {
         }
     }
 
+    // Finish the comparison, if one was asked for.
+    let compare_outcome: Option<CompareOutcome> = auditor.map(Auditor::finish);
+    if let (Some(outcome), Some(cc)) = (&compare_outcome, &cfg.compare) {
+        let mut h = human_writer(&stdout, &stderr, human_to_stderr);
+        let _ = write!(h, "{}", outcome.render(&cc.challenge_path, &challenge_sha));
+    }
+
     // Write the JSON report, if requested.
     if let Some(json_path) = &cfg.json_path {
         if let (Some(input), Some(pins)) = (&json_input, &json_pins) {
-            let text = render_report(pins, input, &json_summary, &json_accumulator);
+            let compare_section = match (&compare_outcome, &cfg.compare) {
+                (Some(outcome), Some(cc)) => Some(CompareSection {
+                    outcome,
+                    challenge_path: &cc.challenge_path,
+                    challenge_sha256: &challenge_sha,
+                }),
+                _ => None,
+            };
+            let text = render_report_with_compare(
+                pins,
+                input,
+                &json_summary,
+                &json_accumulator,
+                compare_section,
+            );
             if json_path == "-" {
                 let mut out = stdout.lock();
                 if out.write_all(text.as_bytes()).is_err() {
@@ -288,6 +364,8 @@ fn run(cfg: RunConfig) -> ExitCode {
 
     if any_rejected {
         ExitCode::from(exit::REJECTED)
+    } else if compare_outcome.as_ref().is_some_and(|o| !o.established()) {
+        ExitCode::from(exit::NOT_ESTABLISHED)
     } else {
         ExitCode::from(exit::OK)
     }

@@ -37,19 +37,22 @@
 #![warn(clippy::all)]
 
 pub mod cli;
+pub mod compare;
 pub mod engine;
 pub mod jsonw;
 pub mod pins;
 pub mod report;
 pub mod sha256;
 
+pub use compare::{Auditor, ChallengeFile, CompareConfig, CompareOutcome};
 pub use engine::{
-    verify_stream, DeclEvent, FileReport, Summary, Verdict, VerifyError, VerifyOptions,
+    verify_stream, verify_stream_inspect, DeclEvent, FileReport, Summary, Verdict, VerifyError,
+    VerifyOptions,
 };
 pub use pins::{EnvironmentPins, TOOL_NAME};
 pub use report::{
-    render_report, DeclRecord, InputMeta, Rejection, ReportAccumulator, UnsupportedGroup,
-    UNSUPPORTED_DECL_CAP,
+    render_report, render_report_with_compare, CompareSection, DeclRecord, InputMeta, Rejection,
+    ReportAccumulator, UnsupportedGroup, UNSUPPORTED_DECL_CAP,
 };
 
 /// This tool's version, from `CARGO_PKG_VERSION` at build time.

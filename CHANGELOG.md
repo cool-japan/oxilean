@@ -12,10 +12,19 @@ Copyright (c) COOLJAPAN OU (Team KitaSan)
 ## [0.1.6] — Unreleased
 
 ### Added
+- `oxilean-verify --compare <CHALLENGE.ndjson>` (with `--theorems` and `--axioms`): what `lake comparator` checks besides the kernel replay. Each target theorem must be a theorem of the input with the challenge's type and universe parameters, verified in the same run; every other declaration of the challenge must occur in the input structurally identical (binder names included, compared exactly, never by hash alone); the dependency closure of the targets may contain only permitted axioms (default `propext`, `Classical.choice`, `Quot.sound`), only verified declarations, no undeclared constant and no `unsafe` or `partial` declaration. New exit code 3: nothing rejected, but the challenge statements were not established. JSON reports gain a `compare` member
+- `oxilean-verify --decl-fuel <N|2^K>` and `--decl-timeout <S|none>` override the per-declaration budget and deadline of the `--limits` preset
+- `oxilean_verify::verify_stream_inspect`: `verify_stream` with each declaration handed to the callback beside its verdict. `oxilean_kernel::terms_structurally_equal`: structural equality of two terms that visits each pair of shared subterms once (what `==` decides)
+- `oxilean_kernel::Reducer::whnf_core_env`: weak head normal form without unfolding the head constant (Lean's `whnf_core`)
+- Kernel feature `profile-unfold` (off by default): per-declaration counts of the constants the reducer and the def-eq checker unfold and the recursors they step, printed to stderr for declarations that use a large part of their budget. A diagnostic; it changes no verdict
 
 ### Changed
+- Kernel: definitional equality follows Lean's `is_def_eq_core`. Both sides are brought to weak head normal form WITHOUT unfolding the head constant, proof irrelevance is tried, and then definitions are unfolded one at a time (lazy δ reduction: the side whose head has the greater definitional height, an abbreviation before a regular definition, or both when equal — after first comparing the arguments of two applications of the same regular definition); only when neither head unfolds any more are the two compared structurally. It used to bring both sides to full weak head normal form first, which evaluated everything a definition unfolds to before anything was compared: on the compact GRH proof export, `2000000 • x` in ℝ became two million nested `Real.add`s. `exists_data._proof_1_66` took 70 s with a budget of 2^32 and a 16 GiB stack (and overflowed a 512 MiB one); it takes 95 ms under the default corpus limits. `g₂_g₃_eq_eisenstein`: 17.4 s with 2^28 → 213 ms with the default
+- Kernel: proof irrelevance compares the two propositions as inferred (Lean's `is_def_eq_proof_irrel`) instead of bringing them to weak head normal form first
+- Kernel: a safe declaration may use neither an `unsafe` constant nor a `partial` definition, and a partial one no unsafe constant (`check_reference_safety`, Lean's `infer_constant`); applied to every `check_constant_info` and to inductive bundles in the export replay. Lean core `Init` and Mathlib exports contain no such reference
 
 ### Fixed
+- Kernel: rendering a term (`Display`, and the derived `Debug` through `Node`) writes at most `RENDER_NODE_LIMIT` (2,048) subterms and then `…`. A term is a DAG and was written as the tree it stands for: the context string of a failed `check_type` (`checking <term>`) and the `{:?}` rejection reason of the export replay ran one declaration of the GRH proof export to 24 GB before it could be reported, unbounded by the per-declaration budget or deadline
 
 ## [0.1.5] — 2026-11-13
 

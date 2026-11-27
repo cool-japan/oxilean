@@ -1212,7 +1212,14 @@ impl std::hash::Hash for Node {
     }
 }
 impl std::fmt::Debug for Node {
+    /// The derived `Debug` of [`Expr`] reaches every subterm through here, so
+    /// the bound of [`RENDER_NODE_LIMIT`](super::expr_traits::RENDER_NODE_LIMIT)
+    /// is applied here for it (`Display` applies it in `Expr`'s own impl).
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let turn = super::expr_traits::RenderTurn::take();
+        if turn.is_spent() {
+            return f.write_str("…");
+        }
         std::fmt::Debug::fmt(&self.rc.expr, f)
     }
 }

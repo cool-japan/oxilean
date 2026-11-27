@@ -955,6 +955,10 @@ pub struct Reducer {
     /// unfolding of a constant is ONE allocation, shared by all of them.
     /// A function of the environment alone; dropped with `cache`.
     unfolded: crate::term_cache::TermCache<Expr>,
+    /// Results of [`Reducer::whnf_core_env`] — weak head normal forms that
+    /// do not unfold the head constant — kept apart from [`Self::cache`],
+    /// whose results do. Dropped with it.
+    core_cache: crate::term_cache::TermCache<Expr>,
     /// Limit on the NESTING depth of reduction (a stack guard, always
     /// applied) and on the LENGTH of one head-reduction chain (applied
     /// unless lifted — see [`crate::fuel::set_reduction_cap`]). A reduction
@@ -979,6 +983,7 @@ impl Reducer {
         Self {
             cache: crate::term_cache::TermCache::new(),
             unfolded: crate::term_cache::TermCache::new(),
+            core_cache: crate::term_cache::TermCache::new(),
             max_depth: 10000,
             transparency: TransparencyMode::Default,
             local_fvar_types: crate::local_types::LocalTypes::new(),
@@ -989,6 +994,7 @@ impl Reducer {
         Self {
             cache: crate::term_cache::TermCache::new(),
             unfolded: crate::term_cache::TermCache::new(),
+            core_cache: crate::term_cache::TermCache::new(),
             max_depth,
             transparency: TransparencyMode::Default,
             local_fvar_types: crate::local_types::LocalTypes::new(),
@@ -1013,6 +1019,7 @@ impl Reducer {
         let stale = self.local_fvar_types.bind(id, ty);
         if stale {
             self.cache.clear();
+            self.core_cache.clear();
         }
         stale
     }
@@ -1038,12 +1045,14 @@ impl Reducer {
         if self.transparency != mode {
             self.transparency = mode;
             self.cache.clear();
+            self.core_cache.clear();
         }
     }
     /// Clear the cache (call between declarations).
     pub fn clear_cache(&mut self) {
         self.cache.clear();
         self.unfolded.clear();
+        self.core_cache.clear();
     }
     /// The value of the constant `head` (`Const(name, levels)`) with its
     /// universe parameters instantiated — from the table of unfoldings when
@@ -1055,6 +1064,9 @@ impl Reducer {
         level_params: &[Name],
         levels: &[crate::Level],
     ) -> Expr {
+        if let Expr::Const(name, _) = head {
+            crate::profile::note(crate::profile::Event::ReduceUnfold, name);
+        }
         if level_params.is_empty() || levels.is_empty() {
             return value.clone();
         }
@@ -1175,6 +1187,28 @@ impl Reducer {
     pub fn whnf_env(&mut self, expr: &Expr, env: &Environment) -> Expr {
         self.whnf_env_depth(expr, env, 0)
     }
+    /// Weak head normal form WITHOUT unfolding the head constant — Lean's
+    /// `whnf_core`: β, ζ, ι (recursors and quotients), projections and the
+    /// literal extension, but no δ at the head of `expr`. What a recursor's
+    /// major premise or a projection's structure must become to fire is
+    /// still computed in full ([`Self::whnf_env`]), as in Lean.
+    ///
+    /// The definitional-equality checker compares two terms by bringing both
+    /// to this form and then unfolding ONE definition at a time — the side
+    /// with the greater definitional height, or both when equal, after first
+    /// comparing the arguments of two applications of the same definition
+    /// (lazy δ reduction). Bringing both sides to full weak head normal form
+    /// first instead (what this kernel did) evaluates everything a
+    /// definition unfolds to before anything is compared: `2000000 • x` in ℝ
+    /// became two million nested `Real.add`s, which overflowed the stack or
+    /// spent the whole budget on proofs Lean's kernel checks in a second.
+    pub fn whnf_core_env(&mut self, expr: &Expr, env: &Environment) -> Expr {
+        let Some(_nested) = crate::fuel::NestedReduction::enter() else {
+            crate::fuel::note_reduction_limit();
+            return expr.clone();
+        };
+        self.whnf_env_nested_mode(expr, env, 0, false)
+    }
     fn whnf_env_depth(&mut self, expr: &Expr, env: &Environment, depth: u32) -> Expr {
         // The thread's own limit on nested reductions, where its owner has
         // set one (`fuel::set_reduction_nesting_limit`: a small stack): a
@@ -1185,10 +1219,18 @@ impl Reducer {
             crate::fuel::note_reduction_limit();
             return expr.clone();
         };
-        self.whnf_env_nested(expr, env, depth)
+        self.whnf_env_nested_mode(expr, env, depth, true)
     }
-    /// [`Self::whnf_env_depth`] once the nested reduction has been entered.
-    fn whnf_env_nested(&mut self, expr: &Expr, env: &Environment, depth: u32) -> Expr {
+    /// [`Self::whnf_env_depth`] once the nested reduction has been entered;
+    /// `delta` says whether the head constant may be unfolded (`false`:
+    /// [`Self::whnf_core_env`]).
+    fn whnf_env_nested_mode(
+        &mut self,
+        expr: &Expr,
+        env: &Environment,
+        depth: u32,
+        delta: bool,
+    ) -> Expr {
         // Nesting-depth guard: `depth` counts NESTED whnf calls (an
         // application head, a recursor major, a projection's structure),
         // each of which holds a native stack frame. Past the limit the term
@@ -1206,7 +1248,12 @@ impl Reducer {
         if crate::fuel::is_exhausted() {
             return expr.clone();
         }
-        if let Some(cached) = self.cache.get(expr) {
+        let cached = if delta {
+            self.cache.get(expr)
+        } else {
+            self.core_cache.get(expr)
+        };
+        if let Some(cached) = cached {
             return cached.clone();
         }
         // The head-reduction chain runs as a LOOP, not recursion: each step
@@ -1250,7 +1297,7 @@ impl Reducer {
                 break cur.clone();
             }
             let step_depth = if capped { steps } else { depth };
-            match self.whnf_step(cur, env, step_depth) {
+            match self.whnf_step(cur, env, step_depth, delta) {
                 StepOutcome::Done(done) => break done,
                 StepOutcome::Continue(next) => {
                     steps = steps.saturating_add(1);
@@ -1262,7 +1309,11 @@ impl Reducer {
         // Only the result of the whole chain is kept, not its intermediate
         // terms (see the cache's own documentation for what keeping it
         // retains).
-        self.cache.insert(expr, result.clone());
+        if delta {
+            self.cache.insert(expr, result.clone());
+        } else {
+            self.core_cache.insert(expr, result.clone());
+        }
         result
     }
     /// Perform ONE head-reduction step (zeta, delta, beta, literal folding,
@@ -1271,7 +1322,13 @@ impl Reducer {
     /// `StepOutcome::Done` is the WHNF. Sub-terms (application heads,
     /// recursor majors, projection structs) are still reduced by recursive
     /// calls — only the head-reduction *chain* is iterative.
-    fn whnf_step(&mut self, expr: &Expr, env: &Environment, depth: u32) -> StepOutcome {
+    fn whnf_step(
+        &mut self,
+        expr: &Expr,
+        env: &Environment,
+        depth: u32,
+        delta: bool,
+    ) -> StepOutcome {
         match expr {
             Expr::Sort(_)
             | Expr::BVar(_)
@@ -1281,6 +1338,9 @@ impl Reducer {
             | Expr::Lit(_) => StepOutcome::Done(expr.clone()),
             Expr::Let(_, _, val, body) => StepOutcome::Continue(instantiate(body, val)),
             Expr::Const(name, levels) => {
+                if !delta {
+                    return StepOutcome::Done(expr.clone());
+                }
                 if let Some(ci) = env.find(name) {
                     if let Some(val) = ci.value() {
                         let hint = ci.reducibility_hint();
@@ -1424,7 +1484,11 @@ impl Reducer {
                                 return StepOutcome::Continue(reduced);
                             }
                             // 3. Delta: unfold the head IN CONTEXT and keep
-                            //    stepping (the next iteration β-reduces).
+                            //    stepping (the next iteration β-reduces) —
+                            //    not in `whnf_core` mode.
+                            if !delta {
+                                break;
+                            }
                             if let Some(ci) = env.find(name) {
                                 if let Some(val) = ci.value() {
                                     if self.should_unfold_hint(ci.reducibility_hint()) {
@@ -1444,7 +1508,7 @@ impl Reducer {
                         // Let / Proj / FVar / Sort / Pi / Lit heads: step the
                         // head itself; `Done` means the head is in WHNF and
                         // the application is stuck.
-                        _ => match self.whnf_step(head_ref, env, depth + 1) {
+                        _ => match self.whnf_step(head_ref, env, depth + 1, delta) {
                             StepOutcome::Continue(h2) => {
                                 head_owned = Some(h2);
                             }
@@ -1500,6 +1564,7 @@ impl Reducer {
         depth: u32,
     ) -> Option<Expr> {
         let rec_val = env.get_recursor_val(rec_name)?;
+        crate::profile::note(crate::profile::Event::Iota, rec_name);
         let major_idx = rec_val.get_major_idx() as usize;
         if args.len() <= major_idx {
             return None;

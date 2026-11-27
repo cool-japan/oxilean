@@ -174,6 +174,31 @@ pub fn render_report(
     summary: &Summary,
     acc: &ReportAccumulator,
 ) -> String {
+    render_report_with_compare(pins, input, summary, acc, None)
+}
+
+/// The comparison section of a report: the outcome of `--compare`, and the
+/// challenge it was made against.
+#[derive(Debug, Clone, Copy)]
+pub struct CompareSection<'a> {
+    /// The outcome.
+    pub outcome: &'a crate::compare::CompareOutcome,
+    /// The challenge export's path, as given.
+    pub challenge_path: &'a str,
+    /// The challenge export's SHA-256.
+    pub challenge_sha256: &'a str,
+}
+
+/// [`render_report`], with a `compare` member after `rejected` when a
+/// comparison was made (and before the optional `decls`).
+#[must_use]
+pub fn render_report_with_compare(
+    pins: &EnvironmentPins,
+    input: &InputMeta,
+    summary: &Summary,
+    acc: &ReportAccumulator,
+    compare: Option<CompareSection<'_>>,
+) -> String {
     let mut w = JsonWriter::new();
     {
         let mut root = w.object();
@@ -257,6 +282,12 @@ pub fn render_report(
                 obj.str_field("name", &r.name);
                 obj.str_field("reason", &r.reason);
             }
+        }
+
+        // compare (only with --compare)
+        if let Some(c) = compare {
+            c.outcome
+                .write_json(root.key("compare"), c.challenge_path, c.challenge_sha256);
         }
 
         // decls (optional)

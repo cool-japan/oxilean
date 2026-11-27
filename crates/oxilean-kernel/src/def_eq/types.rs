@@ -1127,13 +1127,20 @@ impl<'env> DefEqChecker<'env> {
         if self.same_definition_applied_to_equal_args(t, s) {
             return true;
         }
-        let t_whnf = self.reducer.whnf_env(t, self.env);
-        let s_whnf = self.reducer.whnf_env(s, self.env);
+        // Lean's `is_def_eq_core`: both sides in weak head normal form
+        // WITHOUT unfolding the head constant, proof irrelevance, then lazy
+        // δ reduction — one definition unfolded at a time — and only when
+        // neither head unfolds any more, the structural comparison below.
+        let mut t_whnf = self.reducer.whnf_core_env(t, self.env);
+        let mut s_whnf = self.reducer.whnf_core_env(s, self.env);
         if crate::term_cache::same_term(&t_whnf, &s_whnf) {
             return true;
         }
         if self.is_proof_irrelevant_eq(&t_whnf, &s_whnf) {
             return true;
+        }
+        if let Some(verdict) = self.lazy_delta_reduction(&mut t_whnf, &mut s_whnf) {
+            return verdict;
         }
         let matched = match (&t_whnf, &s_whnf) {
             (Expr::Sort(l1), Expr::Sort(l2)) => level::is_equivalent(l1, l2),
@@ -1268,6 +1275,62 @@ impl<'env> DefEqChecker<'env> {
             return None;
         }
         Some(reduced)
+    }
+    /// Lean's `lazy_delta_reduction`: unfold the definitions at the heads of
+    /// `t` and `s` ONE AT A TIME until the two meet or neither head unfolds.
+    ///
+    /// Each step unfolds the side whose head has the greater definitional
+    /// height (an abbreviation before a regular definition), or both when
+    /// the heights are equal — after first comparing the arguments of two
+    /// applications of the same regular definition (`f a =?= f b` from
+    /// `a =?= b`, conclusive when true by congruence). After every step the
+    /// unfolded side is brought back to [`Reducer::whnf_core_env`] form and
+    /// the two are compared syntactically.
+    ///
+    /// `Some(true)`: the two are definitionally equal. `Some(false)`: the
+    /// per-declaration budget is spent (a conservative answer the caller
+    /// reports as a resource limit). `None`: neither head unfolds any more;
+    /// `t` and `s` are left in that form for the structural comparison —
+    /// the forms the full weak head normal forms would have had, so nothing
+    /// that comparison could decide before is lost.
+    fn lazy_delta_reduction(&mut self, t: &mut Expr, s: &mut Expr) -> Option<bool> {
+        loop {
+            if crate::fuel::is_exhausted() {
+                return Some(false);
+            }
+            // One unit per step: the loop ends under any budget even if a
+            // definition unfolds to itself.
+            crate::fuel::charge(1);
+            let t_hint = self.get_hint(get_app_fn(t));
+            let s_hint = self.get_hint(get_app_fn(s));
+            match (t_hint, s_hint) {
+                (None, None) => return None,
+                (Some(_), None) => *t = self.unfold_whnf_core(t)?,
+                (None, Some(_)) => *s = self.unfold_whnf_core(s)?,
+                (Some(th), Some(sh)) => match compare_hints(th, sh) {
+                    std::cmp::Ordering::Less => *t = self.unfold_whnf_core(t)?,
+                    std::cmp::Ordering::Greater => *s = self.unfold_whnf_core(s)?,
+                    std::cmp::Ordering::Equal => {
+                        if matches!(th, ReducibilityHint::Regular(_))
+                            && self.same_definition_applied_to_equal_args(t, s)
+                        {
+                            return Some(true);
+                        }
+                        *t = self.unfold_whnf_core(t)?;
+                        *s = self.unfold_whnf_core(s)?;
+                    }
+                },
+            }
+            if crate::term_cache::same_term(t, s) {
+                return Some(true);
+            }
+        }
+    }
+    /// Unfold the definition at the head of `e` and bring the result to
+    /// [`Reducer::whnf_core_env`] form. `None` when the head has no value.
+    fn unfold_whnf_core(&mut self, e: &Expr) -> Option<Expr> {
+        let unfolded = self.unfold_definition(e)?;
+        Some(self.reducer.whnf_core_env(&unfolded, self.env))
     }
     /// Try lazy delta reduction: unfold one side at a time.
     ///
@@ -1500,6 +1563,7 @@ impl<'env> DefEqChecker<'env> {
         if let Expr::Const(name, levels) = head {
             if let Some(ci) = self.env.find(name) {
                 if let Some(val) = ci.value() {
+                    crate::profile::note(crate::profile::Event::DefEqUnfold, name);
                     let val_inst = if ci.level_params().is_empty() || levels.is_empty() {
                         val.clone()
                     } else {
@@ -1757,9 +1821,11 @@ impl<'env> DefEqChecker<'env> {
         if !matches!(&ty_ty_s_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::zero())) {
             return false;
         }
-        let ty_t_whnf = self.reducer.whnf_env(&ty_t, self.env);
-        let ty_s_whnf = self.reducer.whnf_env(&ty_s, self.env);
-        self.is_def_eq(&ty_t_whnf, &ty_s_whnf)
+        // The two propositions are compared as inferred, as in Lean's
+        // `is_def_eq_proof_irrel` — not in weak head normal form first, which
+        // evaluated everything they unfold to (`Nat.Coprime (num q) (den q)`
+        // down to a `Nat.gcd` computation) before comparing them.
+        self.is_def_eq(&ty_t, &ty_s)
     }
     /// Try function eta when the left side is a lambda and the right is not.
     ///
@@ -1970,5 +2036,23 @@ impl<K: Ord + Clone, V: Clone> SmallMap<K, V> {
     /// Returns all values.
     pub fn values(&self) -> Vec<&V> {
         self.entries.iter().map(|(_, v)| v).collect()
+    }
+}
+
+/// Which side lazy δ reduction unfolds — Lean's `compare` on reducibility
+/// hints. `Less`: the left (its head is the higher definition, or an
+/// abbreviation against a regular one); `Greater`: the right; `Equal`: both
+/// (same height, or two abbreviations). Opaque heads never get here
+/// (`get_hint` refuses them).
+fn compare_hints(t: ReducibilityHint, s: ReducibilityHint) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    match (t, s) {
+        (ReducibilityHint::Regular(a), ReducibilityHint::Regular(b)) => b.cmp(&a),
+        (ReducibilityHint::Abbrev, ReducibilityHint::Abbrev) => Ordering::Equal,
+        (ReducibilityHint::Abbrev, _) => Ordering::Less,
+        (_, ReducibilityHint::Abbrev) => Ordering::Greater,
+        (ReducibilityHint::Opaque, ReducibilityHint::Opaque) => Ordering::Equal,
+        (ReducibilityHint::Opaque, _) => Ordering::Greater,
+        (_, ReducibilityHint::Opaque) => Ordering::Less,
     }
 }

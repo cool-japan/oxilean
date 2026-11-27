@@ -485,15 +485,13 @@ pub fn find_mentioned_name<'a>(
     loop {
         let cur: &'a Expr = match current.take() {
             Some(cur) => cur,
-            None => match pending.pop() {
-                Some(node) => {
-                    if !seen.insert(node.as_ptr()) {
-                        continue;
-                    }
-                    node
+            None => {
+                let node = pending.pop()?;
+                if !seen.insert(node.as_ptr()) {
+                    continue;
                 }
-                None => return None,
-            },
+                node
+            }
         };
         match cur {
             Expr::Const(n, _) => {
