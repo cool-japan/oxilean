@@ -59,7 +59,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-runtime = "0.1.6"
+oxilean-runtime = "0.1.7"
 ```
 
 ### Arena Allocation

@@ -49,7 +49,7 @@ tested independently, respecting the inter-package dependency graph.
 
 ```toml
 [dependencies]
-oxilake = "0.1.6"
+oxilake = "0.1.7"
 ```
 
 - License: Apache-2.0

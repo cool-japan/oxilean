@@ -81,7 +81,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-build = "0.1.6"
+oxilean-build = "0.1.7"
 ```
 
 ### Running a Build

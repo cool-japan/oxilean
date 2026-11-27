@@ -18,7 +18,7 @@ The kernel is the core responsible for type checking in the Calculus of Inductiv
 
 ```toml
 [dependencies]
-oxilean-kernel = "0.1.6"
+oxilean-kernel = "0.1.7"
 ```
 
 ### Cargo features

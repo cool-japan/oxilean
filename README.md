@@ -801,4 +801,4 @@ Copyright (c) COOLJAPAN OU (Team KitaSan). Licensed under [Apache-2.0](LICENSE).
 
 ---
 
-**v0.1.6** (2026-11-27) | Current release
+**v0.1.7** (unreleased) | Under active development

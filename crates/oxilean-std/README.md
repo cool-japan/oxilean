@@ -71,7 +71,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-std = "0.1.6"
+oxilean-std = "0.1.7"
 ```
 
 Example OxiLean proof using standard library theorems:

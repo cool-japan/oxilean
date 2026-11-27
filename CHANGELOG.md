@@ -9,6 +9,14 @@ Copyright (c) COOLJAPAN OU (Team KitaSan)
 
 ---
 
+## [0.1.7] — Unreleased
+
+### Added
+
+### Changed
+
+### Fixed
+
 ## [0.1.6] — 2026-11-27
 
 ### Highlights
@@ -439,6 +447,7 @@ implemented in pure Rust. 1,221,710 SLOC across 11 crates and 5,380 files.
 ---
 
 [Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.6...HEAD
+[0.1.7]: https://github.com/cool-japan/oxilean/compare/v0.1.6...HEAD
 [0.1.6]: https://github.com/cool-japan/oxilean/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/cool-japan/oxilean/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/cool-japan/oxilean/compare/v0.1.3...v0.1.4
