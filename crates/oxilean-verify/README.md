@@ -25,6 +25,16 @@ container, is still the named gap `"nested inductives"`; and three shapes
 without parameters that Lean's kernel accepts are `rejected`, false alarms
 tracked as C25, C28 and C29 in the workspace's `TODO_VERIFY.md`.)
 
+## Result: the Lean proof of the Riemann Hypothesis (0.1.6)
+
+On the export of the compact edition of the Lean proof of RH and of GRH for
+Dirichlet L-functions (github.com/lsernau/grh-lean, commit `72fead10`, Lean
+v4.35.0): **204,583 verified · 0 unsupported · 0 rejected**, and `--compare`
+confirms that the five theorems prove exactly the challenge's statements from
+`propext`, `Classical.choice` and `Quot.sound` only
+(`compare verdict: ESTABLISHED`). Environment, timings and reproduction steps:
+[riemann_verified.en.md](https://github.com/cool-japan/oxilean/blob/master/riemann_verified.en.md).
+
 ## TCB story
 
 The dependency closure is the TCB for the verification product:
@@ -52,6 +62,14 @@ oxilean-verify --limits corpus path/to/Init.ndjson
 # machine-readable JSON report to a file (`--json -` writes it to stdout;
 # add --json-full for a per-declaration list)
 oxilean-verify --json report.json path/to/export.ndjson
+
+# check, like `lake comparator`, that the export proves the statements of a
+# challenge export from permitted axioms only (exit 3 when it does not)
+oxilean-verify --limits corpus --compare challenge.ndjson solution.ndjson
+
+# raise the per-declaration budget, deadline and stack for very heavy proofs
+oxilean-verify --limits corpus --decl-fuel 2^30 --decl-timeout 1800 \
+  --stack-size 16384 --compare challenge.ndjson solution.ndjson
 ```
 
 ## Library API

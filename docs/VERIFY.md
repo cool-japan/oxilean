@@ -20,6 +20,18 @@ this crate, and the crate is `#![forbid(unsafe_code)]`. There is no `clap` and n
 
 ---
 
+## Results
+
+* **The Lean proof of the Riemann Hypothesis and of GRH for Dirichlet
+  L-functions, compact edition** (lsernau/grh-lean `72fead10`, Lean v4.35.0):
+  204,583 verified · 0 unsupported · 0 rejected, `--compare` ESTABLISHED.
+  Environment, timings, reproduction: [`riemann_verified.en.md`](../riemann_verified.en.md)
+  (日本語: [`riemann_verified.md`](../riemann_verified.md)).
+* **Lean core `Init`** and a **Mathlib slice**: see the
+  [README](../README.md#result-on-lean-core-init--re-measured-2026-11-11).
+
+---
+
 ## The three buckets, always
 
 Every declaration lands in **exactly one** of three buckets. They are wired

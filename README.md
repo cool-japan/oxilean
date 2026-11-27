@@ -247,6 +247,38 @@ structural sharing, were ~3,280 decls/s for lean4lean against ~376 (0.1.2) and
 `oxilean-verify --version` prints the pins. Full schema, exit codes, JSON
 report format, and the unsupported-feature list: [`docs/VERIFY.md`](docs/VERIFY.md).
 
+## Built on OxiLean: cargo-formal
+
+**[cargo-formal](https://crates.io/crates/cargo-formal)** — the `cargo formal`
+subcommand (alias `cargo keisiki`) — is formal verification for Rust crates
+with the ergonomics of `cargo test`, and it is **built on OxiLean**: its
+theorem layer runs on `oxilean-kernel` + `oxilean-export`, the same kernel
+that checked the Lean proof of the Riemann Hypothesis described above, linked
+in process next to the Pure-Rust SMT solver [OxiZ](https://github.com/cool-japan/oxiz).
+It reports one verdict per layer — L0 hygiene, L1 bounded safety, L2 function
+contracts, L3 theorems, L4 audit — never folds one layer's verdict into
+another's, and says as precisely what it could not check as what it could.
+(The kernel hygiene figures under [What's New in v0.1.4](#whats-new-in-v014)
+were measured with `cargo formal check --layer hygiene`.)
+
+```bash
+cargo install cargo-formal --locked
+cargo formal setup
+cargo formal check
+```
+
+- **Released** on crates.io at 0.1.0 on 2026-11-14 (0.1.x series).
+- **License: BUSL-1.1** (source-available, not open source). Evaluation and
+  other non-production use are free; production use needs an active
+  sponsorship that covers the tool; the license becomes Apache-2.0 on
+  2030-01-01. OxiLean itself is, and stays, Apache-2.0.
+- cargo-formal 0.1.0 pins `oxilean-kernel` / `oxilean-export` 0.1.5. Once its
+  pin moves to 0.1.6 it gains this release's kernel: Lean's lazy δ reduction,
+  bounded term rendering, and the rule that a safe declaration may use no
+  `unsafe` or `partial` constant — which closes one of the cases its 0.1.0
+  README lists under *Known limits* (a theorem accepted on a declaration that
+  is a safe one using an unsafe or partial one).
+
 ## Architecture
 
 ```
@@ -383,6 +415,59 @@ ox.free();
 Full API: `check`, `repl`, `completions`, `hoverInfo`, `format`, `sessionId`, `history`, `clearHistory`, `version`
 
 Supports bundler (webpack/vite), web (browser), and Node.js targets. See [oxilean-wasm README](crates/oxilean-wasm/README.md) for details.
+
+## What's New in v0.1.6
+
+- **An independent check of the Lean proof of the Riemann Hypothesis.**
+  `oxilean-verify` re-checked the compact edition of the Lean proof of RH and
+  of GRH for Dirichlet L-functions — every one of its 204,583 declarations,
+  Mathlib and Lean core included — and confirmed with the new `--compare` that
+  its five theorems prove exactly the challenge statements, from `propext`,
+  `Classical.choice` and `Quot.sound` only. See
+  [Result on the Lean proof of RH / GRH](#result-on-the-lean-proof-of-rh--grh-compact-edition--2026-11-27)
+  and the full report, [riemann_verified.en.md](riemann_verified.en.md)
+  (日本語: [riemann_verified.md](riemann_verified.md)).
+- **`--compare <CHALLENGE.ndjson>`** (with `--theorems`, `--axioms`): what
+  `lake comparator` checks besides the kernel replay — each target is a
+  theorem of the input with the challenge's statement, every other
+  declaration of the challenge occurs identically, and the targets' closure
+  holds only permitted axioms, verified declarations and no `unsafe` /
+  `partial` one. New exit code 3: nothing rejected, statements not
+  established.
+- **Definitional equality follows Lean's `is_def_eq_core`.** Both sides are
+  brought to weak head normal form *without unfolding the head constant*,
+  proof irrelevance is tried, and definitions are then unfolded one at a time
+  (lazy δ reduction, the side with the greater definitional height first,
+  arguments of two applications of the same definition compared before it is
+  unfolded). The kernel used to bring both sides to full weak head normal form
+  first: on the GRH export it evaluated `2000000 • x` in ℝ as two million
+  nested `Real.add`s, which overflowed the stack, ran out of memory at 33 GB,
+  or spent the whole budget, on proofs Lean's kernel checks in a second. `exists_data._proof_1_66`: 70 s with a budget of 2^32 and a 16 GiB
+  stack → **95 ms** under the default limits; `g₂_g₃_eq_eisenstein`: 17.4 s →
+  **213 ms**. Proof irrelevance now compares the two propositions as inferred.
+- **Inductive declarations close their telescopes with the sharing-aware
+  abstraction.** The inductive module had its own `abstract_fvar` that walked
+  a term once per path to each subterm; Mathlib-style structures with large
+  shared field types made it exponential. `IsPrimeTriangle`: 116.5 s →
+  **0.6 s**.
+- **Term rendering is bounded** (2,048 subterms, then `…`). An error message
+  that rendered a shared proof term as a tree ran one declaration to 24 GB
+  before it could be reported.
+- **A safe declaration may use no `unsafe` constant and no `partial`
+  definition** (Lean's `infer_constant`), for every declaration and every
+  inductive bundle.
+- **`--decl-fuel <N|2^K>` / `--decl-timeout <S|none>`** override the
+  per-declaration budget and deadline of the `--limits` preset.
+- Kernel feature `profile-unfold` (off by default): per-declaration counts of
+  what the kernel unfolds, the diagnostic that found the two problems above.
+- Tests: 33,953 passing across the workspace (779 ignored), 4,055 of them in
+  `oxilean-kernel`, `oxilean-export` and `oxilean-verify`; zero clippy
+  warnings.
+- Not re-measured on 0.1.6: the Lean core `Init` and Mathlib-slice figures in
+  the oxilean-verify section above were measured on the 0.1.4 tree (those two
+  exports are regenerated with `scripts/regen-corpus.sh`). The GRH export,
+  which contains 52,173 declarations of Mathlib and Lean core of its own,
+  verifies in full on 0.1.6.
 
 ## What's New in v0.1.4
 
@@ -624,6 +709,16 @@ Your sponsorship helps us:
 - Maintain and improve the COOLJAPAN ecosystem
 - Keep the entire ecosystem (OxiBLAS, OxiFFT, SciRS2, etc.) 100% Pure Rust
 - Provide long-term support and security updates
+
+**Supporting OxiLean through the products built on it.** OxiLean is
+Apache-2.0 and will stay so; its continued development — the kernel that
+re-checked the Lean proof of the Riemann Hypothesis among it — is carried by
+the products built on it, [cargo-formal](https://crates.io/crates/cargo-formal)
+first among them. We would be delighted if more individuals and companies
+became supporters (sponsors) of any of these products, cargo-formal included.
+A sponsorship that covers cargo-formal is also what its BUSL-1.1 license asks
+for production use, so supporting the tool you use and supporting OxiLean are
+the same step.
 
 ## License
 
