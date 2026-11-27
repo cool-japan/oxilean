@@ -104,10 +104,7 @@ impl SimpLemmaSelector {
                 return false;
             }
         }
-        if self.exclude_conditional && lemma.is_conditional {
-            return false;
-        }
-        true
+        !(self.exclude_conditional && lemma.is_conditional)
     }
 }
 /// A configuration store for TacticSimpMain.

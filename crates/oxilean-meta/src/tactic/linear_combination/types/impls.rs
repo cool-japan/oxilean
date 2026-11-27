@@ -1196,8 +1196,8 @@ impl RatMatrix {
         let mut rank = 0;
         for col in 0..self.cols {
             let mut found = None;
-            for row in pivot_row..self.rows {
-                if !self.data[row][col].is_zero() {
+            for (row, data_row) in self.data.iter().enumerate().take(self.rows).skip(pivot_row) {
+                if !data_row[col].is_zero() {
                     found = Some(row);
                     break;
                 }

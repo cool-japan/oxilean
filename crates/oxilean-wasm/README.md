@@ -105,7 +105,7 @@ The JS-glue dependencies are optional and gated behind the `wasm` feature:
 
 The crate always depends on `oxilean-kernel`, `oxilean-parse`, `oxilean-elab`
 and `oxiarc-deflate`. On wasm32 it also enables getrandom's `wasm_js` feature
-(getrandom 0.3 and 0.4) for transitive dependencies.
+(getrandom 0.4) for transitive dependencies.
 
 ## Testing
 

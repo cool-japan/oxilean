@@ -5,7 +5,7 @@
 
 ## ✅ Completed
 
-- [x] Module structure (514 files, ~103,291 SLOC total)
+- [x] Module structure (514 files, ~103,289 SLOC total)
 - [x] `MetaVarId` type (u64 wrapper with derive traits)
 - [x] Re-exports in `lib.rs`
 

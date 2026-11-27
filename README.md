@@ -26,7 +26,7 @@ OxiLean is a **memory-safe, high-performance Interactive Theorem Prover (ITP)** 
 
 - **Zero-dependency kernel** -- Trusted Computing Base with zero external crate dependencies
 - **1.36M+ lines of Rust** across 6,185 source files and 17 crates
-- **33,954 tests passing** -- comprehensive test suite with zero warnings (779 ignored)
+- **33,955 tests passing** -- comprehensive test suite with zero warnings (779 ignored)
 - **WASM support** -- Runs in the browser with no server required
 - **Tactic framework** -- intro, apply, simp, ring, omega, and more. The decision procedures (omega, linarith, polyrith) rebuild a proof term from their certificate and have the kernel check it; a goal they cannot certify falls back to `sorry`
 - **Interactive REPL** -- Theorem proving from the command line
@@ -390,14 +390,14 @@ cargo formal check
 | `oxilean-export` | 7,416 | 133 | lean4export NDJSON v3.1.0 reader + replay (TCB, zero external deps) |
 | `oxilean-verify` | 3,972 | 69 | Independent Lean 4 proof checker CLI (three-bucket verdicts) |
 | `oxilean-verify-wasm` | 387 | 4 | "Kernel in a Tab" WASM bindings (~165 KB gzip) |
-| `oxilean-meta` | 163,149 | 5,426 | Metavar-aware WHNF, unification, type class synthesis, tactics |
+| `oxilean-meta` | 163,140 | 5,426 | Metavar-aware WHNF, unification, type class synthesis, tactics |
 | `oxilean-parse` | 67,822 | 2,388 | Concrete syntax to abstract syntax parser |
-| `oxilean-elab` | 103,291 | 3,511 | Surface syntax to kernel terms elaborator |
+| `oxilean-elab` | 103,289 | 3,511 | Surface syntax to kernel terms elaborator |
 | `oxilean-cli` | 73,685 | 2,206 | Command-line interface with REPL |
-| `oxilean-std` | 442,733 | 7,977 | Standard library (mathematics, logic, data structures) |
+| `oxilean-std` | 442,730 | 7,977 | Standard library (mathematics, logic, data structures) |
 | `oxilean-codegen` | 248,329 | 4,755 | LCNF-based compilation and optimization code generator |
 | `oxilean-runtime` | 35,716 | 1,187 | Memory management, closures, I/O, task scheduling |
-| `oxilean-build` | 30,598 | 794 | Project compilation and dependency management |
+| `oxilean-build` | 30,604 | 795 | Project compilation and dependency management |
 | `oxilean-lint` | 22,179 | 428 | Static analysis and lint rules |
 | `oxilean-doc` | 2,726 | 102 | Documentation generation |
 | `oxilake` | 2,539 | 63 | Lake-style project/package tooling |
@@ -405,9 +405,9 @@ cargo formal check
 | `oxilean` (umbrella) | 22 | 0 | Facade crate re-exporting the workspace |
 | workspace `tests/` | — | 1,689 | Root integration suites (incl. Mathlib compat harness) |
 | doc tests (`cargo test --doc`) | — | 94 | Doctests across the workspace (61 run + 33 ignored) |
-| **Total** | **1,369,911** | **34,733** | **17 crates, 6,185 Rust files** (33,954 run + 779 ignored) |
+| **Total** | **1,369,900** | **34,734** | **17 crates, 6,185 Rust files** (33,955 run + 779 ignored) |
 
-> Fun fact: The COCOMO cost estimate for this codebase is **$52M+**.
+> Fun fact: The COCOMO cost estimate for this codebase is **$53M+**.
 
 ## Feature Status
 
@@ -718,7 +718,7 @@ cargo test --workspace
 ### Running Tests
 
 ```bash
-# All tests (33,954 tests; 779 ignored)
+# All tests (33,955 tests; 779 ignored)
 cargo test --workspace
 
 # With cargo-nextest (recommended; about 140 s on an Apple M3)

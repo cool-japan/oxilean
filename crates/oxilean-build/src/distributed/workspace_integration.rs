@@ -176,8 +176,10 @@ fn parse_manifest_content(content: &str) -> Result<WorkspaceManifest, WorkspaceE
 
     // Use the `toml` crate to parse the whole document so we handle all valid
     // TOML syntax correctly (multi-line arrays, quoted strings, etc.).
-    let doc: toml::Value = content
-        .parse::<toml::Value>()
+    // (`toml::Value::from_str` parses a single TOML value since toml 0.9, so a
+    // whole document is parsed into a `toml::Table`.)
+    let doc: toml::Table = content
+        .parse::<toml::Table>()
         .map_err(|e| WorkspaceError::MalformedManifest(e.to_string()))?;
 
     let workspace_table = doc.get("workspace").ok_or(WorkspaceError::NotAWorkspace)?;
@@ -349,6 +351,15 @@ mod tests {
         let manifest = parse_manifest_content(content).expect("parse multi member");
         assert_eq!(manifest.members.len(), 3);
         assert_eq!(manifest.members, vec!["a", "b", "c"]);
+    }
+
+    // ── 2b. multi-line members array (toml 1.x migration regression) ─────────
+
+    #[test]
+    fn test_parse_manifest_multiline_members() {
+        let content = "[workspace]\nmembers = [\n  \"a\",\n  \"b\",\n]\n";
+        let manifest = parse_manifest_content(content).expect("parse multi-line members");
+        assert_eq!(manifest.members, vec!["a", "b"]);
     }
 
     // ── 3. not a workspace ────────────────────────────────────────────────────

@@ -9,7 +9,7 @@
 
 This crate is **untrusted** with respect to soundness: metavariable assignment and unification code cannot corrupt the kernel environment. All proofs produced by the tactic system are ultimately re-verified by the kernel before being accepted.
 
-163,149 SLOC -- comprehensive meta layer implementation (747 source files, 5,426 tests passing).
+163,140 SLOC -- comprehensive meta layer implementation (747 source files, 5,426 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 

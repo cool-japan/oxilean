@@ -539,9 +539,9 @@ impl BvEncoder {
     pub fn encode_const(&mut self, bv: &BitVec) -> Vec<SatVar> {
         let w = bv.width.as_usize();
         let mut result = Vec::with_capacity(w);
-        for i in 0..w {
+        for &bit in bv.bits.iter().take(w) {
             let var = self.formula.fresh_var();
-            if bv.bits[i] {
+            if bit {
                 self.formula.add_clause(vec![Literal::pos(var)]);
             } else {
                 self.formula.add_clause(vec![Literal::neg(var)]);
@@ -1569,8 +1569,8 @@ impl BitVec {
         assert_eq!(self.width, other.width);
         let w = self.width.as_usize();
         let mut result = BitVec::zero(self.width);
-        for i in 0..w {
-            if other.bits[i] {
+        for (i, &bit) in other.bits.iter().enumerate().take(w) {
+            if bit {
                 let shifted = self.shl_const(i as u32);
                 result = result.add(&shifted);
             }

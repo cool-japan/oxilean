@@ -348,15 +348,15 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 | Phase 4: Tactics | ✅ Complete | ~5,000 | (included in elab) |
 | Phase 5+: Advanced | ✅ Complete | ~120,000+ | ~956,000+ |
 
-**Total Project Lines**: ~1,369,911 lines across 17 crates, 6,185 files
+**Total Project Lines**: ~1,369,900 lines across 17 crates, 6,185 files
 
 ---
 
 ## Project Status: Phases 1-5 COMPLETE; v0.1.6 released
 
 **Phases 1-5 complete as of 2026-05-03. v0.1.3 shipped 2026-07-16. v0.1.4 shipped 2026-11-12. v0.1.5 shipped 2026-11-13. v0.1.6 shipped 2026-11-27.**
-- 17 crates, 6,185 files, 1,369,911 lines implemented
-- 33,954 tests passing (workspace; 779 ignored)
+- 17 crates, 6,185 files, 1,369,900 lines implemented
+- 33,955 tests passing (workspace; 779 ignored)
 - 0 warnings
 - Mathlib4 compatibility: 99.7% parse rate (181,326/181,890 declarations)
 - 320 curated theorem proofs: 100% pass rate

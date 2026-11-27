@@ -9,7 +9,7 @@
 
 The design is intentionally analogous to Cargo: OxiLean projects declare their dependencies in a manifest file, and `oxilean-build` resolves, fetches, and compiles them in the correct order.
 
-30,598 SLOC -- fully implemented build system (267 source files, 794 tests passing).
+30,604 SLOC -- fully implemented build system (267 source files, 795 tests passing).
 
 Part of the [OxiLean](https://github.com/cool-japan/oxilean) project -- a Lean-compatible theorem prover implemented in pure Rust.
 

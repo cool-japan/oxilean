@@ -29,9 +29,8 @@ serde = { workspace = true, optional = true }
 serde-wasm-bindgen = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-# Deliberately unreferenced in code: these only switch on getrandom's `wasm_js` feature for transitive dependencies on wasm32.
+# Deliberately unreferenced in code: it only switches on getrandom's `wasm_js` feature for transitive dependencies on wasm32.
 getrandom = { workspace = true }
-getrandom_v04 = { workspace = true }
 
 [features]
 default = []

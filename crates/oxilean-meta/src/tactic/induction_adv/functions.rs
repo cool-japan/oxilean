@@ -144,10 +144,7 @@ pub fn check_recursor_compatibility(
             return Ok(false);
         }
     }
-    if rec_info.constructor_rules.is_empty() {
-        return Ok(false);
-    }
-    Ok(true)
+    Ok(!rec_info.constructor_rules.is_empty())
 }
 /// Build minor premises from constructor information.
 pub(super) fn build_minor_premises(

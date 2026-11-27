@@ -507,10 +507,7 @@ impl TwoPlayerGame {
             return false;
         }
         let b_best = self.best_response_b(i);
-        if self.payoffs_b[i][b_best] > self.payoffs_b[i][j] {
-            return false;
-        }
-        true
+        self.payoffs_b[i][b_best] <= self.payoffs_b[i][j]
     }
     pub fn all_pure_nash(&self) -> Vec<(usize, usize)> {
         let mut result = Vec::new();

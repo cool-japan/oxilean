@@ -515,7 +515,6 @@ impl<'env> DeclElaborator<'env> {
     }
     /// Register universe parameters for the current declaration.
     #[allow(dead_code)]
-    #[allow(dead_code)]
     fn register_univ_params(&mut self, params: &[String]) {
         self.univ_params.clear();
         for p in params {
@@ -525,7 +524,6 @@ impl<'env> DeclElaborator<'env> {
         }
     }
     /// Reset context for a new declaration.
-    #[allow(dead_code)]
     #[allow(dead_code)]
     fn reset_context(&mut self) {
         self.ctx = ElabContext::new(self.env);

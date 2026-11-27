@@ -518,10 +518,7 @@ impl SimpEngine {
                 let arg_is_false = matches!(
                     arg.as_ref(), Expr::Const(n, _) if n.to_string() == "False"
                 );
-                if is_not && arg_is_false {
-                    return true;
-                }
-                false
+                is_not && arg_is_false
             }
             Expr::Pi(_, _, domain, _) => {
                 matches!(domain.as_ref(), Expr::Const(n, _) if n.to_string() == "False")

@@ -20,10 +20,7 @@ fn is_keyword_at(chars: &[char], i: usize, len: usize, keyword: &str) -> bool {
         }
     }
     // Check word boundary after
-    if i + kw_len < len && (chars[i + kw_len].is_alphanumeric() || chars[i + kw_len] == '_') {
-        return false;
-    }
-    true
+    !(i + kw_len < len && (chars[i + kw_len].is_alphanumeric() || chars[i + kw_len] == '_'))
 }
 
 /// Normalize `BigProd`/`BigSum` bounded notation to lambda form.

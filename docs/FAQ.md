@@ -30,16 +30,16 @@ A: OxiLean is a pure Rust implementation of an Interactive Theorem Prover (ITP) 
 
 A: OxiLean fills several niches:
 
-1. **Pure Rust** -- 1,360,584 SLOC across 17 crates, all in Rust with no C/Fortran dependencies
+1. **Pure Rust** -- 1,369,900 SLOC across 17 crates, all in Rust with no C/Fortran dependencies
 2. **Rust integration** -- Proofs as first-class Cargo items
 3. **WASM capability** -- Run proofs in browsers via oxilean-wasm bindings
 4. **Pedagogical** -- Clear, auditable design for learning ITP implementation
 
 ### Q: Is OxiLean production-ready?
 
-A: OxiLean v0.1.5 has all core features complete:
+A: OxiLean v0.1.7 has all core features complete:
 
-- Type checker and kernel (126,740 SLOC in `src/`)
+- Type checker and kernel (127,951 SLOC in `src/`)
 - Lexer and parser (oxilean-parse)
 - Elaborator (oxilean-elab)
 - Tactic framework with 20+ tactics implemented
@@ -69,8 +69,8 @@ OxiLean is NOT a Lean fork. Key differences:
 | Aspect | OxiLean | Lean 4 |
 |--------|---------|--------|
 | Kernel deps | 0 | 200+ |
-| SLOC (kernel) | 127K | 50,000+ |
-| Total SLOC | 1,360,584 | N/A |
+| SLOC (kernel) | 128K | 50,000+ |
+| Total SLOC | 1,369,900 | N/A |
 | Target platforms | WASM, Native | Native |
 | Tactic system | 20+ tactics | Complex |
 | Standard library | 443K SLOC | 10,000+ items |
@@ -325,7 +325,7 @@ This is sound because:
 | Feature | OxiLean | Coq |
 |---------|---------|-----|
 | Logic | CiC | CiC |
-| Kernel SLOC | 127K | 50K |
+| Kernel SLOC | 128K | 50K |
 | Tactics | 20+ | ~200 |
 | Library size | 443K SLOC | 10K+ items |
 | WASM support | Native (oxilean-wasm) | Requires port |
@@ -524,7 +524,7 @@ OxiLean is licensed under **Apache 2.0**.
 
 **Yes**, for educational and research purposes. OxiLean provides:
 
-1. **Sound kernel** -- CiC implementation with 127K SLOC
+1. **Sound kernel** -- CiC implementation with 128K SLOC
 2. **Tactic framework** -- 20+ tactics for proof construction
 3. **Standard library** -- 443K SLOC of formalized mathematics
 4. **Mathlib4 compatibility** -- 99.7% parse compatibility (181,326/181,890 declarations; a parse number, not verification)
@@ -633,5 +633,5 @@ OxiLean supports metaprogramming via the oxilean-meta crate:
 ---
 
 **Last updated:** November 2026
-**OxiLean version:** 0.1.5
+**OxiLean version:** 0.1.7 (unreleased)
 **Status:** All phases complete
