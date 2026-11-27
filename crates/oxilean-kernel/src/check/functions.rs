@@ -6,7 +6,6 @@ use crate::declaration::{ConstantInfo, ConstructorVal, InductiveVal, QuotVal, Re
 use crate::env::EnvError;
 use crate::Node;
 use crate::{Declaration, Environment, KernelError, TypeChecker};
-#[cfg(test)]
 use crate::{Expr, Name};
 use std::rc::Rc;
 
@@ -351,6 +350,9 @@ pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<()
     // `Param`s in the type/value, and any `Level` metavariable — for every
     // `ConstantInfo` variant, mirroring the `check_declaration` path.
     check_univ_param_hygiene_ci(&ci)?;
+    // A safe declaration may not use an unsafe constant, nor a partial
+    // definition (Lean's `infer_constant`).
+    check_reference_safety(env, &name, safety_of(&ci), &terms_of(&ci))?;
     let mut derived_recursor: Option<RecursorVal> = None;
     match &ci {
         ConstantInfo::Axiom(av) => {
@@ -411,6 +413,82 @@ pub fn check_constant_info(env: &mut Environment, ci: ConstantInfo) -> Result<()
         crate::env::EnvError::InvalidQuotient(msg) => KernelError::Other(msg),
     })
 }
+/// The safety a declaration is checked under, as Lean's kernel sets it: a
+/// definition's own; `unsafe` for an axiom, opaque constant, inductive type,
+/// constructor or recursor flagged unsafe; safe otherwise.
+#[must_use]
+pub fn safety_of(ci: &ConstantInfo) -> crate::declaration::DefinitionSafety {
+    use crate::declaration::DefinitionSafety;
+    match ci {
+        ConstantInfo::Definition(dv) => dv.safety,
+        ConstantInfo::Theorem(_) | ConstantInfo::Quotient(_) => DefinitionSafety::Safe,
+        other if other.is_unsafe() => DefinitionSafety::Unsafe,
+        _ => DefinitionSafety::Safe,
+    }
+}
+
+/// The terms of a declaration that name the constants it uses: its type,
+/// its value, and a recursor's rule right-hand sides.
+fn terms_of(ci: &ConstantInfo) -> Vec<&Expr> {
+    let mut terms = vec![ci.ty()];
+    if let Some(v) = ci.value() {
+        terms.push(v);
+    }
+    if let ConstantInfo::Recursor(rv) = ci {
+        terms.extend(rv.rules.iter().map(|r| &r.rhs));
+    }
+    terms
+}
+
+/// Refuse a declaration that uses a constant its safety does not allow,
+/// as Lean's kernel does in `infer_constant`: a **safe** declaration may use
+/// neither an `unsafe` constant ("invalid declaration, it uses unsafe
+/// declaration") nor a `partial` definition ("safe declaration must not
+/// contain partial declaration"); a **partial** one may not use an unsafe
+/// constant; an **unsafe** one may use anything.
+///
+/// Without this an unsafe definition — which Lean admits without a
+/// termination check, `unsafe def loop : False := loop` included — could
+/// stand behind a safe theorem. `terms` are the declaration's terms (see
+/// [`safety_of`] for its safety); a constant the environment does not
+/// declare is left to the type checker, which reports it as unknown. Each
+/// shared subterm is visited once.
+///
+/// # Errors
+/// [`KernelError::Other`] naming the first constant not allowed.
+#[allow(clippy::result_large_err)]
+pub fn check_reference_safety(
+    env: &Environment,
+    own_name: &Name,
+    safety: crate::declaration::DefinitionSafety,
+    terms: &[&Expr],
+) -> Result<(), KernelError> {
+    use crate::declaration::DefinitionSafety;
+    if safety == DefinitionSafety::Unsafe {
+        return Ok(());
+    }
+    let not_allowed = |n: &Name| match env.find(n) {
+        Some(c) if c.is_unsafe() => true,
+        Some(ConstantInfo::Definition(dv)) => {
+            safety == DefinitionSafety::Safe && dv.safety == DefinitionSafety::Partial
+        }
+        _ => false,
+    };
+    for term in terms {
+        if let Some(n) = crate::expr_util::find_mentioned_name(term, not_allowed) {
+            let what = if env.find(n).is_some_and(ConstantInfo::is_unsafe) {
+                "unsafe"
+            } else {
+                "partial"
+            };
+            return Err(KernelError::Other(format!(
+                "invalid declaration '{own_name}': it uses {what} declaration '{n}'"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Check multiple `ConstantInfo` declarations, stopping on the first error.
 #[allow(clippy::result_large_err)]
 pub fn check_constant_infos(

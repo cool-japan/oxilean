@@ -25,7 +25,7 @@ use oxilean_kernel::wall_clock::Instant;
 use std::io::BufRead;
 
 use oxilean_export::{
-    read_streaming, ExportError, Limits, Position, ReadStats, ReplayOutcome, Replayer,
+    read_streaming, ExportDecl, ExportError, Limits, Position, ReadStats, ReplayOutcome, Replayer,
 };
 
 use crate::pins::EnvironmentPins;
@@ -199,7 +199,7 @@ impl std::fmt::Display for VerifyError {
 impl std::error::Error for VerifyError {}
 
 impl VerifyError {
-    fn from_export(e: ExportError) -> Self {
+    pub(crate) fn from_export(e: ExportError) -> Self {
         match e {
             ExportError::Malformed { pos, message } => VerifyError::Malformed { pos, message },
             ExportError::Unsupported { pos, feature } => {
@@ -236,6 +236,31 @@ pub fn verify_stream<R, F>(
 where
     R: BufRead,
     F: FnMut(&DeclEvent),
+{
+    verify_stream_inspect(reader, tool_version, options, |_decl, event| {
+        on_event(event)
+    })
+}
+
+/// [`verify_stream`], with the declaration itself handed to the callback next
+/// to its verdict.
+///
+/// The callback sees each declaration exactly as the kernel checked it — the
+/// same value, after its replay — so a caller that compares declarations with
+/// another file or audits their dependencies (see [`crate::compare`]) looks at
+/// what was verified, not at a second reading of the file.
+///
+/// # Errors
+/// As [`verify_stream`].
+pub fn verify_stream_inspect<R, F>(
+    reader: R,
+    tool_version: &'static str,
+    options: VerifyOptions,
+    mut on_event: F,
+) -> Result<FileReport, VerifyError>
+where
+    R: BufRead,
+    F: FnMut(&ExportDecl, &DeclEvent),
 {
     let mut replayer = match Replayer::new() {
         Ok(r) => r,
@@ -282,7 +307,7 @@ where
             verdict,
             index,
         };
-        on_event(&event);
+        on_event(&decl, &event);
         summary.total += 1;
         index += 1;
 
@@ -298,6 +323,10 @@ where
     });
 
     summary.wall_micros = start.elapsed().as_micros() as u64;
+    // The diagnostic profile of the last declaration (feature `profile-unfold`
+    // of the kernel; a no-op without it) is reported when the next budget is
+    // armed, and there is no next one.
+    oxilean_kernel::profile::report_and_reset(oxilean_kernel::fuel::used());
 
     match read_result {
         Ok((meta, stats)) => {

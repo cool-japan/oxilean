@@ -335,7 +335,12 @@ impl Repl {
         loop {
             self.print_prompt()?;
             let mut input = String::new();
-            io::stdin().read_line(&mut input)?;
+            if io::stdin().read_line(&mut input)? == 0 {
+                // End of input (EOF / closed pipe): leave like `:quit` does, and
+                // end the prompt line so the shell prompt starts on a fresh one.
+                println!();
+                break;
+            }
             let input = input.trim();
             if input.is_empty() {
                 if self.input_buffer.is_continuation() {

@@ -73,10 +73,10 @@ list.
 
 ```toml
 [dependencies]
-oxilean-export = "0.1.5"
+oxilean-export = "0.1.6"
 ```
 
-- Size: 2,530 SLOC in 7 source files under `src/`; 99 tests
+- Size: 2,861 SLOC in 7 source files under `src/`; 133 tests
 - License: Apache-2.0
 - Edition: 2021
 - Rust version: 1.89+

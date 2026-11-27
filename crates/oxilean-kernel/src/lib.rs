@@ -275,12 +275,21 @@ pub mod name;
 /// Memo tables over the shared subterms of one term, for the walks that
 /// rebuild or read a term without visiting a shared subterm once per path.
 pub(crate) mod node_memo;
+/// Diagnostic counts of what the kernel unfolds (feature `profile-unfold`).
+pub mod profile;
 /// Structural hashing primitives: the hash `Name`, `Level` and every shared
 /// subterm of an `Expr` store at construction.
 pub(crate) mod structural_hash;
 /// Caches keyed by terms (reduction, def-eq, inference), and the
 /// sharing-aware structural equality that verifies their keys.
 pub(crate) mod term_cache;
+/// Structural equality of two terms, exactly what `==` on [`Expr`] decides
+/// (binder names and binder annotations included), visiting each pair of
+/// shared subterms once. Two terms read from different files are separate
+/// allocations; `==` would compare them as the trees they stand for, which
+/// for a heavily shared proof term is exponential in its DAG size. Read-only:
+/// it decides nothing about typing and changes no state.
+pub use term_cache::same_term as terms_structurally_equal;
 
 // Re-exports for convenience
 pub use arena::{Arena, Idx};
@@ -385,7 +394,7 @@ pub use beta::{beta_normalize, beta_step, beta_under_binder, is_beta_normal, mk_
 pub use builtin::{init_builtin_env, is_nat_op, is_string_op};
 pub use check::{
     check_constant_info, check_constant_infos, check_constant_infos_atomic, check_declaration,
-    check_declarations,
+    check_declarations, check_reference_safety, safety_of,
 };
 pub use congruence::{
     mk_congr_theorem, mk_congr_theorem_with_fixed, CongrArgKind, CongruenceClosure,

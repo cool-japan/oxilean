@@ -13,6 +13,49 @@
 
 ---
 
+## The Lean proof of RH / GRH, compact edition (0.1.6 tree, 2026-11-27)
+
+Export of lsernau/grh-lean `72fead10` (Lean v4.35.0, 204,583 declarations,
+5.17 GB). With `--limits corpus --decl-fuel 2^30 --decl-timeout 1800
+--stack-size 16384 --compare challenge.ndjson`: **204,583 verified · 0
+unsupported · 0 rejected, `compare verdict: ESTABLISHED`**, 35 min 38 s, peak
+13.2 GiB. Report: [`riemann_verified.en.md`](riemann_verified.en.md)
+(日本語: [`riemann_verified.md`](riemann_verified.md)).
+
+- [x] **G1. Rendering a term was unbounded.** `check_type`'s context string and
+  the replay's `{:?}` rejection reason wrote a shared proof term as a tree:
+  24 GB on `g₂_g₃_eq_eisenstein`. `RENDER_NODE_LIMIT` (2,048 subterms).
+- [x] **G2. No comparator checks.** `--compare` / `--theorems` / `--axioms`,
+  exit code 3 (`crates/oxilean-verify/src/compare.rs`).
+- [x] **G3. Definitional equality began with full WHNF of both sides.** Now
+  Lean's order: `whnf_core` (`Reducer::whnf_core_env`), proof irrelevance,
+  lazy δ (`DefEqChecker::lazy_delta_reduction`, `compare_hints`), then the
+  structural comparison; proof irrelevance compares the propositions as
+  inferred. `exists_data._proof_1_66`: 70 s at 2^32 with a 16 GiB stack (stack
+  overflow at 2^30 with 512 MiB) → 72 ms. Pinned by `tests/lazy_delta.rs`.
+- [x] **G4. Safe declarations could use unsafe / partial constants.**
+  `check_reference_safety` (Lean's `infer_constant`), every
+  `check_constant_info` and every inductive bundle. `tests/unsafe_references.rs`.
+- [x] **G5. The inductive module's `abstract_fvar` walked terms as trees.**
+  Now `subst::abstract_expr` (same result: those terms have no loose bound
+  variable). `IsPrimeTriangle`: 116.5 s → 0.87 s; peak 19.7 → 13.2 GiB.
+- [ ] **G6. Eight declarations exceed the default budget (2^26).**
+  `Filling.eq_one_of_reduceAt_eq_one._proof_1_4` (46 s at 2^30),
+  `IsCutBessel.norm_floorForm_le._proof_1_35`,
+  `SplitPlaces.card_trivialised_of_isHigmanProjective`,
+  `exists_analyticFamily_positiveBall`, three more `Filling.*._proof_*`,
+  `IsSplitPrimeToDisc.exists_place_above_ne._proof_1_19`. Under the default
+  limits: 204,425 · 158 · 0. The profile of the first (`profile-unfold`) is
+  five million structural `Nat.add` steps (`Nat.add._f` / `Nat.add.match_1`
+  on a non-literal argument); candidates: Lean's `is_def_eq_offset` and
+  `reduce_nat` in the lazy δ loop, a `failed_before` cache.
+- [ ] **G7. A stack overflow aborts the whole run** (it happened at 2^30 with
+  the default 512 MiB stack before G3). Make the CLI degrade to
+  `unsupported` instead: a default `fuel::set_reduction_nesting_limit`
+  proportional to the stack, or a larger default stack on 64-bit targets.
+- [ ] **G8. Re-measure Lean core `Init` and the Mathlib slice on 0.1.6**
+  (exports via `scripts/regen-corpus.sh`).
+
 ## Status on the 0.1.4 tree (re-measured 2026-11-04, `86227a8`)
 
 Both builds were run on the same machine: Apple M3, 24 GB, macOS, one
@@ -573,10 +616,12 @@ TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
 - [ ] **Long evaluations.** `(List.range 200000).foldl (· + ·) 0 = …` by
   `decide +kernel` runs out of the corpus budget after 2.3 s (Lean's kernel
   takes about 5 s for it); peak live heap 0.5 GB.
-- [ ] **Lazy delta reduction proper.** T4 covers two applications of the same
+- [x] **Lazy delta reduction proper.** T4 covers two applications of the same
   definition. Two DIFFERENT heads that unfold to the same one are still
   reduced to weak head normal form first; Lean unfolds one step at a time,
   the taller definition first.
+  *(0.1.6: done as G3 — `DefEqChecker::lazy_delta_reduction`, the taller definition first;
+  see the 0.1.6 section at the top.)*
 - [ ] **Rejections that end at a limit.** Of the mutants above, 154
   that Lean's kernel rejects end here at a resource limit (reported
   `unsupported`). Never a wrong verdict; a slower "no".
@@ -809,13 +854,15 @@ TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
 - [x] **S20. A second `quot` record verified** (P2; found 2026-11-12) — *(the
   replayer keeps the primitives a `quot` record has declared and rejects a
   second record of one.)*
-- [ ] **S21. The safety of a declaration is not read** (difference from Lean
+- [x] **S21. The safety of a declaration is not read** (difference from Lean
   in which declarations may be used where; found 2026-11-12) — a safe
   declaration that uses an unsafe or a partial one verifies; Lean refuses it.
   Nothing is relaxed for a flag (measured: an unsafe inductive with a
   non-positive occurrence, an unsafe and a partial definition that refer to
   themselves, ill-typed unsafe declarations are all rejected, and every
   verdict is the same with the flags cleared).
+  *(0.1.6: `check_reference_safety` (G4), Lean's `infer_constant`: a safe declaration may use
+  neither an unsafe constant nor a partial definition, and a partial one no unsafe constant.)*
 
 - [x] **S22. A recursor record was installed after a comparison by definitional
   equality alone** (P0 wrong-ACCEPT from a hand-edited export: a closed proof

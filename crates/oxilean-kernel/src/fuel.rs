@@ -127,6 +127,7 @@ struct Nesting {
 /// clear the exhaustion latch, the reduction-limit and term-depth latches
 /// and the usage counter, and put the reducer's chain cap back on.
 pub fn set_budget(budget: Option<u64>) {
+    crate::profile::report_and_reset(used());
     FUEL.with(|f| f.set(budget.unwrap_or(u64::MAX)));
     EXHAUSTED.with(|e| e.set(false));
     USED.with(|u| u.set(0));

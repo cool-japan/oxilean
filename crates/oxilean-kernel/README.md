@@ -11,14 +11,14 @@ The kernel is the core responsible for type checking in the Calculus of Inductiv
 
 - **Zero external dependencies** -- only `std` is used
 - **No `unsafe` code** -- enforced by `#![forbid(unsafe_code)]`
-- **126,740 SLOC** -- comprehensive implementation (965 source files under `src/`)
-- **3,742 tests passing** -- comprehensive coverage
+- **127,951 SLOC** -- comprehensive implementation (970 source files under `src/`)
+- **3,848 tests passing** -- comprehensive coverage
 - **WASM-compatible** -- no system calls
 - **MSRV 1.89**
 
 ```toml
 [dependencies]
-oxilean-kernel = "0.1.5"
+oxilean-kernel = "0.1.6"
 ```
 
 ### Cargo features
@@ -26,6 +26,7 @@ oxilean-kernel = "0.1.5"
 | Feature | Default | Effect |
 |---------|---------|--------|
 | `term-depth` | off | Track the depth of every shared subterm (four extra bytes each) so that `fuel::set_term_depth_limit` can report a term too deep for the caller's stack as a resource limit instead of overflowing it. `oxilean-verify-wasm` turns it on for `wasm32`. |
+| `profile-unfold` | off | Count, per declaration, the constants the reducer and the def-eq checker unfold and the recursors they step, and print the largest counts to stderr for a declaration that used at least `profile::REPORT_MIN_FUEL` units of fuel. A diagnostic; it changes no verdict. |
 
 ### Resource limits (`fuel`)
 

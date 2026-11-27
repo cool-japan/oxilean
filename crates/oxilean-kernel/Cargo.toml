@@ -35,6 +35,12 @@ default = []
 # the stack. Off by default: it adds four bytes to every shared subterm.
 # (`oxilean-verify-wasm` turns it on — a browser's stack is about a megabyte.)
 term-depth = []
+# Count, per declaration, the constants the reducer and the def-eq checker
+# unfold and the recursors they step, and print the largest counts to stderr
+# when a declaration spends a large part of its budget. A diagnostic for
+# finding where a declaration's work goes; it changes no verdict. Off by
+# default.
+profile-unfold = []
 
 [lints]
 workspace = true

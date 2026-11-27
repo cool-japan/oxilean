@@ -987,6 +987,21 @@ fn replay_inductive_core(env: &mut Environment, b: &InductiveBundle) -> Result<(
             )));
         }
     }
+    // A safe inductive declaration may not use an unsafe constant, nor a
+    // partial definition, in its types or its constructors' types (Lean's
+    // kernel checks them under the declaration's safety).
+    if !first.is_unsafe {
+        let safe = oxilean_kernel::DefinitionSafety::Safe;
+        for (n, ty) in b
+            .types
+            .iter()
+            .map(|t| (&t.common.name, &t.common.ty))
+            .chain(b.ctors.iter().map(|c| (&c.common.name, &c.common.ty)))
+        {
+            oxilean_kernel::check_reference_safety(env, n, safe, &[ty])
+                .map_err(SeamFailure::Kernel)?;
+        }
+    }
     // Every recursor record under the name Lean's kernel gives a recursor of
     // this declaration, before anything is derived.
     check_recursor_record_names(b)?;

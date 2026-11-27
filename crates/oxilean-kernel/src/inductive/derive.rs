@@ -212,6 +212,16 @@ impl<'e> DeriveCtx<'e> {
 /// contain loose BVars), so — unlike `subst::abstract_expr` — existing bound
 /// variables are never shifted.
 fn abstract_fvar(expr: &Expr, fvar: FVarId, depth: u32) -> Expr {
+    // A term with no loose bound variable — every term `close` hands over —
+    // is abstracted by the kernel's own `abstract_expr`, which computes
+    // exactly this (its one difference, shifting loose bound variables, has
+    // nothing to act on) while visiting each shared subterm once per depth.
+    // The walk below visits a subterm once per PATH to it: on the field
+    // types of Mathlib-style structures (the GRH export's `IsPrimeTriangle`)
+    // that took two minutes for one declaration.
+    if depth == 0 && !crate::expr_util::has_loose_bvars(expr) {
+        return crate::subst::abstract_expr(expr, fvar);
+    }
     match expr {
         Expr::FVar(id) if *id == fvar => Expr::BVar(depth),
         Expr::BVar(_) | Expr::Sort(_) | Expr::FVar(_) | Expr::Const(_, _) | Expr::Lit(_) => {

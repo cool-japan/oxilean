@@ -549,53 +549,6 @@ impl<'a, T> WindowIterator<'a, T> {
         }
     }
 }
-/// A token bucket rate limiter.
-#[allow(dead_code)]
-pub struct TokenBucket {
-    capacity: u64,
-    tokens: u64,
-    refill_per_ms: u64,
-    last_refill: crate::wall_clock::Instant,
-}
-#[allow(dead_code)]
-impl TokenBucket {
-    /// Creates a new token bucket.
-    pub fn new(capacity: u64, refill_per_ms: u64) -> Self {
-        Self {
-            capacity,
-            tokens: capacity,
-            refill_per_ms,
-            last_refill: crate::wall_clock::Instant::now(),
-        }
-    }
-    /// Attempts to consume `n` tokens.  Returns `true` on success.
-    pub fn try_consume(&mut self, n: u64) -> bool {
-        self.refill();
-        if self.tokens >= n {
-            self.tokens -= n;
-            true
-        } else {
-            false
-        }
-    }
-    fn refill(&mut self) {
-        let now = crate::wall_clock::Instant::now();
-        let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
-        if elapsed_ms > 0 {
-            let new_tokens = elapsed_ms * self.refill_per_ms;
-            self.tokens = (self.tokens + new_tokens).min(self.capacity);
-            self.last_refill = now;
-        }
-    }
-    /// Returns the number of currently available tokens.
-    pub fn available(&self) -> u64 {
-        self.tokens
-    }
-    /// Returns the bucket capacity.
-    pub fn capacity(&self) -> u64 {
-        self.capacity
-    }
-}
 /// A set of rewrite rules.
 #[allow(dead_code)]
 pub struct RewriteRuleSet {
@@ -788,97 +741,6 @@ impl RewriteRule {
     /// Returns a textual representation.
     pub fn display(&self) -> String {
         format!("{}: {} → {}", self.name, self.lhs, self.rhs)
-    }
-}
-/// A non-empty list (at least one element guaranteed).
-#[allow(dead_code)]
-pub struct NonEmptyVec<T> {
-    head: T,
-    tail: Vec<T>,
-}
-#[allow(dead_code)]
-impl<T> NonEmptyVec<T> {
-    /// Creates a non-empty vec with a single element.
-    pub fn singleton(val: T) -> Self {
-        Self {
-            head: val,
-            tail: Vec::new(),
-        }
-    }
-    /// Pushes an element.
-    pub fn push(&mut self, val: T) {
-        self.tail.push(val);
-    }
-    /// Returns a reference to the first element.
-    pub fn first(&self) -> &T {
-        &self.head
-    }
-    /// Returns a reference to the last element.
-    pub fn last(&self) -> &T {
-        self.tail.last().unwrap_or(&self.head)
-    }
-    /// Returns the number of elements.
-    pub fn len(&self) -> usize {
-        1 + self.tail.len()
-    }
-    /// Returns whether the collection is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-    /// Returns all elements as a Vec.
-    pub fn to_vec(&self) -> Vec<&T> {
-        let mut v = vec![&self.head];
-        v.extend(self.tail.iter());
-        v
-    }
-}
-/// A fixed-size sliding window that computes a running sum.
-#[allow(dead_code)]
-pub struct SlidingSum {
-    window: Vec<f64>,
-    capacity: usize,
-    pos: usize,
-    sum: f64,
-    count: usize,
-}
-#[allow(dead_code)]
-impl SlidingSum {
-    /// Creates a sliding sum with the given window size.
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            window: vec![0.0; capacity],
-            capacity,
-            pos: 0,
-            sum: 0.0,
-            count: 0,
-        }
-    }
-    /// Adds a value to the window, removing the oldest if full.
-    pub fn push(&mut self, val: f64) {
-        let oldest = self.window[self.pos];
-        self.sum -= oldest;
-        self.sum += val;
-        self.window[self.pos] = val;
-        self.pos = (self.pos + 1) % self.capacity;
-        if self.count < self.capacity {
-            self.count += 1;
-        }
-    }
-    /// Returns the current window sum.
-    pub fn sum(&self) -> f64 {
-        self.sum
-    }
-    /// Returns the window mean, or `None` if empty.
-    pub fn mean(&self) -> Option<f64> {
-        if self.count == 0 {
-            None
-        } else {
-            Some(self.sum / self.count as f64)
-        }
-    }
-    /// Returns the current window size (number of valid elements).
-    pub fn count(&self) -> usize {
-        self.count
     }
 }
 /// Definitional equality checker with full optimizations.
@@ -1127,13 +989,20 @@ impl<'env> DefEqChecker<'env> {
         if self.same_definition_applied_to_equal_args(t, s) {
             return true;
         }
-        let t_whnf = self.reducer.whnf_env(t, self.env);
-        let s_whnf = self.reducer.whnf_env(s, self.env);
+        // Lean's `is_def_eq_core`: both sides in weak head normal form
+        // WITHOUT unfolding the head constant, proof irrelevance, then lazy
+        // δ reduction — one definition unfolded at a time — and only when
+        // neither head unfolds any more, the structural comparison below.
+        let mut t_whnf = self.reducer.whnf_core_env(t, self.env);
+        let mut s_whnf = self.reducer.whnf_core_env(s, self.env);
         if crate::term_cache::same_term(&t_whnf, &s_whnf) {
             return true;
         }
         if self.is_proof_irrelevant_eq(&t_whnf, &s_whnf) {
             return true;
+        }
+        if let Some(verdict) = self.lazy_delta_reduction(&mut t_whnf, &mut s_whnf) {
+            return verdict;
         }
         let matched = match (&t_whnf, &s_whnf) {
             (Expr::Sort(l1), Expr::Sort(l2)) => level::is_equivalent(l1, l2),
@@ -1268,6 +1137,62 @@ impl<'env> DefEqChecker<'env> {
             return None;
         }
         Some(reduced)
+    }
+    /// Lean's `lazy_delta_reduction`: unfold the definitions at the heads of
+    /// `t` and `s` ONE AT A TIME until the two meet or neither head unfolds.
+    ///
+    /// Each step unfolds the side whose head has the greater definitional
+    /// height (an abbreviation before a regular definition), or both when
+    /// the heights are equal — after first comparing the arguments of two
+    /// applications of the same regular definition (`f a =?= f b` from
+    /// `a =?= b`, conclusive when true by congruence). After every step the
+    /// unfolded side is brought back to [`Reducer::whnf_core_env`] form and
+    /// the two are compared syntactically.
+    ///
+    /// `Some(true)`: the two are definitionally equal. `Some(false)`: the
+    /// per-declaration budget is spent (a conservative answer the caller
+    /// reports as a resource limit). `None`: neither head unfolds any more;
+    /// `t` and `s` are left in that form for the structural comparison —
+    /// the forms the full weak head normal forms would have had, so nothing
+    /// that comparison could decide before is lost.
+    fn lazy_delta_reduction(&mut self, t: &mut Expr, s: &mut Expr) -> Option<bool> {
+        loop {
+            if crate::fuel::is_exhausted() {
+                return Some(false);
+            }
+            // One unit per step: the loop ends under any budget even if a
+            // definition unfolds to itself.
+            crate::fuel::charge(1);
+            let t_hint = self.get_hint(get_app_fn(t));
+            let s_hint = self.get_hint(get_app_fn(s));
+            match (t_hint, s_hint) {
+                (None, None) => return None,
+                (Some(_), None) => *t = self.unfold_whnf_core(t)?,
+                (None, Some(_)) => *s = self.unfold_whnf_core(s)?,
+                (Some(th), Some(sh)) => match compare_hints(th, sh) {
+                    std::cmp::Ordering::Less => *t = self.unfold_whnf_core(t)?,
+                    std::cmp::Ordering::Greater => *s = self.unfold_whnf_core(s)?,
+                    std::cmp::Ordering::Equal => {
+                        if matches!(th, ReducibilityHint::Regular(_))
+                            && self.same_definition_applied_to_equal_args(t, s)
+                        {
+                            return Some(true);
+                        }
+                        *t = self.unfold_whnf_core(t)?;
+                        *s = self.unfold_whnf_core(s)?;
+                    }
+                },
+            }
+            if crate::term_cache::same_term(t, s) {
+                return Some(true);
+            }
+        }
+    }
+    /// Unfold the definition at the head of `e` and bring the result to
+    /// [`Reducer::whnf_core_env`] form. `None` when the head has no value.
+    fn unfold_whnf_core(&mut self, e: &Expr) -> Option<Expr> {
+        let unfolded = self.unfold_definition(e)?;
+        Some(self.reducer.whnf_core_env(&unfolded, self.env))
     }
     /// Try lazy delta reduction: unfold one side at a time.
     ///
@@ -1500,6 +1425,7 @@ impl<'env> DefEqChecker<'env> {
         if let Expr::Const(name, levels) = head {
             if let Some(ci) = self.env.find(name) {
                 if let Some(val) = ci.value() {
+                    crate::profile::note(crate::profile::Event::DefEqUnfold, name);
                     let val_inst = if ci.level_params().is_empty() || levels.is_empty() {
                         val.clone()
                     } else {
@@ -1757,9 +1683,11 @@ impl<'env> DefEqChecker<'env> {
         if !matches!(&ty_ty_s_whnf, Expr::Sort(l) if level::is_equivalent(l, &Level::zero())) {
             return false;
         }
-        let ty_t_whnf = self.reducer.whnf_env(&ty_t, self.env);
-        let ty_s_whnf = self.reducer.whnf_env(&ty_s, self.env);
-        self.is_def_eq(&ty_t_whnf, &ty_s_whnf)
+        // The two propositions are compared as inferred, as in Lean's
+        // `is_def_eq_proof_irrel` — not in weak head normal form first, which
+        // evaluated everything they unfold to (`Nat.Coprime (num q) (den q)`
+        // down to a `Nat.gcd` computation) before comparing them.
+        self.is_def_eq(&ty_t, &ty_s)
     }
     /// Try function eta when the left side is a lambda and the right is not.
     ///
@@ -1928,47 +1856,21 @@ impl<'env> DefEqChecker<'env> {
         self.is_def_eq(&t_ty_whnf, &s_ty)
     }
 }
-/// A simple key-value store backed by a sorted Vec for small maps.
-#[allow(dead_code)]
-pub struct SmallMap<K: Ord + Clone, V: Clone> {
-    entries: Vec<(K, V)>,
-}
-#[allow(dead_code)]
-impl<K: Ord + Clone, V: Clone> SmallMap<K, V> {
-    /// Creates a new empty small map.
-    pub fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-    /// Inserts or replaces the value for `key`.
-    pub fn insert(&mut self, key: K, val: V) {
-        match self.entries.binary_search_by_key(&&key, |(k, _)| k) {
-            Ok(i) => self.entries[i].1 = val,
-            Err(i) => self.entries.insert(i, (key, val)),
-        }
-    }
-    /// Returns the value for `key`, or `None`.
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.entries
-            .binary_search_by_key(&key, |(k, _)| k)
-            .ok()
-            .map(|i| &self.entries[i].1)
-    }
-    /// Returns the number of entries.
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-    /// Returns `true` if empty.
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-    /// Returns all keys.
-    pub fn keys(&self) -> Vec<&K> {
-        self.entries.iter().map(|(k, _)| k).collect()
-    }
-    /// Returns all values.
-    pub fn values(&self) -> Vec<&V> {
-        self.entries.iter().map(|(_, v)| v).collect()
+
+/// Which side lazy δ reduction unfolds — Lean's `compare` on reducibility
+/// hints. `Less`: the left (its head is the higher definition, or an
+/// abbreviation against a regular one); `Greater`: the right; `Equal`: both
+/// (same height, or two abbreviations). Opaque heads never get here
+/// (`get_hint` refuses them).
+fn compare_hints(t: ReducibilityHint, s: ReducibilityHint) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    match (t, s) {
+        (ReducibilityHint::Regular(a), ReducibilityHint::Regular(b)) => b.cmp(&a),
+        (ReducibilityHint::Abbrev, ReducibilityHint::Abbrev) => Ordering::Equal,
+        (ReducibilityHint::Abbrev, _) => Ordering::Less,
+        (_, ReducibilityHint::Abbrev) => Ordering::Greater,
+        (ReducibilityHint::Opaque, ReducibilityHint::Opaque) => Ordering::Equal,
+        (ReducibilityHint::Opaque, _) => Ordering::Greater,
+        (_, ReducibilityHint::Opaque) => Ordering::Less,
     }
 }

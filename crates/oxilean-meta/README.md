@@ -93,7 +93,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxilean-meta = "0.1.5"
+oxilean-meta = "0.1.6"
 ```
 
 ### Creating a Meta Context

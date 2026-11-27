@@ -1,6 +1,6 @@
 //! Per-declaration wall-clock deadline (M4 hardening).
 //!
-//! The deterministic per-declaration [`fuel`](crate::fuel) bounds *node
+//! The deterministic per-declaration [`fuel`] bounds *node
 //! construction*, which caps the memory and time of any declaration whose cost
 //! shows up as newly-built `Expr` material. But the Mathlib `CategoryTheory`
 //! corpus exposed a reduction/def-eq loop that makes progress WITHOUT
@@ -9,7 +9,7 @@
 //! (`CategoryTheory.FreeBicategory`…) pinned one core at 100 % indefinitely.
 //!
 //! This module adds a thread-local **wall-clock** deadline as a backstop.
-//! [`is_expired`](crate::deadline::is_expired) is OR-ed into [`fuel::is_exhausted`](crate::fuel::is_exhausted),
+//! [`is_expired`](crate::deadline::is_expired) is OR-ed into [`fuel::is_exhausted`],
 //! so every place the kernel already degrades on fuel exhaustion — `whnf`
 //! returns its input, `is_def_eq` decides syntactically (a conservative
 //! `false`), `infer_type` aborts — now ALSO honours the deadline, and the caller

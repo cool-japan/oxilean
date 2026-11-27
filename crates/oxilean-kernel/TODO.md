@@ -1,7 +1,7 @@
 # oxilean-kernel — TODO
 
 > Task list for the kernel crate (Trusted Computing Base).
-> Last updated: 2026-11-13
+> Last updated: 2026-11-27
 
 ## ✅ Completed (Phase 0): Core Types
 

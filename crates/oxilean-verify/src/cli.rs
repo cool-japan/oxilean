@@ -119,6 +119,33 @@ pub struct RunConfig {
     pub fail_fast: bool,
     /// Stack size for the verification thread, in MiB (`--stack-size`).
     pub stack_size_mib: u64,
+    /// Comparator-style checks against a challenge export (`--compare`).
+    pub compare: Option<crate::compare::CompareConfig>,
+    /// `--decl-fuel`: the per-declaration resource budget, overriding the
+    /// preset's.
+    pub decl_fuel_override: Option<u64>,
+    /// `--decl-timeout`: the per-declaration wall-clock deadline, overriding
+    /// the preset's (`Some(None)`: no deadline).
+    pub decl_timeout_override: Option<Option<std::time::Duration>>,
+}
+
+impl RunConfig {
+    /// The per-declaration resource budget in force: `--decl-fuel`, or the
+    /// preset's.
+    #[must_use]
+    pub fn decl_fuel(&self) -> Option<u64> {
+        self.decl_fuel_override.or_else(|| self.limits.decl_fuel())
+    }
+
+    /// The per-declaration deadline in force: `--decl-timeout`, or the
+    /// preset's.
+    #[must_use]
+    pub fn decl_time_budget(&self) -> Option<std::time::Duration> {
+        match self.decl_timeout_override {
+            Some(t) => t,
+            None => self.limits.decl_time_budget(),
+        }
+    }
 }
 
 /// The outcome of parsing a command line.
@@ -166,6 +193,59 @@ pub fn parse_args(args: &[String], color_default: bool) -> Result<Command, Usage
     let mut fail_fast = false;
     let mut stack_size_mib = DEFAULT_STACK_SIZE_MIB;
     let mut positional_only = false;
+    let mut compare_path: Option<String> = None;
+    let mut decl_fuel_override: Option<u64> = None;
+    let mut decl_timeout_override: Option<Option<std::time::Duration>> = None;
+
+    // `N` or `2^K`, at least 1.
+    fn parse_fuel(v: &str) -> Result<u64, UsageError> {
+        let bad = || {
+            UsageError::new(format!(
+                "--decl-fuel expects a positive number of units (e.g. 268435456 or 2^28), got '{v}'"
+            ))
+        };
+        let n = match v.strip_prefix("2^") {
+            Some(k) => match k.parse::<u32>() {
+                Ok(k) if k < 63 => 1u64 << k,
+                _ => return Err(bad()),
+            },
+            None => v.parse::<u64>().map_err(|_| bad())?,
+        };
+        if n == 0 {
+            return Err(bad());
+        }
+        Ok(n)
+    }
+
+    // Seconds; `0` or `none` disarms the deadline.
+    fn parse_timeout(v: &str) -> Result<Option<std::time::Duration>, UsageError> {
+        if v == "none" || v == "0" {
+            return Ok(None);
+        }
+        match v.parse::<u64>() {
+            Ok(secs) => Ok(Some(std::time::Duration::from_secs(secs))),
+            Err(_) => Err(UsageError::new(format!(
+                "--decl-timeout expects a number of seconds or 'none', got '{v}'"
+            ))),
+        }
+    }
+    let mut theorems: Option<Vec<String>> = None;
+    let mut axioms: Option<Vec<String>> = None;
+
+    fn parse_name_list(flag: &str, v: &str) -> Result<Vec<String>, UsageError> {
+        let names: Vec<String> = v
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect();
+        if names.is_empty() {
+            return Err(UsageError::new(format!(
+                "{flag} expects a comma-separated list of names, got '{v}'"
+            )));
+        }
+        Ok(names)
+    }
 
     fn parse_stack_size(v: &str) -> Result<u64, UsageError> {
         match v.parse::<u64>() {
@@ -229,6 +309,60 @@ pub fn parse_args(args: &[String], color_default: bool) -> Result<Command, Usage
                     }
                 }
             }
+            "--decl-fuel" => {
+                i += 1;
+                match args.get(i) {
+                    Some(v) => decl_fuel_override = Some(parse_fuel(v)?),
+                    None => return Err(UsageError::new("--decl-fuel requires a value")),
+                }
+            }
+            "--decl-timeout" => {
+                i += 1;
+                match args.get(i) {
+                    Some(v) => decl_timeout_override = Some(parse_timeout(v)?),
+                    None => return Err(UsageError::new("--decl-timeout requires a value")),
+                }
+            }
+            s if s.starts_with("--decl-fuel=") => {
+                decl_fuel_override = Some(parse_fuel(&s["--decl-fuel=".len()..])?);
+            }
+            s if s.starts_with("--decl-timeout=") => {
+                decl_timeout_override = Some(parse_timeout(&s["--decl-timeout=".len()..])?);
+            }
+            "--compare" => {
+                i += 1;
+                match args.get(i) {
+                    Some(p) => compare_path = Some(p.clone()),
+                    None => {
+                        return Err(UsageError::new(
+                            "--compare requires the path of a challenge export",
+                        ))
+                    }
+                }
+            }
+            "--theorems" => {
+                i += 1;
+                match args.get(i) {
+                    Some(v) => theorems = Some(parse_name_list("--theorems", v)?),
+                    None => return Err(UsageError::new("--theorems requires a list of names")),
+                }
+            }
+            "--axioms" => {
+                i += 1;
+                match args.get(i) {
+                    Some(v) => axioms = Some(parse_name_list("--axioms", v)?),
+                    None => return Err(UsageError::new("--axioms requires a list of names")),
+                }
+            }
+            s if s.starts_with("--compare=") => {
+                compare_path = Some(s["--compare=".len()..].to_string());
+            }
+            s if s.starts_with("--theorems=") => {
+                theorems = Some(parse_name_list("--theorems", &s["--theorems=".len()..])?);
+            }
+            s if s.starts_with("--axioms=") => {
+                axioms = Some(parse_name_list("--axioms", &s["--axioms=".len()..])?);
+            }
             // Attached forms: --json=PATH, --limits=corpus, --stack-size=N.
             s if s.starts_with("--stack-size=") => {
                 stack_size_mib = parse_stack_size(&s["--stack-size=".len()..])?;
@@ -264,6 +398,30 @@ pub fn parse_args(args: &[String], color_default: bool) -> Result<Command, Usage
 
     let color = color_default && !no_color;
 
+    let compare = match compare_path {
+        Some(path) => {
+            if files.len() != 1 {
+                return Err(UsageError::new(
+                    "--compare checks one solution export: give exactly one input file",
+                ));
+            }
+            let mut cfg = crate::compare::CompareConfig::new(path);
+            cfg.theorems = theorems;
+            if let Some(a) = axioms {
+                cfg.allowed_axioms = a;
+            }
+            Some(cfg)
+        }
+        None => {
+            if theorems.is_some() || axioms.is_some() {
+                return Err(UsageError::new(
+                    "--theorems and --axioms only apply together with --compare",
+                ));
+            }
+            None
+        }
+    };
+
     Ok(Command::Run(RunConfig {
         files,
         json_path,
@@ -273,6 +431,9 @@ pub fn parse_args(args: &[String], color_default: bool) -> Result<Command, Usage
         limits,
         fail_fast,
         stack_size_mib,
+        compare,
+        decl_fuel_override,
+        decl_timeout_override,
     }))
 }
 
@@ -303,6 +464,18 @@ deadline (likewise reported as unsupported, never rejected)\n    \
 (default 512; deep reduction chains in real corpora need\n                       \
 far more than the 8 MiB OS default — no ulimit needed)\n    \
 --fail-fast        stop at the first rejected declaration\n    \
+--decl-fuel <N>    per-declaration resource budget in units of kernel work\n                       \
+(N or 2^K), overriding the preset's (2^24 / 2^26)\n    \
+--decl-timeout <S> per-declaration wall-clock deadline in seconds, or\n                       \
+'none', overriding the preset's (none / 30 s)\n    \
+--compare <CHALLENGE.ndjson>\n                       \
+also check that the (single) input proves the statements\n                       \
+of a challenge export, like `lake comparator`: each target\n                       \
+is a theorem with the challenge's statement, every other\n                       \
+challenge declaration occurs identically, and the targets\n                       \
+depend only on permitted axioms and verified declarations\n    \
+--theorems <A,B,..> the targets (default: the challenge theorems proved by sorry)\n    \
+--axioms <A,B,..>  permitted axioms (default: propext,Classical.choice,Quot.sound)\n    \
 --version, -V      print version and pinned toolchain, then exit\n    \
 --help, -h         print this help and exit\n\
 \n\
@@ -310,7 +483,9 @@ EXIT CODES:\n    \
 0   ran to completion, zero declarations rejected\n    \
 1   at least one declaration REJECTED (alarm — a proof did not check)\n    \
 2   usage error, I/O error, or malformed export input (a broken file,\n        \
-which is NOT a rejection)\n",
+which is NOT a rejection)\n    \
+3   with --compare: nothing was rejected, but the comparison did not\n        \
+establish the challenge statements (see the compare section)\n",
         version = crate::VERSION
     )
 }
@@ -471,6 +646,98 @@ mod tests {
 
     fn args(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    fn run_cfg(v: &[&str]) -> RunConfig {
+        match parse_args(&args(v), false) {
+            Ok(Command::Run(cfg)) => cfg,
+            other => panic!("expected Run, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn compare_flags_build_a_compare_config() {
+        let cfg = run_cfg(&[
+            "--compare",
+            "challenge.ndjson",
+            "--theorems",
+            "a,b.c",
+            "--axioms=propext",
+            "solution.ndjson",
+        ]);
+        let cc = cfg.compare.expect("--compare given");
+        assert_eq!(cc.challenge_path, "challenge.ndjson");
+        assert_eq!(cc.theorems, Some(vec!["a".to_string(), "b.c".to_string()]));
+        assert_eq!(cc.allowed_axioms, vec!["propext".to_string()]);
+        // Without --axioms the three standard axioms are permitted.
+        let cfg = run_cfg(&["--compare=c.ndjson", "s.ndjson"]);
+        let cc = cfg.compare.expect("--compare given");
+        assert_eq!(cc.theorems, None);
+        assert_eq!(
+            cc.allowed_axioms,
+            vec![
+                "propext".to_string(),
+                "Classical.choice".to_string(),
+                "Quot.sound".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn compare_needs_exactly_one_input() {
+        let err = parse_args(
+            &args(&["--compare", "c.ndjson", "a.ndjson", "b.ndjson"]),
+            false,
+        )
+        .expect_err("two inputs");
+        assert!(err.message.contains("exactly one input file"));
+    }
+
+    #[test]
+    fn theorems_and_axioms_need_compare() {
+        let err =
+            parse_args(&args(&["--theorems", "t", "a.ndjson"]), false).expect_err("no --compare");
+        assert!(err.message.contains("--compare"));
+        let err = parse_args(&args(&["--axioms", "propext", "a.ndjson"]), false)
+            .expect_err("no --compare");
+        assert!(err.message.contains("--compare"));
+        let err = parse_args(&args(&["--compare", "c", "--theorems", ",", "a"]), false)
+            .expect_err("empty list");
+        assert!(err.message.contains("comma-separated"));
+    }
+
+    #[test]
+    fn decl_fuel_and_timeout_override_the_preset() {
+        let cfg = run_cfg(&["--limits", "corpus", "a.ndjson"]);
+        assert_eq!(cfg.decl_fuel(), Some(oxilean_export::CORPUS_DECL_FUEL));
+        assert_eq!(
+            cfg.decl_time_budget(),
+            Some(std::time::Duration::from_secs(30))
+        );
+        let cfg = run_cfg(&[
+            "--limits",
+            "corpus",
+            "--decl-fuel",
+            "2^28",
+            "--decl-timeout",
+            "none",
+            "a.ndjson",
+        ]);
+        assert_eq!(cfg.decl_fuel(), Some(1 << 28));
+        assert_eq!(cfg.decl_time_budget(), None);
+        let cfg = run_cfg(&["--decl-fuel=1000", "--decl-timeout=300", "a.ndjson"]);
+        assert_eq!(cfg.decl_fuel(), Some(1000));
+        assert_eq!(
+            cfg.decl_time_budget(),
+            Some(std::time::Duration::from_secs(300))
+        );
+        for bad in ["0", "2^63", "x", "2^x"] {
+            assert!(
+                parse_args(&args(&["--decl-fuel", bad, "a.ndjson"]), false).is_err(),
+                "--decl-fuel {bad}"
+            );
+        }
+        assert!(parse_args(&args(&["--decl-timeout", "soon", "a.ndjson"]), false).is_err());
     }
 
     #[test]

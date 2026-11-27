@@ -52,7 +52,7 @@ const PAIR_MEMO_MIN_COST: u32 = 64;
 /// As in `==`, one allocation is equal to itself and two subterms whose
 /// stored hashes differ are different; only what is left is compared.
 #[must_use]
-pub(crate) fn same_term(a: &Expr, b: &Expr) -> bool {
+pub fn same_term(a: &Expr, b: &Expr) -> bool {
     let mut walk = SameTerm {
         equal_pairs: HashSet::default(),
     };

@@ -20,6 +20,18 @@ this crate, and the crate is `#![forbid(unsafe_code)]`. There is no `clap` and n
 
 ---
 
+## Results
+
+* **The Lean proof of the Riemann Hypothesis and of GRH for Dirichlet
+  L-functions, compact edition** (lsernau/grh-lean `72fead10`, Lean v4.35.0):
+  204,583 verified · 0 unsupported · 0 rejected, `--compare` ESTABLISHED.
+  Environment, timings, reproduction: [`riemann_verified.en.md`](../riemann_verified.en.md)
+  (日本語: [`riemann_verified.md`](../riemann_verified.md)).
+* **Lean core `Init`** and a **Mathlib slice**: see the
+  [README](../README.md#result-on-lean-core-init--re-measured-2026-11-11).
+
+---
+
 ## The three buckets, always
 
 Every declaration lands in **exactly one** of three buckets. They are wired
@@ -59,6 +71,7 @@ the community to close it *with* you.
 | `0`  | The run completed and **zero** declarations were rejected.                    |
 | `1`  | The run completed and **at least one** declaration was **rejected** (alarm).  |
 | `2`  | A usage error, an I/O error, or **malformed export input**.                   |
+| `3`  | With `--compare`: nothing was rejected, but the comparison did **not** establish the challenge statements (see [Comparing with a challenge](#comparing-with-a-challenge---compare)). |
 
 Exit `2` covers a *broken file* — invalid JSON, a spec violation, a bad index
 reference, a materialization-budget blowout, a missing file, or a bad flag. **A
@@ -85,6 +98,11 @@ oxilean-verify [OPTIONS] <FILE.ndjson>...
 | `--limits <P>`    | Materialization budget preset: `default` (small, for untrusted input) or `corpus` (large, for trusted whole-corpus exports such as Lean core / Mathlib). The preset also sets the **per-declaration resource budget** (see below). |
 | `--stack-size <MiB>` | Stack size of the verification thread, in MiB (default **512**).           |
 | `--fail-fast`     | Stop at the first rejected declaration.                                      |
+| `--decl-fuel <N>` | Per-declaration resource budget in units of kernel work (`N` or `2^K`), overriding the preset's (2^24 / 2^26). |
+| `--decl-timeout <S>` | Per-declaration wall-clock deadline in seconds, or `none`, overriding the preset's (none / 30 s). |
+| `--compare <CHALLENGE>` | Also check that the single input proves the statements of a challenge export, from permitted axioms only (see below). |
+| `--theorems <A,B,…>` | With `--compare`: the target theorems (default: the challenge's theorems whose proof mentions `sorryAx`). |
+| `--axioms <A,B,…>` | With `--compare`: the permitted axioms (default: `propext,Classical.choice,Quot.sound`). |
 | `--version`, `-V` | Print the version and the pinned `lean4export` commit / Lean toolchain.       |
 | `--help`, `-h`    | Print help.                                                                   |
 
@@ -198,6 +216,39 @@ evaluation by structural
 recursion more than about 250 steps deep, and terms more than 512 levels deep —
 a list literal of more than about 500 elements: `unsupported` in a browser,
 checked by the command-line tool.
+
+### Comparing with a challenge (`--compare`)
+
+Checking every declaration of an export says that every declaration of the
+export is well typed. It does not say *which* statements were proved, nor
+*from what*: a theorem named `riemannHypothesis` proves the Riemann
+Hypothesis only if its type is the statement one meant and every definition
+that statement mentions is the one one meant, and a proof that uses an axiom
+beyond Lean's three standard ones (`sorryAx`, say) proves nothing. Lean's
+`lake comparator` answers both questions, and the `--compare` modes of
+`con-leche` and `con-ron` answer the first. `--compare` answers both, over the
+declarations the kernel checks in the same run:
+
+* a **challenge** export is the export of a file that states the target
+  theorems with `sorry`; apart from the targets and `sorryAx` it holds exactly
+  what the statements depend on;
+* each **target** must be a *theorem* of the input, verified, with the
+  challenge's type and universe parameters;
+* every **other challenge declaration** must occur in the input under the same
+  name and be structurally identical — kind, universe parameters, type, value,
+  hints, inductive structure, binder names and annotations — compared exactly
+  with `oxilean_kernel::terms_structurally_equal`, never by hash alone;
+* the **dependency closure** of the targets in the input (through types,
+  values, constructors and recursor rules) may contain only permitted axioms,
+  only verified declarations, no constant the input does not declare, and no
+  `unsafe` or `partial` declaration.
+
+The result is printed after the summary line and, with `--json`, written as a
+`compare` member of the report. It ends with `compare verdict: ESTABLISHED` or
+`NOT ESTABLISHED` (exit code 3 when nothing was rejected).
+
+What this does not establish: that the statements say what a reader takes them
+to say. That is a matter of reading the challenge's source.
 
 ### Example transcript
 

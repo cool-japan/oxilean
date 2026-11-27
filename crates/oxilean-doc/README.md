@@ -51,7 +51,7 @@ oxilean-doc multi --output-dir docs/ src/Foo.lean src/Bar.lean
 
 ```toml
 [dependencies]
-oxilean-doc = "0.1.5"
+oxilean-doc = "0.1.6"
 ```
 
 - License: Apache-2.0
