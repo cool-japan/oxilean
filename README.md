@@ -25,8 +25,8 @@
 OxiLean is a **memory-safe, high-performance Interactive Theorem Prover (ITP)** written entirely in Rust with zero C/Fortran dependencies. Inspired by Lean 4, it brings formal verification to the Rust ecosystem with:
 
 - **Zero-dependency kernel** -- Trusted Computing Base with zero external crate dependencies
-- **1.36M+ lines of Rust** across 6,168 source files and 17 crates
-- **33,953 tests passing** -- comprehensive test suite with zero warnings (779 ignored)
+- **1.36M+ lines of Rust** across 6,185 source files and 17 crates
+- **33,954 tests passing** -- comprehensive test suite with zero warnings (779 ignored)
 - **WASM support** -- Runs in the browser with no server required
 - **Tactic framework** -- intro, apply, simp, ring, omega, and more. The decision procedures (omega, linarith, polyrith) rebuild a proof term from their certificate and have the kernel check it; a goal they cannot certify falls back to `sorry`
 - **Interactive REPL** -- Theorem proving from the command line
@@ -386,14 +386,14 @@ cargo formal check
 
 | Crate | SLOC | Tests | Description |
 |-------|-----:|------:|-------------|
-| `oxilean-kernel` | 134,392 | 3,742 | Trusted Computing Base -- type checking core (zero external deps, `#![forbid(unsafe_code)]`) |
-| `oxilean-export` | 5,022 | 99 | lean4export NDJSON v3.1.0 reader + replay (TCB, zero external deps) |
-| `oxilean-verify` | 2,336 | 50 | Independent Lean 4 proof checker CLI (three-bucket verdicts) |
+| `oxilean-kernel` | 139,656 | 3,848 | Trusted Computing Base -- type checking core (zero external deps, `#![forbid(unsafe_code)]`) |
+| `oxilean-export` | 7,416 | 133 | lean4export NDJSON v3.1.0 reader + replay (TCB, zero external deps) |
+| `oxilean-verify` | 3,972 | 69 | Independent Lean 4 proof checker CLI (three-bucket verdicts) |
 | `oxilean-verify-wasm` | 387 | 4 | "Kernel in a Tab" WASM bindings (~165 KB gzip) |
 | `oxilean-meta` | 163,149 | 5,426 | Metavar-aware WHNF, unification, type class synthesis, tactics |
 | `oxilean-parse` | 67,822 | 2,388 | Concrete syntax to abstract syntax parser |
 | `oxilean-elab` | 103,291 | 3,511 | Surface syntax to kernel terms elaborator |
-| `oxilean-cli` | 73,652 | 2,205 | Command-line interface with REPL |
+| `oxilean-cli` | 73,685 | 2,206 | Command-line interface with REPL |
 | `oxilean-std` | 442,733 | 7,977 | Standard library (mathematics, logic, data structures) |
 | `oxilean-codegen` | 248,329 | 4,755 | LCNF-based compilation and optimization code generator |
 | `oxilean-runtime` | 35,716 | 1,187 | Memory management, closures, I/O, task scheduling |
@@ -404,7 +404,8 @@ cargo formal check
 | `oxilean-wasm` | 1,793 | 59 | WebAssembly bindings (browser support) |
 | `oxilean` (umbrella) | 22 | 0 | Facade crate re-exporting the workspace |
 | workspace `tests/` | — | 1,689 | Root integration suites (incl. Mathlib compat harness) |
-| **Total** | **1,360,584** | **34,479** | **17 crates, 6,168 Rust files** (33,733 run + 746 ignored) |
+| doc tests (`cargo test --doc`) | — | 94 | Doctests across the workspace (61 run + 33 ignored) |
+| **Total** | **1,369,911** | **34,733** | **17 crates, 6,185 Rust files** (33,954 run + 779 ignored) |
 
 > Fun fact: The COCOMO cost estimate for this codebase is **$52M+**.
 
@@ -520,7 +521,7 @@ Supports bundler (webpack/vite), web (browser), and Node.js targets. See [oxilea
   per-declaration budget and deadline of the `--limits` preset.
 - Kernel feature `profile-unfold` (off by default): per-declaration counts of
   what the kernel unfolds, the diagnostic that found the two problems above.
-- Tests: 33,953 passing across the workspace (779 ignored), 4,055 of them in
+- Tests: 33,954 passing across the workspace (779 ignored), 4,055 of them in
   `oxilean-kernel`, `oxilean-export` and `oxilean-verify`; zero clippy
   warnings.
 - Not re-measured on 0.1.6: the Lean core `Init` and Mathlib-slice figures in
@@ -717,7 +718,7 @@ cargo test --workspace
 ### Running Tests
 
 ```bash
-# All tests (33,953 tests; 779 ignored)
+# All tests (33,954 tests; 779 ignored)
 cargo test --workspace
 
 # With cargo-nextest (recommended; about 140 s on an Apple M3)
@@ -800,4 +801,4 @@ Copyright (c) COOLJAPAN OU (Team KitaSan). Licensed under [Apache-2.0](LICENSE).
 
 ---
 
-**v0.1.6** (unreleased) | Under active development
+**v0.1.6** (2026-11-27) | Current release

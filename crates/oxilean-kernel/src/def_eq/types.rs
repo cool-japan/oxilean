@@ -549,53 +549,6 @@ impl<'a, T> WindowIterator<'a, T> {
         }
     }
 }
-/// A token bucket rate limiter.
-#[allow(dead_code)]
-pub struct TokenBucket {
-    capacity: u64,
-    tokens: u64,
-    refill_per_ms: u64,
-    last_refill: crate::wall_clock::Instant,
-}
-#[allow(dead_code)]
-impl TokenBucket {
-    /// Creates a new token bucket.
-    pub fn new(capacity: u64, refill_per_ms: u64) -> Self {
-        Self {
-            capacity,
-            tokens: capacity,
-            refill_per_ms,
-            last_refill: crate::wall_clock::Instant::now(),
-        }
-    }
-    /// Attempts to consume `n` tokens.  Returns `true` on success.
-    pub fn try_consume(&mut self, n: u64) -> bool {
-        self.refill();
-        if self.tokens >= n {
-            self.tokens -= n;
-            true
-        } else {
-            false
-        }
-    }
-    fn refill(&mut self) {
-        let now = crate::wall_clock::Instant::now();
-        let elapsed_ms = now.duration_since(self.last_refill).as_millis() as u64;
-        if elapsed_ms > 0 {
-            let new_tokens = elapsed_ms * self.refill_per_ms;
-            self.tokens = (self.tokens + new_tokens).min(self.capacity);
-            self.last_refill = now;
-        }
-    }
-    /// Returns the number of currently available tokens.
-    pub fn available(&self) -> u64 {
-        self.tokens
-    }
-    /// Returns the bucket capacity.
-    pub fn capacity(&self) -> u64 {
-        self.capacity
-    }
-}
 /// A set of rewrite rules.
 #[allow(dead_code)]
 pub struct RewriteRuleSet {
@@ -788,97 +741,6 @@ impl RewriteRule {
     /// Returns a textual representation.
     pub fn display(&self) -> String {
         format!("{}: {} → {}", self.name, self.lhs, self.rhs)
-    }
-}
-/// A non-empty list (at least one element guaranteed).
-#[allow(dead_code)]
-pub struct NonEmptyVec<T> {
-    head: T,
-    tail: Vec<T>,
-}
-#[allow(dead_code)]
-impl<T> NonEmptyVec<T> {
-    /// Creates a non-empty vec with a single element.
-    pub fn singleton(val: T) -> Self {
-        Self {
-            head: val,
-            tail: Vec::new(),
-        }
-    }
-    /// Pushes an element.
-    pub fn push(&mut self, val: T) {
-        self.tail.push(val);
-    }
-    /// Returns a reference to the first element.
-    pub fn first(&self) -> &T {
-        &self.head
-    }
-    /// Returns a reference to the last element.
-    pub fn last(&self) -> &T {
-        self.tail.last().unwrap_or(&self.head)
-    }
-    /// Returns the number of elements.
-    pub fn len(&self) -> usize {
-        1 + self.tail.len()
-    }
-    /// Returns whether the collection is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-    /// Returns all elements as a Vec.
-    pub fn to_vec(&self) -> Vec<&T> {
-        let mut v = vec![&self.head];
-        v.extend(self.tail.iter());
-        v
-    }
-}
-/// A fixed-size sliding window that computes a running sum.
-#[allow(dead_code)]
-pub struct SlidingSum {
-    window: Vec<f64>,
-    capacity: usize,
-    pos: usize,
-    sum: f64,
-    count: usize,
-}
-#[allow(dead_code)]
-impl SlidingSum {
-    /// Creates a sliding sum with the given window size.
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            window: vec![0.0; capacity],
-            capacity,
-            pos: 0,
-            sum: 0.0,
-            count: 0,
-        }
-    }
-    /// Adds a value to the window, removing the oldest if full.
-    pub fn push(&mut self, val: f64) {
-        let oldest = self.window[self.pos];
-        self.sum -= oldest;
-        self.sum += val;
-        self.window[self.pos] = val;
-        self.pos = (self.pos + 1) % self.capacity;
-        if self.count < self.capacity {
-            self.count += 1;
-        }
-    }
-    /// Returns the current window sum.
-    pub fn sum(&self) -> f64 {
-        self.sum
-    }
-    /// Returns the window mean, or `None` if empty.
-    pub fn mean(&self) -> Option<f64> {
-        if self.count == 0 {
-            None
-        } else {
-            Some(self.sum / self.count as f64)
-        }
-    }
-    /// Returns the current window size (number of valid elements).
-    pub fn count(&self) -> usize {
-        self.count
     }
 }
 /// Definitional equality checker with full optimizations.
@@ -1992,50 +1854,6 @@ impl<'env> DefEqChecker<'env> {
             None => return false,
         };
         self.is_def_eq(&t_ty_whnf, &s_ty)
-    }
-}
-/// A simple key-value store backed by a sorted Vec for small maps.
-#[allow(dead_code)]
-pub struct SmallMap<K: Ord + Clone, V: Clone> {
-    entries: Vec<(K, V)>,
-}
-#[allow(dead_code)]
-impl<K: Ord + Clone, V: Clone> SmallMap<K, V> {
-    /// Creates a new empty small map.
-    pub fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-    /// Inserts or replaces the value for `key`.
-    pub fn insert(&mut self, key: K, val: V) {
-        match self.entries.binary_search_by_key(&&key, |(k, _)| k) {
-            Ok(i) => self.entries[i].1 = val,
-            Err(i) => self.entries.insert(i, (key, val)),
-        }
-    }
-    /// Returns the value for `key`, or `None`.
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.entries
-            .binary_search_by_key(&key, |(k, _)| k)
-            .ok()
-            .map(|i| &self.entries[i].1)
-    }
-    /// Returns the number of entries.
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-    /// Returns `true` if empty.
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-    /// Returns all keys.
-    pub fn keys(&self) -> Vec<&K> {
-        self.entries.iter().map(|(k, _)| k).collect()
-    }
-    /// Returns all values.
-    pub fn values(&self) -> Vec<&V> {
-        self.entries.iter().map(|(_, v)| v).collect()
     }
 }
 

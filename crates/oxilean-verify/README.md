@@ -128,7 +128,7 @@ rebuilt), not a cloned tree node.
 oxilean-verify = "0.1.6"
 ```
 
-- Size: 1,839 SLOC in 8 source files under `src/`; 50 tests
+- Size: 3,250 SLOC in 9 source files under `src/`; 69 tests
 - License: Apache-2.0
 - Edition: 2021
 - Rust version: 1.89+

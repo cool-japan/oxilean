@@ -9,7 +9,7 @@ Copyright (c) COOLJAPAN OU (Team KitaSan)
 
 ---
 
-## [0.1.6] — Unreleased
+## [0.1.6] — 2026-11-27
 
 ### Highlights
 - **An independent check of the Lean proof of the Riemann Hypothesis.** `oxilean-verify` re-checked the export of the compact edition of the Lean proof of RH and of GRH for Dirichlet L-functions (github.com/lsernau/grh-lean, commit `72fead10`; Lean v4.35.0, Mathlib `56a00585`): **204,583 verified · 0 unsupported · 0 rejected**, and `--compare` confirms that the five theorems prove exactly the statements of the challenge file from `propext`, `Classical.choice` and `Quot.sound` only (`compare verdict: ESTABLISHED`). Execution environment, timings and reproduction steps: [riemann_verified.en.md](riemann_verified.en.md) (日本語: [riemann_verified.md](riemann_verified.md))
@@ -29,6 +29,7 @@ Copyright (c) COOLJAPAN OU (Team KitaSan)
 
 ### Fixed
 - Kernel: rendering a term (`Display`, and the derived `Debug` through `Node`) writes at most `RENDER_NODE_LIMIT` (2,048) subterms and then `…`. A term is a DAG and was written as the tree it stands for: the context string of a failed `check_type` (`checking <term>`) and the `{:?}` rejection reason of the export replay ran one declaration of the GRH proof export to 24 GB before it could be reported, unbounded by the per-declaration budget or deadline
+- CLI: the `oxilean` REPL ends at end of input (`oxilean < /dev/null`, an exhausted or closed pipe) instead of printing its prompt in a loop at full CPU
 
 ## [0.1.5] — 2026-11-13
 
@@ -437,8 +438,8 @@ implemented in pure Rust. 1,221,710 SLOC across 11 crates and 5,380 files.
 
 ---
 
-[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.5...HEAD
-[0.1.6]: https://github.com/cool-japan/oxilean/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/cool-japan/oxilean/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/cool-japan/oxilean/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/cool-japan/oxilean/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/cool-japan/oxilean/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/cool-japan/oxilean/compare/v0.1.2...v0.1.3

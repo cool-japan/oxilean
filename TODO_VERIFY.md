@@ -616,10 +616,12 @@ TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
 - [ ] **Long evaluations.** `(List.range 200000).foldl (· + ·) 0 = …` by
   `decide +kernel` runs out of the corpus budget after 2.3 s (Lean's kernel
   takes about 5 s for it); peak live heap 0.5 GB.
-- [ ] **Lazy delta reduction proper.** T4 covers two applications of the same
+- [x] **Lazy delta reduction proper.** T4 covers two applications of the same
   definition. Two DIFFERENT heads that unfold to the same one are still
   reduced to weak head normal form first; Lean unfolds one step at a time,
   the taller definition first.
+  *(0.1.6: done as G3 — `DefEqChecker::lazy_delta_reduction`, the taller definition first;
+  see the 0.1.6 section at the top.)*
 - [ ] **Rejections that end at a limit.** Of the mutants above, 154
   that Lean's kernel rejects end here at a resource limit (reported
   `unsupported`). Never a wrong verdict; a slower "no".
@@ -852,13 +854,15 @@ TERM_DEPTH_TRACKED}`, the feature `term-depth` on `oxilean-kernel`,
 - [x] **S20. A second `quot` record verified** (P2; found 2026-11-12) — *(the
   replayer keeps the primitives a `quot` record has declared and rejects a
   second record of one.)*
-- [ ] **S21. The safety of a declaration is not read** (difference from Lean
+- [x] **S21. The safety of a declaration is not read** (difference from Lean
   in which declarations may be used where; found 2026-11-12) — a safe
   declaration that uses an unsafe or a partial one verifies; Lean refuses it.
   Nothing is relaxed for a flag (measured: an unsafe inductive with a
   non-positive occurrence, an unsafe and a partial definition that refer to
   themselves, ill-typed unsafe declarations are all rejected, and every
   verdict is the same with the flags cleared).
+  *(0.1.6: `check_reference_safety` (G4), Lean's `infer_constant`: a safe declaration may use
+  neither an unsafe constant nor a partial definition, and a partial one no unsafe constant.)*
 
 - [x] **S22. A recursor record was installed after a comparison by definitional
   equality alone** (P0 wrong-ACCEPT from a hand-edited export: a closed proof

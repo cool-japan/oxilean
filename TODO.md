@@ -1,11 +1,11 @@
 # OxiLean — TODO
 
 > Master task list for the OxiLean project.
-> Last updated: 2026-11-13
+> Last updated: 2026-11-27
 >
-> Development version 0.1.6 (unreleased); latest release: 0.1.5 (2026-11-13) — see CHANGELOG.md.
+> Current release: 0.1.6 (2026-11-27); previous release: 0.1.5 (2026-11-13) — see CHANGELOG.md.
 >
-> **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). v0.1.4 released 2026-11-12. v0.1.5 released 2026-11-13. The project has 17 crates and 1.36M+ lines implemented.
+> **Note**: Phases 1-4 are COMPLETE. v0.1.2 released 2026-05-03. v0.1.3 released 2026-07-16 (see `TODO_VERIFY.md`). v0.1.4 released 2026-11-12. v0.1.5 released 2026-11-13. v0.1.6 released 2026-11-27. The project has 17 crates and 1.36M+ lines implemented.
 >
 > **Phases 1-5 Status**: The interactive-prover phases (1–5) are complete. The v0.1.3 campaign (Waves 1–4) delivered the independent verify product: oxilean-export, oxilean-verify, oxilean-verify-wasm, plus kernel soundness fixes (BigNat, quotients, struct eta, re-derived recursors, complete level defeq). See TODO_VERIFY.md for full status.
 
@@ -348,15 +348,15 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 | Phase 4: Tactics | ✅ Complete | ~5,000 | (included in elab) |
 | Phase 5+: Advanced | ✅ Complete | ~120,000+ | ~956,000+ |
 
-**Total Project Lines**: ~1,360,584 lines across 17 crates, 6,168 files
+**Total Project Lines**: ~1,369,911 lines across 17 crates, 6,185 files
 
 ---
 
-## Project Status: Phases 1-5 COMPLETE; v0.1.5 released
+## Project Status: Phases 1-5 COMPLETE; v0.1.6 released
 
-**Phases 1-5 complete as of 2026-05-03. v0.1.3 shipped 2026-07-16. v0.1.4 shipped 2026-11-12. v0.1.5 shipped 2026-11-13.**
-- 17 crates, 6,168 files, 1,360,584 lines implemented
-- 33,733 tests passing (workspace; 746 ignored)
+**Phases 1-5 complete as of 2026-05-03. v0.1.3 shipped 2026-07-16. v0.1.4 shipped 2026-11-12. v0.1.5 shipped 2026-11-13. v0.1.6 shipped 2026-11-27.**
+- 17 crates, 6,185 files, 1,369,911 lines implemented
+- 33,954 tests passing (workspace; 779 ignored)
 - 0 warnings
 - Mathlib4 compatibility: 99.7% parse rate (181,326/181,890 declarations)
 - 320 curated theorem proofs: 100% pass rate
@@ -377,6 +377,14 @@ See `crates/oxilean-elab/TODO.md` for detailed status.
 - Universe levels equal under every assignment are identified; Lean's kernel compares normal forms and refuses. This kernel decides more than Lean's does, and nothing false follows
 - Weaker than Lean: the nested shapes C25, C28 and C29 are rejected, plus C26 and C27; safety flags are not read; a theorem in `Sort (max 0 0)` is accepted
 - [ ] **`normalize` (universe levels) is not idempotent.** `succ (imax (max v w) (max w v))` normalizes to `succ (max v w)`, which normalizes further to `max (succ v) (succ w)`. `prop_normalize_idempotent` (`crates/oxilean-kernel/tests/level_defeq.rs`, 2,000 random cases) draws such an input on about one run in 200 (found 2026-11-13 on runs 276 and 188 of two loops). It fails with `normalize not idempotent on Level(Succ(Level(IMax(…))))`, and a re-run passes only because it draws other inputs. The level code and the test are unchanged since 0.1.4 (cargo-formal: ISSUE-5). Until this is fixed, a run whose only failure is this test with that message is this issue; any other failing test is a real failure. Fix `normalize` (`src/level/functions.rs`) and pin the input above as a regression case
+
+**v0.1.6 (released 2026-11-27)**:
+- An independent check of the Lean proof of the Riemann Hypothesis: the compact edition of lsernau/grh-lean `72fead10` (RH and GRH for Dirichlet L-functions) gives 204,583 verified · 0 unsupported · 0 rejected, and `--compare` gives `ESTABLISHED` (the five theorems prove exactly the challenge statements from `propext`, `Classical.choice` and `Quot.sound` only); report: `riemann_verified.en.md` (日本語: `riemann_verified.md`)
+- `oxilean-verify --compare <CHALLENGE.ndjson>` (with `--theorems`, `--axioms`; new exit code 3), `--decl-fuel <N|2^K>`, `--decl-timeout <S|none>`
+- Kernel: definitional equality follows Lean's `is_def_eq_core` (lazy δ reduction); proof irrelevance compares the propositions as inferred; inductive telescopes are closed with the sharing-aware `subst::abstract_expr`; a safe declaration may use no `unsafe` constant and no `partial` definition (`check_reference_safety`)
+- Term rendering is bounded (`RENDER_NODE_LIMIT`, 2,048 subterms)
+- Kernel feature `profile-unfold` (off by default): per-declaration counts of what the kernel unfolds; a diagnostic that changes no verdict
+- Open from this cycle: G6–G8 in `TODO_VERIFY.md` (eight GRH declarations over the default budget, a stack overflow aborting a run, re-measuring `Init` and the Mathlib slice on 0.1.6)
 
 ## Verify Product (0.1.3)
 

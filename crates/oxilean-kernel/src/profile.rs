@@ -3,9 +3,9 @@
 //!
 //! With the feature off every function here is an empty inline function. With
 //! it on, each call adds one to a per-thread count for the constant, and
-//! [`report_and_reset`] — called when the next declaration's budget is armed
+//! [`report_and_reset`](crate::profile::report_and_reset) — called when the next declaration's budget is armed
 //! (`fuel::set_budget`) — prints the largest counts to stderr if the
-//! declaration just finished used more than [`REPORT_MIN_FUEL`] units. A
+//! declaration just finished used more than [`REPORT_MIN_FUEL`](crate::profile::REPORT_MIN_FUEL) units. A
 //! diagnostic only: it reads names, decides nothing, changes no verdict.
 
 use crate::Name;
